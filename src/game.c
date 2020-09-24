@@ -1414,7 +1414,7 @@ void game_init_ball_entity(struct ball_entity *entity) {
     entity->time_out_of_water = 100.0f;
     entity->time_since_water_ripple = 0.0f;
     entity->stroke_num = 1;
-    entity->color = V3(0.0f, 1.0f, 1.0f);
+    entity->color = config_get_vec3("game_ball_color");
 }
 
 void game_hit_player_ball(struct game *game, vec3 direction, float power, struct game_editor *ed) {

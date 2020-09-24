@@ -3160,7 +3160,7 @@ static void hole_editor_update(struct game_editor *ed, float dt,
                         igText("Num Images: %d", lightmap->images.length);
                         igText("Width: %d", lightmap->width);
                         igText("Height: %d", lightmap->height);
-                        ce->lightmap_update.new_num_images = 1;
+                        igInputInt("New Num Images", &ce->lightmap_update.new_num_images, 0, 0, 0);
                         igInputInt("New Width", &ce->lightmap_update.new_height, 0, 0, 0);
                         igInputInt("New Height", &ce->lightmap_update.new_width, 0, 0, 0);
                         if (igButton("Update Lightmap", (ImVec2){0, 0})) {
