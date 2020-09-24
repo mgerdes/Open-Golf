@@ -10,4 +10,5 @@ A minigolf game written (mostly) from scratch in C. Try it here (Works best in C
 - Used the library [Lightmapper](https://github.com/ands/lightmapper) to generate lightmaps for the terrain and also [xatlas](https://github.com/jpcy/xatlas) to generate lightmap UVs. These lightmaps are then baked into the files for the courses. It can also interpolate between multiple samples to create lightmaps for some moving objects.
 
 ![Image](https://i.imgur.com/ADw5kCw.gif)
+
 ![Image](https://i.imgur.com/tUJyHRk.gif)
