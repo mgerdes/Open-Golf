@@ -1,5 +1,6 @@
 # Minigolf
 A minigolf game written (mostly) from scratch in C. Try it here (Works best in Chrome): http://mgerdes.github.io/minigolf.html
+
 ![Image](https://i.imgur.com/TBlXedl.gif)
 
 - Used the [Sokol](https://github.com/floooh/sokol) libraries to create a cross platform application with 3D graphics and audio. This allowed using Emscripten to compile into JavaScript and make it playable at the link above.
