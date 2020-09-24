@@ -1,0 +1,327 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <ProjectGuid>{A1CF3579-FA6A-4A04-AE77-49440285D5FE}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>client</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <LibraryPath>libraries/GLFW;$(LibraryPath)</LibraryPath>
+    <IncludePath>src;libraries;$(IncludePath)</IncludePath>
+    <CustomBuildAfterTargets>
+    </CustomBuildAfterTargets>
+    <CustomBuildBeforeTargets>ClCompile</CustomBuildBeforeTargets>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <LibraryPath>libraries/GLFW;$(LibraryPath)</LibraryPath>
+    <IncludePath>src;libraries;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>
+      </SDLCheck>
+      <PreprocessorDefinitions>HOLE_EDITOR;WINDOWS_BUILD;_CONSOLE;SOKOL_GLCORE33;HOTLOADER_ACTIVE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>
+      </AdditionalIncludeDirectories>
+      <CompileAs>Default</CompileAs>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ShowIncludes>false</ShowIncludes>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
+      <AdditionalDependencies>glfw3.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <CustomBuildStep>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
+      <Inputs>
+      </Inputs>
+      <Outputs>
+      </Outputs>
+      <TreatOutputAsContent>false</TreatOutputAsContent>
+    </CustomBuildStep>
+    <CustomBuild>
+      <OutputItemType>ClInclude</OutputItemType>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
+      <Outputs>
+      </Outputs>
+      <LinkObjects />
+    </CustomBuild>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>
+      </SDLCheck>
+      <PreprocessorDefinitions>WINDOWS_BUILD;NDEBUG;_CONSOLE;SOKOL_GLCORE33;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>glfw3.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="src\assets.c" />
+    <ClCompile Include="src\audio.c" />
+    <ClCompile Include="src\config.c" />
+    <ClCompile Include="src\data_stream.c" />
+    <ClCompile Include="src\file.c" />
+    <ClCompile Include="src\game.c" />
+    <ClCompile Include="src\game_editor.c" />
+    <ClCompile Include="src\hole.c" />
+    <ClCompile Include="src\hotloader.c" />
+    <ClCompile Include="src\lightmaps.c" />
+    <ClCompile Include="src\log.c" />
+    <ClCompile Include="src\maths.c" />
+    <ClCompile Include="src\main.c" />
+    <ClCompile Include="src\obj_converter.c" />
+    <ClCompile Include="src\profiler.c" />
+    <ClCompile Include="src\renderer.c" />
+    <ClCompile Include="src\single_file_libs.c" />
+    <ClCompile Include="src\ui.c" />
+    <ClCompile Include="libraries\array.c" />
+    <ClCompile Include="libraries\cimgui.cpp" />
+    <ClCompile Include="libraries\glad.c" />
+    <ClCompile Include="libraries\map.c" />
+    <ClCompile Include="libraries\miniz.c" />
+    <ClCompile Include="libraries\s7.c" />
+    <ClCompile Include="libraries\xatlas.cpp" />
+    <ClCompile Include="libraries\imgui\imgui.cpp" />
+    <ClCompile Include="libraries\imgui\imgui_draw.cpp" />
+    <ClCompile Include="libraries\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="libraries\imgui\imgui_demo.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\assets.h" />
+    <ClInclude Include="src\audio.h" />
+    <ClInclude Include="src\config.h" />
+    <ClInclude Include="src\controls.h" />
+    <ClInclude Include="src\data_stream.h" />
+    <ClInclude Include="src\file.h" />
+    <ClInclude Include="src\game.h" />
+    <ClInclude Include="src\game_editor.h" />
+    <ClInclude Include="src\hole.h" />
+    <ClInclude Include="src\hotloader.h" />
+    <ClInclude Include="src\lightmaps.h" />
+    <ClInclude Include="src\log.h" />
+    <ClInclude Include="src\maths.h" />
+    <ClInclude Include="src\obj_converter.h" />
+    <ClInclude Include="src\profiler.h" />
+    <ClInclude Include="src\renderer.h" />
+    <ClInclude Include="src\ui.h" />
+    <ClInclude Include="libraries\array.h" />
+    <ClInclude Include="libraries\cimgui.h" />
+    <ClInclude Include="libraries\glad.h" />
+    <ClInclude Include="libraries\khrplatform.h" />
+    <ClInclude Include="libraries\lightmapper.h" />
+    <ClInclude Include="libraries\map.h" />
+    <ClInclude Include="libraries\miniz.h" />
+    <ClInclude Include="libraries\rnd.h" />
+    <ClInclude Include="libraries\s7.h" />
+    <ClInclude Include="libraries\sokol_app.h" />
+    <ClInclude Include="libraries\sokol_audio.h" />
+    <ClInclude Include="libraries\sokol_gfx.h" />
+    <ClInclude Include="libraries\sokol_imgui.h" />
+    <ClInclude Include="libraries\sokol_time.h" />
+    <ClInclude Include="libraries\stb_image.h" />
+    <ClInclude Include="libraries\stb_image_write.h" />
+    <ClInclude Include="libraries\stb_vorbis.h" />
+    <ClInclude Include="libraries\thread.h" />
+    <ClInclude Include="libraries\tinyobj_loader_c.h" />
+    <ClInclude Include="libraries\xatlas.h" />
+    <ClInclude Include="libraries\xatlas_wrapper.h" />
+    <ClInclude Include="libraries\imgui\imconfig.h" />
+    <ClInclude Include="libraries\imgui\imgui.h" />
+    <ClInclude Include="libraries\imgui\imgui_internal.h" />
+    <ClInclude Include="libraries\imgui\imstb_rectpack.h" />
+    <ClInclude Include="libraries\imgui\imstb_textedit.h" />
+    <ClInclude Include="libraries\imgui\imstb_truetype.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="src\shaders\aim_icon.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h;</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="src\shaders\aim_helper.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h;</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="src\shaders\ball.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h;</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="src\shaders\hole_editor_environment.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="src\shaders\hole_editor_ground.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="src\shaders\hole_editor_terrain.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="src\shaders\hole_editor_water.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="src\shaders\environment.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="src\shaders\fxaa.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="src\shaders\cup.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="src\shaders\occluded_ball.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="src\shaders\pass_through.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="src\shaders\single_color.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="src\shaders\terrain.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="src\shaders\texture.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="src\shaders\ui.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="src\shaders\ui_single_color.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="src\shaders\water.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="src\shaders\water_around_ball.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="src\shaders\water_ripple.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
+    </CustomBuild>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
