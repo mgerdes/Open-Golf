@@ -798,29 +798,24 @@ static void game_physics_tick(struct game *game, float dt, struct renderer *rend
         bv = vec3_add(bv, vec3_scale(config_get_vec3("physics_gravity"), dt));
         bp = vec3_add(bp, vec3_scale(bv, dt));
 
-        if (num_ball_contacts > 0) {
-            for (int i = 0; i < num_ball_contacts; i++) {
-                struct ball_contact contact = ball_contacts[i];
-                if (contact.is_ignored) {
-                    continue;
-                }
-                if (contact.is_environment && !ball->is_out_of_bounds) {
-                    ball->is_out_of_bounds = true;
-                    ball->time_out_of_bounds = 0.0f;
-                }
-                if (ball->position.y < config_get_float("physics_out_of_bounds_y")) {
-                    ball->is_out_of_bounds = true;
-                }
-
-                float pen = fmaxf(contact.penetration, 0.0f);
-                vec3 correction = vec3_scale(contact.normal, pen*config_get_float("physics_correction_amount"));
-                bp = vec3_add(bp, correction);
+        for (int i = 0; i < num_ball_contacts; i++) {
+            struct ball_contact contact = ball_contacts[i];
+            if (contact.is_ignored) {
+                continue;
+            }
+            if (contact.is_environment && !ball->is_out_of_bounds) {
+                ball->is_out_of_bounds = true;
+                ball->time_out_of_bounds = 0.0f;
             }
 
-            for (int i = 0; i < num_ball_contacts; i++) {
-                struct ball_contact contact = ball_contacts[i];
-                game_editor_push_physics_contact_data(ed, contact);
-            }
+            float pen = fmaxf(contact.penetration, 0.0f);
+            vec3 correction = vec3_scale(contact.normal, pen*config_get_float("physics_correction_amount"));
+            bp = vec3_add(bp, correction);
+        }
+
+        for (int i = 0; i < num_ball_contacts; i++) {
+            struct ball_contact contact = ball_contacts[i];
+            game_editor_push_physics_contact_data(ed, contact);
         }
         profiler_pop_section();
     }
@@ -876,6 +871,12 @@ static void game_physics_tick(struct game *game, float dt, struct renderer *rend
         if (vec3_distance(p, ball->position) < game->hole.cup_entity.in_hole_radius) {
             ball->is_in_cup = true;
         }
+    }
+
+    // Check if ball fell through the map or got outside of the mountains 
+    if ((ball->position.y < config_get_float("physics_out_of_bounds_y")) && !ball->is_out_of_bounds) {
+        ball->is_out_of_bounds = true;
+        ball->time_out_of_bounds = 0.0f;
     }
 
     game->physics.tick_idx++;
