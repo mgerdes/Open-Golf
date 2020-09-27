@@ -224,12 +224,6 @@ sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\ba
 sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
     </CustomBuild>
-    <CustomBuild Include="src\shaders\hole_editor_ground.glsl">
-      <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
-sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
-    </CustomBuild>
     <CustomBuild Include="src\shaders\hole_editor_terrain.glsl">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es

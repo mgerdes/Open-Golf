@@ -28,7 +28,6 @@
 #include "shaders/environment.h"
 #include "shaders/fxaa.h"
 #include "shaders/hole_editor_environment.h"
-#include "shaders/hole_editor_ground.h"
 #include "shaders/hole_editor_terrain.h"
 #include "shaders/hole_editor_water.h"
 #include "shaders/occluded_ball.h"
@@ -303,60 +302,6 @@ static bool load_hole_editor_environment_shader(struct file file, bool first_tim
             },
         };
         renderer->sokol.hole_editor_environment_pipeline = sg_make_pipeline(&environment_pipeline_desc);
-    }
-
-    return true;
-}
-
-static bool load_hole_editor_ground_shader(struct file file, bool first_time, struct renderer *renderer) {
-    bool is_bare = strstr(file.name, "bare_") == file.name;
-    if (is_bare && first_time) {
-        return true;
-    }
-    if (!is_bare && !first_time) {
-        return true;
-    }
-
-    sg_shader shader;
-    if (!load_shader("src/shaders/bare_hole_editor_ground_fs.glsl", 
-            "src/shaders/bare_hole_editor_ground_vs.glsl",
-            hole_editor_ground_shader_desc(), &shader)) {
-        return false;
-    }
-
-    sg_shader_info info = sg_query_shader_info(shader);
-    if (info.slot.state == SG_RESOURCESTATE_FAILED) {
-        return true;
-    }
-
-    if (is_bare) {
-        sg_destroy_shader(renderer->sokol.hole_editor_ground_shader);
-        sg_destroy_pipeline(renderer->sokol.hole_editor_ground_pipeline);
-    }
-
-    renderer->sokol.hole_editor_ground_shader = shader;
-
-    {
-        sg_pipeline_desc ground_pipeline_desc = {
-            .shader = shader,
-            .layout = {
-                .attrs = {
-                    [ATTR_hole_editor_ground_vs_position] 
-                        = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
-                    [ATTR_hole_editor_ground_vs_normal] 
-                        = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 1 },
-                    [ATTR_hole_editor_ground_vs_texture_coord] 
-                        = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 2 },
-                    [ATTR_hole_editor_ground_vs_lightmap_uv] 
-                        = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 3 },
-                },
-            },
-            .depth_stencil = {
-                .depth_compare_func = SG_COMPAREFUNC_LESS_EQUAL,
-                .depth_write_enabled = true,
-            },
-        };
-        renderer->sokol.hole_editor_ground_pipeline = sg_make_pipeline(&ground_pipeline_desc);
     }
 
     return true;
@@ -1380,7 +1325,6 @@ void renderer_init(struct renderer *renderer) {
         renderer_watch_shader("aim_helper", renderer, &load_aim_helper_shader);
         renderer_watch_shader("ball", renderer, &load_ball_shader);
         renderer_watch_shader("hole_editor_environment", renderer, &load_hole_editor_environment_shader);
-        renderer_watch_shader("hole_editor_ground", renderer, &load_hole_editor_ground_shader);
         renderer_watch_shader("hole_editor_terrain", renderer, &load_hole_editor_terrain_shader);
         renderer_watch_shader("hole_editor_water", renderer, &load_hole_editor_water_shader);
         renderer_watch_shader("environment", renderer, &load_environment_shader);
@@ -3632,6 +3576,103 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
     profiler_pop_section();
 }
 
+//
+// Needs the hole_editor_terrain_pipeline applied
+// 
+static void renderer_hole_editor_draw_terrain_model(struct renderer *renderer,
+        struct terrain_model *model, mat4 model_mat, struct lightmap *lightmap,
+        int lightmap_i0, int lightmap_i1, float lightmap_t, int draw_type) {
+    sg_bindings bindings = {
+        .vertex_buffers[0] = model->positions_buf,
+        .vertex_buffers[1] = model->normals_buf,
+        .vertex_buffers[2] = model->texture_coords_buf,
+        .vertex_buffers[3] = lightmap->uvs_buf,
+        .vertex_buffers[4] = model->material_idxs_buf,
+        .fs_images[SLOT_ce_lightmap_tex0] = lightmap->images.data[lightmap_i0].sg_image,
+        .fs_images[SLOT_ce_lightmap_tex1] = lightmap->images.data[lightmap_i1].sg_image,
+        .fs_images[SLOT_ce_tex0] = 
+            asset_store_get_texture("ground.png")->image,
+        .fs_images[SLOT_ce_tex1] = 
+            asset_store_get_texture("wood.jpg")->image,
+    };
+    sg_apply_bindings(&bindings);
+
+    vec3 c0[MAX_NUM_TERRAIN_MODEL_MATERIALS];
+    vec3 c1[MAX_NUM_TERRAIN_MODEL_MATERIALS];
+    for (int i = 0; i < MAX_NUM_TERRAIN_MODEL_MATERIALS; i++) {
+        c0[i] = model->materials[i].color0;
+        c1[i] = model->materials[i].color1;
+    }
+
+    hole_editor_terrain_vs_params_t vs_params = {
+        .model_mat = mat4_transpose(model_mat),
+        .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
+        .color0[0] = V4(c0[0].x, c0[0].y, c0[0].z, 1.0f),
+        .color0[1] = V4(c0[1].x, c0[1].y, c0[1].z, 1.0f),
+        .color0[2] = V4(c0[2].x, c0[2].y, c0[2].z, 1.0f),
+        .color0[3] = V4(c0[3].x, c0[3].y, c0[3].z, 1.0f),
+        .color0[4] = V4(c0[4].x, c0[4].y, c0[4].z, 1.0f),
+        .color1[0] = V4(c1[0].x, c1[0].y, c1[0].z, 1.0f),
+        .color1[1] = V4(c1[1].x, c1[1].y, c1[1].z, 1.0f),
+        .color1[2] = V4(c1[2].x, c1[2].y, c1[2].z, 1.0f),
+        .color1[3] = V4(c1[3].x, c1[3].y, c1[3].z, 1.0f),
+        .color1[4] = V4(c1[4].x, c1[4].y, c1[4].z, 1.0f),
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_hole_editor_terrain_vs_params, 
+            &vs_params, sizeof(vs_params));
+
+    hole_editor_terrain_fs_params_t fs_params = {
+        .draw_type = (float) draw_type,
+        .lightmap_t = lightmap_t,
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_hole_editor_terrain_fs_params, 
+            &fs_params, sizeof(fs_params));
+
+
+    // 0-3 draws Default, No AO, Only AO, Lightmap UVS
+    if (draw_type < 4) {
+        sg_draw(0, model->num_elements, 1);
+    }
+    // 4 - 6 draws COR, Friction, Vel Scale
+    else if (draw_type < 7) {
+        // We don't send COR, Friction, and Vel Scale values to the shader so need to draw each face seperately
+        int start_element = 0;
+        for (int i = 0; i < model->faces.length; i++) {
+            struct terrain_model_face face = model->faces.data[i];
+            float c = 0.0f;
+            if (draw_type == 4) {
+                c = face.cor;
+            }
+            else if (draw_type == 5) {
+                c = face.friction;
+            }
+            else if (draw_type == 6) {
+                c = face.vel_scale;
+            }
+
+            hole_editor_terrain_fs_params_t fs_params = {
+                .draw_type = (float) draw_type,
+                .uniform_color = V4(c, c, c, 1.0f),
+                .lightmap_t = 0.0f,
+            };
+            sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_hole_editor_terrain_fs_params, 
+                    &fs_params, sizeof(fs_params));
+
+            if (face.num_points == 3) {
+                sg_draw(start_element, 3, 1);
+                start_element += 3;
+            }
+            else if (face.num_points == 4) {
+                sg_draw(start_element, 6, 1);
+                start_element += 6;
+            }
+            else {
+                assert(false);
+            }
+        }
+    }
+}
+
 void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, struct hole_editor *ce) {
     {
         sg_pass_action pass_action = {
@@ -3678,51 +3719,10 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
             profiler_pop_section();
         }
 
-        /*
-        {
-            profiler_push_section("draw_ground");
-            sg_apply_pipeline(renderer->sokol.hole_editor_ground_pipeline);
-            {
-                struct ground_entity *entity = &ce->hole->ground_entity;
-                struct terrain_model *model = &entity->model;
-                struct lightmap *lightmap = &entity->lightmap;
-
-                sg_bindings bindings = {
-                    .vertex_buffers[0] = model->positions_buf,
-                    .vertex_buffers[1] = model->normals_buf,
-                    .vertex_buffers[2] = model->texture_coords_buf,
-                    .vertex_buffers[3] = lightmap->uvs_buf,
-                    .fs_images[SLOT_ce_lightmap_tex] =
-                        lightmap->images.data[0].sg_image,
-                    .fs_images[SLOT_ce_material_tex] = 
-                        asset_store_get_texture("environment_material.bmp")->image,
-                    .fs_images[SLOT_ce_perlin_noise_tex] =
-                        asset_store_get_texture("perlin_noise.png")->image,
-                };
-                sg_apply_bindings(&bindings);
-
-                hole_editor_ground_vs_params_t vs_params = {
-                    .model_mat = mat4_transpose(ground_entity_get_transform(entity)),
-                    .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
-                };
-                sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_hole_editor_ground_vs_params,
-                        &vs_params, sizeof(vs_params));
-
-                hole_editor_ground_fs_params_t fs_params = {
-                    .draw_type = (float) ce->drawing.terrain_entities.draw_type,
-                };
-                sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_hole_editor_ground_fs_params,
-                        &fs_params, sizeof(fs_params));
-
-                sg_draw(0, model->num_elements, 1);
-            }
-            profiler_pop_section();
-        }
-        */
-
         {
             profiler_push_section("draw_terrain");
             sg_apply_pipeline(renderer->sokol.hole_editor_terrain_pipeline);
+
             for (int i = 0; i < ce->hole->multi_terrain_entities.length; i++) {
                 struct multi_terrain_entity *entity = &ce->hole->multi_terrain_entities.data[i];
                 struct terrain_model *static_model = &entity->static_terrain_model;
@@ -3735,267 +3735,65 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                     t = 2.0f - t;
                 }
 
-                int static_lightmap_i0 = 0, static_lightmap_i1 = 1;
-                for (int i = 1; i < static_lightmap->images.length; i++) {
-                    if (t < i / ((float) (static_lightmap->images.length - 1))) {
-                        static_lightmap_i0 = i - 1;
-                        static_lightmap_i1 = i;
-                        break;
+                // Draw the static part
+                {
+                    int static_lightmap_i0 = 0, static_lightmap_i1 = 1;
+                    for (int i = 1; i < static_lightmap->images.length; i++) {
+                        if (t < i / ((float) (static_lightmap->images.length - 1))) {
+                            static_lightmap_i0 = i - 1;
+                            static_lightmap_i1 = i;
+                            break;
+                        }
                     }
-                }
-                float static_lightmap_t = 0.0f;
-                float static_lightmap_t0 = static_lightmap_i0 / ((float) (static_lightmap->images.length - 1));
-                float static_lightmap_t1 = static_lightmap_i1 / ((float) (static_lightmap->images.length - 1));
-                static_lightmap_t = (t - static_lightmap_t0) / (static_lightmap_t1 - static_lightmap_t0);
-                if (static_lightmap_t < 0.0f) static_lightmap_t = 0.0f;
-                if (static_lightmap_t > 1.0f) static_lightmap_t = 1.0f;
+                    float static_lightmap_t = 0.0f;
+                    float static_lightmap_t0 = static_lightmap_i0 / ((float) (static_lightmap->images.length - 1));
+                    float static_lightmap_t1 = static_lightmap_i1 / ((float) (static_lightmap->images.length - 1));
+                    static_lightmap_t = (t - static_lightmap_t0) / (static_lightmap_t1 - static_lightmap_t0);
+                    if (static_lightmap_t < 0.0f) static_lightmap_t = 0.0f;
+                    if (static_lightmap_t > 1.0f) static_lightmap_t = 1.0f;
+                    mat4 static_model_mat = multi_terrain_entity_get_static_transform(entity);
 
-                if (ce->drawing.terrain_entities.draw_type < 4) {
-                    sg_bindings bindings = {
-                        .vertex_buffers[0] = static_model->positions_buf,
-                        .vertex_buffers[1] = static_model->normals_buf,
-                        .vertex_buffers[2] = static_model->texture_coords_buf,
-                        .vertex_buffers[3] = static_lightmap->uvs_buf,
-                        .vertex_buffers[4] = static_model->material_idxs_buf,
-                        .fs_images[SLOT_ce_lightmap_tex0] =
-                            static_lightmap->images.data[static_lightmap_i0].sg_image,
-                        .fs_images[SLOT_ce_lightmap_tex1] =
-                            static_lightmap->images.data[static_lightmap_i1].sg_image,
-                        .fs_images[SLOT_ce_tex0] = 
-                            asset_store_get_texture("ground.png")->image,
-                        .fs_images[SLOT_ce_tex1] = 
-                            asset_store_get_texture("wood.jpg")->image,
-                    };
-                    sg_apply_bindings(&bindings);
-
-                    vec3 c0[MAX_NUM_TERRAIN_MODEL_MATERIALS];
-                    vec3 c1[MAX_NUM_TERRAIN_MODEL_MATERIALS];
-                    for (int i = 0; i < MAX_NUM_TERRAIN_MODEL_MATERIALS; i++) {
-                        c0[i] = static_model->materials[i].color0;
-                        c1[i] = static_model->materials[i].color1;
-                    }
-
-                    hole_editor_terrain_vs_params_t vs_params = {
-                        .model_mat = mat4_transpose(multi_terrain_entity_get_static_transform(entity)),
-                        .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
-                        .color0[0] = V4(c0[0].x, c0[0].y, c0[0].z, 1.0f),
-                        .color0[1] = V4(c0[1].x, c0[1].y, c0[1].z, 1.0f),
-                        .color0[2] = V4(c0[2].x, c0[2].y, c0[2].z, 1.0f),
-                        .color0[3] = V4(c0[3].x, c0[3].y, c0[3].z, 1.0f),
-                        .color0[4] = V4(c0[4].x, c0[4].y, c0[4].z, 1.0f),
-                        .color1[0] = V4(c1[0].x, c1[0].y, c1[0].z, 1.0f),
-                        .color1[1] = V4(c1[1].x, c1[1].y, c1[1].z, 1.0f),
-                        .color1[2] = V4(c1[2].x, c1[2].y, c1[2].z, 1.0f),
-                        .color1[3] = V4(c1[3].x, c1[3].y, c1[3].z, 1.0f),
-                        .color1[4] = V4(c1[4].x, c1[4].y, c1[4].z, 1.0f),
-                    };
-                    sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_hole_editor_terrain_vs_params, 
-                            &vs_params, sizeof(vs_params));
-
-                    hole_editor_terrain_fs_params_t fs_params = {
-                        .draw_type = (float) ce->drawing.terrain_entities.draw_type,
-                        .lightmap_t = static_lightmap_t,
-                    };
-                    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_hole_editor_terrain_fs_params, 
-                            &fs_params, sizeof(fs_params));
-
-                    sg_draw(0, static_model->num_elements, 1);
+                    renderer_hole_editor_draw_terrain_model(renderer, static_model, static_model_mat, 
+                            static_lightmap, static_lightmap_i0, static_lightmap_i1, static_lightmap_t, 
+                            ce->drawing.terrain_entities.draw_type);
                 }
 
-                int moving_lightmap_i0 = 0, moving_lightmap_i1 = 1;
-                for (int i = 1; i < moving_lightmap->images.length; i++) {
-                    if (t < i / ((float) (moving_lightmap->images.length - 1))) {
-                        moving_lightmap_i0 = i - 1;
-                        moving_lightmap_i1 = i;
-                        break;
+                // Draw the moving part
+                {
+                    int moving_lightmap_i0 = 0, moving_lightmap_i1 = 1;
+                    for (int i = 1; i < moving_lightmap->images.length; i++) {
+                        if (t < i / ((float) (moving_lightmap->images.length - 1))) {
+                            moving_lightmap_i0 = i - 1;
+                            moving_lightmap_i1 = i;
+                            break;
+                        }
                     }
-                }
-                float moving_lightmap_t = 0.0f;
-                float moving_lightmap_t0 = moving_lightmap_i0 / ((float) (moving_lightmap->images.length - 1));
-                float moving_lightmap_t1 = moving_lightmap_i1 / ((float) (moving_lightmap->images.length - 1));
-                moving_lightmap_t = (t - moving_lightmap_t0) / (moving_lightmap_t1 - moving_lightmap_t0);
-                if (moving_lightmap_t < 0.0f) moving_lightmap_t = 0.0f;
-                if (moving_lightmap_t > 1.0f) moving_lightmap_t = 1.0f;
+                    float moving_lightmap_t = 0.0f;
+                    float moving_lightmap_t0 = moving_lightmap_i0 / ((float) (moving_lightmap->images.length - 1));
+                    float moving_lightmap_t1 = moving_lightmap_i1 / ((float) (moving_lightmap->images.length - 1));
+                    moving_lightmap_t = (t - moving_lightmap_t0) / (moving_lightmap_t1 - moving_lightmap_t0);
+                    if (moving_lightmap_t < 0.0f) moving_lightmap_t = 0.0f;
+                    if (moving_lightmap_t > 1.0f) moving_lightmap_t = 1.0f;
+                    mat4 moving_model_mat = multi_terrain_entity_get_moving_transform(entity, game->t);
 
-                if (ce->drawing.terrain_entities.draw_type < 4) {
-                    sg_bindings bindings = {
-                        .vertex_buffers[0] = moving_model->positions_buf,
-                        .vertex_buffers[1] = moving_model->normals_buf,
-                        .vertex_buffers[2] = moving_model->texture_coords_buf,
-                        .vertex_buffers[3] = moving_lightmap->uvs_buf,
-                        .vertex_buffers[4] = moving_model->material_idxs_buf,
-                        .fs_images[SLOT_ce_lightmap_tex0] = moving_lightmap->images.data[moving_lightmap_i0].sg_image,
-                        .fs_images[SLOT_ce_lightmap_tex1] = moving_lightmap->images.data[moving_lightmap_i1].sg_image,
-                        .fs_images[SLOT_ce_tex0] = 
-                            asset_store_get_texture("ground.png")->image,
-                        .fs_images[SLOT_ce_tex1] = 
-                            asset_store_get_texture("wood.jpg")->image,
-                    };
-                    sg_apply_bindings(&bindings);
-
-                    vec3 c0[MAX_NUM_TERRAIN_MODEL_MATERIALS];
-                    vec3 c1[MAX_NUM_TERRAIN_MODEL_MATERIALS];
-                    for (int i = 0; i < MAX_NUM_TERRAIN_MODEL_MATERIALS; i++) {
-                        c0[i] = moving_model->materials[i].color0;
-                        c1[i] = moving_model->materials[i].color1;
-                    }
-
-                    hole_editor_terrain_vs_params_t vs_params = {
-                        .model_mat = mat4_transpose(multi_terrain_entity_get_moving_transform(entity, game->t)),
-                        .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
-                        .color0[0] = V4(c0[0].x, c0[0].y, c0[0].z, 1.0f),
-                        .color0[1] = V4(c0[1].x, c0[1].y, c0[1].z, 1.0f),
-                        .color0[2] = V4(c0[2].x, c0[2].y, c0[2].z, 1.0f),
-                        .color0[3] = V4(c0[3].x, c0[3].y, c0[3].z, 1.0f),
-                        .color0[4] = V4(c0[4].x, c0[4].y, c0[4].z, 1.0f),
-                        .color1[0] = V4(c1[0].x, c1[0].y, c1[0].z, 1.0f),
-                        .color1[1] = V4(c1[1].x, c1[1].y, c1[1].z, 1.0f),
-                        .color1[2] = V4(c1[2].x, c1[2].y, c1[2].z, 1.0f),
-                        .color1[3] = V4(c1[3].x, c1[3].y, c1[3].z, 1.0f),
-                        .color1[4] = V4(c1[4].x, c1[4].y, c1[4].z, 1.0f),
-                    };
-                    sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_hole_editor_terrain_vs_params, 
-                            &vs_params, sizeof(vs_params));
-
-                    hole_editor_terrain_fs_params_t fs_params = {
-                        .draw_type = (float) ce->drawing.terrain_entities.draw_type,
-                        .lightmap_t = moving_lightmap_t,
-                    };
-                    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_hole_editor_terrain_fs_params, 
-                            &fs_params, sizeof(fs_params));
-
-                    sg_draw(0, moving_model->num_elements, 1);
+                    renderer_hole_editor_draw_terrain_model(renderer, moving_model, moving_model_mat, 
+                            moving_lightmap, moving_lightmap_i0, moving_lightmap_i1, moving_lightmap_t, 
+                            ce->drawing.terrain_entities.draw_type);
                 }
             }
 
-            if (ce->drawing.terrain_entities.draw_type < 4) {
-                for (int i = 0; i < ce->hole->terrain_entities.length; i++) {
-                    struct terrain_entity *entity = &ce->hole->terrain_entities.data[i];
-                    struct terrain_model *model = &entity->terrain_model;
-                    struct lightmap *lightmap = &entity->lightmap;
+            for (int i = 0; i < ce->hole->terrain_entities.length; i++) {
+                struct terrain_entity *entity = &ce->hole->terrain_entities.data[i];
+                struct terrain_model *model = &entity->terrain_model;
+                mat4 model_mat = terrain_entity_get_transform(entity);
+                struct lightmap *lightmap = &entity->lightmap;
+                int lightmap_i0 = 0;
+                int lightmap_i1 = 0;
+                float lightmap_t = 0.0f;
 
-                    sg_bindings bindings = {
-                        .vertex_buffers[0] = model->positions_buf,
-                        .vertex_buffers[1] = model->normals_buf,
-                        .vertex_buffers[2] = model->texture_coords_buf,
-                        .vertex_buffers[3] = lightmap->uvs_buf,
-                        .vertex_buffers[4] = model->material_idxs_buf,
-                        .fs_images[SLOT_ce_lightmap_tex0] = lightmap->images.data[0].sg_image,
-                        .fs_images[SLOT_ce_lightmap_tex1] = lightmap->images.data[0].sg_image,
-                        .fs_images[SLOT_ce_tex0] = 
-                            asset_store_get_texture("ground.png")->image,
-                        .fs_images[SLOT_ce_tex1] = 
-                            asset_store_get_texture("wood.jpg")->image,
-                    };
-                    sg_apply_bindings(&bindings);
-
-                    vec3 c0[MAX_NUM_TERRAIN_MODEL_MATERIALS];
-                    vec3 c1[MAX_NUM_TERRAIN_MODEL_MATERIALS];
-                    for (int i = 0; i < MAX_NUM_TERRAIN_MODEL_MATERIALS; i++) {
-                        c0[i] = model->materials[i].color0;
-                        c1[i] = model->materials[i].color1;
-                    }
-
-                    hole_editor_terrain_vs_params_t vs_params = {
-                        .model_mat = mat4_transpose(terrain_entity_get_transform(entity)),
-                        .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
-                        .color0[0] = V4(c0[0].x, c0[0].y, c0[0].z, 1.0f),
-                        .color0[1] = V4(c0[1].x, c0[1].y, c0[1].z, 1.0f),
-                        .color0[2] = V4(c0[2].x, c0[2].y, c0[2].z, 1.0f),
-                        .color0[3] = V4(c0[3].x, c0[3].y, c0[3].z, 1.0f),
-                        .color0[4] = V4(c0[4].x, c0[4].y, c0[4].z, 1.0f),
-                        .color1[0] = V4(c1[0].x, c1[0].y, c1[0].z, 1.0f),
-                        .color1[1] = V4(c1[1].x, c1[1].y, c1[1].z, 1.0f),
-                        .color1[2] = V4(c1[2].x, c1[2].y, c1[2].z, 1.0f),
-                        .color1[3] = V4(c1[3].x, c1[3].y, c1[3].z, 1.0f),
-                        .color1[4] = V4(c1[4].x, c1[4].y, c1[4].z, 1.0f),
-                    };
-                    sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_hole_editor_terrain_vs_params, 
-                            &vs_params, sizeof(vs_params));
-
-                    hole_editor_terrain_fs_params_t fs_params = {
-                        .draw_type = (float) ce->drawing.terrain_entities.draw_type,
-                        .lightmap_t = 0.0f,
-                    };
-                    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_hole_editor_terrain_fs_params, 
-                            &fs_params, sizeof(fs_params));
-
-                    sg_draw(0, model->num_elements, 1);
-                }
-            }
-            else if (ce->drawing.terrain_entities.draw_type < 7) {
-                for (int i = 0; i < ce->hole->terrain_entities.length; i++) {
-                    struct terrain_entity *entity = &ce->hole->terrain_entities.data[i];
-                    struct terrain_model *model = &entity->terrain_model;
-                    struct lightmap *lightmap = &entity->lightmap;
-
-                    sg_bindings bindings = {
-                        .vertex_buffers[0] = model->positions_buf,
-                        .vertex_buffers[1] = model->normals_buf,
-                        .vertex_buffers[2] = model->texture_coords_buf,
-                        .vertex_buffers[3] = lightmap->uvs_buf,
-                        .vertex_buffers[4] = model->material_idxs_buf,
-                        .fs_images[SLOT_ce_lightmap_tex0] = lightmap->images.data[0].sg_image,
-                        .fs_images[SLOT_ce_lightmap_tex1] = lightmap->images.data[0].sg_image,
-                        .fs_images[SLOT_ce_tex0] = 
-                            asset_store_get_texture("ground.png")->image,
-                        .fs_images[SLOT_ce_tex1] = 
-                            asset_store_get_texture("wood.jpg")->image,
-                    };
-                    sg_apply_bindings(&bindings);
-
-                    hole_editor_terrain_vs_params_t vs_params = {
-                        .model_mat = mat4_transpose(terrain_entity_get_transform(entity)),
-                        .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
-                        .color0[0] = V4(1.0f, 1.0f, 1.0f, 1.0f),
-                        .color0[1] = V4(1.0f, 1.0f, 1.0f, 1.0f),
-                        .color0[2] = V4(1.0f, 1.0f, 1.0f, 1.0f),
-                        .color0[3] = V4(1.0f, 1.0f, 1.0f, 1.0f),
-                        .color0[4] = V4(1.0f, 1.0f, 1.0f, 1.0f),
-                        .color1[0] = V4(1.0f, 1.0f, 1.0f, 1.0f),
-                        .color1[1] = V4(1.0f, 1.0f, 1.0f, 1.0f),
-                        .color1[2] = V4(1.0f, 1.0f, 1.0f, 1.0f),
-                        .color1[3] = V4(1.0f, 1.0f, 1.0f, 1.0f),
-                        .color1[4] = V4(1.0f, 1.0f, 1.0f, 1.0f),
-                    };
-                    sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_hole_editor_terrain_vs_params, 
-                            &vs_params, sizeof(vs_params));
-
-                    int start_element = 0;
-                    for (int j = 0; j < model->faces.length; j++) {
-                        struct terrain_model_face face = model->faces.data[j];
-                        float c = 0.0f;
-                        if (ce->drawing.terrain_entities.draw_type == 4) {
-                            c = face.cor;
-                        }
-                        else if (ce->drawing.terrain_entities.draw_type == 5) {
-                            c = face.friction;
-                        }
-                        else if (ce->drawing.terrain_entities.draw_type == 6) {
-                            c = face.vel_scale;
-                        }
-
-                        hole_editor_terrain_fs_params_t fs_params = {
-                            .draw_type = (float) ce->drawing.terrain_entities.draw_type,
-                            .uniform_color = V4(c, c, c, 1.0f),
-                            .lightmap_t = 0.0f,
-                        };
-                        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_hole_editor_terrain_fs_params, 
-                                &fs_params, sizeof(fs_params));
-
-                        if (face.num_points == 3) {
-                            sg_draw(start_element, 3, 1);
-                            start_element += 3;
-                        }
-                        else if (face.num_points == 4) {
-                            sg_draw(start_element, 6, 1);
-                            start_element += 6;
-                        }
-                        else {
-                            assert(false);
-                        }
-                    }
-                }
+                renderer_hole_editor_draw_terrain_model(renderer, model, model_mat, 
+                        lightmap, lightmap_i0, lightmap_i1, lightmap_t,
+                        ce->drawing.terrain_entities.draw_type);
             }
             profiler_pop_section();
         }

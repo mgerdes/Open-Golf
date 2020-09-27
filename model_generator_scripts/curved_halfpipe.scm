@@ -1,4 +1,6 @@
-(define (generate N inner_radius width height texture_dx texture_length)
+(define (generate N inner_radius width height texture_dx texture_length
+                  ground_friction ground_cor ground_vel_scale
+                  wall_friction wall_cor wall_vel_scale)
   (define-macro (while test . body) 
                 `(call-with-exit
                    (lambda (break) 
@@ -124,7 +126,7 @@
                                    tc0x tc1y
                                    tc0x tc0y
                                    0.25 
-                                   0.4 0.3 1 0)
+                                   wall_cor wall_friction wall_vel_scale 0)
            )
 
          ;; Border 2
@@ -144,7 +146,7 @@
                                    tc1x tc1y
                                    tc1x tc0y
                                    0.25 
-                                   0.4 0.3 1 0)
+                                   ground_cor ground_friction ground_vel_scale 0)
            )
 
          ;; Border 3
@@ -164,10 +166,10 @@
                                    tc1x tc1y
                                    tc1x tc0y
                                    0.25 
-                                   0.4 0.3 1 0)
+                                   wall_cor wall_friction wall_vel_scale 0)
            )
 
-         ;; Border 6
+         ;; Border 4
          (begin 
            (define a (+ (* (+ i 0) (+ 6 N)) N 2))
            (define b (+ (* (+ i 1) (+ 6 N)) N 2))
@@ -184,7 +186,7 @@
                                    tc0x tc1y
                                    tc0x tc0y
                                    0.25 
-                                   0.4 0.3 1 0)
+                                   wall_cor wall_friction wall_vel_scale 0)
            )
 
          ;; Border 5
@@ -204,7 +206,7 @@
                                    tc0x tc1y
                                    tc0x tc0y
                                    0.25
-                                   0.4 0.3 1 0)
+                                   ground_cor ground_friction ground_vel_scale 0)
            )
 
          ;; Border 6
@@ -227,7 +229,8 @@
                                    0 tc1y
                                    (- by cy) tc1y
                                    (- ay dy) tc0y
-                                   0.25 0.4 0.3 1 0)
+                                   0.25
+                                   wall_cor wall_friction wall_vel_scale 0)
            )
 
          (define j 0)
@@ -271,7 +274,8 @@
                                         btcx btcy 
                                         ctcx ctcy 
                                         dtcx dtcy
-                                        .5 .4 .3 1 0)
+                                        0.5
+                                        ground_cor ground_friction ground_vel_scale 0)
 
                 (set! j (+ j 1))
                 )

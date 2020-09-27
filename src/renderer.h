@@ -42,7 +42,6 @@ struct renderer {
             aim_helper_shader,
             ball_shader,
             hole_editor_environment_shader, 
-            hole_editor_ground_shader,
             hole_editor_terrain_shader, 
             hole_editor_water_shader,
             environment_shader,
