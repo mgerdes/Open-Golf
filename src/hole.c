@@ -1054,6 +1054,8 @@ void multi_terrain_entity_init(struct multi_terrain_entity *entity, int num_stat
     entity->movement_data.ramp.theta1 = 1.0f;
     entity->movement_data.ramp.rotation_axis = V3(1.0f, 0.0f, 0.0f);
     entity->movement_data.ramp.transition_length = 1.0f;
+    entity->movement_data.rotation.theta0 = 0.0f;
+    entity->movement_data.rotation.axis = V3(1.0f, 0.0f, 0.0f);
     entity->movement_data.length = 1.0f;
     entity->moving_position = V3(0.0f, 0.0f, 0.0f);
     entity->moving_scale = V3(1.0f, 1.0f, 1.0f);
@@ -1084,10 +1086,11 @@ mat4 multi_terrain_entity_get_static_transform(struct multi_terrain_entity *enti
 
 mat4 multi_terrain_entity_get_moving_transform(struct multi_terrain_entity *entity, float t) {
     struct movement_data movement_data = entity->movement_data;
-    float a = 2.0f*fmodf(t, movement_data.length)/movement_data.length;
-    if (a >= 1.0f) a = 2.0f - a;
 
     if (movement_data.type == MOVEMENT_TYPE_PENDULUM) {
+        float a = 2.0f*fmodf(t, movement_data.length)/movement_data.length;
+        if (a >= 1.0f) a = 2.0f - a;
+
         float theta = movement_data.pendulum.theta0*cosf(MF_PI*a);
         return mat4_multiply_n(4, 
                 mat4_translation(entity->moving_position),
@@ -1096,6 +1099,9 @@ mat4 multi_terrain_entity_get_moving_transform(struct multi_terrain_entity *enti
                 mat4_from_quat(entity->moving_orientation));
     }
     else if (movement_data.type == MOVEMENT_TYPE_TO_AND_FROM) {
+        float a = 2.0f*fmodf(t, movement_data.length)/movement_data.length;
+        if (a >= 1.0f) a = 2.0f - a;
+
         vec3 p0 = movement_data.to_and_from.p0;
         vec3 p1 = movement_data.to_and_from.p1;
         vec3 p = vec3_add(p0, vec3_scale(vec3_sub(p1, p0), a));
@@ -1106,6 +1112,9 @@ mat4 multi_terrain_entity_get_moving_transform(struct multi_terrain_entity *enti
                 mat4_from_quat(entity->moving_orientation));
     }
     else if (movement_data.type == MOVEMENT_TYPE_RAMP) {
+        float a = 2.0f*fmodf(t, movement_data.length)/movement_data.length;
+        if (a >= 1.0f) a = 2.0f - a;
+
         float transition_dt = movement_data.ramp.transition_length/movement_data.length;
         float theta_dt = 0.5f*(1.0f - transition_dt);
         float theta0 = movement_data.ramp.theta0;
@@ -1122,6 +1131,16 @@ mat4 multi_terrain_entity_get_moving_transform(struct multi_terrain_entity *enti
         else {
             theta = theta1;
         }
+        return mat4_multiply_n(4,
+                mat4_translation(entity->moving_position),
+                mat4_from_quat(quat_create_from_axis_angle(axis, theta)),
+                mat4_scale(entity->moving_scale),
+                mat4_from_quat(entity->moving_orientation));
+    }
+    else if (movement_data.type == MOVEMENT_TYPE_ROTATION) {
+        float a = fmodf(t, movement_data.length)/movement_data.length;
+        vec3 axis = movement_data.rotation.axis;
+        float theta = 2.0f*MF_PI*a + movement_data.rotation.theta0;
         return mat4_multiply_n(4,
                 mat4_translation(entity->moving_position),
                 mat4_from_quat(quat_create_from_axis_angle(axis, theta)),
@@ -1507,7 +1526,7 @@ static void free_terrain_model_info(struct terrain_model_info *info) {
 }
 
 void hole_serialize(struct hole *hole, struct data_stream *stream, bool include_lightmaps) {
-    serialize_int(stream, 37);
+    serialize_int(stream, 38);
 
     serialize_int(stream, hole->terrain_entities.length);
     for (int i = 0; i < hole->terrain_entities.length; i++) {
@@ -1539,6 +1558,9 @@ void hole_serialize(struct hole *hole, struct data_stream *stream, bool include_
         else if (entity->movement_data.type == MOVEMENT_TYPE_RAMP) {
             serialize_char(stream, 'r');
         }
+        else if (entity->movement_data.type == MOVEMENT_TYPE_ROTATION) {
+            serialize_char(stream, 'o');
+        }
         else {
             assert(false);
         }
@@ -1549,6 +1571,8 @@ void hole_serialize(struct hole *hole, struct data_stream *stream, bool include_
         serialize_float(stream, entity->movement_data.ramp.theta0);
         serialize_float(stream, entity->movement_data.ramp.theta1);
         serialize_float(stream, entity->movement_data.ramp.transition_length);
+        serialize_float(stream, entity->movement_data.rotation.theta0);
+        serialize_vec3(stream, entity->movement_data.rotation.axis);
         serialize_float(stream, entity->movement_data.length);
         serialize_vec3(stream, entity->moving_position);
         serialize_vec3(stream, entity->moving_scale);
@@ -1618,7 +1642,7 @@ void hole_serialize(struct hole *hole, struct data_stream *stream, bool include_
     }
 }
 
-static void hole_deserialize_37(struct hole *hole, struct data_stream *stream, bool include_lightmaps) {
+static void hole_deserialize_38(struct hole *hole, struct data_stream *stream, bool include_lightmaps) {
     int num_terrain_entities = deserialize_int(stream);
     if (hole->terrain_entities.length > num_terrain_entities) {
         for (int i = num_terrain_entities; i < hole->terrain_entities.length; i++) {
@@ -1680,6 +1704,8 @@ static void hole_deserialize_37(struct hole *hole, struct data_stream *stream, b
         float movement_ramp_theta0 = deserialize_float(stream);
         float movement_ramp_theta1 = deserialize_float(stream);
         float movement_ramp_transition_length = deserialize_float(stream);
+        float movement_ramp_rotation_theta0 = deserialize_float(stream);
+        vec3 movement_ramp_rotation_axis = deserialize_vec3(stream);
         float moving_time_length = deserialize_float(stream);
         vec3 moving_position = deserialize_vec3(stream);
         vec3 moving_scale = deserialize_vec3(stream);
@@ -1720,6 +1746,9 @@ static void hole_deserialize_37(struct hole *hole, struct data_stream *stream, b
         else if (movement_type == 'r') {
             multi_terrain->movement_data.type = MOVEMENT_TYPE_RAMP;
         }
+        else if (movement_type == 'o') {
+            multi_terrain->movement_data.type = MOVEMENT_TYPE_ROTATION;
+        }
         else {
             assert(false);
         }
@@ -1730,6 +1759,8 @@ static void hole_deserialize_37(struct hole *hole, struct data_stream *stream, b
         multi_terrain->movement_data.ramp.theta0 = movement_ramp_theta0;
         multi_terrain->movement_data.ramp.theta1 = movement_ramp_theta1;
         multi_terrain->movement_data.ramp.transition_length = movement_ramp_transition_length;
+        multi_terrain->movement_data.rotation.theta0 = movement_ramp_rotation_theta0;
+        multi_terrain->movement_data.rotation.axis = movement_ramp_rotation_axis;
         multi_terrain->movement_data.length = moving_time_length;
         multi_terrain->moving_position = moving_position;
         multi_terrain->moving_scale = moving_scale;
@@ -1888,8 +1919,8 @@ static void hole_deserialize_37(struct hole *hole, struct data_stream *stream, b
 void hole_deserialize(struct hole *hole, struct data_stream *stream, bool include_lightmaps) {
     data_stream_reset_pos(stream);
     int version = deserialize_int(stream);    
-    if (version == 37) {
-        hole_deserialize_37(hole, stream, include_lightmaps);
+    if (version == 38) {
+        hole_deserialize_38(hole, stream, include_lightmaps);
     }
     else {
         assert(false);

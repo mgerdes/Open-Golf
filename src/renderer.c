@@ -2120,9 +2120,15 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                 struct lightmap *static_lightmap = &entity->static_lightmap;
                 struct lightmap *moving_lightmap = &entity->moving_lightmap;
 
-                float t = 2.0f*fmodf(game->t, entity->movement_data.length)/entity->movement_data.length;
-                if (t > 1.0f) {
-                    t = 2.0f - t;
+                float t = fmodf(game->t, entity->movement_data.length)/entity->movement_data.length;
+                if (entity->movement_data.type == MOVEMENT_TYPE_PENDULUM ||
+                        entity->movement_data.type == MOVEMENT_TYPE_TO_AND_FROM ||
+                        entity->movement_data.type == MOVEMENT_TYPE_RAMP) {
+                    // For these movement types the second half of the movement is just the first have but in reverse 
+                    t = 2.0f*t;
+                    if (t > 1.0f) {
+                        t = 2.0f - t;
+                    }
                 }
 
                 {
@@ -3730,9 +3736,15 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                 struct lightmap *static_lightmap = &entity->static_lightmap;
                 struct lightmap *moving_lightmap = &entity->moving_lightmap;
 
-                float t = 2.0f*fmodf(game->t, entity->movement_data.length)/entity->movement_data.length;
-                if (t > 1.0f) {
-                    t = 2.0f - t;
+                float t = fmodf(game->t, entity->movement_data.length)/entity->movement_data.length;
+                if (entity->movement_data.type == MOVEMENT_TYPE_PENDULUM ||
+                        entity->movement_data.type == MOVEMENT_TYPE_TO_AND_FROM ||
+                        entity->movement_data.type == MOVEMENT_TYPE_RAMP) {
+                    // For these movement types the second half of the movement is just the first have but in reverse 
+                    t = 2.0f*t;
+                    if (t > 1.0f) {
+                        t = 2.0f - t;
+                    }
                 }
 
                 // Draw the static part

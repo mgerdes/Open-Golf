@@ -128,7 +128,14 @@ void lightmap_generator_data_init(struct hole *hole, struct lightmap_generator_d
             array_init(&lightmap_entity.moving_model_mats);
             for (int i = 0; i < moving_lightmap->images.length; i++) {
                 float a = ((float) i) / (moving_lightmap->images.length - 1);
-                float t = 0.5f*a*multi_entity->movement_data.length;
+                float t = a*multi_entity->movement_data.length;
+                if (multi_entity->movement_data.type == MOVEMENT_TYPE_PENDULUM ||
+                        multi_entity->movement_data.type == MOVEMENT_TYPE_TO_AND_FROM ||
+                        multi_entity->movement_data.type == MOVEMENT_TYPE_RAMP) {
+                    // For these movement types the second half of the movement is just the first have but in reverse 
+                    // So only calculate the lightmaps for the first half
+                    t = 0.5f*t;
+                }
 
                 float *lightmap_data = malloc(sizeof(float) * moving_lightmap->width * moving_lightmap->height);
                 for (int j = 0; j < moving_lightmap->width * moving_lightmap->height; j++) {

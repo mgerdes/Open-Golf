@@ -115,6 +115,7 @@ enum movement_type {
     MOVEMENT_TYPE_PENDULUM,
     MOVEMENT_TYPE_TO_AND_FROM,
     MOVEMENT_TYPE_RAMP,
+    MOVEMENT_TYPE_ROTATION,
 };
 struct movement_data {
     enum movement_type type;
@@ -129,6 +130,10 @@ struct movement_data {
         float transition_length;
         vec3 rotation_axis;
     } ramp;
+    struct {
+        float theta0;
+        vec3 axis;
+    } rotation;
     float length;
 };
 array_t(struct movement_data, movement_data_array);

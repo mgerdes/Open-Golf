@@ -3085,6 +3085,11 @@ static void hole_editor_update(struct game_editor *ed, float dt,
                         ce->object_modifier.is_active = false;
                     }
                     if (igButton("Delete", (ImVec2){0, 0})) {
+                        hole_editor_push_state(ce);
+                        terrain_entity_deinit(terrain);
+                        array_splice(&ce->hole->terrain_entities, entity.idx, 1);
+                        ce->selected_array.length = 0;
+                        ce->hovered_array.length = 0;
                     }
                 }
                 else if (entity.type == EDITOR_ENTITY_MULTI_TERRAIN_MOVING) {
@@ -3122,6 +3127,13 @@ static void hole_editor_update(struct game_editor *ed, float dt,
                         }
                     }
 
+                    bool is_rotation = multi_terrain->movement_data.type == MOVEMENT_TYPE_ROTATION;
+                    if (igCheckbox("Movement Type Rotation", &is_rotation)) {
+                        if (is_rotation) {
+                            multi_terrain->movement_data.type = MOVEMENT_TYPE_ROTATION;
+                        }
+                    }
+
                     struct movement_data *movement_data = &multi_terrain->movement_data;
                     if (movement_data->type == MOVEMENT_TYPE_PENDULUM) {
                         igInputFloat("Theta0", &movement_data->pendulum.theta0, 0.0f, 0.0f, "%0.2f", 0);
@@ -3136,6 +3148,10 @@ static void hole_editor_update(struct game_editor *ed, float dt,
                         igInputFloat("Theta1", &movement_data->ramp.theta1, 0.0f, 0.0f, "%0.2f", 0);
                         igInputFloat("Transition Length", 
                                 &movement_data->ramp.transition_length, 0.0f, 0.0f, "%0.2f", 0);
+                    }
+                    else if (movement_data->type == MOVEMENT_TYPE_ROTATION) {
+                        igInputFloat("Theta0", (float*) &movement_data->rotation.theta0, 0.0f, 0.0f, "%0.2f", 0);
+                        igInputFloat3("Axis", (float*) &movement_data->rotation.axis, "%0.2f", 0);
                     }
                     else {
                         assert(false);
@@ -3153,6 +3169,11 @@ static void hole_editor_update(struct game_editor *ed, float dt,
                     }
 
                     if (igButton("Delete", (ImVec2){0, 0})) {
+                        hole_editor_push_state(ce);
+                        multi_terrain_entity_deinit(multi_terrain);
+                        array_splice(&ce->hole->multi_terrain_entities, entity.idx, 1);
+                        ce->selected_array.length = 0;
+                        ce->hovered_array.length = 0;
                     }
 
                     if (igTreeNodeStr("Lightmap")) {
@@ -3194,6 +3215,11 @@ static void hole_editor_update(struct game_editor *ed, float dt,
                     }
 
                     if (igButton("Delete", (ImVec2){0, 0})) {
+                        hole_editor_push_state(ce);
+                        multi_terrain_entity_deinit(multi_terrain);
+                        array_splice(&ce->hole->multi_terrain_entities, entity.idx, 1);
+                        ce->selected_array.length = 0;
+                        ce->hovered_array.length = 0;
                     }
 
                     if (igTreeNodeStr("Lightmap")) {
