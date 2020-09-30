@@ -2081,7 +2081,42 @@ static void hole_editor_update(struct game_editor *ed, float dt,
 
                             for (int i = 0; i < selected_array->length; i++) {
                                 struct editor_entity editor_entity = selected_array->data[i];
-                                if (editor_entity.type == EDITOR_ENTITY_ENVIRONMENT) {
+                                if (editor_entity.type == EDITOR_ENTITY_TERRAIN) {
+                                    struct terrain_entity *old_entity = 
+                                        &ce->hole->terrain_entities.data[editor_entity.idx];
+                                    struct terrain_entity new_entity;
+                                    terrain_entity_init(&new_entity, old_entity->terrain_model.num_elements,
+                                            old_entity->lightmap.width, old_entity->lightmap.height);
+                                    terrain_entity_copy(&new_entity, old_entity);
+                                    array_push(&ce->hole->terrain_entities, new_entity);
+
+                                    struct editor_entity new_ed_entity =
+                                        make_editor_entity(EDITOR_ENTITY_TERRAIN,
+                                                ce->hole->terrain_entities.length - 1);
+                                    array_push(&new_editor_entities, new_ed_entity);
+                                }
+                                else if (editor_entity.type == EDITOR_ENTITY_MULTI_TERRAIN_STATIC) {
+                                    struct multi_terrain_entity *old_entity = 
+                                        &ce->hole->multi_terrain_entities.data[editor_entity.idx];
+                                    struct multi_terrain_entity new_entity;
+                                    multi_terrain_entity_init(&new_entity, 
+                                            old_entity->static_terrain_model.num_elements,
+                                            old_entity->moving_terrain_model.num_elements,
+                                            old_entity->static_lightmap.width,
+                                            old_entity->static_lightmap.height);
+                                    multi_terrain_entity_copy(&new_entity, old_entity);
+                                    array_push(&ce->hole->multi_terrain_entities, new_entity);
+
+                                    struct editor_entity new_ed_static_entity =
+                                        make_editor_entity(EDITOR_ENTITY_MULTI_TERRAIN_STATIC,
+                                                ce->hole->multi_terrain_entities.length - 1);
+                                    array_push(&new_editor_entities, new_ed_static_entity);
+                                    struct editor_entity new_ed_moving_entity =
+                                        make_editor_entity(EDITOR_ENTITY_MULTI_TERRAIN_MOVING,
+                                                ce->hole->multi_terrain_entities.length - 1);
+                                    array_push(&new_editor_entities, new_ed_moving_entity);
+                                }
+                                else if (editor_entity.type == EDITOR_ENTITY_ENVIRONMENT) {
                                     struct environment_entity *old_entity = 
                                         &ce->hole->environment_entities.data[editor_entity.idx];
                                     struct environment_entity new_entity;
@@ -2090,12 +2125,12 @@ static void hole_editor_update(struct game_editor *ed, float dt,
                                     new_entity.position = old_entity->position;
                                     new_entity.scale = old_entity->scale;
                                     new_entity.orientation = old_entity->orientation;
+                                    array_push(&ce->hole->environment_entities, new_entity);
 
                                     struct editor_entity new_ed_entity =
                                         make_editor_entity(EDITOR_ENTITY_ENVIRONMENT,
-                                                ce->hole->environment_entities.length);
+                                                ce->hole->environment_entities.length - 1);
                                     array_push(&new_editor_entities, new_ed_entity);
-                                    array_push(&ce->hole->environment_entities, new_entity);
                                 }
                             }
 
@@ -3599,6 +3634,12 @@ void game_editor_update(struct game_editor *ed, float dt, struct button_inputs b
                     ed->editing_hole = true;
                 }
 #endif
+
+                if (igButton("Move Ball To Start", (ImVec2){0, 0})) {
+                    ed->game->player_ball.position = ed->game->hole.ball_start_entity.position;
+                    ed->game->player_ball.position.y += ed->game->player_ball.radius;
+                    ed->game->player_ball.velocity = V3(0.0f, 0.0f, 0.0f);
+                }
 
                 igCheckbox("Free Camera", &ed->free_camera);
 

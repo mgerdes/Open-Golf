@@ -33,7 +33,7 @@ struct ball_contact {
 
 struct ball_entity {
     float time_going_slow;
-    bool is_moving, is_in_cup;
+    bool was_hit, is_moving, is_in_cup;
     vec3 position, velocity, position_before_hit;
     vec3 draw_position;
     float radius;

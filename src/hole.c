@@ -174,19 +174,6 @@ void terrain_model_init(struct terrain_model *model, int num_elements) {
     model->materials[4].color1 = V3(0.0f, 0.0f, 0.0f);
     array_init(&model->points);
     array_init(&model->faces);
-    model->bezier_generator_info.is_bulge = false;
-    model->bezier_generator_info.N = 10;
-    model->bezier_generator_info.border_height = 0.25f;
-    model->bezier_generator_info.border_width = 0.50f;
-    model->bezier_generator_info.height = 1.0f;
-    model->bezier_generator_info.width = 4.0f;
-    model->bezier_generator_info.length = 4.0f;
-    model->bezier_generator_info.texture_width = 4.0f;
-    model->bezier_generator_info.texture_length = 4.0f;
-    model->bezier_generator_info.bp0 = V2(0.0f, 0.0f);
-    model->bezier_generator_info.bp1 = V2(0.33f, 0.0f);
-    model->bezier_generator_info.bp2 = V2(0.66f, 0.1f);
-    model->bezier_generator_info.bp3 = V2(1.0f, 0.4f);
     model->generator_name[0] = 0;
     map_init(&model->generator_params);
     model->num_elements = 0;
@@ -223,6 +210,23 @@ void terrain_model_deinit(struct terrain_model *model) {
     sg_destroy_buffer(model->normals_buf);
     sg_destroy_buffer(model->texture_coords_buf);
     sg_destroy_buffer(model->material_idxs_buf);
+}
+
+void terrain_model_copy(struct terrain_model *model, struct terrain_model *model_to_copy) {
+    memcpy(model->materials, model_to_copy->materials, 
+            MAX_NUM_TERRAIN_MODEL_MATERIALS*sizeof(struct terrain_model_material));
+    model->points.length = 0;
+    array_extend(&model->points, &model_to_copy->points);
+    model->faces.length = 0;
+    array_extend(&model->faces, &model_to_copy->faces);
+
+    const char *key;
+    map_iter_t iter = map_iter(&model_to_copy->generator_params);
+    while (key = map_next(&model_to_copy->generator_params, &iter)) {
+        float *val = map_get(&model_to_copy->generator_params, key); 
+        assert(val);
+        map_set(&model->generator_params, key, *val);
+    }
 }
 
 int terrain_model_add_point(struct terrain_model *model, vec3 point, int idx) {
@@ -1037,6 +1041,13 @@ void terrain_entity_deinit(struct terrain_entity *entity) {
     lightmap_deinit(&entity->lightmap);
 }
 
+void terrain_entity_copy(struct terrain_entity *entity, struct terrain_entity *entity_to_copy) {
+    entity->position = entity_to_copy->position;
+    entity->scale = entity_to_copy->scale;
+    entity->orientation = entity_to_copy->orientation;
+    terrain_model_copy(&entity->terrain_model, &entity_to_copy->terrain_model);
+}
+
 mat4 terrain_entity_get_transform(struct terrain_entity *entity) {
     return mat4_multiply_n(3,
             mat4_translation(entity->position),
@@ -1075,6 +1086,19 @@ void multi_terrain_entity_deinit(struct multi_terrain_entity *entity) {
     lightmap_deinit(&entity->static_lightmap);
     terrain_model_deinit(&entity->moving_terrain_model);
     lightmap_deinit(&entity->moving_lightmap);
+}
+
+void multi_terrain_entity_copy(struct multi_terrain_entity *entity, struct multi_terrain_entity *entity_to_copy) {
+    entity->static_position = entity_to_copy->static_position;
+    entity->static_scale = entity_to_copy->static_scale;
+    entity->static_orientation = entity_to_copy->static_orientation;
+    terrain_model_copy(&entity->static_terrain_model, &entity_to_copy->static_terrain_model);
+
+    entity->movement_data = entity_to_copy->movement_data;
+    entity->moving_position = entity_to_copy->moving_position;
+    entity->moving_scale = entity_to_copy->moving_scale;
+    entity->moving_orientation = entity_to_copy->moving_orientation;
+    terrain_model_copy(&entity->moving_terrain_model, &entity_to_copy->moving_terrain_model);
 }
 
 mat4 multi_terrain_entity_get_static_transform(struct multi_terrain_entity *entity) {

@@ -265,7 +265,7 @@ static int thread_proc_game_load_hole(void *user_data) {
 }
 
 void game_load_hole(struct game *game, struct game_editor *ed, int hole_num) {
-    assert(hole_num >= 0 && hole_num <= 4);
+    assert(hole_num >= 0 && hole_num <= 5);
 
     game->cur_hole = hole_num;
     char filename[FILES_MAX_PATH + 1];
@@ -1291,6 +1291,9 @@ void game_update(struct game *game, float dt, struct button_inputs button_inputs
             game->aim.power = 0.0f;
             renderer->sokol.game_aim.color = game->aim.green_color;
         }
+        if (game->player_ball.is_moving) {
+            game->state = GAME_STATE_SIMULATING_BALL;
+        }
     }
     else if (game->state == GAME_STATE_BEGINNING_AIM) {
         game_update_camera(game, dt, renderer, button_inputs);
@@ -1307,6 +1310,9 @@ void game_update(struct game *game, float dt, struct button_inputs button_inputs
         }
         if (button_inputs.mouse_clicked[SAPP_MOUSEBUTTON_LEFT]) {
             game->state = GAME_STATE_WAITING_FOR_AIM;
+        }
+        if (game->player_ball.is_moving) {
+            game->state = GAME_STATE_SIMULATING_BALL;
         }
     }
     else if (game->state == GAME_STATE_AIMING) {
@@ -1354,6 +1360,9 @@ void game_update(struct game *game, float dt, struct button_inputs button_inputs
             game_editor_push_game_history_hit(ed, power, game->player_ball.position, aim_direction);
             game->cam.auto_rotate = true;
         }
+        if (game->player_ball.is_moving) {
+            game->state = GAME_STATE_SIMULATING_BALL;
+        }
     }
     else if (game->state == GAME_STATE_SIMULATING_BALL) {
         game_update_camera(game, dt, renderer, button_inputs);
@@ -1361,7 +1370,10 @@ void game_update(struct game *game, float dt, struct button_inputs button_inputs
         struct ball_entity *player_ball = &game->player_ball;
         if (!player_ball->is_moving && !player_ball->is_out_of_bounds) {
             game->state = GAME_STATE_WAITING_FOR_AIM;
-            player_ball->stroke_num++;
+            if (player_ball->was_hit) {
+                player_ball->was_hit = false;
+                player_ball->stroke_num++;
+            }
         }
         if (player_ball->is_out_of_bounds) {
             player_ball->time_out_of_bounds += dt;
@@ -1404,6 +1416,7 @@ void game_init_ball_entity(struct ball_entity *entity) {
     entity->position = V3(0.0f, 0.0f, 0.0f);
     entity->velocity = V3(0.0f, 0.0f, 0.0f);
     entity->radius = config_get_float("physics_ball_radius");
+    entity->was_hit = true;
     entity->is_moving = false;
     entity->is_out_of_bounds = false;
     entity->time_out_of_bounds = 0.0f;
@@ -1423,6 +1436,7 @@ void game_hit_player_ball(struct game *game, vec3 direction, float power, struct
     float speed = game->aim.min_power + sqrtf(power) * (game->aim.max_power - game->aim.min_power);
     ball->velocity = vec3_scale(direction, speed);
     ball->position_before_hit = ball->position;
+    ball->was_hit = true;
     game->cam.azimuth_angle_before_hit = game->cam.azimuth_angle;
     ed->game->state = GAME_STATE_SIMULATING_BALL;
     game->physics.tick_idx = 0;

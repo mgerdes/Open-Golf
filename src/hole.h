@@ -68,12 +68,6 @@ struct terrain_model {
     struct terrain_model_material materials[MAX_NUM_TERRAIN_MODEL_MATERIALS];
     struct array_vec3 points;
     struct array_terrain_model_face faces;
-    struct {
-        bool is_bulge;
-        int N;
-        float height, width, length, texture_width, texture_length, border_height, border_width;
-        vec2 bp0, bp1, bp2, bp3;
-    } bezier_generator_info;
 
     char generator_name[FILES_MAX_FILENAME + 1];
     map_float_t generator_params;
@@ -84,6 +78,7 @@ struct terrain_model {
 
 void terrain_model_init(struct terrain_model *model, int num_elements);
 void terrain_model_deinit(struct terrain_model *model);
+void terrain_model_copy(struct terrain_model *model, struct terrain_model *model_to_copy);
 int terrain_model_add_point(struct terrain_model *model, vec3 point, int idx);
 vec3 terrain_model_get_point(struct terrain_model *model, int point_idx);
 int terrain_model_get_point_idx(struct terrain_model *model, vec3 *point);
@@ -109,6 +104,7 @@ struct terrain_entity {
 array_t(struct terrain_entity, terrain_entity_array)
 void terrain_entity_init(struct terrain_entity *entity, int num_elements, int lightmap_width, int lightmap_height);
 void terrain_entity_deinit(struct terrain_entity *entity);
+void terrain_entity_copy(struct terrain_entity *entity, struct terrain_entity *entity_to_copy);
 mat4 terrain_entity_get_transform(struct terrain_entity *entity);
 
 enum movement_type {
@@ -153,6 +149,7 @@ array_t(struct multi_terrain_entity, multi_terrain_entity_array)
 void multi_terrain_entity_init(struct multi_terrain_entity *entity, int num_static_elements, 
         int num_moving_elements, int lightmap_width, int lightmap_height);
 void multi_terrain_entity_deinit(struct multi_terrain_entity *entity);
+void multi_terrain_entity_copy(struct multi_terrain_entity *entity, struct multi_terrain_entity *entity_to_copy);
 mat4 multi_terrain_entity_get_static_transform(struct multi_terrain_entity *entity);
 mat4 multi_terrain_entity_get_moving_transform(struct multi_terrain_entity *entity, float t);
 vec3 multi_terrain_entity_get_moving_velocity(struct multi_terrain_entity *entity, float t, vec3 world_point);
