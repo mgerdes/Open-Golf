@@ -203,115 +203,115 @@
     <CustomBuild Include="src\shaders\aim_icon.glsl">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
-sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare\ --format bare --slang glsl330</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h;</Outputs>
     </CustomBuild>
     <CustomBuild Include="src\shaders\aim_helper.glsl">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
-sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare\ --format bare --slang glsl330</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h;</Outputs>
     </CustomBuild>
     <CustomBuild Include="src\shaders\ball.glsl">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
-sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare\ --format bare --slang glsl330</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h;</Outputs>
     </CustomBuild>
     <CustomBuild Include="src\shaders\hole_editor_environment.glsl">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
-sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare\ --format bare --slang glsl330</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
     </CustomBuild>
     <CustomBuild Include="src\shaders\hole_editor_terrain.glsl">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
-sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare\ --format bare --slang glsl330</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
     </CustomBuild>
     <CustomBuild Include="src\shaders\hole_editor_water.glsl">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
-sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare\ --format bare --slang glsl330</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
     </CustomBuild>
     <CustomBuild Include="src\shaders\environment.glsl">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
-sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare\ --format bare --slang glsl330</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
     </CustomBuild>
     <CustomBuild Include="src\shaders\fxaa.glsl">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
-sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare\ --format bare --slang glsl330</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
     </CustomBuild>
     <CustomBuild Include="src\shaders\cup.glsl">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
-sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare\ --format bare --slang glsl330</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
     </CustomBuild>
     <CustomBuild Include="src\shaders\occluded_ball.glsl">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
-sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare\ --format bare --slang glsl330</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
     </CustomBuild>
     <CustomBuild Include="src\shaders\pass_through.glsl">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
-sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare\ --format bare --slang glsl330</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
     </CustomBuild>
     <CustomBuild Include="src\shaders\single_color.glsl">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
-sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare\ --format bare --slang glsl330</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
     </CustomBuild>
     <CustomBuild Include="src\shaders\terrain.glsl">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
-sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare\ --format bare --slang glsl330</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
     </CustomBuild>
     <CustomBuild Include="src\shaders\texture.glsl">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
-sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare\ --format bare --slang glsl330</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
     </CustomBuild>
     <CustomBuild Include="src\shaders\ui.glsl">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
-sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare\ --format bare --slang glsl330</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
     </CustomBuild>
     <CustomBuild Include="src\shaders\ui_single_color.glsl">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
-sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare\ --format bare --slang glsl330</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
     </CustomBuild>
     <CustomBuild Include="src\shaders\water.glsl">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
-sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare\ --format bare --slang glsl330</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
     </CustomBuild>
     <CustomBuild Include="src\shaders\water_around_ball.glsl">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
-sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare\ --format bare --slang glsl330</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
     </CustomBuild>
     <CustomBuild Include="src\shaders\water_ripple.glsl">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\%(Filename).h --format sokol --slang glsl330:glsl300es
-sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare_ --format bare --slang glsl330</Command>
+sokol-tools-bin\win32\sokol-shdc.exe --input %(Identity) --output src\shaders\bare\ --format bare --slang glsl330</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src\shaders\%(Filename).h</Outputs>
     </CustomBuild>
   </ItemGroup>

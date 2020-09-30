@@ -41,9 +41,16 @@
 #include "shaders/ui.h"
 #include "shaders/ui_single_color.h"
 
-static bool load_shader(const char *fs_path, const char *vs_path,
-        const sg_shader_desc *const_shader_desc, sg_shader *shader) {
+static bool load_shader(const char *shader_name, const sg_shader_desc *const_shader_desc, sg_shader *shader) {
 #if HOTLOADER_ACTIVE
+    char fs_path[FILES_MAX_PATH + 1];
+    snprintf(fs_path, FILES_MAX_PATH, "src/shaders/bare/%s_fs.glsl", shader_name);
+    fs_path[FILES_MAX_PATH] = 0;
+
+    char vs_path[FILES_MAX_PATH + 1];
+    snprintf(vs_path, FILES_MAX_PATH, "src/shaders/bare/%s_vs.glsl", shader_name);
+    vs_path[FILES_MAX_PATH] = 0;
+
     struct file fs_file = file_init(fs_path);
     struct file vs_file = file_init(vs_path);
 
@@ -66,18 +73,29 @@ static bool load_shader(const char *fs_path, const char *vs_path,
     return true;
 }
 
-static bool load_aim_icon_shader(struct file file, bool first_time, struct renderer *renderer) {
-    bool is_bare = strstr(file.name, "bare_") == file.name;
+static bool should_load_shader(struct file file, bool first_time) {
+    // This can be called with either the bare shader files, in the src/shaders/bare/ folder, or normal shader 
+    // files in the src/shaders/ folder. If it's called with a bare shader file it should only load if it's not
+    // the first time. If it's called with a normal shader file it should only load if it is the first time.
+    // If you update a normal shader file you have to recompile the bare shader files to get the shader resource
+    // reloaded.
+    bool is_bare = strstr(file.path, "src/shaders/bare/") == file.path;
     if (is_bare && first_time) {
-        return true;
+        return false;
     }
     if (!is_bare && !first_time) {
+        return false;
+    }
+    return true;
+}
+
+static bool load_aim_icon_shader(struct file file, bool first_time, struct renderer *renderer) {
+    if (!should_load_shader(file, first_time)) {
         return true;
     }
 
     sg_shader shader;
-    if (!load_shader("src/shaders/bare_aim_icon_fs.glsl", "src/shaders/bare_aim_icon_vs.glsl",
-            aim_icon_shader_desc(), &shader)) {
+    if (!load_shader("aim_icon", aim_icon_shader_desc(), &shader)) {
         return false;
     }
 
@@ -86,7 +104,8 @@ static bool load_aim_icon_shader(struct file file, bool first_time, struct rende
         return true;
     }
 
-    if (is_bare) {
+    // Only destroy the resources if they haven't already been made
+    if (renderer->sokol.aim_icon_shader.id != SG_INVALID_ID) {
         sg_destroy_shader(renderer->sokol.aim_icon_shader);
         sg_destroy_pipeline(renderer->sokol.aim_icon_pipeline);
     }
@@ -119,17 +138,12 @@ static bool load_aim_icon_shader(struct file file, bool first_time, struct rende
 }
 
 static bool load_aim_helper_shader(struct file file, bool first_time, struct renderer *renderer) {
-    bool is_bare = strstr(file.name, "bare_") == file.name;
-    if (is_bare && first_time) {
-        return true;
-    }
-    if (!is_bare && !first_time) {
+    if (!should_load_shader(file, first_time)) {
         return true;
     }
 
     sg_shader shader;
-    if (!load_shader("src/shaders/bare_aim_helper_fs.glsl", "src/shaders/bare_aim_helper_vs.glsl",
-            aim_helper_shader_desc(), &shader)) {
+    if (!load_shader("aim_helper", aim_helper_shader_desc(), &shader)) {
         return false;
     }
 
@@ -138,7 +152,8 @@ static bool load_aim_helper_shader(struct file file, bool first_time, struct ren
         return true;
     }
 
-    if (is_bare) {
+    // Only destroy the resources if they haven't already been made
+    if (renderer->sokol.aim_helper_shader.id != SG_INVALID_ID) {
         sg_destroy_shader(renderer->sokol.aim_helper_shader);
         sg_destroy_pipeline(renderer->sokol.aim_helper_pipeline);
     }
@@ -171,17 +186,12 @@ static bool load_aim_helper_shader(struct file file, bool first_time, struct ren
 }
 
 static bool load_ball_shader(struct file file, bool first_time, struct renderer *renderer) {
-    bool is_bare = strstr(file.name, "bare_") == file.name;
-    if (is_bare && first_time) {
-        return true;
-    }
-    if (!is_bare && !first_time) {
+    if (!should_load_shader(file, first_time)) {
         return true;
     }
 
     sg_shader shader;
-    if (!load_shader("src/shaders/bare_ball_fs.glsl", "src/shaders/bare_ball_vs.glsl",
-            ball_shader_desc(), &shader)) {
+    if (!load_shader("ball", ball_shader_desc(), &shader)) {
         return false;
     }
 
@@ -190,7 +200,8 @@ static bool load_ball_shader(struct file file, bool first_time, struct renderer 
         return true;
     }
 
-    if (is_bare) {
+    // Only destroy the resources if they haven't already been made
+    if (renderer->sokol.ball_shader.id != SG_INVALID_ID) {
         sg_destroy_shader(renderer->sokol.ball_shader);
         sg_destroy_pipeline(renderer->sokol.ball_pipeline[0]);
         sg_destroy_pipeline(renderer->sokol.ball_pipeline[1]);
@@ -254,18 +265,12 @@ static bool load_ball_shader(struct file file, bool first_time, struct renderer 
 }
 
 static bool load_hole_editor_environment_shader(struct file file, bool first_time, struct renderer *renderer) {
-    bool is_bare = strstr(file.name, "bare_") == file.name;
-    if (is_bare && first_time) {
-        return true;
-    }
-    if (!is_bare && !first_time) {
+    if (!should_load_shader(file, first_time)) {
         return true;
     }
 
     sg_shader shader;
-    if (!load_shader("src/shaders/bare_hole_editor_environment_fs.glsl", 
-            "src/shaders/bare_hole_editor_environment_vs.glsl",
-            hole_editor_environment_shader_desc(), &shader)) {
+    if (!load_shader("hole_editor_environment", hole_editor_environment_shader_desc(), &shader)) {
         return false;
     }
 
@@ -274,7 +279,8 @@ static bool load_hole_editor_environment_shader(struct file file, bool first_tim
         return true;
     }
 
-    if (is_bare) {
+    // Only destroy the resources if they haven't already been made
+    if (renderer->sokol.hole_editor_environment_shader.id != SG_INVALID_ID) {
         sg_destroy_shader(renderer->sokol.hole_editor_environment_shader);
         sg_destroy_pipeline(renderer->sokol.hole_editor_environment_pipeline);
     }
@@ -308,18 +314,12 @@ static bool load_hole_editor_environment_shader(struct file file, bool first_tim
 }
 
 static bool load_hole_editor_terrain_shader(struct file file, bool first_time, struct renderer *renderer) {
-    bool is_bare = strstr(file.name, "bare_") == file.name;
-    if (is_bare && first_time) {
-        return true;
-    }
-    if (!is_bare && !first_time) {
+    if (!should_load_shader(file, first_time)) {
         return true;
     }
 
     sg_shader shader;
-    if (!load_shader("src/shaders/bare_hole_editor_terrain_fs.glsl", 
-            "src/shaders/bare_hole_editor_terrain_vs.glsl",
-            hole_editor_terrain_shader_desc(), &shader)) {
+    if (!load_shader("hole_editor_terrain", hole_editor_terrain_shader_desc(), &shader)) {
         return false;
     }
 
@@ -328,7 +328,8 @@ static bool load_hole_editor_terrain_shader(struct file file, bool first_time, s
         return true;
     }
 
-    if (is_bare) {
+    // Only destroy the resources if they haven't already been made
+    if (renderer->sokol.hole_editor_terrain_shader.id != SG_INVALID_ID) {
         sg_destroy_shader(renderer->sokol.hole_editor_terrain_shader);
         sg_destroy_pipeline(renderer->sokol.hole_editor_terrain_pipeline);
     }
@@ -364,18 +365,12 @@ static bool load_hole_editor_terrain_shader(struct file file, bool first_time, s
 }
 
 static bool load_hole_editor_water_shader(struct file file, bool first_time, struct renderer *renderer) {
-    bool is_bare = strstr(file.name, "bare_") == file.name;
-    if (is_bare && first_time) {
-        return true;
-    }
-    if (!is_bare && !first_time) {
+    if (!should_load_shader(file, first_time)) {
         return true;
     }
 
     sg_shader shader;
-    if (!load_shader("src/shaders/bare_hole_editor_water_fs.glsl", 
-            "src/shaders/bare_hole_editor_water_vs.glsl",
-            hole_editor_water_shader_desc(), &shader)) {
+    if (!load_shader("hole_editor_water", hole_editor_water_shader_desc(), &shader)) {
         return false;
     }
 
@@ -384,7 +379,8 @@ static bool load_hole_editor_water_shader(struct file file, bool first_time, str
         return true;
     }
 
-    if (is_bare) {
+    // Only destroy the resources if they haven't already been made
+    if (renderer->sokol.hole_editor_water_shader.id != SG_INVALID_ID) {
         sg_destroy_shader(renderer->sokol.hole_editor_water_shader);
         sg_destroy_pipeline(renderer->sokol.hole_editor_water_pipeline);
     }
@@ -400,6 +396,8 @@ static bool load_hole_editor_water_shader(struct file file, bool first_time, str
                         = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
                     [ATTR_hole_editor_water_vs_texture_coord] 
                         = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
+                    [ATTR_hole_editor_water_vs_lightmap_uv] 
+                        = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 2 },
                 },
             },
             .depth_stencil = {
@@ -419,18 +417,12 @@ static bool load_hole_editor_water_shader(struct file file, bool first_time, str
 }
 
 static bool load_environment_shader(struct file file, bool first_time, struct renderer *renderer) {
-    bool is_bare = strstr(file.name, "bare_") == file.name;
-    if (is_bare && first_time) {
-        return true;
-    }
-    if (!is_bare && !first_time) {
+    if (!should_load_shader(file, first_time)) {
         return true;
     }
 
     sg_shader shader;
-    if (!load_shader("src/shaders/bare_environment_fs.glsl", 
-            "src/shaders/bare_environment_vs.glsl",
-            environment_shader_desc(), &shader)) {
+    if (!load_shader("environment", environment_shader_desc(), &shader)) {
         return false;
     }
 
@@ -439,7 +431,8 @@ static bool load_environment_shader(struct file file, bool first_time, struct re
         return true;
     }
 
-    if (is_bare) {
+    // Only destroy the resources if they haven't already been made
+    if (renderer->sokol.environment_shader.id != SG_INVALID_ID) {
         sg_destroy_shader(renderer->sokol.environment_shader);
         sg_destroy_pipeline(renderer->sokol.environment_pipeline);
     }
@@ -471,18 +464,12 @@ static bool load_environment_shader(struct file file, bool first_time, struct re
 }
 
 static bool load_fxaa_shader(struct file file, bool first_time, struct renderer *renderer) {
-    bool is_bare = strstr(file.name, "bare_") == file.name;
-    if (is_bare && first_time) {
-        return true;
-    }
-    if (!is_bare && !first_time) {
+    if (!should_load_shader(file, first_time)) {
         return true;
     }
 
     sg_shader shader;
-    if (!load_shader("src/shaders/bare_fxaa_fs.glsl", 
-            "src/shaders/bare_fxaa_vs.glsl",
-            fxaa_shader_desc(), &shader)) {
+    if (!load_shader("fxaa", fxaa_shader_desc(), &shader)) {
         return false;
     }
 
@@ -491,7 +478,8 @@ static bool load_fxaa_shader(struct file file, bool first_time, struct renderer 
         return true;
     }
 
-    if (is_bare) {
+    // Only destroy the resources if they haven't already been made
+    if (renderer->sokol.fxaa_shader.id != SG_INVALID_ID) {
         sg_destroy_shader(renderer->sokol.fxaa_shader);
         sg_destroy_pipeline(renderer->sokol.fxaa_pipeline);
     }
@@ -515,18 +503,12 @@ static bool load_fxaa_shader(struct file file, bool first_time, struct renderer 
 }
 
 static bool load_cup_shader(struct file file, bool first_time, struct renderer *renderer) {
-    bool is_bare = strstr(file.name, "bare_") == file.name;
-    if (is_bare && first_time) {
-        return true;
-    }
-    if (!is_bare && !first_time) {
+    if (!should_load_shader(file, first_time)) {
         return true;
     }
 
     sg_shader shader;
-    if (!load_shader("src/shaders/bare_cup_fs.glsl", 
-            "src/shaders/bare_cup_vs.glsl",
-            cup_shader_desc(), &shader)) {
+    if (!load_shader("cup", cup_shader_desc(), &shader)) {
         return false;
     }
 
@@ -535,7 +517,8 @@ static bool load_cup_shader(struct file file, bool first_time, struct renderer *
         return true;
     }
 
-    if (is_bare) {
+    // Only destroy the resources if they haven't already been made
+    if (renderer->sokol.cup_shader.id != SG_INVALID_ID) {
         sg_destroy_shader(renderer->sokol.cup_shader);
         sg_destroy_pipeline(renderer->sokol.cup_pipeline[1]);
     }
@@ -579,18 +562,12 @@ static bool load_cup_shader(struct file file, bool first_time, struct renderer *
 }
 
 static bool load_occluded_ball_shader(struct file file, bool first_time, struct renderer *renderer) {
-    bool is_bare = strstr(file.name, "bare_") == file.name;
-    if (is_bare && first_time) {
-        return true;
-    }
-    if (!is_bare && !first_time) {
+    if (!should_load_shader(file, first_time)) {
         return true;
     }
 
     sg_shader shader;
-    if (!load_shader("src/shaders/bare_occluded_ball_fs.glsl", 
-            "src/shaders/bare_occluded_ball_vs.glsl",
-            occluded_ball_shader_desc(), &shader)) {
+    if (!load_shader("occluded_ball", occluded_ball_shader_desc(), &shader)) {
         return false;
     }
 
@@ -599,7 +576,8 @@ static bool load_occluded_ball_shader(struct file file, bool first_time, struct 
         return true;
     }
 
-    if (is_bare) {
+    // Only destroy the resources if they haven't already been made
+    if (renderer->sokol.occluded_ball_shader.id != SG_INVALID_ID) {
         sg_destroy_shader(renderer->sokol.occluded_ball_shader);
         sg_destroy_pipeline(renderer->sokol.occluded_ball_pipeline);
     }
@@ -634,18 +612,12 @@ static bool load_occluded_ball_shader(struct file file, bool first_time, struct 
 }
 
 static bool load_pass_through_shader(struct file file, bool first_time, struct renderer *renderer) {
-    bool is_bare = strstr(file.name, "bare_") == file.name;
-    if (is_bare && first_time) {
-        return true;
-    }
-    if (!is_bare && !first_time) {
+    if (!should_load_shader(file, first_time)) {
         return true;
     }
 
     sg_shader shader;
-    if (!load_shader("src/shaders/bare_pass_through_fs.glsl", 
-            "src/shaders/bare_pass_through_vs.glsl",
-            pass_through_shader_desc(), &shader)) {
+    if (!load_shader("pass_through", pass_through_shader_desc(), &shader)) {
         return false;
     }
 
@@ -654,7 +626,7 @@ static bool load_pass_through_shader(struct file file, bool first_time, struct r
         return true;
     }
 
-    if (is_bare) {
+    if (renderer->sokol.pass_through_shader.id != SG_INVALID_ID) {
         sg_destroy_shader(renderer->sokol.pass_through_shader);
         sg_destroy_pipeline(renderer->sokol.cup_pipeline[0]);
     }
@@ -700,18 +672,12 @@ static bool load_pass_through_shader(struct file file, bool first_time, struct r
 }
 
 static bool load_single_color_shader(struct file file, bool first_time, struct renderer *renderer) {
-    bool is_bare = strstr(file.name, "bare_") == file.name;
-    if (is_bare && first_time) {
-        return true;
-    }
-    if (!is_bare && !first_time) {
+    if (!should_load_shader(file, first_time)) {
         return true;
     }
 
     sg_shader shader;
-    if (!load_shader("src/shaders/bare_single_color_fs.glsl", 
-            "src/shaders/bare_single_color_vs.glsl",
-            single_color_shader_desc(), &shader)) {
+    if (!load_shader("single_color", single_color_shader_desc(), &shader)) {
         return false;
     }
 
@@ -720,7 +686,7 @@ static bool load_single_color_shader(struct file file, bool first_time, struct r
         return true;
     }
 
-    if (is_bare) {
+    if (renderer->sokol.single_color_shader.id != SG_INVALID_ID) {
         sg_destroy_shader(renderer->sokol.single_color_shader);
         sg_destroy_pipeline(renderer->sokol.physics_debug_pipeline);
         sg_destroy_pipeline(renderer->sokol.objects_pipeline);
@@ -780,18 +746,12 @@ static bool load_single_color_shader(struct file file, bool first_time, struct r
 }
 
 static bool load_terrain_shader(struct file file, bool first_time, struct renderer *renderer) {
-    bool is_bare = strstr(file.name, "bare_") == file.name;
-    if (is_bare && first_time) {
-        return true;
-    }
-    if (!is_bare && !first_time) {
+    if (!should_load_shader(file, first_time)) {
         return true;
     }
 
     sg_shader shader;
-    if (!load_shader("src/shaders/bare_terrain_fs.glsl", 
-            "src/shaders/bare_terrain_vs.glsl",
-            terrain_shader_desc(), &shader)) {
+    if (!load_shader("terrain", terrain_shader_desc(), &shader)) {
         return false;
     }
 
@@ -800,7 +760,7 @@ static bool load_terrain_shader(struct file file, bool first_time, struct render
         return true;
     }
 
-    if (is_bare) {
+    if (renderer->sokol.terrain_shader.id != SG_INVALID_ID) {
         sg_destroy_shader(renderer->sokol.terrain_shader);
         sg_destroy_pipeline(renderer->sokol.terrain_pipeline[0]);
         sg_destroy_pipeline(renderer->sokol.terrain_pipeline[1]);
@@ -863,18 +823,12 @@ static bool load_terrain_shader(struct file file, bool first_time, struct render
 }
 
 static bool load_texture_shader(struct file file, bool first_time, struct renderer *renderer) {
-    bool is_bare = strstr(file.name, "bare_") == file.name;
-    if (is_bare && first_time) {
-        return true;
-    }
-    if (!is_bare && !first_time) {
+    if (!should_load_shader(file, first_time)) {
         return true;
     }
 
     sg_shader shader;
-    if (!load_shader("src/shaders/bare_texture_fs.glsl", 
-            "src/shaders/bare_texture_vs.glsl",
-            texture_shader_desc(), &shader)) {
+    if (!load_shader("texture", texture_shader_desc(), &shader)) {
         return false;
     }
 
@@ -883,7 +837,7 @@ static bool load_texture_shader(struct file file, bool first_time, struct render
         return true;
     }
 
-    if (is_bare) {
+    if (renderer->sokol.texture_shader.id != SG_INVALID_ID) {
         sg_destroy_shader(renderer->sokol.texture_shader);
         sg_destroy_pipeline(renderer->sokol.texture_pipeline);
     }
@@ -907,18 +861,12 @@ static bool load_texture_shader(struct file file, bool first_time, struct render
 }
 
 static bool load_ui_shader(struct file file, bool first_time, struct renderer *renderer) {
-    bool is_bare = strstr(file.name, "bare_") == file.name;
-    if (is_bare && first_time) {
-        return true;
-    }
-    if (!is_bare && !first_time) {
+    if (!should_load_shader(file, first_time)) {
         return true;
     }
 
     sg_shader shader;
-    if (!load_shader("src/shaders/bare_ui_fs.glsl", 
-            "src/shaders/bare_ui_vs.glsl",
-            ui_shader_desc(), &shader)) {
+    if (!load_shader("ui", ui_shader_desc(), &shader)) {
         return false;
     }
 
@@ -927,7 +875,7 @@ static bool load_ui_shader(struct file file, bool first_time, struct renderer *r
         return true;
     }
 
-    if (is_bare) {
+    if (renderer->sokol.ui_shader.id != SG_INVALID_ID) {
         sg_destroy_shader(renderer->sokol.ui_shader);
         sg_destroy_pipeline(renderer->sokol.ui_pipeline);
     }
@@ -956,17 +904,12 @@ static bool load_ui_shader(struct file file, bool first_time, struct renderer *r
 }
 
 static bool load_ui_single_color_shader(struct file file, bool first_time, struct renderer *renderer) {
-    bool is_bare = strstr(file.name, "bare_") == file.name;
-    if (is_bare && first_time) {
-        return true;
-    }
-    if (!is_bare && !first_time) {
+    if (!should_load_shader(file, first_time)) {
         return true;
     }
 
     sg_shader shader;
-    if (!load_shader("src/shaders/bare_ui_single_color_fs.glsl", "src/shaders/bare_ui_single_color_vs.glsl",
-            ui_single_color_shader_desc(), &shader)) {
+    if (!load_shader("ui_single_color", ui_single_color_shader_desc(), &shader)) {
         return false;
     }
 
@@ -975,7 +918,7 @@ static bool load_ui_single_color_shader(struct file file, bool first_time, struc
         return true;
     }
 
-    if (is_bare) {
+    if (renderer->sokol.ui_single_color_shader.id != SG_INVALID_ID) {
         sg_destroy_shader(renderer->sokol.ui_single_color_shader);
         sg_destroy_pipeline(renderer->sokol.ui_single_color_pipeline);
     }
@@ -1007,18 +950,12 @@ static bool load_ui_single_color_shader(struct file file, bool first_time, struc
 }
 
 static bool load_water_shader(struct file file, bool first_time, struct renderer *renderer) {
-    bool is_bare = strstr(file.name, "bare_") == file.name;
-    if (is_bare && first_time) {
-        return true;
-    }
-    if (!is_bare && !first_time) {
+    if (!should_load_shader(file, first_time)) {
         return true;
     }
 
     sg_shader shader;
-    if (!load_shader("src/shaders/bare_water_fs.glsl", 
-            "src/shaders/bare_water_vs.glsl",
-            water_shader_desc(), &shader)) {
+    if (!load_shader("water", water_shader_desc(), &shader)) {
         return false;
     }
 
@@ -1027,7 +964,7 @@ static bool load_water_shader(struct file file, bool first_time, struct renderer
         return true;
     }
 
-    if (is_bare) {
+    if (renderer->sokol.water_shader.id != SG_INVALID_ID) {
         sg_destroy_shader(renderer->sokol.water_shader);
         sg_destroy_pipeline(renderer->sokol.water_pipeline);
     }
@@ -1076,18 +1013,12 @@ static bool load_water_shader(struct file file, bool first_time, struct renderer
 }
 
 static bool load_water_around_ball_shader(struct file file, bool first_time, struct renderer *renderer) {
-    bool is_bare = strstr(file.name, "bare_") == file.name;
-    if (is_bare && first_time) {
-        return true;
-    }
-    if (!is_bare && !first_time) {
+    if (!should_load_shader(file, first_time)) {
         return true;
     }
 
     sg_shader shader;
-    if (!load_shader("src/shaders/bare_water_around_ball_fs.glsl", 
-            "src/shaders/bare_water_around_ball_vs.glsl",
-            water_around_ball_shader_desc(), &shader)) {
+    if (!load_shader("water_around_ball", water_around_ball_shader_desc(), &shader)) {
         return false;
     }
 
@@ -1096,7 +1027,7 @@ static bool load_water_around_ball_shader(struct file file, bool first_time, str
         return true;
     }
 
-    if (is_bare) {
+    if (renderer->sokol.water_around_ball_shader.id != SG_INVALID_ID) {
         sg_destroy_shader(renderer->sokol.water_around_ball_shader);
         sg_destroy_pipeline(renderer->sokol.water_around_ball_pipeline);
     }
@@ -1145,18 +1076,12 @@ static bool load_water_around_ball_shader(struct file file, bool first_time, str
 }
 
 static bool load_water_ripple_shader(struct file file, bool first_time, struct renderer *renderer) {
-    bool is_bare = strstr(file.name, "bare_") == file.name;
-    if (is_bare && first_time) {
-        return true;
-    }
-    if (!is_bare && !first_time) {
+    if (!should_load_shader(file, first_time)) {
         return true;
     }
 
     sg_shader shader;
-    if (!load_shader("src/shaders/bare_water_ripple_fs.glsl", 
-            "src/shaders/bare_water_ripple_vs.glsl",
-            water_ripple_shader_desc(), &shader)) {
+    if (!load_shader("water_ripple", water_ripple_shader_desc(), &shader)) {
         return false;
     }
 
@@ -1165,7 +1090,7 @@ static bool load_water_ripple_shader(struct file file, bool first_time, struct r
         return true;
     }
 
-    if (is_bare) {
+    if (renderer->sokol.water_ripple_shader.id != SG_INVALID_ID) {
         sg_destroy_shader(renderer->sokol.water_ripple_shader);
         sg_destroy_pipeline(renderer->sokol.water_ripple_pipeline);
     }
@@ -1223,13 +1148,13 @@ static void renderer_watch_shader(const char *name, struct renderer *renderer,
 
 #if HOTLOADER_ACTIVE
     char bare_fs_filename[FILES_MAX_PATH+1];
-    snprintf(bare_fs_filename, FILES_MAX_PATH, "src/shaders/bare_%s_fs.glsl", name);
+    snprintf(bare_fs_filename, FILES_MAX_PATH, "src/shaders/bare/%s_fs.glsl", name);
     bare_fs_filename[FILES_MAX_PATH] = 0;
     hotloader_watch_file(bare_fs_filename, renderer, 
             (bool (*)(struct file file, bool first_time, void *udata))callback);
 
     char bare_vs_filename[FILES_MAX_PATH+1];
-    snprintf(bare_vs_filename, FILES_MAX_PATH, "src/shaders/bare_%s_vs.glsl", name);
+    snprintf(bare_vs_filename, FILES_MAX_PATH, "src/shaders/bare/%s_vs.glsl", name);
     bare_vs_filename[FILES_MAX_PATH] = 0;
     hotloader_watch_file(bare_vs_filename, renderer,
             (bool (*)(struct file file, bool first_time, void *udata))callback);
@@ -1269,6 +1194,8 @@ static void create_font(struct font *font, struct file *file) {
 
 void renderer_init(struct renderer *renderer) {
     profiler_push_section("renderer_init");
+    memset(renderer, 0, sizeof(struct renderer));
+
     renderer->cam_pos = V3(0.0f, 1.0f, 4.0f);
     renderer->cam_up = V3(0.0f, 1.0f, 0.0f);
     renderer->cam_dir = V3(1.0f, 0.0f, 0.0f);
@@ -1519,7 +1446,7 @@ vec3 renderer_world_to_screen(struct renderer *renderer, vec3 world_point) {
     vec4 point = V4(world_point.x, world_point.y, world_point.z, 1.0f);
     point = vec4_apply_mat(point, renderer->proj_view_mat);
     point.x = renderer->game_fb_width * (point.x / point.w + 1.0f) / 2.0f;
-    point.y = renderer->game_fb_height * (1.0f - (point.y / point.w + 1.0f) / 2.0f);
+    point.y = renderer->game_fb_height * (point.y / point.w + 1.0f) / 2.0f;
     point.z = point.z / point.w;
     return V3(point.x, point.y, point.z);
 }
@@ -1530,7 +1457,7 @@ vec3 renderer_screen_to_world(struct renderer *renderer, vec3 screen_point) {
     float d = (2.0f * renderer->far_plane * renderer->near_plane) /
         (renderer->near_plane - renderer->far_plane);
     screen_point.x = -1.0f + (2.0f * screen_point.x / renderer->game_fb_width);
-    screen_point.y = 1.0f - (2.0f * screen_point.y / renderer->game_fb_height);
+    screen_point.y = -1.0f + (2.0f * screen_point.y / renderer->game_fb_height);
     float w = d / (screen_point.z + c);
     vec4 screen = V4(screen_point.x * w, screen_point.y * w, screen_point.z * w, w);
     vec4 world = vec4_apply_mat(screen, mat4_inverse(renderer->proj_view_mat));
@@ -3370,13 +3297,16 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                         pos.y -= 5.0f;
                     }
                     vec4 color = V4(0.0f, 0.0f, 0.0f, 1.0f);
-                    const char *text = "NEXT HOLE";
-                    if (game->cur_hole < 4) {
-                        renderer_draw_text(renderer, &renderer->medium_font, pos, 0.8f, color, "NEXT HOLE", true);
+                    float size = 0.8f;
+
+                    const char *text = NULL;
+                    if (game->cur_hole + 1 < config_get_int("game_num_holes")) {
+                        text = "NEXT HOLE";
                     }
                     else {
-                        renderer_draw_text(renderer, &renderer->medium_font, pos, 0.8f, color, "FINISH", true);
+                        text = "FINISH";
                     }
+                    renderer_draw_text(renderer, &renderer->medium_font, pos, size, color, text, true);
                 }
             }
 
@@ -3439,7 +3369,8 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                     float value_text_delta = config_get_float("scoreboard_value_text_delta");
                     int total_par = 0;
                     int total_score = 0;
-                    for (int i = 0; i < 5; i++) {
+                    int num_holes = config_get_int("game_num_holes");
+                    for (int i = 0; i < num_holes; i++) {
                         char str[256];
 
                         color = V4(0.0f, 0.0f, 0.0f, 1.0f);
@@ -3819,10 +3750,14 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
             for (int i = 0; i < ce->hole->water_entities.length; i++) {
                 struct water_entity *entity = &ce->hole->water_entities.data[i];
                 struct terrain_model *model = &entity->model;
+                struct lightmap *lightmap = &entity->lightmap;
 
                 sg_bindings bindings = {
                     .vertex_buffers[0] = model->positions_buf,
                     .vertex_buffers[1] = model->texture_coords_buf,
+                    .vertex_buffers[2] = lightmap->uvs_buf,
+                    .fs_images[SLOT_ce_water_lightmap_tex] =
+                        lightmap->images.data[0].sg_image,
                     .fs_images[SLOT_ce_water_noise_tex0] =
                         asset_store_get_texture("water_noise_1.png")->image,
                     .fs_images[SLOT_ce_water_noise_tex1] =
@@ -3838,6 +3773,7 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                         &vs_params, sizeof(vs_params));
 
                 hole_editor_water_fs_params_t fs_params = {
+                    .draw_type = (float)ce->drawing.terrain_entities.draw_type,
                     .t = t,
                 };
                 sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_hole_editor_water_fs_params,

@@ -2231,7 +2231,7 @@ static void hole_editor_update(struct game_editor *ed, float dt,
 
                 if (igButton("Create Water Entity", (ImVec2){0, 0})) {
                     struct water_entity entity;
-                    water_entity_init(&entity, 256);
+                    water_entity_init(&entity, 256, 128, 128);
                     array_push(&ce->hole->water_entities, entity);
                 }
                 
@@ -3347,6 +3347,20 @@ static void hole_editor_update(struct game_editor *ed, float dt,
                         ce->edit_terrain_model.selected_array.length = 0;
                         ce->edit_terrain_model.hovered_array.length = 0;
                         ce->object_modifier.is_active = false;
+                    }
+
+                    if (igTreeNodeStr("Lightmap")) {
+                        struct lightmap *lightmap = &water->lightmap;
+                        igText("Width: %d", lightmap->width);
+                        igText("Height: %d", lightmap->height);
+                        igInputInt("New Width", &ce->lightmap_update.new_height, 0, 0, 0);
+                        igInputInt("New Height", &ce->lightmap_update.new_width, 0, 0, 0);
+                        if (igButton("Update Lightmap", (ImVec2){0, 0})) {
+                            ce->lightmap_update.new_num_images = 1;
+                            ce->lightmap_update.do_it = true;
+                            ce->lightmap_update.lightmap = lightmap;
+                        }
+                        igTreePop();
                     }
 
                     if (igButton("Delete", (ImVec2){0, 0})) {

@@ -124,7 +124,7 @@ static void frame(void) {
 
         if (game.state == GAME_STATE_HOLE_COMPLETE) {
             if (game.ui.next_hole_button.is_clicked) {
-                if (game.cur_hole < 5) {
+                if (game.cur_hole + 1 < config_get_int("game_num_holes")) {
                     game_load_hole(&game, &game_editor, game.cur_hole + 1);
                     game.drawing.blink_t = 0.0f;
                     game.drawing.is_blink = true;

@@ -265,7 +265,7 @@ static int thread_proc_game_load_hole(void *user_data) {
 }
 
 void game_load_hole(struct game *game, struct game_editor *ed, int hole_num) {
-    assert(hole_num >= 0 && hole_num <= 5);
+    assert(hole_num >= 0 && hole_num < config_get_int("game_num_holes"));
 
     game->cur_hole = hole_num;
     char filename[FILES_MAX_PATH + 1];

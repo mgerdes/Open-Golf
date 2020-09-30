@@ -206,9 +206,10 @@ struct water_entity {
     vec3 position, scale;
     quat orientation;
     struct terrain_model model;
+    struct lightmap lightmap;
 };
 array_t(struct water_entity, water_entity_array);
-void water_entity_init(struct water_entity *entity, int num_elements);
+void water_entity_init(struct water_entity *entity, int num_elements, int lightmap_width, int lightmap_height);
 void water_entity_deinit(struct water_entity *entity);
 mat4 water_entity_get_transform(struct water_entity *entity);
 

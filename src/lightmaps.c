@@ -95,6 +95,42 @@ void lightmap_generator_data_init(struct hole *hole, struct lightmap_generator_d
         array_push(&data->entities, lightmap_entity);
     }
 
+    for (int i = 0; i < hole->water_entities.length; i++) {
+        struct water_entity *entity = &hole->water_entities.data[i];
+        struct terrain_model *model = &entity->model;
+        struct lightmap *lightmap = &entity->lightmap;
+
+        struct lightmap_entity lightmap_entity;
+        array_init(&lightmap_entity.positions);
+        array_init(&lightmap_entity.normals);
+
+        {
+            struct array_vec2 texture_coords;
+            struct array_float material_idxs;
+            array_init(&texture_coords);
+            array_init(&material_idxs);
+            terrain_model_generate_triangle_data(model, &lightmap_entity.positions, &lightmap_entity.normals,
+                    &texture_coords, &material_idxs);
+            array_deinit(&texture_coords);
+            array_deinit(&material_idxs);
+        }
+
+        array_init(&lightmap_entity.lightmap_uvs);
+        for (int i = 0; i < lightmap->uvs.length; i++) {
+            array_push(&lightmap_entity.lightmap_uvs, lightmap->uvs.data[i]);
+        }
+        lightmap_entity.model_mat = water_entity_get_transform(entity);
+        lightmap_entity.lightmap_width = lightmap->width;
+        lightmap_entity.lightmap_height = lightmap->height;
+        lightmap_entity.lightmap_data = malloc(sizeof(float) * lightmap->width * lightmap->height);
+        for (int j = 0; j < lightmap->width * lightmap->height; j++) {
+            lightmap_entity.lightmap_data[j] = lightmap->images.data[0].data[j] / 255.0f;
+        }
+        lightmap_entity.lightmap = lightmap;
+
+        array_push(&data->entities, lightmap_entity);
+    }
+
     array_init(&data->multi_entities);
     for (int i = 0; i < hole->multi_terrain_entities.length; i++) {
         struct multi_terrain_entity *multi_entity = &hole->multi_terrain_entities.data[i];

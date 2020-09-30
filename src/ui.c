@@ -47,11 +47,14 @@ void scoreboard_init(struct scoreboard *scoreboard) {
         scoreboard->hole_score[i] = -1;
         scoreboard->hole_par[i] = 0;
     }
-    scoreboard->hole_par[0] = config_get_int("game_hole_1_par");
-    scoreboard->hole_par[1] = config_get_int("game_hole_2_par");
-    scoreboard->hole_par[2] = config_get_int("game_hole_3_par");
-    scoreboard->hole_par[3] = config_get_int("game_hole_4_par");
-    scoreboard->hole_par[4] = config_get_int("game_hole_5_par");
+
+    int num_holes = config_get_int("game_num_holes");
+    for (int i = 0; i < num_holes; i++) {
+        char key[256];
+        snprintf(key, 255, "game_hole_%d_par", i + 1);
+        key[255] = 0;
+        scoreboard->hole_par[i] = config_get_int(key);
+    }
 }
 
 void scoreboard_reset(struct scoreboard *scoreboard) {

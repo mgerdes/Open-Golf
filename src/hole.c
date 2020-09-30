@@ -1268,15 +1268,17 @@ mat4 environment_entity_get_transform(struct environment_entity *entity) {
     }
 }
 
-void water_entity_init(struct water_entity *entity, int num_elements) {
+void water_entity_init(struct water_entity *entity, int num_elements, int lightmap_width, int lightmap_height) {
     entity->position = V3(0.0f, 0.0f, 0.0f);
     entity->scale = V3(1.0f, 1.0f, 1.0f);
     entity->orientation = QUAT(0.0f, 0.0f, 0.0f, 1.0f);
     terrain_model_init(&entity->model, num_elements);
+    lightmap_init(&entity->lightmap, lightmap_width, lightmap_height, num_elements, 1);
 }
 
 void water_entity_deinit(struct water_entity *entity) {
     terrain_model_deinit(&entity->model);
+    lightmap_deinit(&entity->lightmap);
 }
 
 mat4 water_entity_get_transform(struct water_entity *entity) {
@@ -1550,7 +1552,7 @@ static void free_terrain_model_info(struct terrain_model_info *info) {
 }
 
 void hole_serialize(struct hole *hole, struct data_stream *stream, bool include_lightmaps) {
-    serialize_int(stream, 38);
+    serialize_int(stream, 39);
 
     serialize_int(stream, hole->terrain_entities.length);
     for (int i = 0; i < hole->terrain_entities.length; i++) {
@@ -1654,6 +1656,7 @@ void hole_serialize(struct hole *hole, struct data_stream *stream, bool include_
         serialize_vec3(stream, water->scale);
         serialize_quat(stream, water->orientation);
         hole_serialize_terrain_model(stream, &water->model);
+        hole_serialize_lightmap(stream, &water->lightmap, include_lightmaps);
     }
 
     serialize_int(stream, hole->camera_zone_entities.length);
@@ -1666,7 +1669,7 @@ void hole_serialize(struct hole *hole, struct data_stream *stream, bool include_
     }
 }
 
-static void hole_deserialize_38(struct hole *hole, struct data_stream *stream, bool include_lightmaps) {
+static void hole_deserialize_39(struct hole *hole, struct data_stream *stream, bool include_lightmaps) {
     int num_terrain_entities = deserialize_int(stream);
     if (hole->terrain_entities.length > num_terrain_entities) {
         for (int i = num_terrain_entities; i < hole->terrain_entities.length; i++) {
@@ -1902,6 +1905,8 @@ static void hole_deserialize_38(struct hole *hole, struct data_stream *stream, b
         quat orientation = deserialize_quat(stream);
         struct terrain_model_info terrain_model_info;
         hole_deserialize_27_terrain_model(stream, &terrain_model_info);
+        struct lightmap_info lightmap_info;
+        hole_deserialize_24_lightmap(stream, &lightmap_info, include_lightmaps);
 
         struct water_entity *water;
         if (i < hole->water_entities.length) {
@@ -1912,15 +1917,17 @@ static void hole_deserialize_38(struct hole *hole, struct data_stream *stream, b
             memset(&blank_entity, 0, sizeof(blank_entity));
             array_push(&hole->water_entities, blank_entity);
             water = &hole->water_entities.data[i];
-            water_entity_init(water, terrain_model_info.num_elements);
+            water_entity_init(water, terrain_model_info.num_elements, 128, 128);
         }
 
         water->position = position;
         water->scale = scale;
         water->orientation = orientation;
         fill_terrain_model(&water->model, &terrain_model_info);
+        fill_lightmap(&water->lightmap, &lightmap_info);
 
         free_terrain_model_info(&terrain_model_info);
+        free_lightmap_info(&lightmap_info);
     }
 
     hole->camera_zone_entities.length = 0;
@@ -1943,8 +1950,8 @@ static void hole_deserialize_38(struct hole *hole, struct data_stream *stream, b
 void hole_deserialize(struct hole *hole, struct data_stream *stream, bool include_lightmaps) {
     data_stream_reset_pos(stream);
     int version = deserialize_int(stream);    
-    if (version == 38) {
-        hole_deserialize_38(hole, stream, include_lightmaps);
+    if (version == 39) {
+        hole_deserialize_39(hole, stream, include_lightmaps);
     }
     else {
         assert(false);
@@ -2097,6 +2104,9 @@ void hole_update_buffers(struct hole *hole) {
     for (int i = 0; i < hole->water_entities.length; i++) {
         struct water_entity *water = &hole->water_entities.data[i];
         struct terrain_model *model = &water->model;
+        struct lightmap *lightmap = &water->lightmap;
         terrain_model_update_buffers(model);
+        lightmap_update_image(lightmap);
+        lightmap_update_uvs_buffer(lightmap, model->num_elements);
     }
 }
