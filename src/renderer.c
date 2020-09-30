@@ -978,6 +978,7 @@ static bool load_water_shader(struct file file, bool first_time, struct renderer
                 .attrs = {
                     [ATTR_water_vs_position] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
                     [ATTR_water_vs_texture_coord] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
+                    [ATTR_water_vs_lightmap_uv] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 2 },
                 },
             },
             .depth_stencil = {
@@ -2665,10 +2666,14 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
             for (int i = 0; i < game->hole.water_entities.length; i++) {
                 struct water_entity *entity = &game->hole.water_entities.data[i];
                 struct terrain_model *model = &entity->model;
+                struct lightmap *lightmap = &entity->lightmap;
 
                 sg_bindings bindings = {
                     .vertex_buffers[0] = model->positions_buf,
                     .vertex_buffers[1] = model->texture_coords_buf,
+                    .vertex_buffers[2] = lightmap->uvs_buf,
+                    .fs_images[SLOT_water_lightmap_tex] =
+                        lightmap->images.data[0].sg_image,
                     .fs_images[SLOT_water_noise_tex0] =
                         asset_store_get_texture("water_noise_1.png")->image,
                     .fs_images[SLOT_water_noise_tex1] =

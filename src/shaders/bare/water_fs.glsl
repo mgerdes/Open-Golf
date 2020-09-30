@@ -3,8 +3,10 @@
 uniform vec4 water_fs_params[1];
 uniform sampler2D water_noise_tex1;
 uniform sampler2D water_noise_tex0;
+uniform sampler2D water_lightmap_tex;
 
 in vec2 frag_texture_coord;
+in vec2 frag_lightmap_uv;
 layout(location = 0) out vec4 g_frag_color;
 
 void main()
@@ -29,6 +31,6 @@ void main()
         float _113 = (0.0500000007450580596923828125 - frag_texture_coord.x) * 20.0;
         color = (vec3(1.0) * _113) + (color * (1.0 - _113));
     }
-    g_frag_color = vec4(color, 0.85000002384185791015625);
+    g_frag_color = vec4(color * texture(water_lightmap_tex, frag_lightmap_uv).x, 0.85000002384185791015625);
 }
 

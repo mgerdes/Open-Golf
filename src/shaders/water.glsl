@@ -11,11 +11,14 @@ uniform water_vs_params {
 
 in vec3 position;
 in vec2 texture_coord;
+in vec2 lightmap_uv;
 
 out vec2 frag_texture_coord;
+out vec2 frag_lightmap_uv;
 
 void main() {
     frag_texture_coord = texture_coord;
+    frag_lightmap_uv = lightmap_uv;
     gl_Position = proj_view_mat * model_mat * vec4(position, 1.0);
 }
 @end
@@ -24,9 +27,11 @@ void main() {
 uniform water_fs_params {
     float t;
 };
+uniform sampler2D water_lightmap_tex;
 uniform sampler2D water_noise_tex0, water_noise_tex1;
 
 in vec2 frag_texture_coord;
+in vec2 frag_lightmap_uv;
 
 out vec4 g_frag_color;
 
@@ -52,7 +57,10 @@ void main() {
         float a = (0.05 - frag_texture_coord.x) / 0.05;
         color = a * vec3(1.0) + (1.0 - a) * color;
     }
-    g_frag_color = vec4(color, 0.85);
+
+    float ao = texture(water_lightmap_tex, frag_lightmap_uv).r;
+
+    g_frag_color = vec4(ao*color, 0.85);
 }
 @end
 
