@@ -1,5 +1,5 @@
 # Minigolf
-A minigolf game written (mostly) from scratch in C. Try it here (Works best in Chrome): http://mgerdes.github.io/minigolf.html
+A minigolf game written without a game engine in C. Try it here (Works best in Chrome): http://mgerdes.github.io/minigolf.html
 
 ![Image](https://i.imgur.com/TBlXedl.gif)
 
