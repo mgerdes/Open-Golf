@@ -1,0 +1,74 @@
+//struct vec2 {
+    //float x;
+    //float y;
+//}
+
+//float vec2_distance_sqrd(vec2 v0, vec2 v1) {
+    //float dx = v1.x - v0.x;
+    //float dy = v1.y - v0.y;
+    //return dx * dx + dy * dy;
+//}
+
+//int testing(int a, int b, int c) {
+    //int d = a + b;
+    //return d + c;
+//}
+
+int fib(int n) {
+    int val = 0;
+    if (n <= 0) {
+        val = 0;
+    }
+    else if (n == 1) {
+        val = 1;
+    }
+    else {
+        val = fib(n - 1) + fib(n - 2);
+    }
+    return val;
+}
+
+int sum(int n) {
+    int i;
+    int s = 0;
+    for (i = 1; i < n; i++) {
+        s = s + i; 
+    }
+    return s;
+}
+
+int run() {
+    int x = sum(fib(10));
+    return x;
+}
+
+//float vec3_distance(vec3 v0, vec3 v1) {
+//    float dx = v1.x - v0.x;
+//    float dy = v1.y - v0.y;
+//    float dz = v1.z - v0.z;
+//    return sqrt(dx * dx + dy * dy + dz * dz);
+//}
+//
+//vec3 vec3_scale(vec3 v, float s) {
+//    return vec3_create(v.x * s, v.y * s, v.z * s);
+//}
+//
+//int fib(int n) {
+//    if (n <= 0) {
+//        return 0; 
+//    }
+//    else if (n == 1) {
+//        return 1;
+//    }
+//    else {
+//        return fib(n - 1) + fib(n - 2);
+//    }
+//}
+//
+//int main() {
+//    int y;
+//    int x = 10 + fib(10);
+//    y = 0.5*10;
+//    x = y + 10;
+//    return fib(x);
+//}

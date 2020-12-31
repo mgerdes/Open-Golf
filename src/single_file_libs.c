@@ -21,7 +21,7 @@
 
 #define SOKOL_WIN32_NO_GL_LOADER
 #define SOKOL_IMPL
-#define SOKOL_LOG minigolf_log
+#define SOKOL_LOG m_log
 #include "sokol_app.h"
 #include "sokol_audio.h"
 #include "sokol_gfx.h"

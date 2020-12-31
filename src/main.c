@@ -35,6 +35,9 @@ static struct main_menu main_menu;
 static struct button_inputs inputs;
 static uint64_t last_time;
 
+#include "mscript.h"
+#include "file.h"
+
 static void init(void) {
 #if defined(_WIN32)
     if(!gladLoadGL()) { exit(-1); }
@@ -46,6 +49,12 @@ static void init(void) {
     memset(&inputs, 0, sizeof(inputs));
     profiler_init();
     last_time = 0;
+
+    {
+        struct file file = file_init("testing.mscript");
+        file_load_data(&file);
+        mscript_compile(file.data);
+    }
 }
 
 static void get_world_ray_from_window_pos(vec2 window_pos, vec3 *world_ro, vec3 *world_rd) {
@@ -235,9 +244,9 @@ static void event(const sapp_event *event) {
 }
 
 sapp_desc sokol_main(int argc, char *argv[]) {
-    minigolf_log("-------------------------");
-    minigolf_log("        BEGIN LOG        ");
-    minigolf_log("-------------------------");
+    m_log("-------------------------\n");
+    m_log("        BEGIN LOG        \n");
+    m_log("-------------------------\n");
     return (sapp_desc){
         .init_cb = init,
             .frame_cb = frame,
