@@ -47,7 +47,7 @@ static bool is_char_part_of_symbol(char c) {
         (c == '_');
 }
 
-static bool is_character_char(char c) {
+static bool is_char(char c) {
     return (c == '(') ||
         (c == ')') ||
         (c == '{') ||
@@ -202,7 +202,7 @@ static bool mscript_tokenize(const char *prog, struct array_mscript_token *token
             array_push(tokens, mscript_token_number_create(prog + i, &len));
             i += len;
         }
-        else if (is_character_char(prog[i])) {
+        else if (is_char(prog[i])) {
             array_push(tokens, mscript_token_char_create(prog[i]));
             i++;
         }
@@ -222,28 +222,8 @@ static bool mscript_tokenize(const char *prog, struct array_mscript_token *token
 //
 
 array_t(struct mscript_stmt *, array_mscript_stmt_ptr);
+typedef map_t(struct mscript_stmt *) map_mscript_stmt_ptr_t;
 array_t(struct mscript_expr *, array_mscript_expr_ptr)
-
-struct mscript_parser {
-    const char *prog_text;
-    int token_idx;
-    struct array_mscript_token tokens_array; 
-    struct array_mscript_stmt_ptr stmts_array;
-};
-
-static void mscript_parser_init(struct mscript_parser *parser, const char *prog_text);
-static void mscript_parser_deinit(struct mscript_parser *parser);
-static void mscript_parser_run(struct mscript_parser *parser);
-static struct mscript_token mscript_parser_peek(struct mscript_parser *parser);
-static struct mscript_token mscript_parser_peek_n(struct mscript_parser *parser, int n);
-static void mscript_parser_eat(struct mscript_parser *parser);
-static bool mscript_parser_match_char(struct mscript_parser *parser, char c);
-static bool mscript_parser_match_char_n(struct mscript_parser *parser, int n, ...);
-static bool mscript_parser_match_symbol(struct mscript_parser *parser, const char *symbol);
-static bool mscript_parser_match_symbol_n(struct mscript_parser *parser, int n, ...);
-static bool mscript_parser_check_symbol(struct mscript_parser *parser, const char *symbol);
-static bool mscript_parser_check_type_n(struct mscript_parser *parser, int n, ...);
-static bool mscript_parser_check_type_declaration(struct mscript_parser *parser);
 
 enum mscript_type_type {
     MSCRIPT_TYPE_VOID, 
@@ -257,7 +237,48 @@ struct mscript_type {
     enum mscript_type_type type, array_type;
     const char *struct_name;
 };
-array_t(struct mscript_type, array_mscript_type)
+array_t(struct mscript_type, array_mscript_type);
+typedef map_t(struct mscript_type) map_mscript_type_t;
+
+static struct mscript_type mscript_type_void(void);
+static struct mscript_type mscript_type_int(void);
+static struct mscript_type mscript_type_float(void);
+static struct mscript_type mscript_type_binary_op_result(enum mscript_binary_op_type binary_op_type,
+        struct mscript_expr *left, struct mscript_expr *right);
+
+struct mscript_parser_env {
+    map_mscript_type_t symbols;
+};
+array_t(struct mscript_parser_env, array_mscript_parser_env);
+
+struct mscript_parser {
+    const char *prog_text;
+    int token_idx;
+    struct array_mscript_token tokens_array; 
+    struct array_mscript_stmt_ptr stmts_array;
+    struct array_mscript_parser_env env_array;
+    map_mscript_stmt_ptr_t type_declarations_map;
+};
+
+static void mscript_parser_init(struct mscript_parser *parser, const char *prog_text);
+static void mscript_parser_deinit(struct mscript_parser *parser);
+static void mscript_parser_run(struct mscript_parser *parser);
+static void mscript_parser_env_push(struct mscript_parser *parser);
+static void mscript_parser_env_pop(struct mscript_parser *parser);
+static void mscript_parser_env_set_symbol_type(struct mscript_parser *parser, const char *symbol, struct mscript_type type);
+static struct mscript_type *mscript_parser_env_get_symbol_type(struct mscript_parser *parser, const char *symbol);
+static void mscript_parser_env_add_type_declaration(struct mscript_parser *parser, const char *name, struct mscript_stmt *stmt);
+static struct mscript_stmt *mscript_parser_env_get_type_declaration(struct mscript_parser *parser, const char *name);
+static struct mscript_token mscript_parser_peek(struct mscript_parser *parser);
+static struct mscript_token mscript_parser_peek_n(struct mscript_parser *parser, int n);
+static void mscript_parser_eat(struct mscript_parser *parser);
+static bool mscript_parser_match_char(struct mscript_parser *parser, char c);
+static bool mscript_parser_match_char_n(struct mscript_parser *parser, int n, ...);
+static bool mscript_parser_match_symbol(struct mscript_parser *parser, const char *symbol);
+static bool mscript_parser_match_symbol_n(struct mscript_parser *parser, int n, ...);
+static bool mscript_parser_check_symbol(struct mscript_parser *parser, const char *symbol);
+static bool mscript_parser_check_type_n(struct mscript_parser *parser, int n, ...);
+static bool mscript_parser_check_type_declaration(struct mscript_parser *parser);
 
 enum mscript_stmt_type {
     MSCRIPT_STMT_IF,
@@ -315,7 +336,6 @@ struct mscript_stmt {
         struct mscript_expr *expr;
     };
 };
-typedef map_t(struct mscript_stmt *) map_mscript_stmt_ptr_t;
 
 static struct mscript_stmt *mscript_stmt_parse(struct mscript_parser *parser);
 static struct mscript_stmt *mscript_stmt_if_parse(struct mscript_parser *parser);
@@ -358,6 +378,7 @@ enum mscript_binary_op_type {
 
 struct mscript_expr {
     enum mscript_expr_type type;
+    struct mscript_type result_type;
 
     union {
         struct {
@@ -406,15 +427,76 @@ static struct mscript_expr *mscript_expr_parse_array_access(struct mscript_parse
 static struct mscript_expr *mscript_expr_parse_primary(struct mscript_parser *parser);
 static void mscript_expr_debug_log(struct mscript_expr *expr);
 
+static struct mscript_type mscript_type_void(void) {
+    struct mscript_type type;
+    type.type = MSCRIPT_TYPE_VOID;
+    return type;
+}
+
+static struct mscript_type mscript_type_int(void) {
+    struct mscript_type type;
+    type.type = MSCRIPT_TYPE_INT;
+    return type;
+}
+
+static struct mscript_type mscript_type_float(void) {
+    struct mscript_type type;
+    type.type = MSCRIPT_TYPE_FLOAT;
+    return type;
+}
+
+static struct mscript_type mscript_type_binary_op_result(enum mscript_binary_op_type binary_op_type,
+        struct mscript_expr *left, struct mscript_expr *right) {
+    switch (binary_op_type) {
+        case MSCRIPT_BINARY_OP_ADD:
+        case MSCRIPT_BINARY_OP_SUB:
+        case MSCRIPT_BINARY_OP_MUL:
+        case MSCRIPT_BINARY_OP_DIV:
+            {
+                if (left->result_type.type == MSCRIPT_TYPE_INT && right->result_type.type == MSCRIPT_TYPE_INT) {
+                    return mscript_type_int();
+                }
+                else if ((left->result_type.type == MSCRIPT_TYPE_FLOAT && right->result_type.type == MSCRIPT_TYPE_FLOAT) ||
+                        (left->result_type.type == MSCRIPT_TYPE_FLOAT && right->result_type.type == MSCRIPT_TYPE_INT) ||
+                        (left->result_type.type == MSCRIPT_TYPE_INT && right->result_type.type == MSCRIPT_TYPE_FLOAT)) {
+                    return mscript_type_float();
+                }
+                else {
+                    assert(false);
+                }
+            }
+            break;
+
+        case MSCRIPT_BINARY_OP_LTE:
+        case MSCRIPT_BINARY_OP_LT:
+        case MSCRIPT_BINARY_OP_GTE:
+        case MSCRIPT_BINARY_OP_GT:
+        case MSCRIPT_BINARY_OP_EQ:
+        case MSCRIPT_BINARY_OP_NEQ:
+            {
+                return mscript_type_int();
+            }
+            break;
+    }
+
+    assert(false);
+    return mscript_type_void();
+}
+
 static void mscript_parser_init(struct mscript_parser *parser, const char *prog_text) {
     parser->prog_text = prog_text;
     parser->token_idx = 0;
     array_init(&parser->tokens_array);
     array_init(&parser->stmts_array);
+    array_init(&parser->env_array);
+    mscript_parser_env_push(parser);
+    map_init(&parser->type_declarations_map);
 }
 
 static void mscript_parser_deinit(struct mscript_parser *parser) {
     array_deinit(&parser->tokens_array);
+    array_deinit(&parser->stmts_array);
+    array_deinit(&parser->env_array);
 }
 
 static void mscript_parser_run(struct mscript_parser *parser) {
@@ -428,6 +510,44 @@ static void mscript_parser_run(struct mscript_parser *parser) {
         array_push(&(parser->stmts_array), stmt);
         mscript_stmt_debug_log(stmt);
     }
+}
+
+static void mscript_parser_env_push(struct mscript_parser *parser) {
+    struct mscript_parser_env env;
+    map_init(&env.symbols);
+    array_push(&parser->env_array, env);
+}
+
+static void mscript_parser_env_pop(struct mscript_parser *parser) {
+    struct mscript_parser_env env = array_pop(&parser->env_array);
+    map_deinit(&env.symbols);
+}
+
+static void mscript_parser_env_set_symbol_type(struct mscript_parser *parser, const char *symbol, struct mscript_type type) {
+    assert(parser->env_array.length > 0);
+    map_set(&(parser->env_array.data[parser->env_array.length - 1].symbols), symbol, type);
+}
+
+static struct mscript_type *mscript_parser_env_get_symbol_type(struct mscript_parser *parser, const char *symbol) {
+    for (int i = parser->env_array.length - 1; i >= 0; i--) {
+        struct mscript_type *type = map_get(&(parser->env_array.data[i].symbols), symbol);
+        if (type) {
+            return type;
+        }
+    }
+    return NULL;
+}
+
+static void mscript_parser_env_add_type_declaration(struct mscript_parser *parser, const char *name, struct mscript_stmt *stmt) {
+    map_set(&parser->type_declarations_map, name, stmt);
+}
+
+static struct mscript_stmt *mscript_parser_env_get_type_declaration(struct mscript_parser *parser, const char *name) {
+    struct mscript_stmt **stmt = map_get(&parser->type_declarations_map, name);
+    if (!stmt) {
+        assert(false);
+    }
+    return *stmt;
 }
 
 static struct mscript_token mscript_parser_peek(struct mscript_parser *parser) {
@@ -563,14 +683,17 @@ static bool mscript_parser_check_type_declaration(struct mscript_parser *parser)
 static struct mscript_expr *mscript_expr_unary_op_new(enum mscript_unary_op_type type, struct mscript_expr *operand) {
     struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
     expr->type = MSCRIPT_EXPR_UNARY_OP;
+    expr->result_type = operand->result_type;
     expr->unary_op.type = type;
     expr->unary_op.operand = operand;
     return expr;
 }
 
-static struct mscript_expr *mscript_expr_binary_op_new(enum mscript_binary_op_type type, struct mscript_expr *left, struct mscript_expr *right) {
+static struct mscript_expr *mscript_expr_binary_op_new(enum mscript_binary_op_type type, struct mscript_expr *left, struct mscript_expr *right,
+        struct mscript_type result_type) {
     struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
     expr->type = MSCRIPT_EXPR_BINARY_OP;
+    expr->result_type = result_type;
     expr->binary_op.type = type;
     expr->binary_op.left = left;
     expr->binary_op.right = right;
@@ -580,6 +703,7 @@ static struct mscript_expr *mscript_expr_binary_op_new(enum mscript_binary_op_ty
 static struct mscript_expr *mscript_expr_float_new(float float_value) {
     struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
     expr->type = MSCRIPT_EXPR_FLOAT;
+    expr->result_type = mscript_type_float();
     expr->float_value = float_value;
     return expr;
 }
@@ -587,34 +711,39 @@ static struct mscript_expr *mscript_expr_float_new(float float_value) {
 static struct mscript_expr *mscript_expr_int_new(int int_value) {
     struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
     expr->type = MSCRIPT_EXPR_INT;
+    expr->result_type = mscript_type_int();
     expr->int_value = int_value;
     return expr;
 }
 
-static struct mscript_expr *mscript_expr_symbol_new(const char *symbol) {
+static struct mscript_expr *mscript_expr_symbol_new(const char *symbol, struct mscript_type type) {
     struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
     expr->type = MSCRIPT_EXPR_SYMBOL;
+    expr->result_type = type;
     expr->symbol = symbol;
     return expr;
 }
 
-static struct mscript_expr *mscript_expr_call_new(const char *function_name, struct array_mscript_expr_ptr args) {
+static struct mscript_expr *mscript_expr_call_new(const char *function_name, struct array_mscript_expr_ptr args, struct mscript_type type) {
     struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
     expr->type = MSCRIPT_EXPR_CALL;
+    expr->result_type = type;
     expr->call.function_name = function_name;
     expr->call.args = args;
     return expr;
 }
 
-static struct mscript_expr *mscript_expr_member_access_new(struct mscript_expr *left, const char *member_name) {
+static struct mscript_expr *mscript_expr_member_access_new(struct mscript_expr *left, const char *member_name, struct mscript_type type) {
     struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
     expr->type = MSCRIPT_EXPR_MEMBER_ACCESS;
+    expr->result_type = type;
     expr->member_access.left = left;
     expr->member_access.member_name = member_name;
     return expr;
 }
 
 static struct mscript_expr *mscript_expr_array_access_new(struct mscript_expr *left, struct mscript_expr *right) {
+    assert(false);
     struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
     expr->type = MSCRIPT_EXPR_ARRAY_ACCESS;
     expr->array_access.left = left;
@@ -625,6 +754,7 @@ static struct mscript_expr *mscript_expr_array_access_new(struct mscript_expr *l
 static struct mscript_expr *mscript_expr_assignment_new(struct mscript_expr *left, struct mscript_expr *right) {
     struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
     expr->type = MSCRIPT_EXPR_ASSIGNMENT;
+    expr->result_type = left->result_type;
     expr->assignment.left = left;
     expr->assignment.right = right;
     return expr;
@@ -735,7 +865,9 @@ static struct mscript_expr *mscript_expr_parse_primary(struct mscript_parser *pa
     }
     else if (token.type == MSCRIPT_TOKEN_SYMBOL) {
         mscript_parser_eat(parser);
-        return mscript_expr_symbol_new(token.symbol);
+        struct mscript_type *type = mscript_parser_env_get_symbol_type(parser, token.symbol);
+        assert(type);
+        return mscript_expr_symbol_new(token.symbol, *type);
     }
     else if (mscript_parser_match_char(parser, '(')) {
         struct mscript_expr *expr = mscript_expr_parse(parser);
@@ -769,11 +901,37 @@ static struct mscript_expr *mscript_expr_parse_member_access(struct mscript_pars
     struct mscript_expr *expr = mscript_expr_parse_array_access(parser);
 
     while (mscript_parser_match_char(parser, '.')) {
-        struct mscript_expr *right = mscript_expr_parse_array_access(parser);
-        if (right->type != MSCRIPT_EXPR_SYMBOL) {
+        struct mscript_token token = mscript_parser_peek(parser);
+        if (token.type != MSCRIPT_TOKEN_SYMBOL) {
             assert(false);
         }
-        expr = mscript_expr_member_access_new(expr, right->symbol);
+        mscript_parser_eat(parser);
+
+        if (expr->result_type.type != MSCRIPT_TYPE_STRUCT) {
+            assert(false);
+        }
+
+        struct mscript_stmt *type_declaration = mscript_parser_env_get_type_declaration(parser, expr->result_type.struct_name);
+        assert(type_declaration->type == MSCRIPT_STMT_TYPE_DECLARATION);
+
+        struct array_mscript_type *member_types = &(type_declaration->type_declaration.member_types);
+        struct array_char_ptr *member_names = &(type_declaration->type_declaration.member_names);
+        assert(member_types->length = member_names->length);
+
+        bool found_member = false;
+        struct mscript_type member_type;
+        for (int i = 0; i < member_names->length; i++) {
+            if (strcmp(member_names->data[i], token.symbol) == 0) {
+                found_member = true;
+                member_type = member_types->data[i];
+                break;
+            }
+        }
+        if (!found_member) {
+            assert(false);
+        }
+
+        expr = mscript_expr_member_access_new(expr, token.symbol, member_type);
     }
 
     return expr;
@@ -803,7 +961,10 @@ static struct mscript_expr *mscript_expr_parse_call(struct mscript_parser *parse
         if (expr->type != MSCRIPT_EXPR_SYMBOL) {
             assert(false);
         }
-        expr = mscript_expr_call_new(expr->symbol, args);
+
+        struct mscript_type *type = mscript_parser_env_get_symbol_type(parser, expr->symbol);
+        assert(type);
+        expr = mscript_expr_call_new(expr->symbol, args, *type);
     }
 
     return expr;
@@ -825,11 +986,13 @@ static struct mscript_expr *mscript_expr_parse_factor(struct mscript_parser *par
     while (true) {
         if (mscript_parser_match_char(parser, '*')) {
             struct mscript_expr *right = mscript_expr_parse_unary(parser);
-            expr = mscript_expr_binary_op_new(MSCRIPT_BINARY_OP_MUL, expr, right); 
+            struct mscript_type result_type = mscript_type_binary_op_result(MSCRIPT_BINARY_OP_MUL, expr, right);
+            expr = mscript_expr_binary_op_new(MSCRIPT_BINARY_OP_MUL, expr, right, result_type); 
         }
         else if (mscript_parser_match_char(parser, '/')) {
             struct mscript_expr *right = mscript_expr_parse_unary(parser);
-            expr = mscript_expr_binary_op_new(MSCRIPT_BINARY_OP_DIV, expr, right); 
+            struct mscript_type result_type = mscript_type_binary_op_result(MSCRIPT_BINARY_OP_DIV, expr, right);
+            expr = mscript_expr_binary_op_new(MSCRIPT_BINARY_OP_DIV, expr, right, result_type); 
         }
         else {
             break;
@@ -845,11 +1008,13 @@ static struct mscript_expr *mscript_expr_parse_term(struct mscript_parser *parse
     while (true) {
         if (mscript_parser_match_char(parser, '+')) {
             struct mscript_expr *right = mscript_expr_parse_factor(parser);
-            expr = mscript_expr_binary_op_new(MSCRIPT_BINARY_OP_ADD, expr, right); 
+            struct mscript_type result_type = mscript_type_binary_op_result(MSCRIPT_BINARY_OP_ADD, expr, right);
+            expr = mscript_expr_binary_op_new(MSCRIPT_BINARY_OP_ADD, expr, right, result_type); 
         }
         else if (mscript_parser_match_char(parser, '-')) {
             struct mscript_expr *right = mscript_expr_parse_factor(parser);
-            expr = mscript_expr_binary_op_new(MSCRIPT_BINARY_OP_SUB, expr, right); 
+            struct mscript_type result_type = mscript_type_binary_op_result(MSCRIPT_BINARY_OP_SUB, expr, right);
+            expr = mscript_expr_binary_op_new(MSCRIPT_BINARY_OP_SUB, expr, right, result_type); 
         }
         else {
             break;
@@ -866,30 +1031,36 @@ static struct mscript_expr *mscript_expr_parse_comparison(struct mscript_parser 
         if (mscript_parser_match_char(parser, '<')) {
             if (mscript_parser_match_char(parser, '=')) {
                 struct mscript_expr *right = mscript_expr_parse_term(parser);
-                expr = mscript_expr_binary_op_new(MSCRIPT_BINARY_OP_LTE, expr, right);
+                struct mscript_type result_type = mscript_type_binary_op_result(MSCRIPT_BINARY_OP_LTE, expr, right);
+                expr = mscript_expr_binary_op_new(MSCRIPT_BINARY_OP_LTE, expr, right, result_type);
             }
             else {
                 struct mscript_expr *right = mscript_expr_parse_term(parser);
-                expr = mscript_expr_binary_op_new(MSCRIPT_BINARY_OP_LT, expr, right);
+                struct mscript_type result_type = mscript_type_binary_op_result(MSCRIPT_BINARY_OP_LT, expr, right);
+                expr = mscript_expr_binary_op_new(MSCRIPT_BINARY_OP_LT, expr, right, result_type);
             }
         }
         else if (mscript_parser_match_char(parser, '>')) {
             if (mscript_parser_match_char(parser, '=')) {
                 struct mscript_expr *right = mscript_expr_parse_term(parser);
-                expr = mscript_expr_binary_op_new(MSCRIPT_BINARY_OP_GTE, expr, right);
+                struct mscript_type result_type = mscript_type_binary_op_result(MSCRIPT_BINARY_OP_GTE, expr, right);
+                expr = mscript_expr_binary_op_new(MSCRIPT_BINARY_OP_GTE, expr, right, result_type);
             }
             else {
                 struct mscript_expr *right = mscript_expr_parse_term(parser);
-                expr = mscript_expr_binary_op_new(MSCRIPT_BINARY_OP_GT, expr, right);
+                struct mscript_type result_type = mscript_type_binary_op_result(MSCRIPT_BINARY_OP_GT, expr, right);
+                expr = mscript_expr_binary_op_new(MSCRIPT_BINARY_OP_GT, expr, right, result_type);
             }
         }
         else if (mscript_parser_match_char_n(parser, 2, '=', '=')) {
             struct mscript_expr *right = mscript_expr_parse_term(parser);
-            expr = mscript_expr_binary_op_new(MSCRIPT_BINARY_OP_EQ, expr, right);
+            struct mscript_type result_type = mscript_type_binary_op_result(MSCRIPT_BINARY_OP_EQ, expr, right);
+            expr = mscript_expr_binary_op_new(MSCRIPT_BINARY_OP_EQ, expr, right, result_type);
         }
         else if (mscript_parser_match_char_n(parser, 2, '!', '=')) {
             struct mscript_expr *right = mscript_expr_parse_term(parser);
-            expr = mscript_expr_binary_op_new(MSCRIPT_BINARY_OP_NEQ, expr, right);
+            struct mscript_type result_type = mscript_type_binary_op_result(MSCRIPT_BINARY_OP_NEQ, expr, right);
+            expr = mscript_expr_binary_op_new(MSCRIPT_BINARY_OP_NEQ, expr, right, result_type);
         }
         else {
             break;
@@ -1177,6 +1348,7 @@ static struct mscript_stmt *mscript_stmt_block_parse(struct mscript_parser *pars
     struct array_mscript_stmt_ptr stmts;
     array_init(&stmts);
 
+    mscript_parser_env_push(parser);
     while (true) {
         if (mscript_parser_match_char(parser, '}')) {
             break;
@@ -1184,6 +1356,7 @@ static struct mscript_stmt *mscript_stmt_block_parse(struct mscript_parser *pars
 
         array_push(&stmts, mscript_stmt_parse(parser));
     }
+    mscript_parser_env_pop(parser);
 
     return mscript_stmt_block_new(stmts);
 }
@@ -1238,6 +1411,8 @@ static struct mscript_stmt *mscript_stmt_function_declaration_parse(struct mscri
     array_init(&arg_types);
     array_init(&arg_names);
 
+    mscript_parser_env_set_symbol_type(parser, name.symbol, return_type);
+    mscript_parser_env_push(parser);
     if (!mscript_parser_match_char(parser, ')')) {
         while (true) {
             struct mscript_type arg_type = mscript_parse_type(parser);
@@ -1250,6 +1425,7 @@ static struct mscript_stmt *mscript_stmt_function_declaration_parse(struct mscri
 
             array_push(&arg_types, arg_type);
             array_push(&arg_names, arg_name.symbol);
+            mscript_parser_env_set_symbol_type(parser, arg_name.symbol, arg_type);
 
             if (!mscript_parser_match_char(parser, ',')) {
                 if (!mscript_parser_match_char(parser, ')')) {
@@ -1265,6 +1441,7 @@ static struct mscript_stmt *mscript_stmt_function_declaration_parse(struct mscri
     }
 
     struct mscript_stmt *body_stmt = mscript_stmt_block_parse(parser);
+    mscript_parser_env_pop(parser);
     return mscript_stmt_function_declaration_new(return_type, name.symbol, arg_types, arg_names, body_stmt); 
 }
 
@@ -1274,6 +1451,7 @@ static struct mscript_stmt *mscript_stmt_variable_declaration_parse(struct mscri
     mscript_parser_eat(parser);
 
     assert(name.type == MSCRIPT_TOKEN_SYMBOL);
+    mscript_parser_env_set_symbol_type(parser, name.symbol, type);
 
     struct mscript_expr *expr = NULL;
     if (mscript_parser_match_char(parser, '=')) {
@@ -1324,7 +1502,9 @@ static struct mscript_stmt *mscript_stmt_type_declaration_parse(struct mscript_p
         }
     }
 
-    return mscript_stmt_type_declaration_new(name, member_types, member_names);
+    struct mscript_stmt *type_declaration = mscript_stmt_type_declaration_new(name, member_types, member_names);
+    mscript_parser_env_add_type_declaration(parser, name, type_declaration);
+    return type_declaration;
 }
 
 static struct mscript_stmt *mscript_stmt_declaration_parse(struct mscript_parser *parser) {
@@ -1370,17 +1550,29 @@ static struct mscript_stmt *mscript_stmt_parse(struct mscript_parser *parser) {
 //
 
 enum mscript_opcode_type {
-    MSCRIPT_OPCODE_ADD,
-    MSCRIPT_OPCODE_SUB,
-    MSCRIPT_OPCODE_MUL,
-    MSCRIPT_OPCODE_DIV,
-    MSCRIPT_OPCODE_LTE,
-    MSCRIPT_OPCODE_LT,
-    MSCRIPT_OPCODE_GTE,
-    MSCRIPT_OPCODE_GT,
-    MSCRIPT_OPCODE_EQ,
-    MSCRIPT_OPCODE_NEQ,
-    MSCRIPT_OPCODE_INC,
+    MSCRIPT_OPCODE_IADD,
+    MSCRIPT_OPCODE_FADD,
+    MSCRIPT_OPCODE_ISUB,
+    MSCRIPT_OPCODE_FSUB,
+    MSCRIPT_OPCODE_IMUL,
+    MSCRIPT_OPCODE_FMUL,
+    MSCRIPT_OPCODE_IDIV,
+    MSCRIPT_OPCODE_FDIV,
+    MSCRIPT_OPCODE_ILTE,
+    MSCRIPT_OPCODE_FLTE,
+    MSCRIPT_OPCODE_ILT,
+    MSCRIPT_OPCODE_FLT,
+    MSCRIPT_OPCODE_IGTE,
+    MSCRIPT_OPCODE_FGTE,
+    MSCRIPT_OPCODE_IGT,
+    MSCRIPT_OPCODE_FGT,
+    MSCRIPT_OPCODE_IEQ,
+    MSCRIPT_OPCODE_FEQ,
+    MSCRIPT_OPCODE_INEQ,
+    MSCRIPT_OPCODE_FNEQ,
+    MSCRIPT_OPCODE_IINC,
+    MSCRIPT_OPCODE_F2I,
+    MSCRIPT_OPCODE_I2F,
     MSCRIPT_OPCODE_INT_CONSTANT,
     MSCRIPT_OPCODE_FLOAT_CONSTANT,
     MSCRIPT_OPCODE_SET_LOCAL,
@@ -1454,7 +1646,7 @@ static void mscript_vm_init(struct mscript_vm *vm, struct array_mscript_opcode o
 }
 
 static void mscript_vm_run(struct mscript_vm *vm) {
-    vm->ip = mscript_vm_get_label_idx(vm, 7);
+    vm->ip = mscript_vm_get_label_idx(vm, 4);
 
     while (true) {
         if (vm->ip == -1) {
@@ -1463,7 +1655,7 @@ static void mscript_vm_run(struct mscript_vm *vm) {
 
         struct mscript_opcode op = vm->opcodes.data[vm->ip];
         switch (op.type) {
-            case MSCRIPT_OPCODE_ADD:
+            case MSCRIPT_OPCODE_IADD:
                 {
                     int *i1 = (int*) mscript_vm_pop(vm, 4);
                     int *i0 = (int*) mscript_vm_pop(vm, 4);
@@ -1472,7 +1664,16 @@ static void mscript_vm_run(struct mscript_vm *vm) {
                     (vm->ip)++;
                 }
                 break;
-            case MSCRIPT_OPCODE_SUB:
+            case MSCRIPT_OPCODE_FADD:
+                {
+                    float *i1 = (float*) mscript_vm_pop(vm, 4);
+                    float *i0 = (float*) mscript_vm_pop(vm, 4);
+                    float v = *i0 + *i1;
+                    mscript_vm_push(vm, (char*) (&v), 4);
+                    (vm->ip)++;
+                }
+                break;
+            case MSCRIPT_OPCODE_ISUB:
                 {
                     int *i1 = (int*) mscript_vm_pop(vm, 4);
                     int *i0 = (int*) mscript_vm_pop(vm, 4);
@@ -1481,7 +1682,16 @@ static void mscript_vm_run(struct mscript_vm *vm) {
                     (vm->ip)++;
                 }
                 break;
-            case MSCRIPT_OPCODE_MUL:
+            case MSCRIPT_OPCODE_FSUB:
+                {
+                    float *i1 = (float*) mscript_vm_pop(vm, 4);
+                    float *i0 = (float*) mscript_vm_pop(vm, 4);
+                    float v = *i0 - *i1;
+                    mscript_vm_push(vm, (char*) (&v), 4);
+                    (vm->ip)++;
+                }
+                break;
+            case MSCRIPT_OPCODE_IMUL:
                 {
                     int *i1 = (int*) mscript_vm_pop(vm, 4);
                     int *i0 = (int*) mscript_vm_pop(vm, 4);
@@ -1490,7 +1700,16 @@ static void mscript_vm_run(struct mscript_vm *vm) {
                     (vm->ip)++;
                 }
                 break;
-            case MSCRIPT_OPCODE_DIV:
+            case MSCRIPT_OPCODE_FMUL:
+                {
+                    float *i1 = (float*) mscript_vm_pop(vm, 4);
+                    float *i0 = (float*) mscript_vm_pop(vm, 4);
+                    float v = *i0 * *i1;
+                    mscript_vm_push(vm, (char*) (&v), 4);
+                    (vm->ip)++;
+                }
+                break;
+            case MSCRIPT_OPCODE_IDIV:
                 {
                     int *i1 = (int*) mscript_vm_pop(vm, 4);
                     int *i0 = (int*) mscript_vm_pop(vm, 4);
@@ -1499,7 +1718,16 @@ static void mscript_vm_run(struct mscript_vm *vm) {
                     (vm->ip)++;
                 }
                 break;
-            case MSCRIPT_OPCODE_LTE:
+            case MSCRIPT_OPCODE_FDIV:
+                {
+                    float *i1 = (float*) mscript_vm_pop(vm, 4);
+                    float *i0 = (float*) mscript_vm_pop(vm, 4);
+                    float v = *i0 / *i1;
+                    mscript_vm_push(vm, (char*) (&v), 4);
+                    (vm->ip)++;
+                }
+                break;
+            case MSCRIPT_OPCODE_ILTE:
                 {
                     int *i1 = (int*) mscript_vm_pop(vm, 4);
                     int *i0 = (int*) mscript_vm_pop(vm, 4);
@@ -1508,7 +1736,16 @@ static void mscript_vm_run(struct mscript_vm *vm) {
                     (vm->ip)++;
                 }
                 break;
-            case MSCRIPT_OPCODE_LT:
+            case MSCRIPT_OPCODE_FLTE:
+                {
+                    float *i1 = (float*) mscript_vm_pop(vm, 4);
+                    float *i0 = (float*) mscript_vm_pop(vm, 4);
+                    int v = *i0 <= *i1;
+                    mscript_vm_push(vm, (char*) (&v), 4);
+                    (vm->ip)++;
+                }
+                break;
+            case MSCRIPT_OPCODE_ILT:
                 {
                     int *i1 = (int*) mscript_vm_pop(vm, 4);
                     int *i0 = (int*) mscript_vm_pop(vm, 4);
@@ -1517,7 +1754,16 @@ static void mscript_vm_run(struct mscript_vm *vm) {
                     (vm->ip)++;
                 }
                 break;
-            case MSCRIPT_OPCODE_GTE:
+            case MSCRIPT_OPCODE_FLT:
+                {
+                    float *i1 = (float*) mscript_vm_pop(vm, 4);
+                    float *i0 = (float*) mscript_vm_pop(vm, 4);
+                    int v = *i0 < *i1;
+                    mscript_vm_push(vm, (char*) (&v), 4);
+                    (vm->ip)++;
+                }
+                break;
+            case MSCRIPT_OPCODE_IGTE:
                 {
                     int *i1 = (int*) mscript_vm_pop(vm, 4);
                     int *i0 = (int*) mscript_vm_pop(vm, 4);
@@ -1526,7 +1772,16 @@ static void mscript_vm_run(struct mscript_vm *vm) {
                     (vm->ip)++;
                 }
                 break;
-            case MSCRIPT_OPCODE_GT:
+            case MSCRIPT_OPCODE_FGTE:
+                {
+                    float *i1 = (float*) mscript_vm_pop(vm, 4);
+                    float *i0 = (float*) mscript_vm_pop(vm, 4);
+                    int v = *i0 >= *i1;
+                    mscript_vm_push(vm, (char*) (&v), 4);
+                    (vm->ip)++;
+                }
+                break;
+            case MSCRIPT_OPCODE_IGT:
                 {
                     int *i1 = (int*) mscript_vm_pop(vm, 4);
                     int *i0 = (int*) mscript_vm_pop(vm, 4);
@@ -1535,7 +1790,16 @@ static void mscript_vm_run(struct mscript_vm *vm) {
                     (vm->ip)++;
                 }
                 break;
-            case MSCRIPT_OPCODE_EQ:
+            case MSCRIPT_OPCODE_FGT:
+                {
+                    float *i1 = (float*) mscript_vm_pop(vm, 4);
+                    float *i0 = (float*) mscript_vm_pop(vm, 4);
+                    int v = *i0 > *i1;
+                    mscript_vm_push(vm, (char*) (&v), 4);
+                    (vm->ip)++;
+                }
+                break;
+            case MSCRIPT_OPCODE_IEQ:
                 {
                     int *i1 = (int*) mscript_vm_pop(vm, 4);
                     int *i0 = (int*) mscript_vm_pop(vm, 4);
@@ -1544,7 +1808,16 @@ static void mscript_vm_run(struct mscript_vm *vm) {
                     (vm->ip)++;
                 }
                 break;
-            case MSCRIPT_OPCODE_NEQ:
+            case MSCRIPT_OPCODE_FEQ:
+                {
+                    float *i1 = (float*) mscript_vm_pop(vm, 4);
+                    float *i0 = (float*) mscript_vm_pop(vm, 4);
+                    int v = *i0 == *i1;
+                    mscript_vm_push(vm, (char*) (&v), 4);
+                    (vm->ip)++;
+                }
+                break;
+            case MSCRIPT_OPCODE_INEQ:
                 {
                     int *i1 = (int*) mscript_vm_pop(vm, 4);
                     int *i0 = (int*) mscript_vm_pop(vm, 4);
@@ -1553,12 +1826,37 @@ static void mscript_vm_run(struct mscript_vm *vm) {
                     (vm->ip)++;
                 }
                 break;
-            case MSCRIPT_OPCODE_INC:
+            case MSCRIPT_OPCODE_FNEQ:
+                {
+                    float *i1 = (float*) mscript_vm_pop(vm, 4);
+                    float *i0 = (float*) mscript_vm_pop(vm, 4);
+                    int v = *i0 != *i1;
+                    mscript_vm_push(vm, (char*) (&v), 4);
+                    (vm->ip)++;
+                }
+                break;
+            case MSCRIPT_OPCODE_IINC:
                 {
                     assert(vm->fp + op.inc.idx < vm->stack.length);
                     int *i = (int*) (vm->stack.data + vm->fp + op.inc.idx);
                     (*i)++;
                     mscript_vm_push(vm, (char*) (&i), 4);
+                    (vm->ip)++;
+                }
+                break;
+            case MSCRIPT_OPCODE_F2I:
+                {
+                    float *f = (float*) mscript_vm_pop(vm, 4);
+                    int i = (int)(*f);
+                    mscript_vm_push(vm, (char*) (&i), 4);
+                    (vm->ip)++;
+                }
+                break;
+            case MSCRIPT_OPCODE_I2F:
+                {
+                    int *i = (int*) mscript_vm_pop(vm, 4);
+                    float f = (float)(*i);
+                    mscript_vm_push(vm, (char*) (&f), 4);
                     (vm->ip)++;
                 }
                 break;
@@ -1724,8 +2022,14 @@ static void mscript_env_init(struct mscript_env *env) {
 }
 
 static void mscript_env_push_block(struct mscript_env *env) {
+    int stack_size = 0;
+    if (env->blocks.length > 0) {
+        struct mscript_env_block top_block = env->blocks.data[env->blocks.length - 1];
+        stack_size = top_block.stack_size;
+    }
+
     struct mscript_env_block block;
-    block.stack_size = 0;
+    block.stack_size = stack_size;
     map_init(&block.symbols_map);
     array_push(&env->blocks, block);
 }
@@ -1797,18 +2101,29 @@ struct mscript_compiler {
 static void mscript_compiler_init(struct mscript_compiler *compiler, struct mscript_parser *parser);
 static void mscript_compiler_run(struct mscript_compiler *compiler);
 static int mscript_compiler_create_label(struct mscript_compiler *compiler);
-static void mscript_compiler_push_opcode_add(struct mscript_compiler *compiler);
-static void mscript_compiler_push_opcode_sub(struct mscript_compiler *compiler);
-static void mscript_compiler_push_opcode_mul(struct mscript_compiler *compiler);
-static void mscript_compiler_push_opcode_div(struct mscript_compiler *compiler);
-static void mscript_compiler_push_opcode_lte(struct mscript_compiler *compiler);
-static void mscript_compiler_push_opcode_lt(struct mscript_compiler *compiler);
-static void mscript_compiler_push_opcode_gte(struct mscript_compiler *compiler);
-static void mscript_compiler_push_opcode_gt(struct mscript_compiler *compiler);
-static void mscript_compiler_push_opcode_eq(struct mscript_compiler *compiler);
-static void mscript_compiler_push_opcode_neq(struct mscript_compiler *compiler);
-static void mscript_compiler_push_opcode_inc(struct mscript_compiler *compiler, int idx);
-static void mscript_compiler_push_opcode_inc_sp(struct mscript_compiler *compiler, int idx);
+static void mscript_compiler_push_opcode_iadd(struct mscript_compiler *compiler);
+static void mscript_compiler_push_opcode_fadd(struct mscript_compiler *compiler);
+static void mscript_compiler_push_opcode_isub(struct mscript_compiler *compiler);
+static void mscript_compiler_push_opcode_fsub(struct mscript_compiler *compiler);
+static void mscript_compiler_push_opcode_imul(struct mscript_compiler *compiler);
+static void mscript_compiler_push_opcode_fmul(struct mscript_compiler *compiler);
+static void mscript_compiler_push_opcode_idiv(struct mscript_compiler *compiler);
+static void mscript_compiler_push_opcode_fdiv(struct mscript_compiler *compiler);
+static void mscript_compiler_push_opcode_ilte(struct mscript_compiler *compiler);
+static void mscript_compiler_push_opcode_flte(struct mscript_compiler *compiler);
+static void mscript_compiler_push_opcode_ilt(struct mscript_compiler *compiler);
+static void mscript_compiler_push_opcode_flt(struct mscript_compiler *compiler);
+static void mscript_compiler_push_opcode_igte(struct mscript_compiler *compiler);
+static void mscript_compiler_push_opcode_fgte(struct mscript_compiler *compiler);
+static void mscript_compiler_push_opcode_igt(struct mscript_compiler *compiler);
+static void mscript_compiler_push_opcode_fgt(struct mscript_compiler *compiler);
+static void mscript_compiler_push_opcode_ieq(struct mscript_compiler *compiler);
+static void mscript_compiler_push_opcode_feq(struct mscript_compiler *compiler);
+static void mscript_compiler_push_opcode_ineq(struct mscript_compiler *compiler);
+static void mscript_compiler_push_opcode_fneq(struct mscript_compiler *compiler);
+static void mscript_compiler_push_opcode_iinc(struct mscript_compiler *compiler, int idx);
+static void mscript_compiler_push_opcode_i2f(struct mscript_compiler *compiler);
+static void mscript_compiler_push_opcode_f2i(struct mscript_compiler *compiler);
 static void mscript_compiler_push_opcode_int_constant(struct mscript_compiler *compiler, int int_constant);
 static void mscript_compiler_push_opcode_float_constant(struct mscript_compiler *compiler, float float_constant);
 static void mscript_compiler_push_opcode_set_local(struct mscript_compiler *compiler, int idx, int size);
@@ -1817,16 +2132,15 @@ static void mscript_compiler_push_opcode_jf_label(struct mscript_compiler *compi
 static void mscript_compiler_push_opcode_jmp_label(struct mscript_compiler *compiler, int label);
 static void mscript_compiler_push_opcode_label(struct mscript_compiler *compiler, int label);
 static void mscript_compiler_push_opcode_call_label(struct mscript_compiler *compiler, int label, int args_size);
-static void mscript_compiler_push_opcode_call(struct mscript_compiler *compiler, int idx);
 static void mscript_compiler_push_opcode_return(struct mscript_compiler *compiler, int size);
 static void mscript_compiler_push_opcode_push(struct mscript_compiler *compiler, int size);
 static void mscript_compiler_push_opcode_pop(struct mscript_compiler *compiler, int size);
 static int mscript_compiler_get_type_size(struct mscript_compiler *compiler, struct mscript_type type);
 static int mscript_compiler_get_l_value_stack_offset(struct mscript_compiler *compiler, struct mscript_expr *expr);
-static struct mscript_type mscript_compiler_expr_get_type(struct mscript_compiler *compiler, struct mscript_expr *expr);
 static void mscript_compiler_debug_print_opcodes(struct mscript_compiler *compiler);
 static void mscript_compile_stmt(struct mscript_compiler *compiler, struct mscript_stmt *stmt);
 static void mscript_compile_expr(struct mscript_compiler *compiler, struct mscript_expr *expr);
+static void mscript_compile_expr_with_cast(struct mscript_compiler *compiler, struct mscript_expr *expr, struct mscript_type type);
 
 static void mscript_compiler_init(struct mscript_compiler *compiler, struct mscript_parser *parser) {
     compiler->cur_function = NULL;
@@ -1887,70 +2201,142 @@ static int mscript_compiler_create_label(struct mscript_compiler *compiler) {
     return compiler->cur_label++;
 }
 
-static void mscript_compiler_push_opcode_add(struct mscript_compiler *compiler) {
+static void mscript_compiler_push_opcode_iadd(struct mscript_compiler *compiler) {
     struct mscript_opcode op;
-    op.type = MSCRIPT_OPCODE_ADD;
+    op.type = MSCRIPT_OPCODE_IADD;
     array_push(&compiler->opcodes, op);
 }
 
-static void mscript_compiler_push_opcode_sub(struct mscript_compiler *compiler) {
+static void mscript_compiler_push_opcode_fadd(struct mscript_compiler *compiler) {
     struct mscript_opcode op;
-    op.type = MSCRIPT_OPCODE_SUB;
+    op.type = MSCRIPT_OPCODE_FADD;
     array_push(&compiler->opcodes, op);
 }
 
-static void mscript_compiler_push_opcode_mul(struct mscript_compiler *compiler) {
+static void mscript_compiler_push_opcode_isub(struct mscript_compiler *compiler) {
     struct mscript_opcode op;
-    op.type = MSCRIPT_OPCODE_MUL;
+    op.type = MSCRIPT_OPCODE_ISUB;
     array_push(&compiler->opcodes, op);
 }
 
-static void mscript_compiler_push_opcode_div(struct mscript_compiler *compiler) {
+static void mscript_compiler_push_opcode_fsub(struct mscript_compiler *compiler) {
     struct mscript_opcode op;
-    op.type = MSCRIPT_OPCODE_DIV;
+    op.type = MSCRIPT_OPCODE_FSUB;
     array_push(&compiler->opcodes, op);
 }
 
-static void mscript_compiler_push_opcode_lte(struct mscript_compiler *compiler) {
+static void mscript_compiler_push_opcode_imul(struct mscript_compiler *compiler) {
     struct mscript_opcode op;
-    op.type = MSCRIPT_OPCODE_LTE;
+    op.type = MSCRIPT_OPCODE_IMUL;
     array_push(&compiler->opcodes, op);
 }
 
-static void mscript_compiler_push_opcode_lt(struct mscript_compiler *compiler) {
+static void mscript_compiler_push_opcode_fmul(struct mscript_compiler *compiler) {
     struct mscript_opcode op;
-    op.type = MSCRIPT_OPCODE_LT;
+    op.type = MSCRIPT_OPCODE_FMUL;
     array_push(&compiler->opcodes, op);
 }
 
-static void mscript_compiler_push_opcode_gte(struct mscript_compiler *compiler) {
+static void mscript_compiler_push_opcode_idiv(struct mscript_compiler *compiler) {
     struct mscript_opcode op;
-    op.type = MSCRIPT_OPCODE_GTE;
+    op.type = MSCRIPT_OPCODE_IDIV;
     array_push(&compiler->opcodes, op);
 }
 
-static void mscript_compiler_push_opcode_gt(struct mscript_compiler *compiler) {
+static void mscript_compiler_push_opcode_fdiv(struct mscript_compiler *compiler) {
     struct mscript_opcode op;
-    op.type = MSCRIPT_OPCODE_GT;
+    op.type = MSCRIPT_OPCODE_FDIV;
     array_push(&compiler->opcodes, op);
 }
 
-static void mscript_compiler_push_opcode_eq(struct mscript_compiler *compiler) {
+static void mscript_compiler_push_opcode_ilte(struct mscript_compiler *compiler) {
     struct mscript_opcode op;
-    op.type = MSCRIPT_OPCODE_EQ;
+    op.type = MSCRIPT_OPCODE_ILTE;
     array_push(&compiler->opcodes, op);
 }
 
-static void mscript_compiler_push_opcode_neq(struct mscript_compiler *compiler) {
+static void mscript_compiler_push_opcode_flte(struct mscript_compiler *compiler) {
     struct mscript_opcode op;
-    op.type = MSCRIPT_OPCODE_NEQ;
+    op.type = MSCRIPT_OPCODE_FLTE;
     array_push(&compiler->opcodes, op);
 }
 
-static void mscript_compiler_push_opcode_inc(struct mscript_compiler *compiler, int idx) {
+static void mscript_compiler_push_opcode_ilt(struct mscript_compiler *compiler) {
     struct mscript_opcode op;
-    op.type = MSCRIPT_OPCODE_INC;
+    op.type = MSCRIPT_OPCODE_ILT;
+    array_push(&compiler->opcodes, op);
+}
+
+static void mscript_compiler_push_opcode_flt(struct mscript_compiler *compiler) {
+    struct mscript_opcode op;
+    op.type = MSCRIPT_OPCODE_FLT;
+    array_push(&compiler->opcodes, op);
+}
+
+static void mscript_compiler_push_opcode_igte(struct mscript_compiler *compiler) {
+    struct mscript_opcode op;
+    op.type = MSCRIPT_OPCODE_IGTE;
+    array_push(&compiler->opcodes, op);
+}
+
+static void mscript_compiler_push_opcode_fgte(struct mscript_compiler *compiler) {
+    struct mscript_opcode op;
+    op.type = MSCRIPT_OPCODE_FGTE;
+    array_push(&compiler->opcodes, op);
+}
+
+static void mscript_compiler_push_opcode_igt(struct mscript_compiler *compiler) {
+    struct mscript_opcode op;
+    op.type = MSCRIPT_OPCODE_IGT;
+    array_push(&compiler->opcodes, op);
+}
+
+static void mscript_compiler_push_opcode_fgt(struct mscript_compiler *compiler) {
+    struct mscript_opcode op;
+    op.type = MSCRIPT_OPCODE_FGT;
+    array_push(&compiler->opcodes, op);
+}
+
+static void mscript_compiler_push_opcode_ieq(struct mscript_compiler *compiler) {
+    struct mscript_opcode op;
+    op.type = MSCRIPT_OPCODE_IEQ;
+    array_push(&compiler->opcodes, op);
+}
+
+static void mscript_compiler_push_opcode_feq(struct mscript_compiler *compiler) {
+    struct mscript_opcode op;
+    op.type = MSCRIPT_OPCODE_FEQ;
+    array_push(&compiler->opcodes, op);
+}
+
+static void mscript_compiler_push_opcode_ineq(struct mscript_compiler *compiler) {
+    struct mscript_opcode op;
+    op.type = MSCRIPT_OPCODE_INEQ;
+    array_push(&compiler->opcodes, op);
+}
+
+static void mscript_compiler_push_opcode_fneq(struct mscript_compiler *compiler) {
+    struct mscript_opcode op;
+    op.type = MSCRIPT_OPCODE_FNEQ;
+    array_push(&compiler->opcodes, op);
+}
+
+static void mscript_compiler_push_opcode_iinc(struct mscript_compiler *compiler, int idx) {
+    struct mscript_opcode op;
+    op.type = MSCRIPT_OPCODE_IINC;
     op.inc.idx = idx;
+    array_push(&compiler->opcodes, op);
+}
+
+static void mscript_compiler_push_opcode_f2i(struct mscript_compiler *compiler) {
+    struct mscript_opcode op;
+    op.type = MSCRIPT_OPCODE_F2I;
+    array_push(&compiler->opcodes, op);
+}
+
+static void mscript_compiler_push_opcode_i2f(struct mscript_compiler *compiler) {
+    struct mscript_opcode op;
+    op.type = MSCRIPT_OPCODE_I2F;
     array_push(&compiler->opcodes, op);
 }
 
@@ -2045,6 +2431,29 @@ static int mscript_compiler_get_l_value_stack_offset(struct mscript_compiler *co
             assert(false);
             break;
         case MSCRIPT_EXPR_MEMBER_ACCESS:
+            {
+                struct mscript_type struct_type = expr->member_access.left->result_type;
+                if (struct_type.type != MSCRIPT_TYPE_STRUCT) {
+                    assert(false);
+                }
+
+                struct mscript_type_declaration *type_decl = mscript_env_get_type_declaration(&compiler->env, struct_type.struct_name);
+                if (!type_decl) {
+                    assert(false);
+                }
+
+                int stack_offset = mscript_compiler_get_l_value_stack_offset(compiler, expr->member_access.left);
+                bool found_member = false;
+                for (int i = 0; i < type_decl->member_names.length; i++) {
+                    if (strcmp(expr->member_access.member_name, type_decl->member_names.data[i]) == 0) {
+                        found_member = true;
+                        break;
+                    }
+                    stack_offset += mscript_compiler_get_type_size(compiler, type_decl->member_types.data[i]);
+                }
+                assert(found_member);
+                return stack_offset;
+            }
             break;
         case MSCRIPT_EXPR_ARRAY_ACCESS:
             break;
@@ -2095,112 +2504,85 @@ static int mscript_compiler_get_type_size(struct mscript_compiler *compiler, str
     return 0;
 }
 
-static struct mscript_type mscript_compiler_expr_get_type(struct mscript_compiler *compiler, struct mscript_expr *expr) {
-    switch (expr->type) {
-        case MSCRIPT_EXPR_UNARY_OP:
-            {
-                return mscript_compiler_expr_get_type(compiler, expr->unary_op.operand);
-            }
-            break;
-        case MSCRIPT_EXPR_BINARY_OP:
-            {
-                return mscript_compiler_expr_get_type(compiler, expr->binary_op.left);
-            }
-            break;
-        case MSCRIPT_EXPR_CALL:
-            {
-                struct mscript_function_declaration *decl = mscript_env_get_function_declaration(&compiler->env, expr->call.function_name);
-                if (!decl) {
-                    assert(false);
-                }
-                return decl->return_type;
-            }
-            break;
-        case MSCRIPT_EXPR_ARRAY_ACCESS:
-            assert(false);
-            break;
-        case MSCRIPT_EXPR_MEMBER_ACCESS:
-            assert(false);
-            break;
-        case MSCRIPT_EXPR_ASSIGNMENT:
-            {
-                return mscript_compiler_expr_get_type(compiler, expr->assignment.left);
-            }
-            break;
-        case MSCRIPT_EXPR_INT:
-            {
-                struct mscript_type type;
-                type.type = MSCRIPT_TYPE_INT;
-                return type;
-            }
-            break;
-        case MSCRIPT_EXPR_FLOAT:
-            {
-                struct mscript_type type;
-                type.type = MSCRIPT_TYPE_FLOAT;
-                return type;
-            }
-            break;
-        case MSCRIPT_EXPR_SYMBOL:
-            {
-                struct mscript_symbol_declaration *decl = mscript_env_get_symbol_declaration(&compiler->env, expr->symbol);
-                if (!decl) {
-                    assert(false);
-                }
-                return decl->type;
-            }
-            break;
-    }
-
-    assert(false);
-    struct mscript_type type;
-    type.type = MSCRIPT_TYPE_INT;
-    return type;
-}
-
 static void mscript_compiler_debug_print_opcodes(struct mscript_compiler *compiler) {
     for (int i = 0; i < compiler->opcodes.length; i++) {
         m_logf("%d: ", i);
         struct mscript_opcode op = compiler->opcodes.data[i];
         switch (op.type) {
-            case MSCRIPT_OPCODE_ADD:
-                m_logf("[ADD]");
+            case MSCRIPT_OPCODE_IADD:
+                m_logf("[IADD]");
                 break;
-            case MSCRIPT_OPCODE_SUB:
-                m_logf("[SUB]");
+            case MSCRIPT_OPCODE_FADD:
+                m_logf("[FADD]");
                 break;
-            case MSCRIPT_OPCODE_MUL:
-                m_logf("[MUL]");
+            case MSCRIPT_OPCODE_ISUB:
+                m_logf("[ISUB]");
                 break;
-            case MSCRIPT_OPCODE_DIV:
-                m_logf("[DIV]");
+            case MSCRIPT_OPCODE_FSUB:
+                m_logf("[FSUB]");
                 break;
-            case MSCRIPT_OPCODE_LTE:
-                m_logf("[LTE]");
+            case MSCRIPT_OPCODE_IMUL:
+                m_logf("[IMUL]");
                 break;
-            case MSCRIPT_OPCODE_LT:
-                m_logf("[LT]");
+            case MSCRIPT_OPCODE_FMUL:
+                m_logf("[FMUL]");
                 break;
-            case MSCRIPT_OPCODE_GTE:
-                m_logf("[GTE]");
+            case MSCRIPT_OPCODE_IDIV:
+                m_logf("[IDIV]");
                 break;
-            case MSCRIPT_OPCODE_GT:
-                m_logf("[GT]");
+            case MSCRIPT_OPCODE_FDIV:
+                m_logf("[FDIV]");
                 break;
-            case MSCRIPT_OPCODE_EQ:
-                m_logf("[EQ]");
+            case MSCRIPT_OPCODE_ILTE:
+                m_logf("[ILTE]");
                 break;
-            case MSCRIPT_OPCODE_NEQ:
-                m_logf("[NEQ]");
+            case MSCRIPT_OPCODE_FLTE:
+                m_logf("[FLTE]");
                 break;
-            case MSCRIPT_OPCODE_INC:
-                m_logf("[INC: %d]", op.inc.idx);
+            case MSCRIPT_OPCODE_ILT:
+                m_logf("[ILT]");
+                break;
+            case MSCRIPT_OPCODE_FLT:
+                m_logf("[FLT]");
+                break;
+            case MSCRIPT_OPCODE_IGTE:
+                m_logf("[IGTE]");
+                break;
+            case MSCRIPT_OPCODE_FGTE:
+                m_logf("[FGTE]");
+                break;
+            case MSCRIPT_OPCODE_IGT:
+                m_logf("[IGT]");
+                break;
+            case MSCRIPT_OPCODE_FGT:
+                m_logf("[FGT]");
+                break;
+            case MSCRIPT_OPCODE_IEQ:
+                m_logf("[IEQ]");
+                break;
+            case MSCRIPT_OPCODE_FEQ:
+                m_logf("[FEQ]");
+                break;
+            case MSCRIPT_OPCODE_INEQ:
+                m_logf("[INEQ]");
+                break;
+            case MSCRIPT_OPCODE_FNEQ:
+                m_logf("[FNEQ]");
+                break;
+            case MSCRIPT_OPCODE_IINC:
+                m_logf("[IINC: %d]", op.inc.idx);
+                break;
+            case MSCRIPT_OPCODE_F2I:
+                m_logf("[F2I]");
+                break;
+            case MSCRIPT_OPCODE_I2F:
+                m_logf("[I2F]");
                 break;
             case MSCRIPT_OPCODE_INT_CONSTANT:
                 m_logf("[INT_CONSTANT: %d]", op.int_constant);
                 break;
             case MSCRIPT_OPCODE_FLOAT_CONSTANT:
-                m_logf("[FLOAT_CONSTANT: %d]", op.float_constant);
+                m_logf("[FLOAT_CONSTANT: %f]", op.float_constant);
                 break;
             case MSCRIPT_OPCODE_SET_LOCAL:
                 m_logf("[SET_LOCAL: %d, %d]", op.get_set.idx, op.get_set.size);
@@ -2260,24 +2642,25 @@ static void mscript_compile_stmt(struct mscript_compiler *compiler, struct mscri
             break;
         case MSCRIPT_STMT_RETURN:
             {
-                mscript_compile_expr(compiler, stmt->return_stmt.expr);
                 assert(compiler->cur_function);
+                mscript_compile_expr_with_cast(compiler, stmt->return_stmt.expr, compiler->cur_function->return_type);
                 int size = mscript_compiler_get_type_size(compiler, compiler->cur_function->return_type);
                 mscript_compiler_push_opcode_return(compiler, size);
             }
             break;
         case MSCRIPT_STMT_BLOCK:
             {
+                mscript_env_push_block(&compiler->env);
                 for (int i = 0; i < stmt->block.stmts.length; i++) {
                     mscript_compile_stmt(compiler, stmt->block.stmts.data[i]);
                 }
+                mscript_env_pop_block(&compiler->env);
             }
             break;
         case MSCRIPT_STMT_EXPR:
             {
                 mscript_compile_expr(compiler, stmt->expr);
-                struct mscript_type type = mscript_compiler_expr_get_type(compiler, stmt->expr);
-                int size = mscript_compiler_get_type_size(compiler, type);
+                int size = mscript_compiler_get_type_size(compiler, stmt->expr->result_type);
                 mscript_compiler_push_opcode_pop(compiler, size);
             }
             break;
@@ -2288,9 +2671,9 @@ static void mscript_compile_stmt(struct mscript_compiler *compiler, struct mscri
                 struct mscript_expr *inc = stmt->for_stmt.inc;
                 struct mscript_stmt *body = stmt->for_stmt.body;
 
-                int init_size = mscript_compiler_get_type_size(compiler, mscript_compiler_expr_get_type(compiler, init));
-                int cond_size = mscript_compiler_get_type_size(compiler, mscript_compiler_expr_get_type(compiler, cond));
-                int inc_size = mscript_compiler_get_type_size(compiler, mscript_compiler_expr_get_type(compiler, inc));
+                int init_size = mscript_compiler_get_type_size(compiler, init->result_type);
+                int cond_size = mscript_compiler_get_type_size(compiler, cond->result_type);
+                int inc_size = mscript_compiler_get_type_size(compiler, inc->result_type);
 
                 int cond_label = mscript_compiler_create_label(compiler);
                 int end_label = mscript_compiler_create_label(compiler);
@@ -2323,7 +2706,7 @@ static void mscript_compile_stmt(struct mscript_compiler *compiler, struct mscri
                         assert(false);
                     }
 
-                    mscript_compile_expr(compiler, expr);
+                    mscript_compile_expr_with_cast(compiler, expr, type);
                     mscript_compiler_push_opcode_set_local(compiler, decl->stack_offset, size);
                     mscript_compiler_push_opcode_pop(compiler, size);
                 }
@@ -2338,46 +2721,154 @@ static void mscript_compile_stmt(struct mscript_compiler *compiler, struct mscri
 static void mscript_compile_expr_unary_op(struct mscript_compiler *compiler, struct mscript_expr *expr) {
     switch (expr->unary_op.type) {
         case MSCRIPT_UNARY_OP_POST_INC:
-            int l_value_offset = mscript_compiler_get_l_value_stack_offset(compiler, expr->unary_op.operand);
-            mscript_compiler_push_opcode_inc(compiler, l_value_offset);
+            {
+                int l_value_offset = mscript_compiler_get_l_value_stack_offset(compiler, expr->unary_op.operand);
+                mscript_compiler_push_opcode_iinc(compiler, l_value_offset);
+            }
             break;
     }
 }
 
+static void mscript_compile_expr_binary_op_term_factor(struct mscript_compiler *compiler, struct mscript_expr *expr) {
+    assert(expr->type == MSCRIPT_EXPR_BINARY_OP);
+
+    mscript_compile_expr_with_cast(compiler, expr->binary_op.left, expr->result_type);
+    mscript_compile_expr_with_cast(compiler, expr->binary_op.right, expr->result_type);
+
+    if (expr->result_type.type == MSCRIPT_TYPE_INT) {
+        if (expr->binary_op.type == MSCRIPT_BINARY_OP_ADD) {
+            mscript_compiler_push_opcode_iadd(compiler);
+        }
+        else if (expr->binary_op.type == MSCRIPT_BINARY_OP_SUB) {
+            mscript_compiler_push_opcode_isub(compiler);
+        }
+        else if (expr->binary_op.type == MSCRIPT_BINARY_OP_MUL) {
+            mscript_compiler_push_opcode_imul(compiler);
+        }
+        else if (expr->binary_op.type == MSCRIPT_BINARY_OP_DIV) {
+            mscript_compiler_push_opcode_idiv(compiler);
+        }
+        else {
+            assert(false);
+        }
+    }
+    else if (expr->result_type.type == MSCRIPT_TYPE_FLOAT) {
+        if (expr->binary_op.type == MSCRIPT_BINARY_OP_ADD) {
+            mscript_compiler_push_opcode_fadd(compiler);
+        }
+        else if (expr->binary_op.type == MSCRIPT_BINARY_OP_SUB) {
+            mscript_compiler_push_opcode_fsub(compiler);
+        }
+        else if (expr->binary_op.type == MSCRIPT_BINARY_OP_MUL) {
+            mscript_compiler_push_opcode_fmul(compiler);
+        }
+        else if (expr->binary_op.type == MSCRIPT_BINARY_OP_DIV) {
+            mscript_compiler_push_opcode_fdiv(compiler);
+        }
+        else {
+            assert(false);
+        }
+    }
+    else {
+        assert(false);
+    }
+}
+
+static void mscript_compile_expr_binary_op_comparison(struct mscript_compiler *compiler, struct mscript_expr *expr) {
+    assert(expr->type == MSCRIPT_EXPR_BINARY_OP);
+    assert(expr->result_type.type == MSCRIPT_TYPE_INT);
+
+    struct mscript_type left_type = expr->binary_op.left->result_type;
+    struct mscript_type right_type = expr->binary_op.right->result_type;
+    struct mscript_type cast_type;
+
+    if (left_type.type == MSCRIPT_TYPE_INT && right_type.type == MSCRIPT_TYPE_INT) {
+        cast_type = mscript_type_int();
+    }
+    else if ((left_type.type == MSCRIPT_TYPE_INT && right_type.type == MSCRIPT_TYPE_FLOAT) ||
+            (left_type.type == MSCRIPT_TYPE_FLOAT && right_type.type == MSCRIPT_TYPE_INT) ||
+            (left_type.type == MSCRIPT_TYPE_FLOAT && right_type.type == MSCRIPT_TYPE_FLOAT)) {
+        cast_type = mscript_type_float();
+    }
+    else {
+        assert(false);
+    }
+
+    mscript_compile_expr_with_cast(compiler, expr->binary_op.left, cast_type);
+    mscript_compile_expr_with_cast(compiler, expr->binary_op.right, cast_type);
+
+    if (cast_type.type == MSCRIPT_TYPE_INT) {
+        if (expr->binary_op.type == MSCRIPT_BINARY_OP_LTE) {
+            mscript_compiler_push_opcode_ilte(compiler);
+        }
+        else if (expr->binary_op.type == MSCRIPT_BINARY_OP_LT) {
+            mscript_compiler_push_opcode_ilt(compiler);
+        }
+        else if (expr->binary_op.type == MSCRIPT_BINARY_OP_GTE) {
+            mscript_compiler_push_opcode_igte(compiler);
+        }
+        else if (expr->binary_op.type == MSCRIPT_BINARY_OP_GT) {
+            mscript_compiler_push_opcode_igt(compiler);
+        }
+        else if (expr->binary_op.type == MSCRIPT_BINARY_OP_EQ) {
+            mscript_compiler_push_opcode_ieq(compiler);
+        }
+        else if (expr->binary_op.type == MSCRIPT_BINARY_OP_NEQ) {
+            mscript_compiler_push_opcode_ineq(compiler);
+        }
+        else {
+            assert(false);
+        }
+    }
+    else if (cast_type.type == MSCRIPT_TYPE_FLOAT) {
+        if (expr->binary_op.type == MSCRIPT_BINARY_OP_LTE) {
+            mscript_compiler_push_opcode_flte(compiler);
+        }
+        else if (expr->binary_op.type == MSCRIPT_BINARY_OP_LT) {
+            mscript_compiler_push_opcode_flt(compiler);
+        }
+        else if (expr->binary_op.type == MSCRIPT_BINARY_OP_GTE) {
+            mscript_compiler_push_opcode_fgte(compiler);
+        }
+        else if (expr->binary_op.type == MSCRIPT_BINARY_OP_GT) {
+            mscript_compiler_push_opcode_fgt(compiler);
+        }
+        else if (expr->binary_op.type == MSCRIPT_BINARY_OP_EQ) {
+            mscript_compiler_push_opcode_feq(compiler);
+        }
+        else if (expr->binary_op.type == MSCRIPT_BINARY_OP_NEQ) {
+            mscript_compiler_push_opcode_fneq(compiler);
+        }
+        else {
+            assert(false);
+        }
+    }
+    else {
+        assert(false);
+    }
+}
+
 static void mscript_compile_expr_binary_op(struct mscript_compiler *compiler, struct mscript_expr *expr) {
-    mscript_compile_expr(compiler, expr->binary_op.left);
-    mscript_compile_expr(compiler, expr->binary_op.right);
+    assert(expr->type == MSCRIPT_EXPR_BINARY_OP);
 
     switch (expr->binary_op.type) {
         case MSCRIPT_BINARY_OP_ADD:
-            mscript_compiler_push_opcode_add(compiler);
-            break;
         case MSCRIPT_BINARY_OP_SUB:
-            mscript_compiler_push_opcode_sub(compiler);
-            break;
         case MSCRIPT_BINARY_OP_MUL:
-            mscript_compiler_push_opcode_mul(compiler);
-            break;
         case MSCRIPT_BINARY_OP_DIV:
-            mscript_compiler_push_opcode_div(compiler);
+            {
+                mscript_compile_expr_binary_op_term_factor(compiler, expr);
+            }
             break;
         case MSCRIPT_BINARY_OP_LTE:
-            mscript_compiler_push_opcode_lte(compiler);
-            break;
         case MSCRIPT_BINARY_OP_LT:
-            mscript_compiler_push_opcode_lt(compiler);
-            break;
         case MSCRIPT_BINARY_OP_GTE:
-            mscript_compiler_push_opcode_gte(compiler);
-            break;
         case MSCRIPT_BINARY_OP_GT:
-            mscript_compiler_push_opcode_gt(compiler);
-            break;
         case MSCRIPT_BINARY_OP_EQ:
-            mscript_compiler_push_opcode_eq(compiler);
-            break;
         case MSCRIPT_BINARY_OP_NEQ:
-            mscript_compiler_push_opcode_neq(compiler);
+            {
+                mscript_compile_expr_binary_op_comparison(compiler, expr);
+            }
             break;
     }
 }
@@ -2407,8 +2898,9 @@ static void mscript_compile_expr(struct mscript_compiler *compiler, struct mscri
 
                 int args_size = 0;
                 for (int i = 0; i < expr->call.args.length; i++) {
-                    args_size += mscript_compiler_get_type_size(compiler, decl->arg_types.data[i]);
-                    mscript_compile_expr(compiler, expr->call.args.data[i]);
+                    struct mscript_type arg_type = decl->arg_types.data[i];
+                    args_size += mscript_compiler_get_type_size(compiler, arg_type);
+                    mscript_compile_expr_with_cast(compiler, expr->call.args.data[i], arg_type);
                 }
 
                 mscript_compiler_push_opcode_call_label(compiler, decl->label, args_size);
@@ -2416,17 +2908,15 @@ static void mscript_compile_expr(struct mscript_compiler *compiler, struct mscri
             break;
         case MSCRIPT_EXPR_ASSIGNMENT:
             {
-                struct mscript_type l_type = mscript_compiler_expr_get_type(compiler, expr->assignment.left);
-                int l_size = mscript_compiler_get_type_size(compiler, l_type);
                 int l_value_stack_offset = mscript_compiler_get_l_value_stack_offset(compiler, expr->assignment.left);
-                mscript_compile_expr(compiler, expr->assignment.right);
+                int l_size = mscript_compiler_get_type_size(compiler, expr->assignment.left->result_type);
+                mscript_compile_expr_with_cast(compiler, expr->assignment.right, expr->assignment.left->result_type);
                 mscript_compiler_push_opcode_set_local(compiler, l_value_stack_offset, l_size);
             }
             break;
         case MSCRIPT_EXPR_MEMBER_ACCESS:
             {
-                int l_value_stack_offset = mscript_compiler_get_l_value_stack_offset(compiler, expr->member_access.left);
-                struct mscript_type struct_type = mscript_compiler_expr_get_type(compiler, expr->member_access.left);
+                struct mscript_type struct_type = expr->member_access.left->result_type;
                 if (struct_type.type != MSCRIPT_TYPE_STRUCT) {
                     assert(false);
                 }
@@ -2437,8 +2927,8 @@ static void mscript_compile_expr(struct mscript_compiler *compiler, struct mscri
                     assert(false);
                 }
 
+                int stack_offset = mscript_compiler_get_l_value_stack_offset(compiler, expr->member_access.left);
                 int member_size = 0;
-                int member_offset = 0;
                 bool found = false;
                 for (int i = 0; i < type_decl->member_names.length; i++) {
                     int type_size = mscript_compiler_get_type_size(compiler, type_decl->member_types.data[i]);
@@ -2447,18 +2937,19 @@ static void mscript_compile_expr(struct mscript_compiler *compiler, struct mscri
                         found = true;
                         break;
                     }
-                    member_offset += type_size; 
+                    stack_offset += type_size; 
                 }
 
                 if (!found) {
                     assert(false);
                 }
 
-                mscript_compiler_push_opcode_get_local(compiler, member_size, 4);
+                mscript_compiler_push_opcode_get_local(compiler, stack_offset, member_size);
             }
             break;
         case MSCRIPT_EXPR_ARRAY_ACCESS:
             {
+                assert(false);
             }
             break;
         case MSCRIPT_EXPR_INT:
@@ -2482,6 +2973,21 @@ static void mscript_compile_expr(struct mscript_compiler *compiler, struct mscri
                 mscript_compiler_push_opcode_get_local(compiler, decl->stack_offset, type_size);
             }
             break;
+    }
+}
+
+static void mscript_compile_expr_with_cast(struct mscript_compiler *compiler, struct mscript_expr *expr, struct mscript_type type) {
+    mscript_compile_expr(compiler, expr);
+    if (type.type != expr->result_type.type) {
+        if ((type.type == MSCRIPT_TYPE_INT) && (expr->result_type.type == MSCRIPT_TYPE_FLOAT)) {
+            mscript_compiler_push_opcode_f2i(compiler);
+        }
+        else if ((type.type == MSCRIPT_TYPE_FLOAT) && (expr->result_type.type == MSCRIPT_TYPE_INT)) {
+            mscript_compiler_push_opcode_i2f(compiler);
+        }
+        else {
+            assert(false);
+        }
     }
 }
 

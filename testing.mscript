@@ -1,7 +1,19 @@
-//struct vec2 {
-    //float x;
-    //float y;
-//}
+struct vec2 {
+    float x;
+    float y;
+}
+
+struct vec3 {
+    float x;
+    float y;
+    float z;
+}
+
+struct test {
+    int t;
+    vec2 v2;
+    vec3 v3;
+}
 
 //float vec2_distance_sqrd(vec2 v0, vec2 v1) {
     //float dx = v1.x - v0.x;
@@ -14,31 +26,53 @@
     //return d + c;
 //}
 
-int fib(int n) {
-    int val = 0;
-    if (n <= 0) {
-        val = 0;
+//int fib(int n) {
+    //int val = 0;
+    //if (n <= 0) {
+        //val = 0;
+    //}
+    //else if (n == 1) {
+        //val = 1;
+    //}
+    //else {
+        //val = fib(n - 1) + fib(n - 2);
+    //}
+    //return val;
+//}
+
+int sum(int n, int s) {
+    if (n == 0) {
+        return s;
     }
-    else if (n == 1) {
-        val = 1;
-    }
-    else {
-        val = fib(n - 1) + fib(n - 2);
-    }
-    return val;
+
+    return sum(n - 1, s + n);
 }
 
-int sum(int n) {
-    int i;
-    int s = 0;
-    for (i = 1; i < n; i++) {
-        s = s + i; 
-    }
-    return s;
+vec3 vec3_add(vec3 a, vec3 b) {
+    vec3 r;
+    r.x = a.x + b.x;
+    r.y = a.y + b.y;
+    r.z = a.z + b.z;
+    return r;
 }
 
 int run() {
-    int x = sum(fib(10));
+    vec3 a;
+    a.x = 1.0;
+    a.y = 2.0;
+    a.z = 3.0;
+
+    vec3 b;
+    b.x = 1.0;
+    b.y = 2.0;
+    b.z = 3.0;
+
+    vec3 c = vec3_add(a, b);
+
+    test t;
+    t.v3.x = a.x;
+
+    int x = sum(c.x + c.y + c.z, 0);
     return x;
 }
 
