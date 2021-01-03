@@ -9,71 +9,56 @@ struct vec3 {
     float z;
 }
 
-struct test {
-    int t;
-    vec2 v2;
-    vec3 v3;
-}
-
-//float vec2_distance_sqrd(vec2 v0, vec2 v1) {
-    //float dx = v1.x - v0.x;
-    //float dy = v1.y - v0.y;
-    //return dx * dx + dy * dy;
+//int sum(int n, int s) {
+//    if (n == 0) {
+//        return s;
+//    }
+//
+//    return sum(n - 1, s + n);
+//}
+//
+//vec3 vec3_add(vec3 a, vec3 b) {
+//    vec3 r;
+//    r.x = a.x + b.x;
+//    r.y = a.y + b.y;
+//    r.z = a.z + b.z;
+//    return r;
+//}
+//
+//vec3 vec3_scale(vec3 a, float s) {
+//    vec3 r;
+//    r.x = a.x * s;
+//    r.y = a.y * s;
+//    r.z = a.z * s;
+//    return r;
+//}
+//
+//vec3 vec3_create(float x, float y, float z) {
+//    vec3 r;
+//    r.x = x;
+//    r.y = y;
+//    r.z = z;
+//    return r;
 //}
 
-//int testing(int a, int b, int c) {
-    //int d = a + b;
-    //return d + c;
+//int sum_array(int[] array) {
+//    int sum = 0;
+//    int i;
+//    for (i = 0; i < array.length; i = i + 1) {
+//        sum = sum + array[i];
+//    }
+//    return sum;
 //}
 
-//int fib(int n) {
-    //int val = 0;
-    //if (n <= 0) {
-        //val = 0;
+float run() {
+    int[] array = [1, 2, 3.0];
+    //int i;
+    //for (i = 0; i < 100; i = i + 1) {
+        //array[i] = i;
     //}
-    //else if (n == 1) {
-        //val = 1;
-    //}
-    //else {
-        //val = fib(n - 1) + fib(n - 2);
-    //}
-    //return val;
-//}
 
-int sum(int n, int s) {
-    if (n == 0) {
-        return s;
-    }
-
-    return sum(n - 1, s + n);
-}
-
-vec3 vec3_add(vec3 a, vec3 b) {
-    vec3 r;
-    r.x = a.x + b.x;
-    r.y = a.y + b.y;
-    r.z = a.z + b.z;
-    return r;
-}
-
-int run() {
-    vec3 a;
-    a.x = 1.0;
-    a.y = 2.0;
-    a.z = 3.0;
-
-    vec3 b;
-    b.x = 1.0;
-    b.y = 2.0;
-    b.z = 3.0;
-
-    vec3 c = vec3_add(a, b);
-
-    test t;
-    t.v3.x = a.x;
-
-    int x = sum(c.x + c.y + c.z, 0);
-    return x;
+    //return sum_array(array);
+    return 0.0;
 }
 
 //float vec3_distance(vec3 v0, vec3 v1) {
