@@ -41,24 +41,46 @@ struct vec3 {
 //    return r;
 //}
 
-//int sum_array(int[] array) {
-//    int sum = 0;
-//    int i;
-//    for (i = 0; i < array.length; i = i + 1) {
-//        sum = sum + array[i];
-//    }
-//    return sum;
-//}
+float sum_array_float(float[] array) {
+    float sum = 0;
+    int i;
+    for (i = 0; i < array.length; i = i + 1) {
+        sum = sum + array[i];
+    }
+    return sum;
+}
+
+int sum_array(int[] array) {
+    int sum = 0;
+    int i;
+    for (i = 0; i < array.length; i = i + 1) {
+        sum = sum + array[i];
+    }
+    return sum;
+}
+
+int[] create_array() {
+    return [1, 2, 3.0];
+}
+
+float[] to_float_array(int[] int_array) {
+    float[] float_array;
+    float_array = [];
+
+    int i;
+    for (i = 0; i < int_array.length; i = i + 1) {
+        float_array[i] = int_array[i];
+    }
+
+    return float_array;
+}
 
 float run() {
-    int[] array = [1, 2, 3.0];
-    //int i;
-    //for (i = 0; i < 100; i = i + 1) {
-        //array[i] = i;
-    //}
+    float x = 1.0 < 4;
 
-    //return sum_array(array);
-    return 0.0;
+    int x = 3.9 + 1.2 + 4 + 9;
+
+    return 3.14;
 }
 
 //float vec3_distance(vec3 v0, vec3 v1) {
