@@ -76,6 +76,7 @@ float[] to_float_array(int[] int_array) {
 }
 
 float run() {
+    float s = sum_array([1.0, 2.0, 3.0, 4]);
     float x = 1.0 < 4;
 
     int x = 3.9 + 1.2 + 4 + 9;
