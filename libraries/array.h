@@ -153,6 +153,7 @@ array_t(float, array_float)
 array_t(float*, array_float_ptr)
 array_t(char, array_char)
 array_t(char*, array_char_ptr)
+array_t(void*, array_void_ptr)
 
 #include <stdbool.h>
 array_t(bool, array_bool)

@@ -1,5 +1,5 @@
 BIN := minigolf
-SOURCES := src/assets.c src/audio.c src/config.c src/data_stream.c src/file.c src/game.c src/game_editor.c src/hole.c src/hotloader.c src/lightmaps.c src/log.c src/maths.c src/main.c src/obj_converter.c src/profiler.c src/renderer.c src/single_file_libs.c src/ui.c libraries/array.c libraries/glad.c libraries/map.c libraries/miniz.c libraries/s7.c
+SOURCES := src/assets.c src/audio.c src/config.c src/data_stream.c src/file.c src/game.c src/game_editor.c src/hole.c src/hotloader.c src/lightmaps.c src/log.c src/maths.c src/main.c src/obj_converter.c src/profiler.c src/renderer.c src/single_file_libs.c src/ui.c libraries/array.c libraries/glad.c libraries/map.c libraries/miniz.c libraries/s7.c libraries/mscript.c
 OBJS := $(SOURCES:.c=.o)
 DEPS = $(SOURCES:%.c=%.d)
 CPP_SOURCES := libraries/cimgui.cpp libraries/xatlas.cpp libraries/imgui/imgui.cpp libraries/imgui/imgui_draw.cpp libraries/imgui/imgui_widgets.cpp libraries/imgui/imgui_demo.cpp
@@ -10,13 +10,13 @@ CFLAGS := -Isrc -Wall -Ilibraries -g -Wno-unused-function -Wno-unused-variable -
 all: $(BIN)
 
 $(BIN): $(OBJS) $(CPP_OBJS)
-	clang -o $@ $(OBJS) $(CPP_OBJS) -lm -lpthread -framework Cocoa -framework CoreServices -framework OpenGL -framework AudioToolbox -lstdc++
+	clang -o $@ $(OBJS) $(CPP_OBJS) -lm -lpthread -framework Cocoa -framework CoreServices -framework OpenGL -framework AudioToolbox -lstdc++ -g
 
 $(OBJS): %.o: %.c
-	clang -x objective-c $(CFLAGS) -c -MMD -o $@ $< -fobjc-arc
+	clang -x objective-c $(CFLAGS) -c -MMD -o $@ $< -fobjc-arc -g
 
 $(CPP_OBJS): %.o: %.cpp
-	clang $(CFLAGS) -c -MMD -o $@ $< -std=c++11
+	clang $(CFLAGS) -c -MMD -o $@ $< -std=c++11 -g
 
 -include $(DEPS) 
 -include $(CPP_DEPS) 

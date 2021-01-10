@@ -21,6 +21,7 @@ enum mscript_token_type {
 
 struct mscript_token {
     enum mscript_token_type type;
+    int line, col;
     union {
         char *symbol; 
         int number_int; 
@@ -66,7 +67,7 @@ static bool is_char(char c) {
         (c == ';');
 }
 
-static struct mscript_token mscript_token_number_create(const char *text, int *len) {
+static struct mscript_token mscript_token_number_create(const char *text, int *len, int line, int col) {
     int int_part = 0;
     float float_part = 0.0f;
 
@@ -102,24 +103,30 @@ static struct mscript_token mscript_token_number_create(const char *text, int *l
         struct mscript_token token;
         token.type = MSCRIPT_TOKEN_FLOAT;
         token.number_float = (float)int_part + float_part;
+        token.line = line;
+        token.col = col;
         return token;
     }
     else {
         struct mscript_token token;
         token.type = MSCRIPT_TOKEN_INT;
         token.number_int = int_part;
+        token.line = line;
+        token.col = col;
         return token;
     }
 }
 
-static struct mscript_token mscript_token_char_create(char c) {
+static struct mscript_token mscript_token_char_create(char c, int line, int col) {
     struct mscript_token token;
     token.type = MSCRIPT_TOKEN_CHAR;
     token.character = c;
+    token.line = line;
+    token.col = col;
     return token;
 }
 
-static struct mscript_token mscript_token_symbol_create(const char *text, int *len) {
+static struct mscript_token mscript_token_symbol_create(const char *text, int *len, int line, int col) {
     *len = 0;
     while (is_char_part_of_symbol(text[*len])) {
         (*len)++;
@@ -134,36 +141,43 @@ static struct mscript_token mscript_token_symbol_create(const char *text, int *l
     struct mscript_token token;
     token.type = MSCRIPT_TOKEN_SYMBOL;
     token.symbol = symbol;
+    token.line = line;
+    token.col = col;
     return token;
 }
 
-static struct mscript_token mscript_token_eof_create(void) {
+static struct mscript_token mscript_token_eof_create(int line, int col) {
     struct mscript_token token;
     token.type = MSCRIPT_TOKEN_EOF;
+    token.line = line;
+    token.col = col;
     return token;
+}
+
+static void mscript_token_debug_log(struct mscript_token token) {
+    switch (token.type) {
+        case MSCRIPT_TOKEN_INT:
+            m_logf("[INT: %d]\n", token.number_int);
+            break;
+        case MSCRIPT_TOKEN_FLOAT:
+            m_logf("[FLOAT: %d]\n", token.number_float);
+            break;
+        case MSCRIPT_TOKEN_SYMBOL:
+            m_logf("[SYMBOL: %s]\n", token.symbol);
+            break;
+        case MSCRIPT_TOKEN_CHAR:
+            m_logf("[CHAR: %c]\n", token.character);
+            break;
+        case MSCRIPT_TOKEN_EOF:
+            m_logf("[EOF]\n");
+            return;
+            break;
+    }
 }
 
 static void mscript_tokens_debug_log(struct mscript_token *tokens) {
-    while (true) {
-        struct mscript_token token = *tokens;
-        switch (token.type) {
-            case MSCRIPT_TOKEN_INT:
-                m_logf("[INT: %d]\n", token.number_int);
-                break;
-            case MSCRIPT_TOKEN_FLOAT:
-                m_logf("[FLOAT: %d]\n", token.number_float);
-                break;
-            case MSCRIPT_TOKEN_SYMBOL:
-                m_logf("[SYMBOL: %s]\n", token.symbol);
-                break;
-            case MSCRIPT_TOKEN_CHAR:
-                m_logf("[CHAR: %c]\n", token.character);
-                break;
-            case MSCRIPT_TOKEN_EOF:
-                m_logf("[EOF]\n");
-                return;
-                break;
-        }
+    while (tokens->type != MSCRIPT_TOKEN_EOF) {
+        mscript_token_debug_log(*tokens);
         tokens++;
     }
 }
@@ -184,7 +198,7 @@ static bool mscript_tokenize(const char *prog, struct array_mscript_token *token
             i++;
         }
         else if (prog[i] == 0) {
-            array_push(tokens, mscript_token_eof_create());
+            array_push(tokens, mscript_token_eof_create(line, col));
             break;
         }
         else if ((prog[i] == '/') && (prog[i + 1] == '/')) {
@@ -193,17 +207,17 @@ static bool mscript_tokenize(const char *prog, struct array_mscript_token *token
             }
         }
         else if (is_char_start_of_symbol(prog[i])) {
-            int len;
-            array_push(tokens, mscript_token_symbol_create(prog + i, &len));
+            int len = 0;
+            array_push(tokens, mscript_token_symbol_create(prog + i, &len, line, col));
             i += len;
         }
         else if (is_char_digit(prog[i])) {
-            int len;
-            array_push(tokens, mscript_token_number_create(prog + i, &len));
+            int len = 0;
+            array_push(tokens, mscript_token_number_create(prog + i, &len, line, col));
             i += len;
         }
         else if (is_char(prog[i])) {
-            array_push(tokens, mscript_token_char_create(prog[i]));
+            array_push(tokens, mscript_token_char_create(prog[i], line, col));
             i++;
         }
         else {
@@ -215,6 +229,30 @@ static bool mscript_tokenize(const char *prog, struct array_mscript_token *token
     }
 
     return true;
+}
+
+//
+// MEM POOL
+//
+
+struct mscript_mem_pool {
+    size_t bytes_allocated;
+    struct array_void_ptr ptrs; 
+};
+
+static void mscript_mem_pool_init(struct mscript_mem_pool *pool);
+static void *mscript_mem_pool_alloc(struct mscript_mem_pool *pool, size_t size);
+
+static void mscript_mem_pool_init(struct mscript_mem_pool *pool) {
+    pool->bytes_alloacted = 0;
+    array_init(&pool->ptrs);
+}
+
+static void *mscript_mem_pool_alloc(struct mscript_mem_pool *pool, size_t size) {
+    pool->bytes_allocated += size;
+    void *mem = malloc(size);
+    array_push(&pool->ptrs, mem);
+    return mem;
 }
 
 //
@@ -237,6 +275,7 @@ array_t(struct mscript_type, array_mscript_type);
 typedef map_t(struct mscript_type) map_mscript_type_t;
 
 static bool mscript_types_equal(struct mscript_type a, struct mscript_type b);
+static void mscript_type_string(struct mscript_type type, char *buffer, int buffer_len);
 static struct mscript_type mscript_type_void(void);
 static struct mscript_type mscript_type_int(void);
 static struct mscript_type mscript_type_float(void);
@@ -256,6 +295,54 @@ static bool mscript_types_equal(struct mscript_type a, struct mscript_type b) {
         return true;
     }
     return false;
+}
+
+static void mscript_type_string(struct mscript_type type, char *buffer, int buffer_len) {
+    switch (type.type) {
+        case MSCRIPT_TYPE_VOID:
+            {
+                strncpy(buffer, "void", buffer_len);
+                buffer[buffer_len - 1] = 0;
+            }
+            break;
+        case MSCRIPT_TYPE_INT:
+            {
+                strncpy(buffer, "int", buffer_len);
+                buffer[buffer_len - 1] = 0;
+            }
+            break;
+        case MSCRIPT_TYPE_FLOAT:
+            {
+                strncpy(buffer, "float", buffer_len);
+                buffer[buffer_len - 1] = 0;
+            }
+            break;
+        case MSCRIPT_TYPE_STRUCT:
+            {
+                strncpy(buffer, type.struct_name, buffer_len);
+                buffer[buffer_len - 1] = 0;
+            }
+            break;
+        case MSCRIPT_TYPE_ARRAY:
+            {
+                struct mscript_type member_type;
+                member_type.type = type.array_type;
+                member_type.struct_name = type.struct_name;
+
+                mscript_type_string(member_type, buffer, buffer_len);
+                int i = 0;
+                while (buffer) {
+                    i++;
+                    buffer++;
+                }
+                if (i + 3 < buffer_len) {
+                    buffer[0] = '[';
+                    buffer[1] = ']';
+                    buffer[2] = 0;
+                }
+            }
+            break;
+    }
 }
 
 static struct mscript_type mscript_type_void(void) {
@@ -294,6 +381,9 @@ static void mscript_type_debug_log(struct mscript_type type) {
             break;
         case MSCRIPT_TYPE_STRUCT:
             m_logf("%s", type.struct_name);
+            break;
+        case MSCRIPT_TYPE_ARRAY:
+            assert(false);
             break;
     }
 
@@ -469,12 +559,14 @@ typedef map_t(struct mscript_stmt *) map_mscript_stmt_ptr_t;
 array_t(struct mscript_expr *, array_mscript_expr_ptr)
 
 struct mscript_parser {
+    struct mscript_mem_pool mem_pool;
     const char *prog_text;
     int token_idx;
     struct array_mscript_token tokens_array; 
     struct array_mscript_stmt_ptr stmts_array;
     struct mscript_env env;
     const char *cur_function_name;
+    char *error;
 };
 
 static void mscript_parser_init(struct mscript_parser *parser, const char *prog_text);
@@ -573,7 +665,6 @@ enum mscript_expr_type {
     MSCRIPT_EXPR_SYMBOL,
     MSCRIPT_EXPR_ARRAY,
     MSCRIPT_EXPR_CAST,
-    MSCRIPT_EXPR_ERROR,
 };
 
 enum mscript_unary_op_type {
@@ -658,12 +749,14 @@ static struct mscript_expr *mscript_expr_parse_primary(struct mscript_parser *pa
 static void mscript_expr_debug_log(struct mscript_expr *expr);
 
 static void mscript_parser_init(struct mscript_parser *parser, const char *prog_text) {
+    mscript_mem_pool_init(&parser->mem_pool);
     parser->prog_text = prog_text;
     parser->token_idx = 0;
     array_init(&parser->tokens_array);
     array_init(&parser->stmts_array);
     mscript_env_init(&parser->env);
     parser->cur_function_name = NULL;
+    parser->error = NULL;
 }
 
 static void mscript_parser_deinit(struct mscript_parser *parser) {
@@ -676,7 +769,7 @@ static void mscript_parser_run(struct mscript_parser *parser) {
     if (!mscript_tokenize(parser->prog_text, &(parser->tokens_array))) {
         return;
     }
-    //mscript_tokens_debug_log(parser->tokens_array.data);
+    mscript_tokens_debug_log(parser->tokens_array.data);
 
     while (mscript_parser_peek(parser).type != MSCRIPT_TOKEN_EOF) {
         struct mscript_stmt *stmt = mscript_stmt_declaration_parse(parser);
@@ -729,7 +822,7 @@ static bool mscript_parser_match_char_n(struct mscript_parser *parser, int n, ..
     va_list ap;
     va_start(ap, n);
     for (int i = 0; i < n; i++) {
-        char c = va_arg(ap, char);
+        char c = va_arg(ap, int);
         struct mscript_token peek = mscript_parser_peek_n(parser, i);
         if (peek.type != MSCRIPT_TOKEN_CHAR || peek.character != c) {
             match = false;
@@ -818,8 +911,8 @@ static bool mscript_parser_check_type_declaration(struct mscript_parser *parser)
 }
 
 
-static struct mscript_expr *mscript_expr_unary_op_new(enum mscript_unary_op_type type, struct mscript_expr *operand) {
-    struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
+static struct mscript_expr *mscript_expr_unary_op_new(struct mscript_parser *parser, enum mscript_unary_op_type type, struct mscript_expr *operand) {
+    struct mscript_expr *expr = mscript_mem_pool_alloc(&parser->mem_pool, sizeof(struct mscript_expr));
     expr->type = MSCRIPT_EXPR_UNARY_OP;
     expr->result_type = operand->result_type;
     expr->unary_op.type = type;
@@ -827,9 +920,9 @@ static struct mscript_expr *mscript_expr_unary_op_new(enum mscript_unary_op_type
     return expr;
 }
 
-static struct mscript_expr *mscript_expr_binary_op_new(enum mscript_binary_op_type type, struct mscript_expr *left, struct mscript_expr *right,
+static struct mscript_expr *mscript_expr_binary_op_new(struct mscript_parser *parser, enum mscript_binary_op_type type, struct mscript_expr *left, struct mscript_expr *right,
         struct mscript_type result_type) {
-    struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
+    struct mscript_expr *expr = mscript_mem_pool_alloc(&parser->mem_pool, sizeof(struct mscript_expr));
     expr->type = MSCRIPT_EXPR_BINARY_OP;
     expr->result_type = result_type;
     expr->binary_op.type = type;
@@ -838,67 +931,52 @@ static struct mscript_expr *mscript_expr_binary_op_new(enum mscript_binary_op_ty
     return expr;
 }
 
-static struct mscript_expr *mscript_expr_float_new(float float_value) {
-    struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
+static struct mscript_expr *mscript_expr_float_new(struct mscript_parser *parser, float float_value) {
+    struct mscript_expr *expr = mscript_mem_pool_alloc(&parser->mem_pool, sizeof(struct mscript_expr));
     expr->type = MSCRIPT_EXPR_FLOAT;
     expr->result_type = mscript_type_float();
     expr->float_value = float_value;
     return expr;
 }
 
-static struct mscript_expr *mscript_expr_int_new(int int_value) {
-    struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
+static struct mscript_expr *mscript_expr_int_new(struct mscript_parser *parser, int int_value) {
+    struct mscript_expr *expr = mscript_mem_pool_alloc(&parser->mem_pool, sizeof(struct mscript_expr));
     expr->type = MSCRIPT_EXPR_INT;
     expr->result_type = mscript_type_int();
     expr->int_value = int_value;
     return expr;
 }
 
-static struct mscript_expr *mscript_expr_symbol_new(const char *symbol, struct mscript_type type) {
-    struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
+static struct mscript_expr *mscript_expr_symbol_new(struct mscript_parser *parser, const char *symbol, struct mscript_type type) {
+    struct mscript_expr *expr = mscript_mem_pool_alloc(&parser->mem_pool, sizeof(struct mscript_expr));
     expr->type = MSCRIPT_EXPR_SYMBOL;
     expr->result_type = type;
     expr->symbol = symbol;
     return expr;
 }
 
-static struct mscript_expr *mscript_expr_error_new(const char *fmt, ...) {
-    char *error = malloc(sizeof(char)*1024);
-    error[1024] = 0;
-
-    va_list args;
-    va_start(args, fmt);
-    vsnprintf(error, 1023, fmt, args);
-    va_end(args);
-
-    struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
-    expr->type = MSCRIPT_EXPR_ERROR;
-    expr->error = error;
-    return expr;
-}
-
-static struct mscript_expr *mscript_expr_array_new(struct array_mscript_expr_ptr args) {
+static struct mscript_expr *mscript_expr_array_new(struct mscript_parser *parser, struct array_mscript_expr_ptr args) {
     struct mscript_type type;
     type.type = MSCRIPT_TYPE_ARRAY;
     type.array_type = MSCRIPT_TYPE_VOID;
 
-    struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
+    struct mscript_expr *expr = mscript_mem_pool_alloc(&parser->mem_pool, sizeof(struct mscript_expr));
     expr->type = MSCRIPT_EXPR_ARRAY;
     expr->result_type = type;
     expr->array.args = args;
     return expr;
 }
 
-static struct mscript_expr *mscript_expr_cast_new(struct mscript_expr *cast_expr, struct mscript_type type) {
-    struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
+static struct mscript_expr *mscript_expr_cast_new(struct mscript_parser *parser, struct mscript_expr *cast_expr, struct mscript_type type) {
+    struct mscript_expr *expr = mscript_mem_pool_alloc(&parser->mem_pool, sizeof(struct mscript_expr));
     expr->type = MSCRIPT_EXPR_CAST;
     expr->result_type = type;
     expr->cast.expr = cast_expr;
     return expr;
 }
 
-static struct mscript_expr *mscript_expr_call_new(const char *function_name, struct array_mscript_expr_ptr args, struct mscript_type type) {
-    struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
+static struct mscript_expr *mscript_expr_call_new(struct mscript_parser *parser, const char *function_name, struct array_mscript_expr_ptr args, struct mscript_type type) {
+    struct mscript_expr *expr = mscript_mem_pool_alloc(&parser->mem_pool, sizeof(struct mscript_expr));
     expr->type = MSCRIPT_EXPR_CALL;
     expr->result_type = type;
     expr->call.function_name = function_name;
@@ -906,16 +984,16 @@ static struct mscript_expr *mscript_expr_call_new(const char *function_name, str
     return expr;
 }
 
-static struct mscript_expr *mscript_expr_array_length_new(struct mscript_expr *left) {
-    struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
+static struct mscript_expr *mscript_expr_array_length_new(struct mscript_parser *parser, struct mscript_expr *left) {
+    struct mscript_expr *expr = mscript_mem_pool_alloc(&parser->mem_pool, sizeof(struct mscript_expr));
     expr->type = MSCRIPT_EXPR_ARRAY_LENGTH;
     expr->result_type = mscript_type_int();
     expr->array_length.left = left;
     return expr;
 }
 
-static struct mscript_expr *mscript_expr_member_access_new(struct mscript_expr *left, const char *member_name, struct mscript_type type) {
-    struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
+static struct mscript_expr *mscript_expr_member_access_new(struct mscript_parser *parser, struct mscript_expr *left, const char *member_name, struct mscript_type type) {
+    struct mscript_expr *expr = mscript_mem_pool_alloc(&parser->mem_pool, sizeof(struct mscript_expr));
     expr->type = MSCRIPT_EXPR_MEMBER_ACCESS;
     expr->result_type = type;
     expr->member_access.left = left;
@@ -923,8 +1001,8 @@ static struct mscript_expr *mscript_expr_member_access_new(struct mscript_expr *
     return expr;
 }
 
-static struct mscript_expr *mscript_expr_array_access_new(struct mscript_expr *left, struct mscript_expr *right, struct mscript_type type) {
-    struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
+static struct mscript_expr *mscript_expr_array_access_new(struct mscript_parser *parser, struct mscript_expr *left, struct mscript_expr *right, struct mscript_type type) {
+    struct mscript_expr *expr = mscript_mem_pool_alloc(&parser->mem_pool, sizeof(struct mscript_expr));
     expr->type = MSCRIPT_EXPR_ARRAY_ACCESS;
     expr->result_type = type;
     expr->array_access.left = left;
@@ -932,8 +1010,8 @@ static struct mscript_expr *mscript_expr_array_access_new(struct mscript_expr *l
     return expr;
 }
 
-static struct mscript_expr *mscript_expr_assignment_new(struct mscript_expr *left, struct mscript_expr *right) {
-    struct mscript_expr *expr = malloc(sizeof(struct mscript_expr));
+static struct mscript_expr *mscript_expr_assignment_new(struct mscript_parser *parser, struct mscript_expr *left, struct mscript_expr *right) {
+    struct mscript_expr *expr = mscript_mem_pool_alloc(&parser->mem_pool, sizeof(struct mscript_expr));
     expr->type = MSCRIPT_EXPR_ASSIGNMENT;
     expr->result_type = left->result_type;
     expr->assignment.left = left;
@@ -1033,9 +1111,6 @@ static void mscript_expr_debug_log(struct mscript_expr *expr) {
         case MSCRIPT_EXPR_SYMBOL:
             m_logf("%s", expr->symbol);
             break;
-        case MSCRIPT_EXPR_ERROR:
-            m_logf("ERROR %s", expr->symbol);
-            break;
         case MSCRIPT_EXPR_ARRAY:
             m_logf("[");
             for (int i = 0; i < expr->array.args.length; i++) {
@@ -1059,7 +1134,7 @@ static void mscript_expr_debug_log(struct mscript_expr *expr) {
     }
 }
 
-static struct mscript_expr *mscript_expr_maybe_cast_new(struct mscript_expr *expr, struct mscript_type type) {
+static struct mscript_expr *mscript_expr_maybe_cast_new(struct mscript_parser *parser, struct mscript_expr *expr, struct mscript_type type) {
     if (mscript_types_equal(expr->result_type, type)) {
         return expr;
     }
@@ -1071,11 +1146,12 @@ static struct mscript_expr *mscript_expr_maybe_cast_new(struct mscript_expr *exp
             expr->type == MSCRIPT_EXPR_ARRAY  && type.type == MSCRIPT_TYPE_ARRAY) {
         struct mscript_type array_arg_type;
         array_arg_type.type = type.array_type;
+        array_arg_type.struct_name = type.struct_name;
 
         for (int i = 0; i < expr->array.args.length; i++) {
-            expr->array.args.data[i] = mscript_expr_maybe_cast_new(expr->array.args.data[i], array_arg_type);
-            if (expr->array.args.data[i]->type == MSCRIPT_EXPR_ERROR) {
-                return expr->array.args.data[i];
+            expr->array.args.data[i] = mscript_expr_maybe_cast_new(parser, expr->array.args.data[i], array_arg_type);
+            if (parser->error) {
+                goto handle_error;
             }
         }
 
@@ -1083,9 +1159,46 @@ static struct mscript_expr *mscript_expr_maybe_cast_new(struct mscript_expr *exp
         return expr;
     }
     else {
-        return mscript_expr_error_new("Cannot perform cast from type: %s to %s", 
-                mscript_type_string(expr->result_type), mscript_type_string(expr->type));
+        char buffer1[16], buffer2[16];
+        mscript_type_string(expr->result_type, buffer1, 16);
+        mscript_type_string(type, buffer2, 16);
+
+        parser->error = mscript_error_new("Cannot perform cast from type: %s to %s", buffer1, buffer2);
+        goto handle_error;
     }
+
+handle_error:
+    return NULL;
+}
+
+static struct mscript_expr *mscript_expr_parse_array(struct mscript_parser *parser) {
+    struct mscript_expr *expr = NULL;
+    struct array_mscript_expr_ptr args;
+    array_init(&args);
+
+    if (!mscript_parser_match_char(parser, ']')) {
+        while (true) {
+            struct mscript_expr *expr = mscript_expr_parse(parser);
+            if (expr->error) {
+                goto handle_error_array;
+            }
+            array_push(&args, expr);
+
+            if (!mscript_parser_match_char(parser, ',')) {
+                if (!mscript_parser_match_char(parser, ']')) {
+                    parser->error = mscript_error_new("Expected ']'");
+                    goto cleanup;
+                }
+                break;
+            }
+        }
+    }
+
+    expr = mscript_expr_array_new(args);
+
+cleanup:
+    array_deinit(&args);
+    return expr;
 }
 
 static struct mscript_expr *mscript_expr_parse_primary(struct mscript_parser *parser) {
@@ -1109,60 +1222,45 @@ static struct mscript_expr *mscript_expr_parse_primary(struct mscript_parser *pa
             return mscript_expr_symbol_new(token.symbol, function_decl->return_type);
         }
         else {
-            return mscript_expr_error_new("Cannot find symbol: %s", token.symbol);
+            parser->error = mscript_error_new("Cannot find symbol: %s", token.symbol);
+            return NULL;
         }
     }
     else if (mscript_parser_match_char(parser, '[')) {
-        struct array_mscript_expr_ptr args;
-        array_init(&args);
-
-        if (!mscript_parser_match_char(parser, ']')) {
-            while (true) {
-                struct mscript_expr *expr = mscript_expr_parse(parser);
-                array_push(&args, expr);
-
-                if (!mscript_parser_match_char(parser, ',')) {
-                    if (!mscript_parser_match_char(parser, ']')) {
-                        return mscript_error_new("Expected ']'");
-                    }
-                    break;
-                }
-            }
-        }
-
-        return mscript_expr_array_new(args);
+        return mscript_expr_parse_array(parser);
     }
     else if (mscript_parser_match_char(parser, '(')) {
         struct mscript_expr *expr = mscript_expr_parse(parser);
         if (!mscript_parser_match_char(parser, ')')) {
-            return mscript_error_new("Expected ')'");
+            parser->error = mscript_error_new("Expected ')'");
+            return NULL;
         }
         return expr;
     }
     else {
-        return mscript_error_new("Unknown token");
+        struct mscript_token token = mscript_parser_peek(parser);
+        parser->error = mscript_error_new("Unknown token. Line: %d, Col: %d", token.line, token.col);
     }
 }
 
 static struct mscript_expr *mscript_expr_parse_array_access(struct mscript_parser *parser) {
-    struct mscript_expr *error = NULL;
     struct mscript_expr *expr = mscript_expr_parse_primary(parser);
 
     if (mscript_parser_match_char(parser, '[')) {
         if (expr->result_type.type != MSCRIPT_TYPE_ARRAY) {
-            error = mscript_expr_error_new("Cannot perform array access on type: %s", mscript_type_string(expr->result_type));
+            char buffer[16];
+            mscript_type_string(expr->result_type, buffer, 16);
+            parser->error = mscript_error_new("Cannot perform array access on type: %s", buffer);
             goto cleanup;
         }
 
         struct mscript_expr *right = mscript_expr_parse(parser);
-        if (right->type == MSCRIPT_EXPR_ERROR) {
-            error = right;
+        if (parser->error) {
             goto cleanup;
         }
 
-        right = mscript_expr_maybe_cast_new(mscript_expr_parse(parser), mscript_type_int());
-        if (right->type == MSCRIPT_EXPR_ERROR) {
-            error = right;
+        right = mscript_expr_maybe_cast_new(parser, right, mscript_type_int());
+        if (parser->error) {
             goto cleanup;
         }
 
@@ -1172,34 +1270,35 @@ static struct mscript_expr *mscript_expr_parse_array_access(struct mscript_parse
         expr = mscript_expr_array_access_new(expr, right, type);
 
         if (!mscript_parser_match_char(parser, ']')) {
-            error = mscript_expr_error_new("Expected ']'");
+            parser->error = mscript_error_new("Expected ']'");
             goto cleanup;
         }
     }
 
 cleanup:
-    if (error) {
-        return error;
-    }
-    else {
-        return expr;
-    }
+    return expr;
 }
 
 static struct mscript_expr *mscript_expr_parse_member_access(struct mscript_parser *parser) {
+    struct mscript_expr *error = NULL;
     struct mscript_expr *expr = mscript_expr_parse_array_access(parser);
+    if (expr->type == MSCRIPT_EXPR_ERROR) {
+        return expr;
+    }
 
     while (mscript_parser_match_char(parser, '.')) {
         struct mscript_token token = mscript_parser_peek(parser);
         if (token.type != MSCRIPT_TOKEN_SYMBOL) {
-            assert(false);
+            error = mscript_expr_error_new("Expected '.'");
+            goto cleanup;
         }
         mscript_parser_eat(parser);
 
         if (expr->result_type.type == MSCRIPT_TYPE_STRUCT) {
             struct mscript_type_declaration *decl = mscript_env_get_type_declaration(&parser->env, expr->result_type.struct_name);
             if (!decl) {
-                assert(false);
+                error = mscript_expr_error_new("Attempting member access on unknown type: %s", expr->result_type.struct_name);
+                goto cleanup;
             }
 
             struct array_mscript_type *member_types = &(decl->member_types);
@@ -1216,7 +1315,8 @@ static struct mscript_expr *mscript_expr_parse_member_access(struct mscript_pars
                 }
             }
             if (!found_member) {
-                assert(false);
+                error = mscript_expr_error_new("Attempting member access with unknown member: %s", token.symbol);
+                goto cleanup;
             }
 
             expr = mscript_expr_member_access_new(expr, token.symbol, member_type);
@@ -1226,20 +1326,31 @@ static struct mscript_expr *mscript_expr_parse_member_access(struct mscript_pars
                 expr = mscript_expr_array_length_new(expr); 
             }
             else {
-                assert(false);
+                error = mscript_expr_error_new("Attempting member access with unknown member: length");
+                goto cleanup;
             }
         }
         else {
-            assert(false);
+            error = mscript_expr_error_new("Attempting member access on invalid type");
+            goto cleanup;
         }
-
     }
 
-    return expr;
+cleanup:
+    if (error) {
+        return error;
+    }
+    else {
+        return expr;
+    }
 }
 
 static struct mscript_expr *mscript_expr_parse_call(struct mscript_parser *parser) {
+    struct mscript_expr *error = NULL;
     struct mscript_expr *expr = mscript_expr_parse_member_access(parser);
+    if (expr->type == MSCRIPT_EXPR_ERROR) {
+        return expr;
+    }
 
     if (mscript_parser_match_char(parser, '(')) {
         struct array_mscript_expr_ptr args;
@@ -1248,11 +1359,16 @@ static struct mscript_expr *mscript_expr_parse_call(struct mscript_parser *parse
         if (!mscript_parser_match_char(parser, ')')) {
             while (true) {
                 struct mscript_expr *arg = mscript_expr_parse(parser);
+                if (arg->type == MSCRIPT_EXPR_ERROR) {
+                    error = arg;
+                    goto cleanup;
+                }
                 array_push(&args, arg);
 
                 if (!mscript_parser_match_char(parser, ',')) {
                     if (!mscript_parser_match_char(parser, ')')) {
-                        assert(false);
+                        error = mscript_expr_error_new("Expected ')'");
+                        goto cleanup;
                     }
                     break;
                 }
@@ -1260,32 +1376,49 @@ static struct mscript_expr *mscript_expr_parse_call(struct mscript_parser *parse
         }
 
         if (expr->type != MSCRIPT_EXPR_SYMBOL) {
-            assert(false);
+            error = mscript_expr_error_new("Expected a symbol");
+            goto cleanup;
         }
 
         struct mscript_function_declaration *decl = mscript_env_get_function_declaration(&parser->env, expr->symbol);
         if (!decl) {
-            assert(false);
+            error = mscript_expr_error_new("Unknown function: %s", expr->symbol);
+            goto cleanup;
         }
 
         if (decl->arg_types.length != args.length) {
-            assert(false);
+            error = mscript_expr_error_new("Expect %d arguments to function %s", decl->arg_types.length, expr->symbol);
+            goto cleanup;
         }
 
         for (int i = 0; i < args.length; i++) {
-            args.data[i] = mscript_expr_maybe_cast_new(args.data[i], decl->arg_types.data[i]);
+            args.data[i] = mscript_expr_maybe_cast_new(parser, args.data[i], decl->arg_types.data[i]);
+            if (args.data[i]->type == MSCRIPT_EXPR_ERROR) {
+                error = args.data[i];
+                goto cleanup;
+            }
         }
 
         expr = mscript_expr_call_new(expr->symbol, args, decl->return_type);
     }
 
-    return expr;
+cleanup:
+    if (error) {
+        return error;
+    }
+    else {
+        return expr;
+    }
 }
 
 static struct mscript_expr *mscript_expr_parse_unary(struct mscript_parser *parser) {
     struct mscript_expr *expr = mscript_expr_parse_call(parser);
+    if (expr->type == MSCRIPT_EXPR_ERROR) {
+        return expr;
+    }
 
     if (mscript_parser_match_char_n(parser, 2, '+', '+')) {
+        assert(false);
         expr = mscript_expr_unary_op_new(MSCRIPT_UNARY_OP_POST_INC, expr);
     }
 
@@ -1304,56 +1437,112 @@ static struct mscript_expr *mscript_expr_term_factor_with_casts(enum mscript_bin
     }
     else if (left->result_type.type == MSCRIPT_TYPE_FLOAT && right->result_type.type == MSCRIPT_TYPE_INT) {
         result_type = mscript_type_float();
-        right = mscript_expr_maybe_cast_new(right, mscript_type_float());
+        right = mscript_expr_maybe_cast_new(parser, right, mscript_type_float());
+        if (right->type == MSCRIPT_EXPR_ERROR) {
+            return right;
+        }
     }
     else if (left->result_type.type == MSCRIPT_TYPE_INT && right->result_type.type == MSCRIPT_TYPE_FLOAT) {
         result_type = mscript_type_float();
-        left = mscript_expr_maybe_cast_new(left, mscript_type_float());
+        left = mscript_expr_maybe_cast_new(parser, left, mscript_type_float());
+        if (left->type == MSCRIPT_EXPR_ERROR) {
+            return left;
+        }
     }
     else {
-        assert(false);
+        char buffer1[16], buffer2[16];
+        mscript_type_string(left->result_type, buffer1, 16);
+        mscript_type_string(right->result_type, buffer2, 16);
+        return mscript_expr_error_new("Cannot perform binary operation with types: %s, %s", buffer1, buffer2);
     }
 
     return mscript_expr_binary_op_new(binary_op_type, left, right, result_type);
 }
 
 static struct mscript_expr *mscript_expr_parse_factor(struct mscript_parser *parser) {
+    struct mscript_expr *error = NULL;
     struct mscript_expr *expr = mscript_expr_parse_unary(parser);
+    if (expr->type == MSCRIPT_EXPR_ERROR) {
+        return expr;
+    }
 
     while (true) {
         if (mscript_parser_match_char(parser, '*')) {
             struct mscript_expr *right = mscript_expr_parse_unary(parser);
+            if (right->type == MSCRIPT_EXPR_ERROR) {
+                error = right;
+                goto cleanup;
+            }
+
             expr = mscript_expr_term_factor_with_casts(MSCRIPT_BINARY_OP_MUL, expr, right);
+            if (expr->type == MSCRIPT_EXPR_ERROR) {
+                error = expr;
+                goto cleanup;
+            }
         }
         else if (mscript_parser_match_char(parser, '/')) {
             struct mscript_expr *right = mscript_expr_parse_unary(parser);
+            if (right->type == MSCRIPT_EXPR_ERROR) {
+                error = right;
+                goto cleanup;
+            }
+
             expr = mscript_expr_term_factor_with_casts(MSCRIPT_BINARY_OP_DIV, expr, right);
+            if (expr->type == MSCRIPT_EXPR_ERROR) {
+                error = expr;
+                goto cleanup;
+            }
         }
         else {
             break;
         }
     }
 
-    return expr;
+cleanup:
+    if (error) {
+        return error;
+    }
+    else {
+        return expr;
+    }
 }
 
 static struct mscript_expr *mscript_expr_parse_term(struct mscript_parser *parser) {
+    struct mscript_expr *error = NULL;
     struct mscript_expr *expr = mscript_expr_parse_factor(parser); 
+    if (parser->error) {
+        return NULL;
+    }
 
     while (true) {
         if (mscript_parser_match_char(parser, '+')) {
             struct mscript_expr *right = mscript_expr_parse_factor(parser);
+            if (parser->error) {
+                goto cleanup;
+            }
+
             expr = mscript_expr_term_factor_with_casts(MSCRIPT_BINARY_OP_ADD, expr, right);
+            if (parser->error) {
+                goto cleanup;
+            }
         }
         else if (mscript_parser_match_char(parser, '-')) {
             struct mscript_expr *right = mscript_expr_parse_factor(parser);
+            if (parser->error) {
+                goto cleanup;
+            }
+
             expr = mscript_expr_term_factor_with_casts(MSCRIPT_BINARY_OP_SUB, expr, right);
+            if (parser->error) {
+                goto cleanup;
+            }
         }
         else {
             break;
         }
     }
 
+cleanup:
     return expr;
 }
 
@@ -1366,13 +1555,22 @@ static struct mscript_expr *mscript_expr_comparison_with_casts(enum mscript_bina
         // no casts needed
     }
     else if (left->result_type.type == MSCRIPT_TYPE_FLOAT && right->result_type.type == MSCRIPT_TYPE_INT) {
-        right = mscript_expr_maybe_cast_new(right, mscript_type_float());
+        right = mscript_expr_maybe_cast_new(parser, right, mscript_type_float());
+        if (right->type == MSCRIPT_EXPR_ERROR) {
+            return right;
+        }
     }
     else if (left->result_type.type == MSCRIPT_TYPE_INT && right->result_type.type == MSCRIPT_TYPE_FLOAT) {
-        left = mscript_expr_maybe_cast_new(left, mscript_type_float());
+        left = mscript_expr_maybe_cast_new(parser, left, mscript_type_float());
+        if (left->type == MSCRIPT_EXPR_ERROR) {
+            return left;
+        }
     }
     else {
-        assert(false);
+        char buffer1[16], buffer2[16];
+        mscript_type_string(left->result_type, buffer1, 16);
+        mscript_type_string(right->result_type, buffer2, 16);
+        return mscript_expr_error_new("Cannot perform binary comparison operation with types: %s, %s", buffer1, buffer2);
     }
 
     struct mscript_type result_type = mscript_type_int();
@@ -1381,42 +1579,105 @@ static struct mscript_expr *mscript_expr_comparison_with_casts(enum mscript_bina
 
 static struct mscript_expr *mscript_expr_parse_comparison(struct mscript_parser *parser) {
     struct mscript_expr *expr = mscript_expr_parse_term(parser);
+    if (expr->type == MSCRIPT_EXPR_ERROR) {
+        return expr;
+    }
 
     while (true) {
         if (mscript_parser_match_char(parser, '<')) {
             if (mscript_parser_match_char(parser, '=')) {
                 struct mscript_expr *right = mscript_expr_parse_term(parser);
+                if (right->type == MSCRIPT_EXPR_ERROR) {
+                    error = right;
+                    goto cleanup;
+                }
+
                 expr = mscript_expr_comparison_with_casts(MSCRIPT_BINARY_OP_LTE, expr, right);
+                if (expr->type == MSCRIPT_EXPR_ERROR) {
+                    error = expr;
+                    goto cleanup;
+                }
             }
             else {
                 struct mscript_expr *right = mscript_expr_parse_term(parser);
+                if (right->type == MSCRIPT_EXPR_ERROR) {
+                    error = right;
+                    goto cleanup;
+                }
+
                 expr = mscript_expr_comparison_with_casts(MSCRIPT_BINARY_OP_LT, expr, right);
+                if (expr->type == MSCRIPT_EXPR_ERROR) {
+                    error = expr;
+                    goto cleanup;
+                }
             }
         }
         else if (mscript_parser_match_char(parser, '>')) {
             if (mscript_parser_match_char(parser, '=')) {
                 struct mscript_expr *right = mscript_expr_parse_term(parser);
+                if (right->type == MSCRIPT_EXPR_ERROR) {
+                    error = right;
+                    goto cleanup;
+                }
+
                 expr = mscript_expr_comparison_with_casts(MSCRIPT_BINARY_OP_GTE, expr, right);
+                if (expr->type == MSCRIPT_EXPR_ERROR) {
+                    error = expr;
+                    goto cleanup;
+                }
             }
             else {
                 struct mscript_expr *right = mscript_expr_parse_term(parser);
+                if (right->type == MSCRIPT_EXPR_ERROR) {
+                    error = right;
+                    goto cleanup;
+                }
+
                 expr = mscript_expr_comparison_with_casts(MSCRIPT_BINARY_OP_GT, expr, right);
+                if (expr->type == MSCRIPT_EXPR_ERROR) {
+                    error = expr;
+                    goto cleanup;
+                }
             }
         }
         else if (mscript_parser_match_char_n(parser, 2, '=', '=')) {
             struct mscript_expr *right = mscript_expr_parse_term(parser);
+            if (right->type == MSCRIPT_EXPR_ERROR) {
+                error = right;
+                goto cleanup;
+            }
+
             expr = mscript_expr_comparison_with_casts(MSCRIPT_BINARY_OP_EQ, expr, right);
+            if (expr->type == MSCRIPT_EXPR_ERROR) {
+                error = expr;
+                goto cleanup;
+            }
         }
         else if (mscript_parser_match_char_n(parser, 2, '!', '=')) {
             struct mscript_expr *right = mscript_expr_parse_term(parser);
+            if (right->type == MSCRIPT_EXPR_ERROR) {
+                error = right;
+                goto cleanup;
+            }
+
             expr = mscript_expr_comparison_with_casts(MSCRIPT_BINARY_OP_NEQ, expr, right);
+            if (expr->type == MSCRIPT_EXPR_ERROR) {
+                error = expr;
+                goto cleanup;
+            }
         }
         else {
             break;
         }
     }
 
-    return expr;
+cleanup:
+    if (error) {
+        return error;
+    }
+    else {
+        return expr;
+    }
 }
 
 static struct mscript_expr *mscript_expr_parse_assignment(struct mscript_parser *parser) {
@@ -1424,7 +1685,7 @@ static struct mscript_expr *mscript_expr_parse_assignment(struct mscript_parser 
 
     while (true) {
         if (mscript_parser_match_char(parser, '=')) {
-            struct mscript_expr *right = mscript_expr_maybe_cast_new(mscript_expr_parse_assignment(parser), expr->result_type);
+            struct mscript_expr *right = mscript_expr_maybe_cast_new(parser, mscript_expr_parse_assignment(parser), expr->result_type);
             expr = mscript_expr_assignment_new(expr, right);
         }
         else {
@@ -1823,7 +2084,7 @@ static struct mscript_stmt *mscript_stmt_return_parse(struct mscript_parser *par
         goto cleanup;
     }
 
-    expr = mscript_expr_maybe_cast_new(expr, decl->return_type);
+    expr = mscript_expr_maybe_cast_new(parser, expr, decl->return_type);
     if (expr->type == MSCRIPT_EXPR_ERROR) {
         error = mscript_stmt_error_new(expr->error);
         goto cleanup;
@@ -1936,7 +2197,7 @@ static struct mscript_stmt *mscript_stmt_variable_declaration_parse(struct mscri
             goto cleanup;
         }
 
-        expr = mscript_expr_maybe_cast_new(expr, type);
+        expr = mscript_expr_maybe_cast_new(parser, expr, type);
         if (expr->type == MSCRIPT_EXPR_ERROR) {
             error = mscript_stmt_error_new(expr->error);
             goto cleanup;
@@ -2963,6 +3224,8 @@ static struct mscript_lvalue mscript_compiler_get_lvalue(struct mscript_compiler
         case MSCRIPT_EXPR_FLOAT:
         case MSCRIPT_EXPR_ARRAY_LENGTH:
         case MSCRIPT_EXPR_ARRAY:
+        case MSCRIPT_EXPR_ERROR:
+        case MSCRIPT_EXPR_CAST:
             break;
         case MSCRIPT_EXPR_ARRAY_ACCESS:
             {
@@ -3323,6 +3586,8 @@ static void mscript_compile_stmt(struct mscript_compiler *compiler, struct mscri
             }
             break;
         case MSCRIPT_STMT_FUNCTION_DECLARATION:
+        case MSCRIPT_STMT_TYPE_DECLARATION:
+        case MSCRIPT_STMT_ERROR:
             assert(false);
             break;
     }
@@ -3575,6 +3840,10 @@ static void mscript_compile_expr(struct mscript_compiler *compiler, struct mscri
                 int type_size = mscript_compiler_get_type_size(compiler, decl->type);
                 mscript_compiler_push_opcode_get_local(compiler, decl->stack_offset, type_size);
             }
+            break;
+        case MSCRIPT_EXPR_ERROR:
+        case MSCRIPT_EXPR_CAST:
+            assert(false);
             break;
     }
 }
