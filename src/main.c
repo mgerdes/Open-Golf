@@ -35,7 +35,8 @@ static struct main_menu main_menu;
 static struct button_inputs inputs;
 static uint64_t last_time;
 
-#include "mscript.h"
+//#include "mscript.h"
+#include "mscript/parser.h"
 #include "file.h"
 
 static void init(void) {
@@ -53,7 +54,7 @@ static void init(void) {
     {
         struct file file = file_init("testing.mscript");
         file_load_data(&file);
-        mscript_compile(file.data);
+        mscript_compile_2(file.data);
     }
 }
 

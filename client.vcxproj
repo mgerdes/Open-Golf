@@ -147,6 +147,7 @@
     <ClCompile Include="libraries\map.c" />
     <ClCompile Include="libraries\miniz.c" />
     <ClCompile Include="libraries\mscript.c" />
+    <ClCompile Include="libraries\mscript\parser.c" />
     <ClCompile Include="libraries\s7.c" />
     <ClCompile Include="libraries\xatlas.cpp" />
     <ClCompile Include="libraries\imgui\imgui.cpp" />
@@ -180,6 +181,7 @@
     <ClInclude Include="libraries\map.h" />
     <ClInclude Include="libraries\miniz.h" />
     <ClInclude Include="libraries\mscript.h" />
+    <ClInclude Include="libraries\mscript\parser.h" />
     <ClInclude Include="libraries\rnd.h" />
     <ClInclude Include="libraries\s7.h" />
     <ClInclude Include="libraries\sokol_app.h" />
