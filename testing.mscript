@@ -1,3 +1,5 @@
+import "math.mscript";
+
 struct vec2 {
     float x;
     float y;
@@ -9,108 +11,52 @@ struct vec3 {
     float z;
 }
 
-//int sum(int n, int s) {
-//    if (n == 0) {
-//        return s;
-//    }
-//
-//    return sum(n - 1, s + n);
-//}
-//
-//vec3 vec3_add(vec3 a, vec3 b) {
-//    vec3 r;
-//    r.x = a.x + b.x;
-//    r.y = a.y + b.y;
-//    r.z = a.z + b.z;
-//    return r;
-//}
-//
-//vec3 vec3_scale(vec3 a, float s) {
-//    vec3 r;
-//    r.x = a.x * s;
-//    r.y = a.y * s;
-//    r.z = a.z * s;
-//    return r;
-//}
-//
-//vec3 vec3_create(float x, float y, float z) {
-//    vec3 r;
-//    r.x = x;
-//    r.y = y;
-//    r.z = z;
-//    return r;
-//}
-
-float sum_array_float(float[] array) {
-    float sum = 0;
-    int i;
-    for (i = 0; i < array.length; i = i + 1) {
-        sum = sum + array[i];
-    }
-    return sum;
+vec3 vec3_add(vec3 a, vec3 b) {
+    return { 
+        x = a.x + b.x, 
+        y = a.y + b.y, 
+        z = a.z + b.z 
+    };
 }
 
-int sum_array(int[] array) {
-    int sum = 0;
-    int i;
-    for (i = 0; i < array.length; i = i + 1) {
-        sum = sum + array[i];
-    }
-    return sum;
+vec3 vec3_sub(vec3 a, vec3 b) {
+    return {
+        x = a.x - b.x,
+        y = a.y - b.y,
+        z = a.z - b.z
+    };
 }
 
-int[] create_array() {
-    return [1, 2, 3.0];
+vec3 vec3_scale(vec3 v, float s) {
+    return {
+        x = v.x * s,
+        y = v.y * s,
+        z = v.z * s
+    };
 }
 
-float[] to_float_array(int[] int_array) {
-    float[] float_array;
-    float_array = [];
-
-    int i;
-    for (i = 0; i < int_array.length; i = i + 1) {
-        float_array[i] = int_array[i];
-    }
-
-    return float_array;
+float vec3_distance(vec3 v0, vec3 v1) {
+    vec3 d = vec3_sub(v1, v0);
+    return vec3_dot(d, d);
 }
 
-float run() {
-    float s = sum_array([1.0, 2.0, 3.0, 4]);
-    float x = 1.0 < 4;
-
-    int x = 3.9 + 1.2 + 4 + 9;
-
-    return 3.14;
+float vec3_dot(vec3 a, vec3 b) {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
-//float vec3_distance(vec3 v0, vec3 v1) {
-//    float dx = v1.x - v0.x;
-//    float dy = v1.y - v0.y;
-//    float dz = v1.z - v0.z;
-//    return sqrt(dx * dx + dy * dy + dz * dz);
-//}
-//
-//vec3 vec3_scale(vec3 v, float s) {
-//    return vec3_create(v.x * s, v.y * s, v.z * s);
-//}
-//
-//int fib(int n) {
-//    if (n <= 0) {
-//        return 0; 
-//    }
-//    else if (n == 1) {
-//        return 1;
-//    }
-//    else {
-//        return fib(n - 1) + fib(n - 2);
-//    }
-//}
-//
-//int main() {
-//    int y;
-//    int x = 10 + fib(10);
-//    y = 0.5*10;
-//    x = y + 10;
-//    return fib(x);
-//}
+struct foo {
+    vec3 v0;
+    vec3 v1;
+}
+
+int run() {
+    vec3 vec3 = { x = 1 };
+    vec3.y = vec3.x + vec3.x;
+    vec3 v = { x = 1 };
+    foo f = { 
+        v0 = { x = v.x, y = v.y, z = v.z },
+        v1 = { x = 1, y = 2, z = 3 }
+    };
+    int s = vec3_scale(vec3, vec3.x).x;
+    return vec3_distance({ x = 1, y = 2, z = 3 }, { x = 1, y = 2, z = 3 });
+}
