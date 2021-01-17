@@ -1,5 +1,5 @@
 BIN := minigolf
-SOURCES := src/assets.c src/audio.c src/config.c src/data_stream.c src/file.c src/game.c src/game_editor.c src/hole.c src/hotloader.c src/lightmaps.c src/log.c src/maths.c src/main.c src/obj_converter.c src/profiler.c src/renderer.c src/single_file_libs.c src/ui.c libraries/array.c libraries/glad.c libraries/map.c libraries/miniz.c libraries/s7.c libraries/mscript.c
+SOURCES := src/assets.c src/audio.c src/config.c src/data_stream.c src/file.c src/game.c src/game_editor.c src/hole.c src/hotloader.c src/lightmaps.c src/log.c src/maths.c src/main.c src/obj_converter.c src/profiler.c src/renderer.c src/single_file_libs.c src/ui.c libraries/array.c libraries/glad.c libraries/map.c libraries/miniz.c libraries/s7.c libraries/mscript.c libraries/mscript/parser.c
 OBJS := $(SOURCES:.c=.o)
 DEPS = $(SOURCES:%.c=%.d)
 CPP_SOURCES := libraries/cimgui.cpp libraries/xatlas.cpp libraries/imgui/imgui.cpp libraries/imgui/imgui_draw.cpp libraries/imgui/imgui_widgets.cpp libraries/imgui/imgui_demo.cpp

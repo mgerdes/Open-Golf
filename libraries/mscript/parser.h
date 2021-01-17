@@ -22,6 +22,29 @@ struct mscript_type {
     char *struct_name; 
 };
 
+struct mscript_function_decl_arg {
+    struct mscript_type type;
+    char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
+};
+
+struct mscript_function_decl {
+    struct mscript_type return_type;
+    char name[MSCRIPT_MAX_SYMBOL_LEN + 1]; 
+    int num_args;
+    struct mscript_function_decl_arg args[MSCRIPT_MAX_FUNCTION_ARGS];
+};
+
+struct mscript_struct_decl_arg {
+    struct mscript_type type;
+    char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
+};
+
+struct mscript_struct_decl {
+    char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
+    int num_members;
+    struct mscript_struct_decl_arg members[MSCRIPT_MAX_STRUCT_MEMBERS];
+};
+
 struct mscript_program;
 void mscript_compile_2(const char *prog_text);
 

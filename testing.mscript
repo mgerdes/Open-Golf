@@ -41,6 +41,12 @@ float vec3_distance(vec3 v0, vec3 v1) {
 }
 
 float vec3_dot(vec3 a, vec3 b) {
+    if (1) {
+        return 1.0;
+    }
+    else {
+        a.x = 2;
+    }
     return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
