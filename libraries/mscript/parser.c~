@@ -6,50 +6,6 @@
 
 #include "array.h"
 #include "log.h"
-#include "map.h"
-
-struct function_decl_arg {
-    struct mscript_type type;
-    char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
-};
-
-struct function_decl {
-    struct mscript_type return_type;
-    char name[MSCRIPT_MAX_SYMBOL_LEN + 1]; 
-    int num_args;
-    struct function_decl_arg args[MSCRIPT_MAX_FUNCTION_ARGS];
-};
-typedef map_t(struct function_decl) map_function_decl_t;
-
-struct struct_decl_arg {
-    struct mscript_type type;
-    char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
-};
-
-struct struct_decl {
-    char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
-    int num_members;
-    struct struct_decl_arg members[MSCRIPT_MAX_STRUCT_MEMBERS];
-};
-typedef map_t(struct struct_decl) map_struct_decl_t;
-
-struct mscript_program {
-    map_struct_decl_t struct_decl_map;
-    map_function_decl_t function_decl_map;
-};
-
-static void mscript_program_init(struct mscript_program *program);
-static void mscript_program_add_struct_decl(struct mscript_program *program, struct stmt *stmt);
-static void mscript_program_add_function_decl(struct mscript_program *program, struct stmt *stmt);
-
-struct allocator {
-    size_t bytes_allocated;
-    struct array_void_ptr ptrs;
-};
-
-static void allocator_init(struct allocator *allocator);
-static void allocator_deinit(struct allocator *allocator);
-static void *allocator_alloc(struct allocator *allocator, size_t size);
 
 enum token_type {
     TOKEN_INT,
@@ -83,12 +39,21 @@ static struct token string_token(const char *text, int *len, int line, int col);
 static struct token symbol_token(const char *text, int *len, int line, int col);
 static struct token eof_token(int line, int col);
 static void tokenize(struct parser *parser);
-static void parser_run(struct parser *parser, struct mscript_program *program); 
+static void parser_run(struct parser *parser); 
+
+struct parser_allocator {
+    size_t bytes_allocated;
+    struct array_void_ptr ptrs;
+};
+
+static void parser_allocator_init(struct parser_allocator *allocator);
+static void parser_allocator_deinit(struct parser_allocator *allocator);
+static void *parser_allocator_alloc(struct parser_allocator *allocator, size_t size);
 
 struct parser {
     const char *prog_text;
 
-    struct allocator allocator;
+    struct parser_allocator allocator;
 
     int token_idx;
     struct array_token tokens;
@@ -111,13 +76,27 @@ static bool match_symbol_n(struct parser *parser, int n, ...);
 static bool match_eof(struct parser *parser);
 static bool check_type(struct parser *parser);
 
-array_t(struct mscript_type, array_mscript_type)
+enum type_type {
+    TYPE_VOID,
+    TYPE_INT,
+    TYPE_FLOAT,
+    TYPE_STRUCT,
+    TYPE_ARRAY,
+};
 
-static struct mscript_type void_type(void);
-static struct mscript_type int_type(void);
-static struct mscript_type float_type(void);
-static struct mscript_type struct_type(char *struct_name);
-static struct mscript_type array_type(enum mscript_type_type array_type, char *struct_name);
+struct type {
+    enum type_type type;
+
+    enum type_type array_type;
+    char *struct_name; 
+};
+array_t(struct type, array_type)
+
+static struct type void_type(void);
+static struct type int_type(void);
+static struct type float_type(void);
+static struct type struct_type(char *struct_name);
+static struct type array_type(enum type_type array_type, char *struct_name);
 
 enum expr_type {
     EXPR_UNARY_OP,
@@ -211,18 +190,18 @@ struct expr {
 };
 array_t(struct expr *, array_expr_ptr)
 
-static struct expr *new_unary_op_expr(struct allocator *allocator, enum unary_op_type type, struct expr *operand);
-static struct expr *new_binary_op_expr(struct allocator *allocator, enum binary_op_type type, struct expr *left, struct expr *right);
-static struct expr *new_assignment_expr(struct allocator *allocator, struct expr *left, struct expr *right);
-static struct expr *new_array_access_expr(struct allocator *allocator, struct expr *left, struct expr *right);
-static struct expr *new_member_access_expr(struct allocator *allocator, struct expr *left, char *member_name);
-static struct expr *new_call_expr(struct allocator *allocator, struct expr *function, struct array_expr_ptr args);
-static struct expr *new_array_expr(struct allocator *allocator, struct array_expr_ptr args);
-static struct expr *new_object_expr(struct allocator *allocator, struct array_char_ptr names, struct array_expr_ptr args);
-static struct expr *new_cast_expr(struct allocator *allocator, struct expr *expr);
-static struct expr *new_int_expr(struct allocator *allocator, int int_value);
-static struct expr *new_float_expr(struct allocator *allocator, float float_value);
-static struct expr *new_symbol_expr(struct allocator *allocator, char *symbol);
+static struct expr *new_unary_op_expr(struct parser_allocator *allocator, enum unary_op_type type, struct expr *operand);
+static struct expr *new_binary_op_expr(struct parser_allocator *allocator, enum binary_op_type type, struct expr *left, struct expr *right);
+static struct expr *new_assignment_expr(struct parser_allocator *allocator, struct expr *left, struct expr *right);
+static struct expr *new_array_access_expr(struct parser_allocator *allocator, struct expr *left, struct expr *right);
+static struct expr *new_member_access_expr(struct parser_allocator *allocator, struct expr *left, char *member_name);
+static struct expr *new_call_expr(struct parser_allocator *allocator, struct expr *function, struct array_expr_ptr args);
+static struct expr *new_array_expr(struct parser_allocator *allocator, struct array_expr_ptr args);
+static struct expr *new_object_expr(struct parser_allocator *allocator, struct array_char_ptr names, struct array_expr_ptr args);
+static struct expr *new_cast_expr(struct parser_allocator *allocator, struct expr *expr);
+static struct expr *new_int_expr(struct parser_allocator *allocator, int int_value);
+static struct expr *new_float_expr(struct parser_allocator *allocator, float float_value);
+static struct expr *new_symbol_expr(struct parser_allocator *allocator, char *symbol);
 
 enum stmt_type {
     STMT_IF,
@@ -257,16 +236,16 @@ struct stmt {
         } block;
 
         struct {
-            struct mscript_type return_type;
+            struct type return_type;
             char *name;
             int num_args;
-            struct mscript_type *arg_types;
+            struct type *arg_types;
             char **arg_names;
             struct stmt *body;
         } function_declaration;
 
         struct {
-            struct mscript_type type;
+            struct type type;
             char *name;
             struct expr *expr;
         } variable_declaration;
@@ -274,7 +253,7 @@ struct stmt {
         struct {
             char *name;
             int num_members;
-            struct mscript_type *member_types;
+            struct type *member_types;
             char **member_names;
         } struct_declaration;
 
@@ -292,19 +271,19 @@ struct stmt {
 };
 array_t(struct stmt *, array_stmt_ptr)
 
-static struct stmt *new_if_stmt(struct allocator *allocator, struct array_expr_ptr conds, struct array_stmt_ptr stmts, struct stmt *else_stmt);
-static struct stmt *new_return_stmt(struct allocator *allocator, struct expr *expr);
-static struct stmt *new_block_stmt(struct allocator *allocator, struct array_stmt_ptr stmts);
-static struct stmt *new_function_declaration_stmt(struct allocator *allocator, struct mscript_type return_type, char *name, 
-        struct array_mscript_type arg_types, struct array_char_ptr arg_names, struct stmt *body);
-static struct stmt *new_variable_declaration_stmt(struct allocator *allocator, struct mscript_type type, char *name, struct expr *expr);
-static struct stmt *new_struct_declaration_stmt(struct allocator *allocator, char *name, 
-        struct array_mscript_type member_types, struct array_char_ptr member_names);
-static struct stmt *new_for_stmt(struct allocator *allocator, struct expr *init, struct expr *cond, struct expr *inc, struct stmt *body);
-static struct stmt *new_import_stmt(struct allocator *allocator, char *module_name);
-static struct stmt *new_expr_stmt(struct allocator *allocator, struct expr *expr);
+static struct stmt *new_if_stmt(struct parser_allocator *allocator, struct array_expr_ptr conds, struct array_stmt_ptr stmts, struct stmt *else_stmt);
+static struct stmt *new_return_stmt(struct parser_allocator *allocator, struct expr *expr);
+static struct stmt *new_block_stmt(struct parser_allocator *allocator, struct array_stmt_ptr stmts);
+static struct stmt *new_function_declaration_stmt(struct parser_allocator *allocator, struct type return_type, char *name, 
+        struct array_type arg_types, struct array_char_ptr arg_names, struct stmt *body);
+static struct stmt *new_variable_declaration_stmt(struct parser_allocator *allocator, struct type type, char *name, struct expr *expr);
+static struct stmt *new_struct_declaration_stmt(struct parser_allocator *allocator, char *name, 
+        struct array_type member_types, struct array_char_ptr member_names);
+static struct stmt *new_for_stmt(struct parser_allocator *allocator, struct expr *init, struct expr *cond, struct expr *inc, struct stmt *body);
+static struct stmt *new_import_stmt(struct parser_allocator *allocator, char *module_name);
+static struct stmt *new_expr_stmt(struct parser_allocator *allocator, struct expr *expr);
 
-static void parse_type(struct parser *parser, struct mscript_type *type);  
+static void parse_type(struct parser *parser, struct type *type);  
 
 static struct expr *parse_expr(struct parser *parser);
 static struct expr *parse_assignment_expr(struct parser *parser);
@@ -331,7 +310,7 @@ static struct stmt *parse_import_stmt(struct parser *parser);
 
 static void debug_log_token(struct token token);
 static void debug_log_tokens(struct token *tokens);
-static void debug_log_type(struct mscript_type type);
+static void debug_log_type(struct type type);
 static void debug_log_stmt(struct stmt *stmt);
 static void debug_log_expr(struct expr *expr);
 
@@ -339,49 +318,49 @@ static void debug_log_expr(struct expr *expr);
 // DEFINITIONS
 //
 
-static struct mscript_type void_type(void) {
-    struct mscript_type type;
-    type.type = MSCRIPT_TYPE_VOID;
+static struct type void_type(void) {
+    struct type type;
+    type.type = TYPE_VOID;
     return type;
 }
 
-static struct mscript_type int_type(void) {
-    struct mscript_type type;
-    type.type = MSCRIPT_TYPE_INT;
+static struct type int_type(void) {
+    struct type type;
+    type.type = TYPE_INT;
     return type;
 }
 
-static struct mscript_type float_type(void) {
-    struct mscript_type type;
-    type.type = MSCRIPT_TYPE_FLOAT;
+static struct type float_type(void) {
+    struct type type;
+    type.type = TYPE_FLOAT;
     return type;
 }
 
-static struct mscript_type struct_type(char *struct_name) {
-    struct mscript_type type;
-    type.type = MSCRIPT_TYPE_STRUCT;
+static struct type struct_type(char *struct_name) {
+    struct type type;
+    type.type = TYPE_STRUCT;
     type.struct_name = struct_name;
     return type;
 }
 
-static struct mscript_type array_type(enum mscript_type_type array_type, char *struct_name) {
-    struct mscript_type type;
-    type.type = MSCRIPT_TYPE_ARRAY;
+static struct type array_type(enum type_type array_type, char *struct_name) {
+    struct type type;
+    type.type = TYPE_ARRAY;
     type.array_type = array_type;
     type.struct_name = struct_name;
     return type;
 }
 
-static struct expr *new_unary_op_expr(struct allocator *allocator, enum unary_op_type type, struct expr *operand) {
-    struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
+static struct expr *new_unary_op_expr(struct parser_allocator *allocator, enum unary_op_type type, struct expr *operand) {
+    struct expr *expr = parser_allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_UNARY_OP;
     expr->unary_op.type = type;
     expr->unary_op.operand = operand;
     return expr;
 }
 
-static struct expr *new_binary_op_expr(struct allocator *allocator, enum binary_op_type type, struct expr *left, struct expr *right) {
-    struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
+static struct expr *new_binary_op_expr(struct parser_allocator *allocator, enum binary_op_type type, struct expr *left, struct expr *right) {
+    struct expr *expr = parser_allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_BINARY_OP;
     expr->binary_op.type = type;
     expr->binary_op.left = left;
@@ -389,148 +368,148 @@ static struct expr *new_binary_op_expr(struct allocator *allocator, enum binary_
     return expr;
 }
 
-static struct expr *new_assignment_expr(struct allocator *allocator, struct expr *left, struct expr *right) {
-    struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
+static struct expr *new_assignment_expr(struct parser_allocator *allocator, struct expr *left, struct expr *right) {
+    struct expr *expr = parser_allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_ASSIGNMENT;
     expr->assignment.left = left;
     expr->assignment.right = right;
     return expr;
 }
 
-static struct expr *new_array_access_expr(struct allocator *allocator, struct expr *left, struct expr *right) {
-    struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
+static struct expr *new_array_access_expr(struct parser_allocator *allocator, struct expr *left, struct expr *right) {
+    struct expr *expr = parser_allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_ARRAY_ACCESS;
     expr->array_access.left = left;
     expr->array_access.right = right;
     return expr;
 }
 
-static struct expr *new_member_access_expr(struct allocator *allocator, struct expr *left, char *member_name) {
-    struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
+static struct expr *new_member_access_expr(struct parser_allocator *allocator, struct expr *left, char *member_name) {
+    struct expr *expr = parser_allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_MEMBER_ACCESS;
     expr->member_access.left = left;
     expr->member_access.member_name = member_name;
     return expr;
 }
 
-static struct expr *new_call_expr(struct allocator *allocator, struct expr *function, struct array_expr_ptr args) {
+static struct expr *new_call_expr(struct parser_allocator *allocator, struct expr *function, struct array_expr_ptr args) {
     int num_args = args.length;
 
-    struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
+    struct expr *expr = parser_allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_CALL;
     expr->call.function = function;
     expr->call.num_args = num_args;
-    expr->call.args = allocator_alloc(allocator, num_args * sizeof(struct expr*));
+    expr->call.args = parser_allocator_alloc(allocator, num_args * sizeof(struct expr*));
     memcpy(expr->call.args, args.data, num_args * sizeof(struct expr*));
     return expr;
 }
 
-static struct expr *new_array_expr(struct allocator *allocator, struct array_expr_ptr args) {
+static struct expr *new_array_expr(struct parser_allocator *allocator, struct array_expr_ptr args) {
     int num_args = args.length;
 
-    struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
+    struct expr *expr = parser_allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_ARRAY;
     expr->array.num_args = num_args;
-    expr->array.args = allocator_alloc(allocator, num_args * sizeof(struct expr*));
+    expr->array.args = parser_allocator_alloc(allocator, num_args * sizeof(struct expr*));
     memcpy(expr->array.args, args.data, num_args * sizeof(struct expr*));
     return expr;
 }
 
-static struct expr *new_object_expr(struct allocator *allocator, struct array_char_ptr names, struct array_expr_ptr args) {
+static struct expr *new_object_expr(struct parser_allocator *allocator, struct array_char_ptr names, struct array_expr_ptr args) {
     assert(names.length == args.length);
     int num_args = args.length;
 
-    struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
+    struct expr *expr = parser_allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_OBJECT;
     expr->object.num_args = num_args;
-    expr->object.names = allocator_alloc(allocator, num_args * sizeof(char *));
+    expr->object.names = parser_allocator_alloc(allocator, num_args * sizeof(char *));
     memcpy(expr->object.names, names.data, num_args * sizeof(char *));
-    expr->object.args = allocator_alloc(allocator, num_args * sizeof(struct expr *));
+    expr->object.args = parser_allocator_alloc(allocator, num_args * sizeof(struct expr *));
     memcpy(expr->object.args, args.data, num_args * sizeof(struct expr *));
     return expr;
 }
 
-static struct expr *new_cast_expr(struct allocator *allocator, struct expr *arg) {
-    struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
+static struct expr *new_cast_expr(struct parser_allocator *allocator, struct expr *arg) {
+    struct expr *expr = parser_allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_CAST;
     expr->cast.arg = arg;
     return expr;
 }
 
-static struct expr *new_int_expr(struct allocator *allocator, int int_value) {
-    struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
+static struct expr *new_int_expr(struct parser_allocator *allocator, int int_value) {
+    struct expr *expr = parser_allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_INT;
     expr->int_value = int_value;
     return expr;
 }
 
-static struct expr *new_float_expr(struct allocator *allocator, float float_value) {
-    struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
+static struct expr *new_float_expr(struct parser_allocator *allocator, float float_value) {
+    struct expr *expr = parser_allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_FLOAT;
     expr->float_value = float_value;
     return expr;
 }
 
-static struct expr *new_symbol_expr(struct allocator *allocator, char *symbol) {
-    struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
+static struct expr *new_symbol_expr(struct parser_allocator *allocator, char *symbol) {
+    struct expr *expr = parser_allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_SYMBOL;
     expr->symbol = symbol;
     return expr;
 }
 
-static struct stmt *new_if_stmt(struct allocator *allocator, struct array_expr_ptr conds, struct array_stmt_ptr stmts, struct stmt *else_stmt) {
+static struct stmt *new_if_stmt(struct parser_allocator *allocator, struct array_expr_ptr conds, struct array_stmt_ptr stmts, struct stmt *else_stmt) {
     assert(conds.length == stmts.length);
     int num_stmts = conds.length;
 
-    struct stmt *stmt = allocator_alloc(allocator, sizeof(struct stmt));
+    struct stmt *stmt = parser_allocator_alloc(allocator, sizeof(struct stmt));
     stmt->type = STMT_IF;
     stmt->if_stmt.num_stmts = num_stmts;
-    stmt->if_stmt.conds = allocator_alloc(allocator, num_stmts * sizeof(struct expr *));
+    stmt->if_stmt.conds = parser_allocator_alloc(allocator, num_stmts * sizeof(struct expr *));
     memcpy(stmt->if_stmt.conds, conds.data, num_stmts * sizeof(struct expr *));
-    stmt->if_stmt.stmts = allocator_alloc(allocator, num_stmts * sizeof(struct stmt *));
+    stmt->if_stmt.stmts = parser_allocator_alloc(allocator, num_stmts * sizeof(struct stmt *));
     memcpy(stmt->if_stmt.stmts, stmts.data, num_stmts * sizeof(struct stmt *));
     stmt->if_stmt.else_stmt = else_stmt;
     return stmt;
 }
 
-static struct stmt *new_return_stmt(struct allocator *allocator, struct expr *expr) {
-    struct stmt *stmt = allocator_alloc(allocator, sizeof(struct stmt));
+static struct stmt *new_return_stmt(struct parser_allocator *allocator, struct expr *expr) {
+    struct stmt *stmt = parser_allocator_alloc(allocator, sizeof(struct stmt));
     stmt->type = STMT_RETURN;
     stmt->return_stmt.expr = expr;
     return stmt;
 }
 
-static struct stmt *new_block_stmt(struct allocator *allocator, struct array_stmt_ptr stmts) {
+static struct stmt *new_block_stmt(struct parser_allocator *allocator, struct array_stmt_ptr stmts) {
     int num_stmts = stmts.length;
 
-    struct stmt *stmt = allocator_alloc(allocator, sizeof(struct stmt));
+    struct stmt *stmt = parser_allocator_alloc(allocator, sizeof(struct stmt));
     stmt->type = STMT_BLOCK;
     stmt->block.num_stmts = num_stmts;
-    stmt->block.stmts = allocator_alloc(allocator, num_stmts * sizeof(struct stmt *));
+    stmt->block.stmts = parser_allocator_alloc(allocator, num_stmts * sizeof(struct stmt *));
     memcpy(stmt->block.stmts, stmts.data, num_stmts * sizeof(struct stmt *));
     return stmt;
 }
 
-static struct stmt *new_function_declaration_stmt(struct allocator *allocator, struct mscript_type return_type, char *name, 
-        struct array_mscript_type arg_types, struct array_char_ptr arg_names, struct stmt *body) {
+static struct stmt *new_function_declaration_stmt(struct parser_allocator *allocator, struct type return_type, char *name, 
+        struct array_type arg_types, struct array_char_ptr arg_names, struct stmt *body) {
     assert(arg_types.length == arg_names.length);
     int num_args = arg_types.length;
 
-    struct stmt *stmt = allocator_alloc(allocator, sizeof(struct stmt));
+    struct stmt *stmt = parser_allocator_alloc(allocator, sizeof(struct stmt));
     stmt->type = STMT_FUNCTION_DECLARATION;
     stmt->function_declaration.return_type = return_type;
     stmt->function_declaration.name = name;
     stmt->function_declaration.num_args = num_args;
-    stmt->function_declaration.arg_types = allocator_alloc(allocator, num_args * sizeof(struct mscript_type));
-    memcpy(stmt->function_declaration.arg_types, arg_types.data, num_args * sizeof(struct mscript_type));
-    stmt->function_declaration.arg_names = allocator_alloc(allocator, num_args * sizeof(char *));
+    stmt->function_declaration.arg_types = parser_allocator_alloc(allocator, num_args * sizeof(struct type));
+    memcpy(stmt->function_declaration.arg_types, arg_types.data, num_args * sizeof(struct type));
+    stmt->function_declaration.arg_names = parser_allocator_alloc(allocator, num_args * sizeof(char *));
     memcpy(stmt->function_declaration.arg_names, arg_names.data, num_args * sizeof(char *));
     stmt->function_declaration.body = body;
     return stmt;
 }
 
-static struct stmt *new_variable_declaration_stmt(struct allocator *allocator, struct mscript_type type, char *name, struct expr *expr) {
-    struct stmt *stmt = allocator_alloc(allocator, sizeof(struct stmt));
+static struct stmt *new_variable_declaration_stmt(struct parser_allocator *allocator, struct type type, char *name, struct expr *expr) {
+    struct stmt *stmt = parser_allocator_alloc(allocator, sizeof(struct stmt));
     stmt->type = STMT_VARIABLE_DECLARATION;
     stmt->variable_declaration.type = type;
     stmt->variable_declaration.name = name;
@@ -538,24 +517,24 @@ static struct stmt *new_variable_declaration_stmt(struct allocator *allocator, s
     return stmt;
 }
 
-static struct stmt *new_struct_declaration_stmt(struct allocator *allocator, char *name, 
-        struct array_mscript_type member_types, struct array_char_ptr member_names) {
+static struct stmt *new_struct_declaration_stmt(struct parser_allocator *allocator, char *name, 
+        struct array_type member_types, struct array_char_ptr member_names) {
     assert(member_types.length == member_names.length);
     int num_members = member_types.length;
 
-    struct stmt *stmt = allocator_alloc(allocator, sizeof(struct stmt));
+    struct stmt *stmt = parser_allocator_alloc(allocator, sizeof(struct stmt));
     stmt->type = STMT_STRUCT_DECLARATION;
     stmt->struct_declaration.name = name;
     stmt->struct_declaration.num_members = num_members;
-    stmt->struct_declaration.member_types = allocator_alloc(allocator, num_members * sizeof(struct mscript_type));
-    memcpy(stmt->struct_declaration.member_types, member_types.data, num_members * sizeof(struct mscript_type));
-    stmt->struct_declaration.member_names = allocator_alloc(allocator, num_members * sizeof(char *));
+    stmt->struct_declaration.member_types = parser_allocator_alloc(allocator, num_members * sizeof(struct type));
+    memcpy(stmt->struct_declaration.member_types, member_types.data, num_members * sizeof(struct type));
+    stmt->struct_declaration.member_names = parser_allocator_alloc(allocator, num_members * sizeof(char *));
     memcpy(stmt->struct_declaration.member_names, member_names.data, num_members * sizeof(char *));
     return stmt;
 }
 
-static struct stmt *new_for_stmt(struct allocator *allocator, struct expr *init, struct expr *cond, struct expr *inc, struct stmt *body) {
-    struct stmt *stmt = allocator_alloc(allocator, sizeof(struct stmt));
+static struct stmt *new_for_stmt(struct parser_allocator *allocator, struct expr *init, struct expr *cond, struct expr *inc, struct stmt *body) {
+    struct stmt *stmt = parser_allocator_alloc(allocator, sizeof(struct stmt));
     stmt->type = STMT_FOR;
     stmt->for_stmt.init = init;
     stmt->for_stmt.cond = cond;
@@ -564,21 +543,21 @@ static struct stmt *new_for_stmt(struct allocator *allocator, struct expr *init,
     return stmt;
 }
 
-static struct stmt *new_import_stmt(struct allocator *allocator, char *module_name) {
-    struct stmt *stmt = allocator_alloc(allocator, sizeof(struct stmt));
+static struct stmt *new_import_stmt(struct parser_allocator *allocator, char *module_name) {
+    struct stmt *stmt = parser_allocator_alloc(allocator, sizeof(struct stmt));
     stmt->type = STMT_IMPORT;
     stmt->import.module_name = module_name;
     return stmt;
 }
 
-static struct stmt *new_expr_stmt(struct allocator *allocator, struct expr *expr) {
-    struct stmt *stmt = allocator_alloc(allocator, sizeof(struct stmt));
+static struct stmt *new_expr_stmt(struct parser_allocator *allocator, struct expr *expr) {
+    struct stmt *stmt = parser_allocator_alloc(allocator, sizeof(struct stmt));
     stmt->type = STMT_EXPR;
     stmt->expr = expr;
     return stmt;
 }
 
-static void parse_type(struct parser *parser, struct mscript_type *type) {
+static void parse_type(struct parser *parser, struct type *type) {
     if (match_symbol(parser, "void")) {
         *type = void_type();
     }
@@ -1085,7 +1064,7 @@ cleanup:
 static struct stmt *parse_variable_declaration_stmt(struct parser *parser) {
     struct stmt *stmt = NULL;
 
-    struct mscript_type type;
+    struct type type;
     parse_type(parser, &type);
     if (parser->error) goto cleanup;
 
@@ -1114,14 +1093,14 @@ cleanup:
 }
 
 static struct stmt *parse_function_declaration_stmt(struct parser *parser) {
-    struct array_mscript_type arg_types;
+    struct array_type arg_types;
     struct array_char_ptr arg_names;
     array_init(&arg_types);
     array_init(&arg_names);
 
     struct stmt *stmt = NULL;
 
-    struct mscript_type return_type;
+    struct type return_type;
     parse_type(parser, &return_type);
     if (parser->error) goto cleanup;
 
@@ -1139,7 +1118,7 @@ static struct stmt *parse_function_declaration_stmt(struct parser *parser) {
 
     if (!match_char(parser, ')')) {
         while (true) {
-            struct mscript_type arg_type;
+            struct type arg_type;
             parse_type(parser, &arg_type);
             if (parser->error) goto cleanup;
 
@@ -1180,7 +1159,7 @@ cleanup:
 }
 
 static struct stmt *parse_struct_declaration_stmt(struct parser *parser) {
-    struct array_mscript_type member_types;
+    struct array_type member_types;
     struct array_char_ptr member_names;
     array_init(&member_types);
     array_init(&member_names);
@@ -1204,7 +1183,7 @@ static struct stmt *parse_struct_declaration_stmt(struct parser *parser) {
             break;
         }
 
-        struct mscript_type member_type;
+        struct type member_type;
         parse_type(parser, &member_type);
         if (parser->error) goto cleanup;
 
@@ -1453,12 +1432,11 @@ static void tokenize(struct parser *parser) {
     }
 }
 
-static void parser_run(struct parser *parser, struct mscript_program *program) {
-    struct array_stmt_ptr global_stmts;
-    array_init(&global_stmts);
-
+static void parser_run(struct parser *parser) {
     tokenize(parser);
     debug_log_tokens(parser->tokens.data);
+
+    struct array_stmt_ptr global_stmts;
 
     while (true) {
         if (match_eof(parser)) {
@@ -1488,30 +1466,18 @@ static void parser_run(struct parser *parser, struct mscript_program *program) {
         array_push(&global_stmts, stmt);
     }
 
-    for (int i = 0; i < global_stmts.length; i++) {
-        struct stmt *stmt = global_stmts.data[i];
-        if (stmt->type == STMT_IMPORT) {
-
-        }
-        else if (stmt->type == STMT_STRUCT_DECLARATION) {
-            mscript_program_add_struct_decl(program, stmt);
-        }
-        else if (stmt->type == STMT_FUNCTION_DECLARATION) {
-            mscript_program_add_function_decl(program, stmt);
-        }
-        else {
-            assert(false);
-        }
-    }
+    struct parser_env parser_env;
 
     for (int i = 0; i < global_stmts.length; i++) {
         struct stmt *stmt = global_stmts.data[i];
         if (stmt->type == STMT_IMPORT) {
+            
         }
         else if (stmt->type == STMT_STRUCT_DECLARATION) {
+            parser_env_add_struct_declaration(&parser_env, stmt);
         }
         else if (stmt->type == STMT_FUNCTION_DECLARATION) {
-            //run_semantical_analysis(parser, stmt->function_declaration.body);
+
         }
         else {
             assert(false);
@@ -1522,54 +1488,16 @@ cleanup:
     array_deinit(&global_stmts);
 }
 
-static void mscript_program_init(struct mscript_program *prog) {
-    map_init(&prog->struct_decl_map);
-    map_init(&prog->function_decl_map);
-}
-
-static void mscript_program_add_struct_decl(struct mscript_program *program, struct stmt *stmt) {
-    assert(stmt->type == STMT_STRUCT_DECLARATION);
-
-    struct struct_decl decl;
-    strncpy(decl.name, stmt->struct_declaration.name, MSCRIPT_MAX_SYMBOL_LEN);
-    decl.name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
-    decl.num_members = stmt->struct_declaration.num_members;
-    for (int i = 0; i < decl.num_members; i++) {
-        decl.members[i].type = stmt->struct_declaration.member_types[i];
-        strncpy(decl.members[i].name, stmt->struct_declaration.member_names[i], MSCRIPT_MAX_SYMBOL_LEN);
-        decl.members[i].name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
-    }
-
-    map_set(&program->struct_decl_map, decl.name, decl);
-}
-
-static void mscript_program_add_function_decl(struct mscript_program *program, struct stmt *stmt) {
-    assert(stmt->type == STMT_FUNCTION_DECLARATION);
-
-    struct function_decl decl;
-    decl.return_type = stmt->function_declaration.return_type;
-    strncpy(decl.name, stmt->function_declaration.name, MSCRIPT_MAX_SYMBOL_LEN);
-    decl.name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
-    decl.num_args = stmt->function_declaration.num_args;
-    for (int i = 0; i < decl.num_args; i++) {
-        decl.args[i].type = stmt->function_declaration.arg_types[i];
-        strncpy(decl.args[i].name, stmt->function_declaration.arg_names[i], MSCRIPT_MAX_SYMBOL_LEN);
-        decl.args[i].name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
-    }
-
-    map_set(&program->function_decl_map, decl.name, decl);
-}
-
-static void allocator_init(struct allocator *allocator) {
+static void parser_allocator_init(struct parser_allocator *allocator) {
     allocator->bytes_allocated = 0;
     array_init(&allocator->ptrs);
 }
 
-static void allocator_deinit(struct allocator *allocator) {
+static void parser_allocator_deinit(struct parser_allocator *allocator) {
     array_deinit(&allocator->ptrs);
 }
 
-static void *allocator_alloc(struct allocator *allocator, size_t size) {
+static void *parser_allocator_alloc(struct parser_allocator *allocator, size_t size) {
     allocator->bytes_allocated += size;
     void *mem = malloc(size);
     array_push(&allocator->ptrs, mem);
@@ -1578,7 +1506,7 @@ static void *allocator_alloc(struct allocator *allocator, size_t size) {
 
 static void parser_init(struct parser *parser, const char *prog_text) {
     parser->prog_text = prog_text;
-    allocator_init(&parser->allocator);
+    parser_allocator_init(&parser->allocator);
     parser->token_idx = 0;
     array_init(&parser->tokens);
     parser->error = NULL;
@@ -1754,31 +1682,31 @@ static void debug_log_tokens(struct token *tokens) {
     }
 }
 
-static void debug_log_type(struct mscript_type type) {
-    enum mscript_type_type t = type.type;
-    if (type.type == MSCRIPT_TYPE_ARRAY) {
+static void debug_log_type(struct type type) {
+    enum type_type t = type.type;
+    if (type.type == TYPE_ARRAY) {
         t = type.array_type;
     }
 
     switch (type.type) {
-        case MSCRIPT_TYPE_VOID:
+        case TYPE_VOID:
             m_logf("void");
             break;
-        case MSCRIPT_TYPE_INT:
+        case TYPE_INT:
             m_logf("int");
             break;
-        case MSCRIPT_TYPE_FLOAT:
+        case TYPE_FLOAT:
             m_logf("float");
             break;
-        case MSCRIPT_TYPE_STRUCT:
+        case TYPE_STRUCT:
             m_logf("%s", type.struct_name);
             break;
-        case MSCRIPT_TYPE_ARRAY:
+        case TYPE_ARRAY:
             assert(false);
             break;
     }
 
-    if (type.type == MSCRIPT_TYPE_ARRAY) {
+    if (type.type == TYPE_ARRAY) {
         m_logf("[]");
     }
 }
@@ -1988,11 +1916,8 @@ static void debug_log_expr(struct expr *expr) {
 }
 
 void mscript_compile_2(const char *prog_text) {
-    struct mscript_program program;
-    mscript_program_init(&program);
-
     struct parser parser;
     parser_init(&parser, prog_text);
-    parser_run(&parser, &program);
+    parser_run(&parser);
 }
 

@@ -58,5 +58,5 @@ int run() {
         v1 = { x = 1, y = 2, z = 3 }
     };
     int s = vec3_scale(vec3, vec3.x).x;
-    return vec3_distance({ x = 1, y = 2, z = 3 }, { x = 1, y = 2, z = 3 });
+    return vec3_distance({ x = 1, y = 2, z = 3 }, { x = 1, y = 2, z = 30 });
 }
