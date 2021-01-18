@@ -1338,15 +1338,22 @@ static struct stmt *parse_struct_declaration_stmt(struct mscript_program *progra
         parse_type(program, &member_type);
         if (program->error) goto cleanup;
 
-        struct token member_name = peek(program);
-        if (member_name.type != TOKEN_SYMBOL) {
-            program_error(program, member_name, "Expected symbol");
-            goto cleanup;
-        }
-        eat(program);
+        while (true) {
+            struct token member_name = peek(program);
+            if (member_name.type != TOKEN_SYMBOL) {
+                program_error(program, member_name, "Expected symbol");
+                goto cleanup;
+            }
+            eat(program);
 
-        array_push(&member_types, member_type);
-        array_push(&member_names, member_name.symbol);
+            array_push(&member_types, member_type);
+            array_push(&member_names, member_name.symbol);
+
+            if (!match_char(program, ',')) {
+                break;
+            }
+        }
+
         if (!match_char(program, ';')) {
             program_error(program, peek(program), "Expected ';'");
             goto cleanup;
@@ -1640,9 +1647,34 @@ static void parser_run(struct mscript_program *program, struct mscript *mscript)
         if (stmt->type == STMT_IMPORT) {
             struct mscript_program *import = mscript_load_program(mscript, stmt->import.program_name);
             if (!import || import->error) {
-                program_error(program, stmt->token, "Failed to import program");
+                program_error(program, stmt->token, "Failed to import program %s", stmt->import.program_name);
                 goto cleanup;
             }
+
+            {
+                const char *key;
+                map_iter_t iter = map_iter(&import->function_decl_map);
+
+                while ((key = map_next(&import->function_decl_map, &iter))) {
+                    if (program_get_function_decl(program, key)) {
+                        program_error(program, stmt->token, "Multiple declarations of function %s", key);
+                        goto cleanup;
+                    }
+                }
+            }
+
+            {
+                const char *key;
+                map_iter_t iter = map_iter(&import->struct_decl_map);
+
+                while ((key = map_next(&import->struct_decl_map, &iter))) {
+                    if (program_get_struct_decl(program, key)) {
+                        program_error(program, stmt->token, "Multiple declarations of struct %s", key);
+                        goto cleanup;
+                    }
+                }
+            }
+
             array_push(&program->imported_programs_array, import);
         }
         else if (stmt->type == STMT_STRUCT_DECLARATION) {
@@ -2102,7 +2134,7 @@ static void semantic_analysis_return_stmt(struct mscript_program *program, struc
             program_error(program, stmt->token, "Cannot return expression for void function");
             return;
         }
-    }
+     }
     else {
         if (!stmt->return_stmt.expr) {
             program_error(program, stmt->token, "Must return expression for non-void function");
@@ -2166,6 +2198,10 @@ static void semantic_analysis_struct_declaration(struct mscript_program *program
         struct mscript_type type = stmt->struct_declaration.member_types[i];
         semantic_analysis_type(program, stmt->token, type);
         if (program->error) return;
+        if (types_equal(struct_type(stmt->struct_declaration.name), type)) {
+            program_error(program, stmt->token, "Recursive type definition not allowed");
+            return;
+        }
     }
 }
 

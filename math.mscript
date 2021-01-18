@@ -1,6 +1,5 @@
 struct vec2 {
-    float x;
-    float y;
+    float x, y;
 }
 
 vec2 vec2_add(vec2 a, vec2 b) {
@@ -34,9 +33,7 @@ float vec2_dot(vec2 a, vec2 b) {
 }
 
 struct vec3 {
-    float x;
-    float y;
-    float z;
+    float x, y, z;
 }
 
 vec3 vec3_add(vec3 a, vec3 b) {
@@ -71,4 +68,3 @@ float vec3_distance(vec3 v0, vec3 v1) {
 float vec3_dot(vec3 a, vec3 b) {
     return a.x * b.x + a.y * b.y + a.z * b.z;
 }
-
