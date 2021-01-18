@@ -13,6 +13,16 @@ struct expr;
 struct parser;
 struct semantic_analysis;
 
+array_t(struct mscript_type, array_mscript_type)
+typedef map_t(struct mscript_type) map_mscript_type_t;
+
+static struct mscript_type void_type(void);
+static struct mscript_type int_type(void);
+static struct mscript_type float_type(void);
+static struct mscript_type struct_type(char *struct_name);
+static struct mscript_type array_type(enum mscript_type_type array_type, char *struct_name);
+static bool types_equal(struct mscript_type a, struct mscript_type b);
+
 enum token_type {
     TOKEN_INT,
     TOKEN_FLOAT,
@@ -80,42 +90,60 @@ static bool match_symbol_n(struct mscript_program *program, int n, ...);
 static bool match_eof(struct mscript_program *program);
 static bool check_type(struct mscript_program *program);
 
+struct semantic_analysis_env_block {
+    map_mscript_type_t map;
+};
+array_t(struct semantic_analysis_env_block, array_semantic_analysis_env_block)
+
 struct semantic_analysis {
     struct stmt *function_decl;
+    struct array_semantic_analysis_env_block env_blocks; 
 };
 
 static void semantic_analysis_init(struct semantic_analysis *sa);
-static void start_semantic_analysis(struct mscript_program *program, struct stmt *function_decl);
+static void semantic_analysis_env_push_block(struct semantic_analysis *sa);
+static void semantic_analysis_env_pop_block(struct semantic_analysis *sa);
+static void semantic_analysis_env_set_type(struct semantic_analysis *sa, const char *symbol, struct mscript_type type);
+static bool semantic_analysis_env_get_type(struct semantic_analysis *sa, const char *symbol, struct mscript_type *type);
+static bool semantic_analysis_top_env_get_type(struct semantic_analysis *sa, const char *symbol, struct mscript_type *type);
+static void semantic_analysis_start(struct mscript_program *program, struct stmt *function_decl);
 
-static void stmt_semantic_analysis(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
-static void if_stmt_semantic_analysis(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
-static void for_stmt_semantic_analysis(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
-static void return_stmt_semantic_analysis(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
-static void block_stmt_semantic_analysis(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
-static void expr_stmt_semantic_analysis(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
-static void variable_declaration_stmt_semantic_analysis(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
+static void semantic_analysis_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
+static void semantic_analysis_if_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
+static void semantic_analysis_for_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
+static void semantic_analysis_return_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
+static void semantic_analysis_block_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
+static void semantic_analysis_expr_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
+static void semantic_analysis_variable_declaration_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
 
-static void expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type);
-static void unary_op_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type);
-static void binary_op_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type);
-static void call_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type);
-static void member_access_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type);
-static void assignment_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type);
-static void int_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type);
-static void float_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type);
-static void symbol_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type);
-static void array_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type);
-static void array_access_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type);
-static void object_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type);
-static void cast_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type);
-
-array_t(struct mscript_type, array_mscript_type)
-
-static struct mscript_type void_type(void);
-static struct mscript_type int_type(void);
-static struct mscript_type float_type(void);
-static struct mscript_type struct_type(char *struct_name);
-static struct mscript_type array_type(enum mscript_type_type array_type, char *struct_name);
+static void semantic_analysis_expr_with_cast(struct mscript_program *program, struct expr **expr, struct mscript_type type);
+static void semantic_analysis_expr_lvalue(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type);
+static void semantic_analysis_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type);
+static void semantic_analysis_unary_op_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type);
+static void semantic_analysis_binary_op_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type);
+static void semantic_analysis_call_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type);
+static void semantic_analysis_member_access_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type);
+static void semantic_analysis_assignment_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type);
+static void semantic_analysis_int_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type);
+static void semantic_analysis_float_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type);
+static void semantic_analysis_symbol_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type);
+static void semantic_analysis_array_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type);
+static void semantic_analysis_array_access_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type);
+static void semantic_analysis_object_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type);
+static void semantic_analysis_cast_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type);
 
 enum expr_type {
     EXPR_UNARY_OP,
@@ -151,6 +179,7 @@ enum binary_op_type {
 
 struct expr {
     enum expr_type type;
+    struct token token;
 
     union {
         struct {
@@ -205,19 +234,6 @@ struct expr {
 };
 array_t(struct expr *, array_expr_ptr)
 
-static struct expr *new_unary_op_expr(struct allocator *allocator, enum unary_op_type type, struct expr *operand);
-static struct expr *new_binary_op_expr(struct allocator *allocator, enum binary_op_type type, struct expr *left, struct expr *right);
-static struct expr *new_assignment_expr(struct allocator *allocator, struct expr *left, struct expr *right);
-static struct expr *new_array_access_expr(struct allocator *allocator, struct expr *left, struct expr *right);
-static struct expr *new_member_access_expr(struct allocator *allocator, struct expr *left, char *member_name);
-static struct expr *new_call_expr(struct allocator *allocator, struct expr *function, struct array_expr_ptr args);
-static struct expr *new_array_expr(struct allocator *allocator, struct array_expr_ptr args);
-static struct expr *new_object_expr(struct allocator *allocator, struct array_char_ptr names, struct array_expr_ptr args);
-static struct expr *new_cast_expr(struct allocator *allocator, struct mscript_type type, struct expr *expr);
-static struct expr *new_int_expr(struct allocator *allocator, int int_value);
-static struct expr *new_float_expr(struct allocator *allocator, float float_value);
-static struct expr *new_symbol_expr(struct allocator *allocator, char *symbol);
-
 enum stmt_type {
     STMT_IF,
     STMT_RETURN,
@@ -232,6 +248,7 @@ enum stmt_type {
 
 struct stmt {
     enum stmt_type type;
+    struct token token;
 
     union {
         struct {
@@ -287,17 +304,33 @@ struct stmt {
 };
 array_t(struct stmt *, array_stmt_ptr)
 
-static struct stmt *new_if_stmt(struct allocator *allocator, struct array_expr_ptr conds, struct array_stmt_ptr stmts, struct stmt *else_stmt);
-static struct stmt *new_return_stmt(struct allocator *allocator, struct expr *expr);
-static struct stmt *new_block_stmt(struct allocator *allocator, struct array_stmt_ptr stmts);
-static struct stmt *new_function_declaration_stmt(struct allocator *allocator, struct token token, struct mscript_type return_type, char *name, 
-        struct array_mscript_type arg_types, struct array_char_ptr arg_names, struct stmt *body);
-static struct stmt *new_variable_declaration_stmt(struct allocator *allocator, struct mscript_type type, char *name, struct expr *expr);
-static struct stmt *new_struct_declaration_stmt(struct allocator *allocator, char *name, 
-        struct array_mscript_type member_types, struct array_char_ptr member_names);
-static struct stmt *new_for_stmt(struct allocator *allocator, struct expr *init, struct expr *cond, struct expr *inc, struct stmt *body);
-static struct stmt *new_import_stmt(struct allocator *allocator, char *module_name);
-static struct stmt *new_expr_stmt(struct allocator *allocator, struct expr *expr);
+static struct expr *new_unary_op_expr(struct allocator *allocator, struct token token, enum unary_op_type type, struct expr *operand);
+static struct expr *new_binary_op_expr(struct allocator *allocator, struct token token, enum binary_op_type type, struct expr *left, struct expr *right);
+static struct expr *new_assignment_expr(struct allocator *allocator, struct token token, struct expr *left, struct expr *right);
+static struct expr *new_array_access_expr(struct allocator *allocator, struct token token, struct expr *left, struct expr *right);
+static struct expr *new_member_access_expr(struct allocator *allocator, struct token token, struct expr *left, char *member_name);
+static struct expr *new_call_expr(struct allocator *allocator, struct token token, struct expr *function, struct array_expr_ptr args);
+static struct expr *new_array_expr(struct allocator *allocator, struct token token, struct array_expr_ptr args);
+static struct expr *new_object_expr(struct allocator *allocator, struct token token, struct array_char_ptr names, struct array_expr_ptr args);
+static struct expr *new_cast_expr(struct allocator *allocator, struct token token, struct mscript_type type, struct expr *expr);
+static struct expr *new_int_expr(struct allocator *allocator, struct token token, int int_value);
+static struct expr *new_float_expr(struct allocator *allocator, struct token token, float float_value);
+static struct expr *new_symbol_expr(struct allocator *allocator, struct token token, char *symbol);
+
+static struct stmt *new_if_stmt(struct allocator *allocator, struct token token, 
+        struct array_expr_ptr conds, struct array_stmt_ptr stmts, struct stmt *else_stmt);
+static struct stmt *new_return_stmt(struct allocator *allocator, struct token token, struct expr *expr);
+static struct stmt *new_block_stmt(struct allocator *allocator, struct token token, struct array_stmt_ptr stmts);
+static struct stmt *new_function_declaration_stmt(struct allocator *allocator, struct token token,
+        struct mscript_type return_type, char *name, struct array_mscript_type arg_types, struct array_char_ptr arg_names, struct stmt *body);
+static struct stmt *new_variable_declaration_stmt(struct allocator *allocator, struct token token,
+        struct mscript_type type, char *name, struct expr *expr);
+static struct stmt *new_struct_declaration_stmt(struct allocator *allocator, struct token token,
+        char *name, struct array_mscript_type member_types, struct array_char_ptr member_names);
+static struct stmt *new_for_stmt(struct allocator *allocator, struct token token,
+        struct expr *init, struct expr *cond, struct expr *inc, struct stmt *body);
+static struct stmt *new_import_stmt(struct allocator *allocator, struct token token, char *module_name);
+static struct stmt *new_expr_stmt(struct allocator *allocator, struct token token, struct expr *expr);
 
 static void parse_type(struct mscript_program *program, struct mscript_type *type);  
 
@@ -346,7 +379,10 @@ struct mscript_program {
 
 static void program_init(struct mscript_program *program, const char *prog_text);
 static void program_add_struct_decl(struct mscript_program *program, struct stmt *stmt);
+static struct mscript_struct_decl *program_get_struct_decl(struct mscript_program *program, const char *name);
+static bool program_get_struct_decl_member(struct mscript_struct_decl *decl, const char *member, struct mscript_type *type);
 static void program_add_function_decl(struct mscript_program *program, struct stmt *stmt);
+static struct mscript_function_decl *program_get_function_decl(struct mscript_program *program, const char *name);
 static void program_error(struct mscript_program *program, struct token token, char *fmt, ...);
 
 //
@@ -356,18 +392,21 @@ static void program_error(struct mscript_program *program, struct token token, c
 static struct mscript_type void_type(void) {
     struct mscript_type type;
     type.type = MSCRIPT_TYPE_VOID;
+    type.struct_name = "";
     return type;
 }
 
 static struct mscript_type int_type(void) {
     struct mscript_type type;
     type.type = MSCRIPT_TYPE_INT;
+    type.struct_name = "";
     return type;
 }
 
 static struct mscript_type float_type(void) {
     struct mscript_type type;
     type.type = MSCRIPT_TYPE_FLOAT;
+    type.struct_name = "";
     return type;
 }
 
@@ -379,6 +418,8 @@ static struct mscript_type struct_type(char *struct_name) {
 }
 
 static struct mscript_type array_type(enum mscript_type_type array_type, char *struct_name) {
+    assert(array_type != MSCRIPT_TYPE_ARRAY);
+
     struct mscript_type type;
     type.type = MSCRIPT_TYPE_ARRAY;
     type.array_type = array_type;
@@ -386,52 +427,74 @@ static struct mscript_type array_type(enum mscript_type_type array_type, char *s
     return type;
 }
 
-static struct expr *new_unary_op_expr(struct allocator *allocator, enum unary_op_type type, struct expr *operand) {
+static bool types_equal(struct mscript_type a, struct mscript_type b) {
+    if (a.type != b.type) {
+        return false;
+    }
+
+    if (a.type == MSCRIPT_TYPE_STRUCT) {
+        return strcmp(a.struct_name, b.struct_name) == 0;
+    }
+    else if (a.type == MSCRIPT_TYPE_ARRAY) {
+        return (a.array_type == b.array_type) && (strcmp(a.struct_name, b.struct_name) == 0);
+    }
+    else {
+        return true;
+    }
+}
+
+static struct expr *new_unary_op_expr(struct allocator *allocator, struct token token, enum unary_op_type type, struct expr *operand) {
     struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_UNARY_OP;
+    expr->token = token;
     expr->unary_op.type = type;
     expr->unary_op.operand = operand;
     return expr;
 }
 
-static struct expr *new_binary_op_expr(struct allocator *allocator, enum binary_op_type type, struct expr *left, struct expr *right) {
+static struct expr *new_binary_op_expr(struct allocator *allocator, struct token token, enum binary_op_type type, struct expr *left, struct expr *right) {
     struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_BINARY_OP;
+    expr->token = token;
     expr->binary_op.type = type;
     expr->binary_op.left = left;
     expr->binary_op.right = right;
     return expr;
 }
 
-static struct expr *new_assignment_expr(struct allocator *allocator, struct expr *left, struct expr *right) {
+static struct expr *new_assignment_expr(struct allocator *allocator, struct token token, struct expr *left, struct expr *right) {
     struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_ASSIGNMENT;
+    expr->token = token;
     expr->assignment.left = left;
     expr->assignment.right = right;
     return expr;
 }
 
-static struct expr *new_array_access_expr(struct allocator *allocator, struct expr *left, struct expr *right) {
+static struct expr *new_array_access_expr(struct allocator *allocator, struct token token, struct expr *left, struct expr *right) {
     struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_ARRAY_ACCESS;
+    expr->token = token;
     expr->array_access.left = left;
     expr->array_access.right = right;
     return expr;
 }
 
-static struct expr *new_member_access_expr(struct allocator *allocator, struct expr *left, char *member_name) {
+static struct expr *new_member_access_expr(struct allocator *allocator, struct token token, struct expr *left, char *member_name) {
     struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_MEMBER_ACCESS;
+    expr->token = token;
     expr->member_access.left = left;
     expr->member_access.member_name = member_name;
     return expr;
 }
 
-static struct expr *new_call_expr(struct allocator *allocator, struct expr *function, struct array_expr_ptr args) {
+static struct expr *new_call_expr(struct allocator *allocator, struct token token, struct expr *function, struct array_expr_ptr args) {
     int num_args = args.length;
 
     struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_CALL;
+    expr->token = token;
     expr->call.function = function;
     expr->call.num_args = num_args;
     expr->call.args = allocator_alloc(allocator, num_args * sizeof(struct expr*));
@@ -439,23 +502,25 @@ static struct expr *new_call_expr(struct allocator *allocator, struct expr *func
     return expr;
 }
 
-static struct expr *new_array_expr(struct allocator *allocator, struct array_expr_ptr args) {
+static struct expr *new_array_expr(struct allocator *allocator, struct token token, struct array_expr_ptr args) {
     int num_args = args.length;
 
     struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_ARRAY;
+    expr->token = token;
     expr->array.num_args = num_args;
     expr->array.args = allocator_alloc(allocator, num_args * sizeof(struct expr*));
     memcpy(expr->array.args, args.data, num_args * sizeof(struct expr*));
     return expr;
 }
 
-static struct expr *new_object_expr(struct allocator *allocator, struct array_char_ptr names, struct array_expr_ptr args) {
+static struct expr *new_object_expr(struct allocator *allocator, struct token token, struct array_char_ptr names, struct array_expr_ptr args) {
     assert(names.length == args.length);
     int num_args = args.length;
 
     struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_OBJECT;
+    expr->token = token;
     expr->object.num_args = num_args;
     expr->object.names = allocator_alloc(allocator, num_args * sizeof(char *));
     memcpy(expr->object.names, names.data, num_args * sizeof(char *));
@@ -464,41 +529,46 @@ static struct expr *new_object_expr(struct allocator *allocator, struct array_ch
     return expr;
 }
 
-static struct expr *new_cast_expr(struct allocator *allocator, struct mscript_type type, struct expr *arg) {
+static struct expr *new_cast_expr(struct allocator *allocator, struct token token, struct mscript_type type, struct expr *arg) {
     struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_CAST;
+    expr->token = token;
     expr->cast.type = type;
     expr->cast.arg = arg;
     return expr;
 }
 
-static struct expr *new_int_expr(struct allocator *allocator, int int_value) {
+static struct expr *new_int_expr(struct allocator *allocator, struct token token, int int_value) {
     struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_INT;
+    expr->token = token;
     expr->int_value = int_value;
     return expr;
 }
 
-static struct expr *new_float_expr(struct allocator *allocator, float float_value) {
+static struct expr *new_float_expr(struct allocator *allocator, struct token token, float float_value) {
     struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_FLOAT;
+    expr->token = token;
     expr->float_value = float_value;
     return expr;
 }
 
-static struct expr *new_symbol_expr(struct allocator *allocator, char *symbol) {
+static struct expr *new_symbol_expr(struct allocator *allocator, struct token token, char *symbol) {
     struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_SYMBOL;
+    expr->token = token;
     expr->symbol = symbol;
     return expr;
 }
 
-static struct stmt *new_if_stmt(struct allocator *allocator, struct array_expr_ptr conds, struct array_stmt_ptr stmts, struct stmt *else_stmt) {
+static struct stmt *new_if_stmt(struct allocator *allocator, struct token token, struct array_expr_ptr conds, struct array_stmt_ptr stmts, struct stmt *else_stmt) {
     assert(conds.length == stmts.length);
     int num_stmts = conds.length;
 
     struct stmt *stmt = allocator_alloc(allocator, sizeof(struct stmt));
     stmt->type = STMT_IF;
+    stmt->token = token;
     stmt->if_stmt.num_stmts = num_stmts;
     stmt->if_stmt.conds = allocator_alloc(allocator, num_stmts * sizeof(struct expr *));
     memcpy(stmt->if_stmt.conds, conds.data, num_stmts * sizeof(struct expr *));
@@ -508,18 +578,20 @@ static struct stmt *new_if_stmt(struct allocator *allocator, struct array_expr_p
     return stmt;
 }
 
-static struct stmt *new_return_stmt(struct allocator *allocator, struct expr *expr) {
+static struct stmt *new_return_stmt(struct allocator *allocator, struct token token, struct expr *expr) {
     struct stmt *stmt = allocator_alloc(allocator, sizeof(struct stmt));
     stmt->type = STMT_RETURN;
+    stmt->token = token;
     stmt->return_stmt.expr = expr;
     return stmt;
 }
 
-static struct stmt *new_block_stmt(struct allocator *allocator, struct array_stmt_ptr stmts) {
+static struct stmt *new_block_stmt(struct allocator *allocator, struct token token, struct array_stmt_ptr stmts) {
     int num_stmts = stmts.length;
 
     struct stmt *stmt = allocator_alloc(allocator, sizeof(struct stmt));
     stmt->type = STMT_BLOCK;
+    stmt->token = token;
     stmt->block.num_stmts = num_stmts;
     stmt->block.stmts = allocator_alloc(allocator, num_stmts * sizeof(struct stmt *));
     memcpy(stmt->block.stmts, stmts.data, num_stmts * sizeof(struct stmt *));
@@ -533,6 +605,7 @@ static struct stmt *new_function_declaration_stmt(struct allocator *allocator, s
 
     struct stmt *stmt = allocator_alloc(allocator, sizeof(struct stmt));
     stmt->type = STMT_FUNCTION_DECLARATION;
+    stmt->token = token;
     stmt->function_declaration.token = token;
     stmt->function_declaration.return_type = return_type;
     stmt->function_declaration.name = name;
@@ -545,22 +618,24 @@ static struct stmt *new_function_declaration_stmt(struct allocator *allocator, s
     return stmt;
 }
 
-static struct stmt *new_variable_declaration_stmt(struct allocator *allocator, struct mscript_type type, char *name, struct expr *expr) {
+static struct stmt *new_variable_declaration_stmt(struct allocator *allocator, struct token token, struct mscript_type type, char *name, struct expr *expr) {
     struct stmt *stmt = allocator_alloc(allocator, sizeof(struct stmt));
     stmt->type = STMT_VARIABLE_DECLARATION;
+    stmt->token = token;
     stmt->variable_declaration.type = type;
     stmt->variable_declaration.name = name;
     stmt->variable_declaration.expr = expr;
     return stmt;
 }
 
-static struct stmt *new_struct_declaration_stmt(struct allocator *allocator, char *name, 
+static struct stmt *new_struct_declaration_stmt(struct allocator *allocator, struct token token, char *name, 
         struct array_mscript_type member_types, struct array_char_ptr member_names) {
     assert(member_types.length == member_names.length);
     int num_members = member_types.length;
 
     struct stmt *stmt = allocator_alloc(allocator, sizeof(struct stmt));
     stmt->type = STMT_STRUCT_DECLARATION;
+    stmt->token = token;
     stmt->struct_declaration.name = name;
     stmt->struct_declaration.num_members = num_members;
     stmt->struct_declaration.member_types = allocator_alloc(allocator, num_members * sizeof(struct mscript_type));
@@ -570,9 +645,10 @@ static struct stmt *new_struct_declaration_stmt(struct allocator *allocator, cha
     return stmt;
 }
 
-static struct stmt *new_for_stmt(struct allocator *allocator, struct expr *init, struct expr *cond, struct expr *inc, struct stmt *body) {
+static struct stmt *new_for_stmt(struct allocator *allocator, struct token token, struct expr *init, struct expr *cond, struct expr *inc, struct stmt *body) {
     struct stmt *stmt = allocator_alloc(allocator, sizeof(struct stmt));
     stmt->type = STMT_FOR;
+    stmt->token = token;
     stmt->for_stmt.init = init;
     stmt->for_stmt.cond = cond;
     stmt->for_stmt.inc = inc;
@@ -580,16 +656,18 @@ static struct stmt *new_for_stmt(struct allocator *allocator, struct expr *init,
     return stmt;
 }
 
-static struct stmt *new_import_stmt(struct allocator *allocator, char *module_name) {
+static struct stmt *new_import_stmt(struct allocator *allocator, struct token token, char *module_name) {
     struct stmt *stmt = allocator_alloc(allocator, sizeof(struct stmt));
     stmt->type = STMT_IMPORT;
+    stmt->token = token;
     stmt->import.module_name = module_name;
     return stmt;
 }
 
-static struct stmt *new_expr_stmt(struct allocator *allocator, struct expr *expr) {
+static struct stmt *new_expr_stmt(struct allocator *allocator, struct token token, struct expr *expr) {
     struct stmt *stmt = allocator_alloc(allocator, sizeof(struct stmt));
     stmt->type = STMT_EXPR;
+    stmt->token = token;
     stmt->expr = expr;
     return stmt;
 }
@@ -621,6 +699,7 @@ static void parse_type(struct mscript_program *program, struct mscript_type *typ
 }
 
 static struct expr *parse_object_expr(struct mscript_program *program) {
+    struct token token = peek(program);
     struct array_char_ptr names;
     struct array_expr_ptr args;
     array_init(&names);
@@ -657,7 +736,7 @@ static struct expr *parse_object_expr(struct mscript_program *program) {
         }
     }
 
-    expr = new_object_expr(&program->parser.allocator, names, args);
+    expr = new_object_expr(&program->parser.allocator, token, names, args);
 
 cleanup:
     array_deinit(&names);
@@ -666,6 +745,7 @@ cleanup:
 }
 
 static struct expr *parse_array_expr(struct mscript_program *program) {
+    struct token token = peek(program);
     struct array_expr_ptr args;
     array_init(&args);
 
@@ -686,7 +766,7 @@ static struct expr *parse_array_expr(struct mscript_program *program) {
         }
     }
 
-    expr = new_array_expr(&program->parser.allocator, args);
+    expr = new_array_expr(&program->parser.allocator, token, args);
 
 cleanup:
     array_deinit(&args);
@@ -698,15 +778,15 @@ static struct expr *parse_primary_expr(struct mscript_program *program) {
     struct expr *expr = NULL;
 
     if (tok.type == TOKEN_INT) {
-        expr = new_int_expr(&program->parser.allocator, tok.int_value);
+        expr = new_int_expr(&program->parser.allocator, tok, tok.int_value);
         eat(program);
     }
     else if (tok.type == TOKEN_FLOAT) {
-        expr = new_float_expr(&program->parser.allocator, tok.float_value);
+        expr = new_float_expr(&program->parser.allocator, tok, tok.float_value);
         eat(program);
     }
     else if (tok.type == TOKEN_SYMBOL) {
-        expr = new_symbol_expr(&program->parser.allocator, tok.symbol);
+        expr = new_symbol_expr(&program->parser.allocator, tok, tok.symbol);
         eat(program);
     }
     else if (match_char(program, '[')) {
@@ -714,6 +794,13 @@ static struct expr *parse_primary_expr(struct mscript_program *program) {
     }
     else if (match_char(program, '{')) {
         expr = parse_object_expr(program);
+    }
+    else if (match_char(program, '(')) {
+        expr = parse_expr(program);
+        if (!match_char(program, ')')) {
+            program_error(program, peek(program), "Expected ')"); 
+            goto cleanup;
+        }
     }
     else {
         program_error(program, tok, "Unknown token");
@@ -725,6 +812,7 @@ cleanup:
 }
 
 static struct expr *parse_call_expr(struct mscript_program *program) {
+    struct token token = peek(program);
     struct array_expr_ptr args;
     array_init(&args);
 
@@ -748,7 +836,7 @@ static struct expr *parse_call_expr(struct mscript_program *program) {
             }
         }
 
-        expr = new_call_expr(&program->parser.allocator, expr, args);
+        expr = new_call_expr(&program->parser.allocator, token, expr, args);
     }
 
 cleanup:
@@ -757,13 +845,14 @@ cleanup:
 }
 
 static struct expr *parse_array_access_expr(struct mscript_program *program) {
+    struct token token = peek(program);
     struct expr *expr = parse_call_expr(program);
     if (program->error) goto cleanup;
 
     if (match_char(program, '[')) {
         struct expr *right = parse_expr(program);
         if (program->error) goto cleanup;
-        expr = new_array_access_expr(&program->parser.allocator, expr, right);
+        expr = new_array_access_expr(&program->parser.allocator, token, expr, right);
 
         if (!match_char(program, ']')) {
             program_error(program, peek(program), "Expected ']'");
@@ -776,6 +865,7 @@ cleanup:
 }
 
 static struct expr *parse_member_access_expr(struct mscript_program *program) {
+    struct token token = peek(program);
     struct expr *expr = parse_array_access_expr(program);
     if (program->error) goto cleanup;
 
@@ -787,7 +877,7 @@ static struct expr *parse_member_access_expr(struct mscript_program *program) {
         }
         eat(program);
 
-        expr = new_member_access_expr(&program->parser.allocator, expr, tok.symbol);
+        expr = new_member_access_expr(&program->parser.allocator, token, expr, tok.symbol);
     }
 
 cleanup:
@@ -795,11 +885,12 @@ cleanup:
 }
 
 static struct expr *parse_unary_expr(struct mscript_program *program) {
+    struct token token = peek(program);
     struct expr *expr = parse_member_access_expr(program);
     if (program->error) goto cleanup;
 
     if (match_char_n(program, 2, '+', '+')) {
-        assert(false);
+        expr = new_unary_op_expr(&program->parser.allocator, token, UNARY_OP_POST_INC, expr);
     }
 
 cleanup:
@@ -807,6 +898,7 @@ cleanup:
 }
 
 static struct expr *parse_factor_expr(struct mscript_program *program) {
+    struct token token = peek(program);
     struct expr *expr = parse_unary_expr(program);
     if (program->error) goto cleanup;
 
@@ -825,7 +917,7 @@ static struct expr *parse_factor_expr(struct mscript_program *program) {
 
         struct expr *right = parse_unary_expr(program);
         if (program->error) goto cleanup;
-        expr = new_binary_op_expr(&program->parser.allocator, binary_op_type, expr, right);
+        expr = new_binary_op_expr(&program->parser.allocator, token, binary_op_type, expr, right);
     }
 
 cleanup:
@@ -833,6 +925,7 @@ cleanup:
 }
 
 static struct expr *parse_term_expr(struct mscript_program *program) {
+    struct token token = peek(program);
     struct expr *expr = parse_factor_expr(program);
     if (program->error) goto cleanup;
 
@@ -851,7 +944,7 @@ static struct expr *parse_term_expr(struct mscript_program *program) {
 
         struct expr *right = parse_factor_expr(program);
         if (program->error) goto cleanup;
-        expr = new_binary_op_expr(&program->parser.allocator, binary_op_type, expr, right);
+        expr = new_binary_op_expr(&program->parser.allocator, token, binary_op_type, expr, right);
     }
 
 cleanup:
@@ -859,6 +952,7 @@ cleanup:
 }
 
 static struct expr *parse_comparison_expr(struct mscript_program *program) {
+    struct token token = peek(program);
     struct expr *expr = parse_term_expr(program);
     if (program->error) goto cleanup;
 
@@ -889,7 +983,7 @@ static struct expr *parse_comparison_expr(struct mscript_program *program) {
 
         struct expr *right = parse_term_expr(program);
         if (program->error) goto cleanup;
-        expr = new_binary_op_expr(&program->parser.allocator, binary_op_type, expr, right);
+        expr = new_binary_op_expr(&program->parser.allocator, token, binary_op_type, expr, right);
     }
 
 cleanup:
@@ -897,6 +991,7 @@ cleanup:
 }
 
 static struct expr *parse_assignment_expr(struct mscript_program *program) {
+    struct token token = peek(program);
     struct expr *expr = parse_comparison_expr(program);
     if (program->error) goto cleanup;
 
@@ -905,7 +1000,7 @@ static struct expr *parse_assignment_expr(struct mscript_program *program) {
             struct expr *right = parse_assignment_expr(program);
             if (program->error) goto cleanup;
 
-            expr = new_assignment_expr(&program->parser.allocator, expr, right);
+            expr = new_assignment_expr(&program->parser.allocator, token, expr, right);
         }
         else {
             break;
@@ -938,6 +1033,7 @@ static struct stmt *parse_stmt(struct mscript_program *program) {
         return parse_block_stmt(program);
     }
     else {
+        struct token token = peek(program);
         struct expr *expr = parse_expr(program);
         if (program->error) return NULL;
 
@@ -945,7 +1041,7 @@ static struct stmt *parse_stmt(struct mscript_program *program) {
             program_error(program, peek(program), "Expected ';'");
             return NULL;
         }
-        return new_expr_stmt(&program->parser.allocator, expr);
+        return new_expr_stmt(&program->parser.allocator, token, expr);
     }
 }
 
@@ -957,6 +1053,7 @@ static struct stmt *parse_if_stmt(struct mscript_program *program) {
     array_init(&stmts);
 
     struct stmt *stmt = NULL;
+    struct token token = peek(program);
 
     if (!match_char(program, '(')) {
         program_error(program, peek(program), "Expected '('");
@@ -1010,7 +1107,7 @@ static struct stmt *parse_if_stmt(struct mscript_program *program) {
         }
     }
 
-    stmt = new_if_stmt(&program->parser.allocator, conds, stmts, else_stmt);
+    stmt = new_if_stmt(&program->parser.allocator, token, conds, stmts, else_stmt);
 
 cleanup:
     array_deinit(&conds);
@@ -1023,6 +1120,7 @@ static struct stmt *parse_block_stmt(struct mscript_program *program) {
     array_init(&stmts);
 
     struct stmt *stmt = NULL;
+    struct token token = peek(program);
     
     while (true) {
         if (match_char(program, '}')) {
@@ -1034,7 +1132,7 @@ static struct stmt *parse_block_stmt(struct mscript_program *program) {
         array_push(&stmts, stmt);
     }
 
-    stmt = new_block_stmt(&program->parser.allocator, stmts);
+    stmt = new_block_stmt(&program->parser.allocator, token, stmts);
 
 cleanup:
     array_deinit(&stmts);
@@ -1042,6 +1140,7 @@ cleanup:
 }
 
 static struct stmt *parse_for_stmt(struct mscript_program *program) {
+    struct token token = peek(program);
     struct stmt *stmt = NULL;
 
     if (!match_char(program, '(')) {
@@ -1065,21 +1164,22 @@ static struct stmt *parse_for_stmt(struct mscript_program *program) {
 
     struct expr *inc = parse_expr(program);
     if (program->error) goto cleanup;
-    if (!match_char(program, ';')) {
-        program_error(program, peek(program), "Expected ';'");
+    if (!match_char(program, ')')) {
+        program_error(program, peek(program), "Expected ')'");
         goto cleanup;
     }
 
     struct stmt *body = parse_stmt(program);
     if (program->error) goto cleanup;
 
-    stmt = new_for_stmt(&program->parser.allocator, init, cond, inc, body);
+    stmt = new_for_stmt(&program->parser.allocator, token, init, cond, inc, body);
 
 cleanup:
     return stmt;
 }
 
 static struct stmt *parse_return_stmt(struct mscript_program *program) {
+    struct token token = peek(program);
     struct stmt *stmt = NULL;
     struct expr *expr = NULL;
 
@@ -1092,13 +1192,14 @@ static struct stmt *parse_return_stmt(struct mscript_program *program) {
         }
     }
 
-    stmt = new_return_stmt(&program->parser.allocator, expr);
+    stmt = new_return_stmt(&program->parser.allocator, token, expr);
 
 cleanup:
     return stmt;
 }
 
 static struct stmt *parse_variable_declaration_stmt(struct mscript_program *program) {
+    struct token token = peek(program);
     struct stmt *stmt = NULL;
 
     struct mscript_type type;
@@ -1123,7 +1224,7 @@ static struct stmt *parse_variable_declaration_stmt(struct mscript_program *prog
         goto cleanup;
     }
 
-    stmt = new_variable_declaration_stmt(&program->parser.allocator, type, name.symbol, expr);
+    stmt = new_variable_declaration_stmt(&program->parser.allocator, token, type, name.symbol, expr);
 
 cleanup:
     return stmt;
@@ -1196,6 +1297,7 @@ cleanup:
 }
 
 static struct stmt *parse_struct_declaration_stmt(struct mscript_program *program) {
+    struct token token = peek(program);
     struct array_mscript_type member_types;
     struct array_char_ptr member_names;
     array_init(&member_types);
@@ -1239,7 +1341,7 @@ static struct stmt *parse_struct_declaration_stmt(struct mscript_program *progra
         }
     }
 
-    stmt = new_struct_declaration_stmt(&program->parser.allocator, name.symbol, member_types, member_names);
+    stmt = new_struct_declaration_stmt(&program->parser.allocator, token, name.symbol, member_types, member_names);
 
 cleanup:
     array_deinit(&member_types);
@@ -1248,6 +1350,7 @@ cleanup:
 }
 
 static struct stmt *parse_import_stmt(struct mscript_program *program) {
+    struct token token = peek(program);
     struct stmt *stmt = NULL;
 
     struct token module_name = peek(program);
@@ -1262,7 +1365,7 @@ static struct stmt *parse_import_stmt(struct mscript_program *program) {
         goto cleanup;
     }
 
-    stmt = new_import_stmt(&program->parser.allocator, module_name.symbol);
+    stmt = new_import_stmt(&program->parser.allocator, token, module_name.symbol);
 
 cleanup:
     return stmt;
@@ -1291,6 +1394,7 @@ static bool is_char(char c) {
         (c == '{') ||
         (c == '}') ||
         (c == '<') ||
+        (c == '>') ||
         (c == '=') ||
         (c == '+') ||
         (c == '-') ||
@@ -1475,7 +1579,7 @@ static void parser_run(struct mscript_program *program) {
     array_init(&global_stmts);
 
     tokenize(program);
-    debug_log_tokens(program->parser.tokens.data);
+    //debug_log_tokens(program->parser.tokens.data);
 
     while (true) {
         if (match_eof(program)) {
@@ -1501,7 +1605,6 @@ static void parser_run(struct mscript_program *program) {
             goto cleanup;
         }
 
-        debug_log_stmt(stmt);
         array_push(&global_stmts, stmt);
     }
 
@@ -1528,7 +1631,7 @@ static void parser_run(struct mscript_program *program) {
         else if (stmt->type == STMT_STRUCT_DECLARATION) {
         }
         else if (stmt->type == STMT_FUNCTION_DECLARATION) {
-            start_semantic_analysis(program, stmt);
+            semantic_analysis_start(program, stmt);
             if (program->error) {
                 m_logf("ERROR: %s. Line: %d. Col: %d\n", program->error, program->error_token.line, program->error_token.col);
                 goto cleanup;
@@ -1537,6 +1640,8 @@ static void parser_run(struct mscript_program *program) {
         else {
             assert(false);
         }
+
+        debug_log_stmt(stmt);
     }
 
 cleanup:
@@ -1567,6 +1672,20 @@ static void program_add_struct_decl(struct mscript_program *program, struct stmt
     map_set(&program->struct_decl_map, decl.name, decl);
 }
 
+static struct mscript_struct_decl *program_get_struct_decl(struct mscript_program *program, const char *name) {
+    return map_get(&program->struct_decl_map, name);
+}
+
+static bool program_get_struct_decl_member(struct mscript_struct_decl *decl, const char *member, struct mscript_type *type) {
+    for (int i = 0; i < decl->num_members; i++) {
+        if (strcmp(decl->members[i].name, member) == 0) {
+            *type = decl->members[i].type;
+            return true;
+        }
+    }
+    return false;
+}
+
 static void program_add_function_decl(struct mscript_program *program, struct stmt *stmt) {
     assert(stmt->type == STMT_FUNCTION_DECLARATION);
 
@@ -1582,6 +1701,10 @@ static void program_add_function_decl(struct mscript_program *program, struct st
     }
 
     map_set(&program->function_decl_map, decl.name, decl);
+}
+
+static struct mscript_function_decl *program_get_function_decl(struct mscript_program *program, const char *name) {
+    return map_get(&program->function_decl_map, name);
 }
 
 static void program_error(struct mscript_program *program, struct token token, char *fmt, ...) {
@@ -1742,39 +1865,88 @@ static bool check_type(struct mscript_program *program) {
 
 static void semantic_analysis_init(struct semantic_analysis *sa) {
     sa->function_decl = NULL;
+    array_init(&sa->env_blocks);
 }
 
-static void start_semantic_analysis(struct mscript_program *program, struct stmt *function_decl) {
+static void semantic_analysis_env_push_block(struct semantic_analysis *sa) {
+    struct semantic_analysis_env_block block;
+    map_init(&block.map);
+    array_push(&sa->env_blocks, block);
+}
+
+static void semantic_analysis_env_pop_block(struct semantic_analysis *sa) {
+    struct semantic_analysis_env_block block = array_pop(&sa->env_blocks);
+    map_deinit(&block.map);
+}
+
+static void semantic_analysis_env_set_type(struct semantic_analysis *sa, const char *symbol, struct mscript_type type) {
+    assert(sa->env_blocks.length > 0);
+    struct semantic_analysis_env_block *block = &(sa->env_blocks.data[sa->env_blocks.length - 1]);
+    map_set(&block->map, symbol, type);
+}
+
+static bool semantic_analysis_env_get_type(struct semantic_analysis *sa, const char *symbol, struct mscript_type *type) {
+    for (int i = sa->env_blocks.length - 1; i >= 0; i--) {
+        struct semantic_analysis_env_block *block = &(sa->env_blocks.data[i]);
+        struct mscript_type *t = map_get(&block->map, symbol);
+        if (t) {
+            *type = *t;
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool semantic_analysis_top_env_get_type(struct semantic_analysis *sa, const char *symbol, struct mscript_type *type) {
+    assert(sa->env_blocks.length > 0);
+    int i = sa->env_blocks.length - 1;
+    struct semantic_analysis_env_block *block = &(sa->env_blocks.data[i]);
+    struct mscript_type *t = map_get(&block->map, symbol);
+    if (t) {
+        *type = *t;
+        return true;
+    }
+    return false;
+}
+
+static void semantic_analysis_start(struct mscript_program *program, struct stmt *function_decl) {
     assert(function_decl->type == STMT_FUNCTION_DECLARATION);
     program->semantic_analysis.function_decl = function_decl;
 
+    semantic_analysis_env_push_block(&program->semantic_analysis);
+    for (int i = 0; i < function_decl->function_declaration.num_args; i++) {
+        semantic_analysis_env_set_type(&program->semantic_analysis, 
+                function_decl->function_declaration.arg_names[i],
+                function_decl->function_declaration.arg_types[i]);
+    }
     bool all_paths_return;
-    stmt_semantic_analysis(program, function_decl->function_declaration.body, &all_paths_return);
+    semantic_analysis_stmt(program, function_decl->function_declaration.body, &all_paths_return);
     if (!all_paths_return) {
         program_error(program, function_decl->function_declaration.token, "Not all paths return from function");
     }
+    semantic_analysis_env_pop_block(&program->semantic_analysis);
 }
 
-static void stmt_semantic_analysis(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
+static void semantic_analysis_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
     *all_paths_return = false;
     switch (stmt->type) {
         case STMT_IF:
-            if_stmt_semantic_analysis(program, stmt, all_paths_return);
+            semantic_analysis_if_stmt(program, stmt, all_paths_return);
             break;
         case STMT_FOR:
-            for_stmt_semantic_analysis(program, stmt, all_paths_return);
+            semantic_analysis_for_stmt(program, stmt, all_paths_return);
             break;
         case STMT_RETURN:
-            return_stmt_semantic_analysis(program, stmt, all_paths_return);
+            semantic_analysis_return_stmt(program, stmt, all_paths_return);
             break;
         case STMT_BLOCK:
-            block_stmt_semantic_analysis(program, stmt, all_paths_return);
+            semantic_analysis_block_stmt(program, stmt, all_paths_return);
             break;
         case STMT_EXPR:
-            expr_stmt_semantic_analysis(program, stmt, all_paths_return);
+            semantic_analysis_expr_stmt(program, stmt, all_paths_return);
             break;
         case STMT_VARIABLE_DECLARATION:
-            variable_declaration_stmt_semantic_analysis(program, stmt, all_paths_return);
+            semantic_analysis_variable_declaration_stmt(program, stmt, all_paths_return);
             break;
         case STMT_FUNCTION_DECLARATION:
         case STMT_STRUCT_DECLARATION:
@@ -1785,16 +1957,16 @@ static void stmt_semantic_analysis(struct mscript_program *program, struct stmt 
     }
 }
 
-static void if_stmt_semantic_analysis(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
+static void semantic_analysis_if_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
     assert(stmt->type == STMT_IF);
 
     *all_paths_return = true;
     for (int i = 0; i < stmt->if_stmt.num_stmts; i++) {
-        struct mscript_type result_type;
-        expr_semantic_analysis(program, stmt->if_stmt.conds[i], &result_type);
+        semantic_analysis_expr_with_cast(program, &(stmt->if_stmt.conds[i]), int_type());
+        if (program->error) return;
 
         bool stmt_all_paths_return;
-        stmt_semantic_analysis(program, stmt->if_stmt.stmts[i], &stmt_all_paths_return);
+        semantic_analysis_stmt(program, stmt->if_stmt.stmts[i], &stmt_all_paths_return);
         if (!stmt_all_paths_return) {
             *all_paths_return = false;
         }
@@ -1802,94 +1974,248 @@ static void if_stmt_semantic_analysis(struct mscript_program *program, struct st
 
     if (stmt->if_stmt.else_stmt) {
         bool stmt_all_paths_return;
-        stmt_semantic_analysis(program, stmt->if_stmt.else_stmt, &stmt_all_paths_return);
+        semantic_analysis_stmt(program, stmt->if_stmt.else_stmt, &stmt_all_paths_return);
         if (!stmt_all_paths_return) {
             *all_paths_return = false;
         }
     }
+    else {
+        *all_paths_return = false;
+    }
 }
 
-static void for_stmt_semantic_analysis(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
+static void semantic_analysis_for_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
     assert(stmt->type == STMT_FOR);
-    stmt_semantic_analysis(program, stmt->for_stmt.body, all_paths_return);
+
+    struct mscript_type type;
+    semantic_analysis_expr(program, stmt->for_stmt.init, &type, NULL);
+    semantic_analysis_expr_with_cast(program, &(stmt->for_stmt.cond), int_type());
+    semantic_analysis_expr(program, stmt->for_stmt.inc, &type, NULL);
+    semantic_analysis_stmt(program, stmt->for_stmt.body, all_paths_return);
 }
 
-static void return_stmt_semantic_analysis(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
+static void semantic_analysis_return_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
     assert(stmt->type == STMT_RETURN);
     *all_paths_return = true;
+
+    struct mscript_type return_type = program->semantic_analysis.function_decl->function_declaration.return_type;
+    semantic_analysis_expr_with_cast(program, &(stmt->return_stmt.expr), return_type);
 }
 
-static void block_stmt_semantic_analysis(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
+static void semantic_analysis_block_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
     assert(stmt->type == STMT_BLOCK);
+
+    semantic_analysis_env_push_block(&program->semantic_analysis);
     for (int i = 0; i < stmt->block.num_stmts; i++) {
         bool stmt_all_paths_return;
-        stmt_semantic_analysis(program, stmt->block.stmts[i], &stmt_all_paths_return);
+        semantic_analysis_stmt(program, stmt->block.stmts[i], &stmt_all_paths_return);
         if (stmt_all_paths_return) {
             *all_paths_return = true;
         }
     }
+    semantic_analysis_env_pop_block(&program->semantic_analysis);
 }
 
-static void expr_stmt_semantic_analysis(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
+static void semantic_analysis_expr_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
     assert(stmt->type == STMT_EXPR);
+    struct mscript_type result_type;
+    semantic_analysis_expr(program, stmt->expr, &result_type, NULL);
 }
 
-static void variable_declaration_stmt_semantic_analysis(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
+static void semantic_analysis_variable_declaration_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
     assert(stmt->type == STMT_VARIABLE_DECLARATION);
+
+    char *name = stmt->variable_declaration.name;
+    struct mscript_type type = stmt->variable_declaration.type;
+
+    struct mscript_type unused;
+    if (semantic_analysis_top_env_get_type(&program->semantic_analysis, name, &unused)) {
+        program_error(program, stmt->token, "Symbol already declared");
+        return;
+    }
+
+    semantic_analysis_env_set_type(&program->semantic_analysis, name, type);
+    if (stmt->variable_declaration.expr) {
+        semantic_analysis_expr_with_cast(program, &(stmt->variable_declaration.expr), stmt->variable_declaration.type);
+        if (program->error) return;
+    }
 }
 
-static void expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type) {
+static void semantic_analysis_expr_with_cast(struct mscript_program *program, struct expr **expr, struct mscript_type type) {
+    struct mscript_type result_type;
+    semantic_analysis_expr(program, *expr, &result_type, &type);
+    if (program->error) return;
+
+    if (types_equal(result_type, type)) {
+        return;
+    }
+
+    if (type.type == MSCRIPT_TYPE_INT) {
+        if (result_type.type == MSCRIPT_TYPE_FLOAT) {
+            *expr = new_cast_expr(&program->parser.allocator, (*expr)->token, type, *expr);
+        }
+        else {
+            program_error(program, (*expr)->token, "Invalid cast");
+            return;
+        }
+    }
+    else if (type.type == MSCRIPT_TYPE_FLOAT) {
+        if (result_type.type == MSCRIPT_TYPE_INT) {
+            *expr = new_cast_expr(&program->parser.allocator, (*expr)->token, type, *expr);
+        }
+        else {
+            program_error(program, (*expr)->token, "Invalid cast");
+            return;
+        }
+    }
+    else {
+        program_error(program, (*expr)->token, "Invalid cast");
+        return;
+    }
+}
+
+static void semantic_analysis_expr_lvalue(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type) {
     switch (expr->type) {
         case EXPR_UNARY_OP:
-            unary_op_expr_semantic_analysis(program, expr, result_type);
-            break;
         case EXPR_BINARY_OP:
-            binary_op_expr_semantic_analysis(program, expr, result_type);
-            break;
         case EXPR_CALL:
-            call_expr_semantic_analysis(program, expr, result_type);
-            break;
-        case EXPR_MEMBER_ACCESS:
-            member_access_expr_semantic_analysis(program, expr, result_type);
-            break;
         case EXPR_ASSIGNMENT:
-            assignment_expr_semantic_analysis(program, expr, result_type);
-            break;
         case EXPR_INT:
-            int_expr_semantic_analysis(program, expr, result_type);
-            break;
         case EXPR_FLOAT:
-            float_expr_semantic_analysis(program, expr, result_type);
-            break;
-        case EXPR_SYMBOL:
-            symbol_expr_semantic_analysis(program, expr, result_type);
-            break;
         case EXPR_ARRAY:
-            array_expr_semantic_analysis(program, expr, result_type);
+        case EXPR_OBJECT:
+        case EXPR_CAST:
+            {
+                program_error(program, expr->token, "Invalid lvalue");
+            }
             break;
         case EXPR_ARRAY_ACCESS:
-            array_access_expr_semantic_analysis(program, expr, result_type);
+            {
+                struct mscript_type left_type;
+                semantic_analysis_expr(program, expr->array_access.left, &left_type, NULL);
+                if (program->error) return;
+
+                if (left_type.type != MSCRIPT_TYPE_ARRAY) {
+                    program_error(program, expr->array_access.left->token, "Expected array");
+                    return;
+                }
+
+                *result_type = left_type;
+                result_type->type = left_type.array_type;
+                semantic_analysis_expr_with_cast(program, &(expr->array_access.right), int_type());
+            }
             break;
-        case EXPR_OBJECT:
-            object_expr_semantic_analysis(program, expr, result_type);
+        case EXPR_MEMBER_ACCESS:
+            {
+                struct mscript_type left_type;
+                semantic_analysis_expr(program, expr->member_access.left, &left_type, NULL);
+                if (program->error) return;
+
+                if (left_type.type != MSCRIPT_TYPE_STRUCT) {
+                    program_error(program, expr->member_access.left->token, "Expected struct");
+                    return;
+                }
+
+                struct mscript_struct_decl *decl = program_get_struct_decl(program, left_type.struct_name);
+                if (!decl) {
+                    program_error(program, expr->member_access.left->token, "Unknown struct type: %s", left_type.struct_name);
+                    return;
+                }
+
+                struct mscript_type member_type;
+                if (!program_get_struct_decl_member(decl, expr->member_access.member_name, &member_type)) {
+                    program_error(program, expr->token, "Invalid member: %s", expr->member_access.member_name);
+                    return;
+                }
+
+                *result_type = member_type;
+            }
             break;
-        case EXPR_CAST:
-            cast_expr_semantic_analysis(program, expr, result_type);
+        case EXPR_SYMBOL:
+            {
+                semantic_analysis_expr(program, expr, result_type, NULL);
+            }
             break;
     }
 }
 
-static void unary_op_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type) {
-    assert(expr->type == EXPR_UNARY_OP);
-    assert(false);
+static void semantic_analysis_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type) {
+    switch (expr->type) {
+        case EXPR_UNARY_OP:
+            semantic_analysis_unary_op_expr(program, expr, result_type, expected_type);
+            break;
+        case EXPR_BINARY_OP:
+            semantic_analysis_binary_op_expr(program, expr, result_type, expected_type);
+            break;
+        case EXPR_CALL:
+            semantic_analysis_call_expr(program, expr, result_type, expected_type);
+            break;
+        case EXPR_MEMBER_ACCESS:
+            semantic_analysis_member_access_expr(program, expr, result_type, expected_type);
+            break;
+        case EXPR_ASSIGNMENT:
+            semantic_analysis_assignment_expr(program, expr, result_type, expected_type);
+            break;
+        case EXPR_INT:
+            semantic_analysis_int_expr(program, expr, result_type, expected_type);
+            break;
+        case EXPR_FLOAT:
+            semantic_analysis_float_expr(program, expr, result_type, expected_type);
+            break;
+        case EXPR_SYMBOL:
+            semantic_analysis_symbol_expr(program, expr, result_type, expected_type);
+            break;
+        case EXPR_ARRAY:
+            semantic_analysis_array_expr(program, expr, result_type, expected_type);
+            break;
+        case EXPR_ARRAY_ACCESS:
+            semantic_analysis_array_access_expr(program, expr, result_type, expected_type);
+            break;
+        case EXPR_OBJECT:
+            semantic_analysis_object_expr(program, expr, result_type, expected_type);
+            break;
+        case EXPR_CAST:
+            semantic_analysis_cast_expr(program, expr, result_type, expected_type);
+            break;
+    }
 }
 
-static void binary_op_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type) {
+static void semantic_analysis_unary_op_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type) {
+    assert(expr->type == EXPR_UNARY_OP);
+
+    struct mscript_type operand_type;
+    semantic_analysis_expr_lvalue(program, expr->unary_op.operand, &operand_type);
+    if (program->error) return;
+
+    switch (expr->unary_op.type) {
+        case UNARY_OP_POST_INC:
+            {
+                if (operand_type.type == MSCRIPT_TYPE_INT) {
+                    *result_type = int_type();
+                }
+                else if (operand_type.type == MSCRIPT_TYPE_FLOAT) {
+                    *result_type = float_type();
+                }
+                else {
+                    program_error(program, expr->token, "Unable to do increment on this type");
+                    return;
+                }
+            }
+            break;
+    }
+}
+
+static void semantic_analysis_binary_op_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type) {
     assert(expr->type == EXPR_BINARY_OP);
 
     struct mscript_type left_result_type, right_result_type;
-    expr_semantic_analysis(program, expr->binary_op.left, &left_result_type);
-    expr_semantic_analysis(program, expr->binary_op.right, &right_result_type);
+    semantic_analysis_expr(program, expr->binary_op.left, &left_result_type, expected_type);
+    if (program->error) return;
+    semantic_analysis_expr(program, expr->binary_op.right, &right_result_type, expected_type);
+    if (program->error) return;
 
     switch (expr->binary_op.type) {
         case BINARY_OP_ADD:
@@ -1905,14 +2231,15 @@ static void binary_op_expr_semantic_analysis(struct mscript_program *program, st
                 }
                 else if (left_result_type.type == MSCRIPT_TYPE_FLOAT && right_result_type.type == MSCRIPT_TYPE_INT) {
                     *result_type = float_type();
-                    expr->binary_op.right = new_cast_expr(&program->parser.allocator, float_type(), expr->binary_op.right);
+                    expr->binary_op.right = new_cast_expr(&program->parser.allocator, expr->token, float_type(), expr->binary_op.right);
                 }
                 else if (left_result_type.type == MSCRIPT_TYPE_INT && right_result_type.type == MSCRIPT_TYPE_FLOAT) {
                     *result_type = float_type();
-                    expr->binary_op.left = new_cast_expr(&program->parser.allocator, float_type(), expr->binary_op.left);
+                    expr->binary_op.left = new_cast_expr(&program->parser.allocator, expr->token, float_type(), expr->binary_op.left);
                 }
                 else {
-                    assert(false);
+                    program_error(program, expr->token, "Unable to do binary operation on these types");
+                    return;
                 }
             }
             break;
@@ -1932,49 +2259,210 @@ static void binary_op_expr_semantic_analysis(struct mscript_program *program, st
                     // no casts needed
                 }
                 else if (left_result_type.type == MSCRIPT_TYPE_FLOAT && right_result_type.type == MSCRIPT_TYPE_INT) {
-                    //expr->binary_op.left = new_cast_expr();
+                    expr->binary_op.right = new_cast_expr(&program->parser.allocator, expr->token, float_type(), expr->binary_op.right);
                 }
                 else if (left_result_type.type == MSCRIPT_TYPE_INT && right_result_type.type == MSCRIPT_TYPE_FLOAT) {
-                    //expr->binary_op.right = new_cast_expr();
+                    expr->binary_op.left = new_cast_expr(&program->parser.allocator, expr->token, float_type(), expr->binary_op.left);
                 }
                 else {
-                    assert(false);
+                    program_error(program, expr->token, "Unable to do binary operation on these types");
+                    return;
                 }
             }
             break;
     }
 }
 
-static void call_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type) {
+static void semantic_analysis_call_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type) {
     assert(expr->type == EXPR_CALL);
+
+    struct expr *fn = expr->call.function;
+    if (fn->type != EXPR_SYMBOL) {
+        program_error(program, fn->token, "Expected symbol");
+        return;
+    }
+
+    struct mscript_function_decl *decl = program_get_function_decl(program, fn->symbol);
+    if (!decl) {
+        program_error(program, fn->token, "Unknown function");
+        return;
+    }
+
+    if (decl->num_args != expr->call.num_args) {
+        program_error(program, expr->token, "Invalid number of args passsed to function");
+        return;
+    }
+
+    for (int i = 0; i < expr->call.num_args; i++) {
+        semantic_analysis_expr_with_cast(program, &(expr->call.args[i]), decl->args[i].type);
+        if (program->error) return;
+    }
+
+    *result_type = decl->return_type;
+}
+
+static void semantic_analysis_member_access_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type) {
+    assert(expr->type == EXPR_MEMBER_ACCESS);
+
+    struct mscript_type left_type;
+    semantic_analysis_expr(program, expr->member_access.left, &left_type, NULL);
+    if (program->error) return;
+
+    if (left_type.type == MSCRIPT_TYPE_STRUCT) {
+        struct mscript_struct_decl *decl = program_get_struct_decl(program, left_type.struct_name);
+        if (!decl) {
+            program_error(program, expr->token, "Invalid struct type: %s", left_type.struct_name);
+            return;
+        }
+
+        struct mscript_type member_type;
+        if (!program_get_struct_decl_member(decl, expr->member_access.member_name, &member_type)) {
+            program_error(program, expr->token, "Invalid member: %s", expr->member_access.member_name);
+            return;
+        }
+
+        *result_type = member_type;
+    }
+    else if (left_type.type == MSCRIPT_TYPE_ARRAY) {
+        if (strcmp(expr->member_access.member_name, "length") == 0) {
+            *result_type = int_type();
+        }
+        else {
+            program_error(program, expr->token, "Invalid member: %s", expr->member_access.member_name);
+            return;
+        }
+    }
+    else {
+        program_error(program, expr->token, "Invalid type for member access");
+        return;
+    }
+
+}
+
+static void semantic_analysis_assignment_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type) {
+    assert(expr->type == EXPR_ASSIGNMENT);
+
+    struct mscript_type left_type;
+    semantic_analysis_expr_lvalue(program, expr->assignment.left, &left_type);
+    if (program->error) {
+        return;
+    }
+
+    *result_type = left_type;
+    semantic_analysis_expr_with_cast(program, &(expr->assignment.right), left_type);
+    if (program->error) {
+        return;
+    }
+}
+
+static void semantic_analysis_int_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type) {
+    assert(expr->type == EXPR_INT);
     *result_type = int_type();
 }
 
-static void member_access_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type) {
+static void semantic_analysis_float_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type) {
+    assert(expr->type == EXPR_FLOAT);
+    *result_type = float_type();
 }
 
-static void assignment_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type) {
+static void semantic_analysis_symbol_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type) {
+    assert(expr->type == EXPR_SYMBOL);
+
+    struct mscript_type type;
+    if (!semantic_analysis_env_get_type(&program->semantic_analysis, expr->symbol, &type)) {
+        program_error(program, expr->token, "Undeclared variable");
+        return;
+    }
+
+    *result_type = type;
 }
 
-static void int_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type) {
+static void semantic_analysis_array_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type) {
+    assert(expr->type == EXPR_ARRAY);
+
+    if (!expected_type) {
+        program_error(program, expr->token, "Cannot determine type of array");
+        return;
+    }
+
+    if (expected_type->type != MSCRIPT_TYPE_ARRAY) {
+        program_error(program, expr->token, "Not expecting array");
+        return;
+    }
+
+    struct mscript_type arg_type = *expected_type;
+    arg_type.type = arg_type.array_type;
+    for (int i = 0; i < expr->array.num_args; i++) {
+        semantic_analysis_expr_with_cast(program, &(expr->array.args[i]), arg_type);
+        if (program->error) return;
+    }
+
+    *result_type = *expected_type;
 }
 
-static void float_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type) {
+static void semantic_analysis_array_access_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type) {
+    assert(expr->type == EXPR_ARRAY_ACCESS);
+
+    struct mscript_type left_type;
+    semantic_analysis_expr(program, expr->array_access.left, &left_type, expected_type);
+    if (program->error) return;
+
+    if (left_type.type != MSCRIPT_TYPE_ARRAY) {
+        program_error(program, expr->array_access.left->token, "Expected array");
+        return;
+    }
+
+    semantic_analysis_expr_with_cast(program, &(expr->array_access.right), int_type());
+    if (program->error) return;
+
+    *result_type = left_type;
+    result_type->type = left_type.array_type;
 }
 
-static void symbol_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type) {
+static void semantic_analysis_object_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type) {
+    assert(expr->type == EXPR_OBJECT);
+    
+    if (!expected_type) {
+        program_error(program, expr->token, "Cannot determine type of struct");
+        return;
+    }
+
+    if (expected_type->type != MSCRIPT_TYPE_STRUCT) {
+        program_error(program, expr->token, "Not expecting struct");
+        return;
+    }
+
+    struct mscript_struct_decl *decl = program_get_struct_decl(program, expected_type->struct_name);
+    if (!decl) {
+        program_error(program, expr->token, "Invalid struct type");
+        return;
+    }
+
+    for (int i = 0; i < expr->object.num_args; i++) {
+        struct mscript_type member_type;
+        if (!program_get_struct_decl_member(decl, expr->object.names[i], &member_type)) {
+            program_error(program, expr->token, "Invalid member: %s", expr->object.names[i]);
+            return;
+        }
+        semantic_analysis_expr_with_cast(program, &(expr->object.args[i]), member_type);
+        if (program->error) return;
+    }
+
+    *result_type = *expected_type;
 }
 
-static void array_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type) {
-}
-
-static void array_access_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type) {
-}
-
-static void object_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type) {
-}
-
-static void cast_expr_semantic_analysis(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type) {
+static void semantic_analysis_cast_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type,
+        struct mscript_type *expected_type) {
+    assert(false);
 }
 
 static void debug_log_token(struct token token) {
@@ -2014,7 +2502,7 @@ static void debug_log_type(struct mscript_type type) {
         t = type.array_type;
     }
 
-    switch (type.type) {
+    switch (t) {
         case MSCRIPT_TYPE_VOID:
             m_logf("void");
             break;
