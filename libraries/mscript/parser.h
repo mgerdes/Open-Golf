@@ -45,8 +45,10 @@ struct mscript_struct_decl {
     struct mscript_struct_decl_arg members[MSCRIPT_MAX_STRUCT_MEMBERS];
 };
 
+struct mscript;
 struct mscript_program;
-struct mscript_program *mscript_program_load(const char *name);
-void mscript_compile_2(const char *prog_text);
+
+struct mscript *mscript_create(void);
+struct mscript_program *mscript_load_program(struct mscript *mscript, const char *name);
 
 #endif

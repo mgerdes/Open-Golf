@@ -5,6 +5,7 @@
 #include <stdbool.h>
 
 #include "array.h"
+#include "file.h"
 #include "log.h"
 #include "map.h"
 
@@ -64,7 +65,7 @@ static struct token string_token(const char *text, int *len, int line, int col);
 static struct token symbol_token(const char *text, int *len, int line, int col);
 static struct token eof_token(int line, int col);
 static void tokenize(struct mscript_program *program);
-static void parser_run(struct mscript_program *program); 
+static void parser_run(struct mscript_program *program, struct mscript *mscript); 
 
 struct parser {
     const char *prog_text;
@@ -299,7 +300,7 @@ struct stmt {
         } for_stmt;
 
         struct {
-            char *module_name;
+            char *program_name;
         } import;
 
         struct expr *expr;
@@ -332,7 +333,7 @@ static struct stmt *new_struct_declaration_stmt(struct allocator *allocator, str
         char *name, struct array_mscript_type member_types, struct array_char_ptr member_names);
 static struct stmt *new_for_stmt(struct allocator *allocator, struct token token,
         struct expr *init, struct expr *cond, struct expr *inc, struct stmt *body);
-static struct stmt *new_import_stmt(struct allocator *allocator, struct token token, char *module_name);
+static struct stmt *new_import_stmt(struct allocator *allocator, struct token token, char *program_name);
 static struct stmt *new_expr_stmt(struct allocator *allocator, struct token token, struct expr *expr);
 
 static void parse_type(struct mscript_program *program, struct mscript_type *type);  
@@ -368,8 +369,10 @@ static void debug_log_expr(struct expr *expr);
 
 typedef map_t(struct mscript_function_decl) map_function_decl_t;
 typedef map_t(struct mscript_struct_decl) map_struct_decl_t;
+array_t(struct mscript_program *, array_program_ptr)
 
 struct mscript_program {
+    struct array_program_ptr imported_programs_array;
     map_struct_decl_t struct_decl_map;
     map_function_decl_t function_decl_map;
 
@@ -380,7 +383,13 @@ struct mscript_program {
     struct token error_token;
 };
 
-static void program_init(struct mscript_program *program, const char *prog_text);
+typedef map_t(struct mscript_program *) map_mscript_program_ptr_t;
+
+struct mscript {
+    map_mscript_program_ptr_t map;
+};
+
+static void program_init(struct mscript_program *program, struct mscript *mscript, const char *prog_text);
 static void program_add_struct_decl(struct mscript_program *program, struct stmt *stmt);
 static struct mscript_struct_decl *program_get_struct_decl(struct mscript_program *program, const char *name);
 static bool program_get_struct_decl_member(struct mscript_struct_decl *decl, const char *member, struct mscript_type *type);
@@ -659,11 +668,11 @@ static struct stmt *new_for_stmt(struct allocator *allocator, struct token token
     return stmt;
 }
 
-static struct stmt *new_import_stmt(struct allocator *allocator, struct token token, char *module_name) {
+static struct stmt *new_import_stmt(struct allocator *allocator, struct token token, char *program_name) {
     struct stmt *stmt = allocator_alloc(allocator, sizeof(struct stmt));
     stmt->type = STMT_IMPORT;
     stmt->token = token;
-    stmt->import.module_name = module_name;
+    stmt->import.program_name = program_name;
     return stmt;
 }
 
@@ -1356,9 +1365,9 @@ static struct stmt *parse_import_stmt(struct mscript_program *program) {
     struct token token = peek(program);
     struct stmt *stmt = NULL;
 
-    struct token module_name = peek(program);
-    if (module_name.type != TOKEN_STRING) {
-        program_error(program, module_name, "Expected string");
+    struct token program_name = peek(program);
+    if (program_name.type != TOKEN_STRING) {
+        program_error(program, program_name, "Expected string");
         goto cleanup;
     }
     eat(program);
@@ -1368,7 +1377,7 @@ static struct stmt *parse_import_stmt(struct mscript_program *program) {
         goto cleanup;
     }
 
-    stmt = new_import_stmt(&program->parser.allocator, token, module_name.symbol);
+    stmt = new_import_stmt(&program->parser.allocator, token, program_name.symbol);
 
 cleanup:
     return stmt;
@@ -1577,11 +1586,12 @@ static void tokenize(struct mscript_program *program) {
     }
 }
 
-static void parser_run(struct mscript_program *program) {
+static void parser_run(struct mscript_program *program, struct mscript *mscript) {
     struct array_stmt_ptr global_stmts;
     array_init(&global_stmts);
 
     tokenize(program);
+    if (program->error) goto cleanup;
     //debug_log_tokens(program->parser.tokens.data);
 
     while (true) {
@@ -1592,19 +1602,18 @@ static void parser_run(struct mscript_program *program) {
         struct stmt *stmt;
         if (match_symbol(program, "import")) {
             stmt = parse_import_stmt(program);
+            if (program->error) goto cleanup;
         }
         else if (match_symbol(program, "struct")) {
             stmt = parse_struct_declaration_stmt(program);
+            if (program->error) goto cleanup;
         }
         else if (check_type(program)) {
             stmt = parse_function_declaration_stmt(program);
+            if (program->error) goto cleanup;
         }
         else {
             program_error(program, peek(program), "Unknown token");
-        }
-
-        if (program->error) {
-            m_logf("ERROR: %s. Line: %d. Col: %d\n", program->error, program->error_token.line, program->error_token.col);
             goto cleanup;
         }
 
@@ -1614,7 +1623,6 @@ static void parser_run(struct mscript_program *program) {
     for (int i = 0; i < global_stmts.length; i++) {
         struct stmt *stmt = global_stmts.data[i];
         if (stmt->type == STMT_IMPORT) {
-            struct mscript_program *import = mscript_program_load(stmt->import.module_name);
         }
         else if (stmt->type == STMT_STRUCT_DECLARATION) {
             program_add_struct_decl(program, stmt);
@@ -1630,38 +1638,54 @@ static void parser_run(struct mscript_program *program) {
     for (int i = 0; i < global_stmts.length; i++) {
         struct stmt *stmt = global_stmts.data[i];
         if (stmt->type == STMT_IMPORT) {
+            struct mscript_program *import = mscript_load_program(mscript, stmt->import.program_name);
+            if (!import || import->error) {
+                program_error(program, stmt->token, "Failed to import program");
+                goto cleanup;
+            }
+            array_push(&program->imported_programs_array, import);
+        }
+        else if (stmt->type == STMT_STRUCT_DECLARATION) {
+        }
+        else if (stmt->type == STMT_FUNCTION_DECLARATION) {
+        }
+        else {
+            assert(false);
+        }
+    }
+
+    for (int i = 0; i < global_stmts.length; i++) {
+        struct stmt *stmt = global_stmts.data[i];
+        if (stmt->type == STMT_IMPORT) {
         }
         else if (stmt->type == STMT_STRUCT_DECLARATION) {
             semantic_analysis_struct_declaration(program, stmt);
-            if (program->error) {
-                m_logf("ERROR: %s. Line: %d. Col: %d\n", program->error, program->error_token.line, program->error_token.col);
-                goto cleanup;
-            }
+            if (program->error) goto cleanup;
         }
         else if (stmt->type == STMT_FUNCTION_DECLARATION) {
             semantic_analysis_start(program, stmt);
-            if (program->error) {
-                m_logf("ERROR: %s. Line: %d. Col: %d\n", program->error, program->error_token.line, program->error_token.col);
-                goto cleanup;
-            }
+            if (program->error) goto cleanup;
         }
         else {
             assert(false);
         }
 
-        debug_log_stmt(stmt);
+        //debug_log_stmt(stmt);
     }
 
 cleanup:
     array_deinit(&global_stmts);
 }
 
-static void program_init(struct mscript_program *prog, const char *prog_text) {
+static void program_init(struct mscript_program *prog, struct mscript *mscript, const char *prog_text) {
     prog->error = NULL;
+    array_init(&prog->imported_programs_array);
     map_init(&prog->struct_decl_map);
     map_init(&prog->function_decl_map);
     parser_init(&prog->parser, prog_text);
     semantic_analysis_init(&prog->semantic_analysis);
+
+    parser_run(prog, mscript);
 }
 
 static void program_add_struct_decl(struct mscript_program *program, struct stmt *stmt) {
@@ -1681,7 +1705,20 @@ static void program_add_struct_decl(struct mscript_program *program, struct stmt
 }
 
 static struct mscript_struct_decl *program_get_struct_decl(struct mscript_program *program, const char *name) {
-    return map_get(&program->struct_decl_map, name);
+    struct mscript_struct_decl *decl = map_get(&program->struct_decl_map, name);
+    if (decl) {
+        return decl;
+    }
+
+    for (int i = 0; i < program->imported_programs_array.length; i++) {
+        struct mscript_program *import = program->imported_programs_array.data[i];
+        decl = program_get_struct_decl(import, name);
+        if (decl) {
+            return decl;
+        }
+    }
+
+    return NULL;
 }
 
 static bool program_get_struct_decl_member(struct mscript_struct_decl *decl, const char *member, struct mscript_type *type) {
@@ -1712,7 +1749,20 @@ static void program_add_function_decl(struct mscript_program *program, struct st
 }
 
 static struct mscript_function_decl *program_get_function_decl(struct mscript_program *program, const char *name) {
-    return map_get(&program->function_decl_map, name);
+    struct mscript_function_decl *decl = map_get(&program->function_decl_map, name);
+    if (decl) {
+        return decl;
+    }
+
+    for (int i = 0; i < program->imported_programs_array.length; i++) {
+        struct mscript_program *import = program->imported_programs_array.data[i];
+        decl = program_get_function_decl(import, name);
+        if (decl) {
+            return decl;
+        }
+    }
+
+    return NULL;
 }
 
 static void program_error(struct mscript_program *program, struct token token, char *fmt, ...) {
@@ -1933,7 +1983,7 @@ static void semantic_analysis_start(struct mscript_program *program, struct stmt
     semantic_analysis_stmt(program, function_decl->function_declaration.body, &all_paths_return);
     if (program->error) goto cleanup;
 
-    if (!all_paths_return) {
+    if (function_decl->function_declaration.return_type.type != MSCRIPT_TYPE_VOID && !all_paths_return) {
         program_error(program, function_decl->function_declaration.token, "Not all paths return from function");
     }
 
@@ -2046,7 +2096,22 @@ static void semantic_analysis_return_stmt(struct mscript_program *program, struc
     *all_paths_return = true;
 
     struct mscript_type return_type = program->semantic_analysis.function_decl->function_declaration.return_type;
-    semantic_analysis_expr_with_cast(program, &(stmt->return_stmt.expr), return_type);
+
+    if (return_type.type == MSCRIPT_TYPE_VOID) {
+        if (stmt->return_stmt.expr) {
+            program_error(program, stmt->token, "Cannot return expression for void function");
+            return;
+        }
+    }
+    else {
+        if (!stmt->return_stmt.expr) {
+            program_error(program, stmt->token, "Must return expression for non-void function");
+            return;
+        }
+        else {
+            semantic_analysis_expr_with_cast(program, &(stmt->return_stmt.expr), return_type);
+        }
+    }
 }
 
 static void semantic_analysis_block_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
@@ -2665,7 +2730,7 @@ static void debug_log_stmt(struct stmt *stmt) {
             m_logf("}\n");
             break;
         case STMT_IMPORT:
-            m_logf("import \"%s\"\n", stmt->import.module_name);
+            m_logf("import \"%s\"\n", stmt->import.program_name);
             break;
     }
 }
@@ -2792,12 +2857,30 @@ static void debug_log_expr(struct expr *expr) {
     }
 }
 
-struct mscript_program *mscript_program_load(const char *name) {
+struct mscript *mscript_create(void) {
+    struct mscript *mscript = malloc(sizeof(struct mscript));
+    map_init(&mscript->map);
+    return mscript;
 }
 
-void mscript_compile_2(const char *prog_text) {
-    struct mscript_program program;
-    program_init(&program, prog_text);
-    parser_run(&program);
+struct mscript_program *mscript_load_program(struct mscript *mscript, const char *name) {
+    struct mscript_program **cached_program = map_get(&mscript->map, name);
+    if (cached_program) {
+        return *cached_program;
+    }
+
+    struct file file = file_init(name);
+    if (!file_load_data(&file)) {
+        return NULL;
+    }
+
+    struct mscript_program *program = malloc(sizeof(struct mscript_program));
+    map_set(&mscript->map, name, program);
+    program_init(program, mscript, file.data);
+    file_delete_data(&file);
+    if (program->error) {
+        m_logf("ERROR %s. %s. Line: %d. Col: %d.\n", name, program->error, program->error_token.line, program->error_token.col);
+    }
+    return program;
 }
 

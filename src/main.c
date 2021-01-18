@@ -52,9 +52,8 @@ static void init(void) {
     last_time = 0;
 
     {
-        struct file file = file_init("testing.mscript");
-        file_load_data(&file);
-        mscript_compile_2(file.data);
+        struct mscript *mscript = mscript_create();
+        mscript_load_program(mscript, "testing.mscript");
     }
 }
 

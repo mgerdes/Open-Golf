@@ -3,6 +3,36 @@ struct vec2 {
     float y;
 }
 
+vec2 vec2_add(vec2 a, vec2 b) {
+    return {
+        x = a.x + b.x,
+        y = a.y + b.y
+    };
+}
+
+vec2 vec2_sub(vec2 a, vec2 b) {
+    return {
+        x = a.x - b.x,
+        y = a.y - b.y
+    };
+}
+
+vec2 vec2_scale(vec2 a, float s) {
+    return {
+        x = a.x * s,
+        y = a.y * s
+    };
+}
+
+float vec2_distance(vec2 a, vec2 b) {
+    vec2 d = vec2_sub(a, b);
+    return vec2_dot(d, d);
+}
+
+float vec2_dot(vec2 a, vec2 b) {
+    return a.x * b.x + a.y * b.y;
+}
+
 struct vec3 {
     float x;
     float y;

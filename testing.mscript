@@ -16,6 +16,16 @@ int count_array(int[] array) {
     return 100;
 }
 
+void double_array(int[] array) {
+    int i;
+    for (i = 0; i < array.length; i++) {
+        array[i] = 2 * array[i];
+        if (i > 2) {
+            return;
+        }
+    }
+}
+
 struct test {
     vec2 t;
 }
