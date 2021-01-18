@@ -118,6 +118,7 @@ static void semantic_analysis_return_stmt(struct mscript_program *program, struc
 static void semantic_analysis_block_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
 static void semantic_analysis_expr_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
 static void semantic_analysis_variable_declaration_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
+static bool semantic_analysis_is_struct_declaration_recursive(struct mscript_program *program, struct stmt *stmt, struct mscript_type cur);
 static void semantic_analysis_struct_declaration(struct mscript_program *program, struct stmt *stmt);
 
 static void semantic_analysis_expr_with_cast(struct mscript_program *program, struct expr **expr, struct mscript_type type);
@@ -2191,6 +2192,34 @@ static void semantic_analysis_variable_declaration_stmt(struct mscript_program *
     }
 }
 
+static bool semantic_analysis_is_struct_declaration_recursive(struct mscript_program *program, struct stmt *stmt, struct mscript_type cur) {
+    assert(stmt->type == STMT_STRUCT_DECLARATION);
+
+    struct mscript_type parent = struct_type(stmt->struct_declaration.name);
+    if (types_equal(parent, cur)) {
+        return true;
+    }
+
+    if (cur.type != MSCRIPT_TYPE_STRUCT) {
+        return false;
+    }
+
+    struct mscript_struct_decl *decl = program_get_struct_decl(program, cur.struct_name);
+    if (!decl) {
+        program_error(program, stmt->token, "Unknown type %s", cur.struct_name);
+        return false;
+    }
+
+    for (int i = 0; i < decl->num_members; i++) {
+        struct mscript_type type = decl->members[i].type;
+        if (semantic_analysis_is_struct_declaration_recursive(program, stmt, type)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 static void semantic_analysis_struct_declaration(struct mscript_program *program, struct stmt *stmt) {
     assert(stmt->type == STMT_STRUCT_DECLARATION);
 
@@ -2198,7 +2227,7 @@ static void semantic_analysis_struct_declaration(struct mscript_program *program
         struct mscript_type type = stmt->struct_declaration.member_types[i];
         semantic_analysis_type(program, stmt->token, type);
         if (program->error) return;
-        if (types_equal(struct_type(stmt->struct_declaration.name), type)) {
+        if (semantic_analysis_is_struct_declaration_recursive(program, stmt, type)) {
             program_error(program, stmt->token, "Recursive type definition not allowed");
             return;
         }

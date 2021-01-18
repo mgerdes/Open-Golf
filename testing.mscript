@@ -52,6 +52,14 @@ struct bar {
     bar[] children;
 }
 
+struct a {
+    bar b;
+}
+
+struct b {
+    a a;
+}
+
 void recurse(bar b) {
     int i;
     for (i = 0; i < b.children.length; i++) {
