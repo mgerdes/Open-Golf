@@ -46,6 +46,7 @@ struct mscript_struct_decl {
 };
 
 struct mscript_program;
+struct mscript_program *mscript_program_load(const char *name);
 void mscript_compile_2(const char *prog_text);
 
 #endif

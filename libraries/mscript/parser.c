@@ -108,6 +108,8 @@ static bool semantic_analysis_env_get_type(struct semantic_analysis *sa, const c
 static bool semantic_analysis_top_env_get_type(struct semantic_analysis *sa, const char *symbol, struct mscript_type *type);
 static void semantic_analysis_start(struct mscript_program *program, struct stmt *function_decl);
 
+static void semantic_analysis_type(struct mscript_program *program, struct token token, struct mscript_type type);
+
 static void semantic_analysis_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
 static void semantic_analysis_if_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
 static void semantic_analysis_for_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
@@ -115,6 +117,7 @@ static void semantic_analysis_return_stmt(struct mscript_program *program, struc
 static void semantic_analysis_block_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
 static void semantic_analysis_expr_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
 static void semantic_analysis_variable_declaration_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
+static void semantic_analysis_struct_declaration(struct mscript_program *program, struct stmt *stmt);
 
 static void semantic_analysis_expr_with_cast(struct mscript_program *program, struct expr **expr, struct mscript_type type);
 static void semantic_analysis_expr_lvalue(struct mscript_program *program, struct expr *expr, struct mscript_type *result_type);
@@ -1611,7 +1614,7 @@ static void parser_run(struct mscript_program *program) {
     for (int i = 0; i < global_stmts.length; i++) {
         struct stmt *stmt = global_stmts.data[i];
         if (stmt->type == STMT_IMPORT) {
-
+            struct mscript_program *import = mscript_program_load(stmt->import.module_name);
         }
         else if (stmt->type == STMT_STRUCT_DECLARATION) {
             program_add_struct_decl(program, stmt);
@@ -1629,6 +1632,11 @@ static void parser_run(struct mscript_program *program) {
         if (stmt->type == STMT_IMPORT) {
         }
         else if (stmt->type == STMT_STRUCT_DECLARATION) {
+            semantic_analysis_struct_declaration(program, stmt);
+            if (program->error) {
+                m_logf("ERROR: %s. Line: %d. Col: %d\n", program->error, program->error_token.line, program->error_token.col);
+                goto cleanup;
+            }
         }
         else if (stmt->type == STMT_FUNCTION_DECLARATION) {
             semantic_analysis_start(program, stmt);
@@ -1915,16 +1923,47 @@ static void semantic_analysis_start(struct mscript_program *program, struct stmt
 
     semantic_analysis_env_push_block(&program->semantic_analysis);
     for (int i = 0; i < function_decl->function_declaration.num_args; i++) {
-        semantic_analysis_env_set_type(&program->semantic_analysis, 
-                function_decl->function_declaration.arg_names[i],
-                function_decl->function_declaration.arg_types[i]);
+        char *arg_name = function_decl->function_declaration.arg_names[i];
+        struct mscript_type arg_type = function_decl->function_declaration.arg_types[i];
+        semantic_analysis_type(program, function_decl->token, arg_type);
+        if (program->error) goto cleanup;
+        semantic_analysis_env_set_type(&program->semantic_analysis, arg_name, arg_type);
     }
     bool all_paths_return;
     semantic_analysis_stmt(program, function_decl->function_declaration.body, &all_paths_return);
+    if (program->error) goto cleanup;
+
     if (!all_paths_return) {
         program_error(program, function_decl->function_declaration.token, "Not all paths return from function");
     }
+
+cleanup:
     semantic_analysis_env_pop_block(&program->semantic_analysis);
+}
+
+static void semantic_analysis_type(struct mscript_program *program, struct token token, struct mscript_type type) {
+    switch (type.type) {
+        case MSCRIPT_TYPE_VOID:
+        case MSCRIPT_TYPE_INT:
+        case MSCRIPT_TYPE_FLOAT:
+            break;
+        case MSCRIPT_TYPE_STRUCT:
+            {
+                if (!program_get_struct_decl(program, type.struct_name)) {
+                    program_error(program, token, "Invalid type");
+                }
+            }
+            break;
+        case MSCRIPT_TYPE_ARRAY:
+            {
+                if (type.array_type == MSCRIPT_TYPE_STRUCT) {
+                    if (!program_get_struct_decl(program, type.struct_name)) {
+                        program_error(program, token, "Invalid type");
+                    }
+                }
+            }
+            break;
+    }
 }
 
 static void semantic_analysis_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
@@ -1967,6 +2006,8 @@ static void semantic_analysis_if_stmt(struct mscript_program *program, struct st
 
         bool stmt_all_paths_return;
         semantic_analysis_stmt(program, stmt->if_stmt.stmts[i], &stmt_all_paths_return);
+        if (program->error) return;
+
         if (!stmt_all_paths_return) {
             *all_paths_return = false;
         }
@@ -1975,6 +2016,8 @@ static void semantic_analysis_if_stmt(struct mscript_program *program, struct st
     if (stmt->if_stmt.else_stmt) {
         bool stmt_all_paths_return;
         semantic_analysis_stmt(program, stmt->if_stmt.else_stmt, &stmt_all_paths_return);
+        if (program->error) return;
+
         if (!stmt_all_paths_return) {
             *all_paths_return = false;
         }
@@ -1989,9 +2032,13 @@ static void semantic_analysis_for_stmt(struct mscript_program *program, struct s
 
     struct mscript_type type;
     semantic_analysis_expr(program, stmt->for_stmt.init, &type, NULL);
+    if (program->error) return;
     semantic_analysis_expr_with_cast(program, &(stmt->for_stmt.cond), int_type());
+    if (program->error) return;
     semantic_analysis_expr(program, stmt->for_stmt.inc, &type, NULL);
+    if (program->error) return;
     semantic_analysis_stmt(program, stmt->for_stmt.body, all_paths_return);
+    if (program->error) return;
 }
 
 static void semantic_analysis_return_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
@@ -2009,10 +2056,13 @@ static void semantic_analysis_block_stmt(struct mscript_program *program, struct
     for (int i = 0; i < stmt->block.num_stmts; i++) {
         bool stmt_all_paths_return;
         semantic_analysis_stmt(program, stmt->block.stmts[i], &stmt_all_paths_return);
+        if (program->error) goto cleanup;
         if (stmt_all_paths_return) {
             *all_paths_return = true;
         }
     }
+
+cleanup:
     semantic_analysis_env_pop_block(&program->semantic_analysis);
 }
 
@@ -2028,6 +2078,9 @@ static void semantic_analysis_variable_declaration_stmt(struct mscript_program *
     char *name = stmt->variable_declaration.name;
     struct mscript_type type = stmt->variable_declaration.type;
 
+    semantic_analysis_type(program, peek(program), type);
+    if (program->error) return;
+
     struct mscript_type unused;
     if (semantic_analysis_top_env_get_type(&program->semantic_analysis, name, &unused)) {
         program_error(program, stmt->token, "Symbol already declared");
@@ -2041,6 +2094,16 @@ static void semantic_analysis_variable_declaration_stmt(struct mscript_program *
     }
 }
 
+static void semantic_analysis_struct_declaration(struct mscript_program *program, struct stmt *stmt) {
+    assert(stmt->type == STMT_STRUCT_DECLARATION);
+
+    for (int i = 0; i < stmt->struct_declaration.num_members; i++) {
+        struct mscript_type type = stmt->struct_declaration.member_types[i];
+        semantic_analysis_type(program, stmt->token, type);
+        if (program->error) return;
+    }
+}
+
 static void semantic_analysis_expr_with_cast(struct mscript_program *program, struct expr **expr, struct mscript_type type) {
     struct mscript_type result_type;
     semantic_analysis_expr(program, *expr, &result_type, &type);
@@ -2049,6 +2112,8 @@ static void semantic_analysis_expr_with_cast(struct mscript_program *program, st
     if (types_equal(result_type, type)) {
         return;
     }
+
+    semantic_analysis_type(program, peek(program), type);
 
     if (type.type == MSCRIPT_TYPE_INT) {
         if (result_type.type == MSCRIPT_TYPE_FLOAT) {
@@ -2725,6 +2790,9 @@ static void debug_log_expr(struct expr *expr) {
             m_logf(")");
             break;
     }
+}
+
+struct mscript_program *mscript_program_load(const char *name) {
 }
 
 void mscript_compile_2(const char *prog_text) {

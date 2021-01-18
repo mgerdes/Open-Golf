@@ -1,0 +1,44 @@
+struct vec2 {
+    float x;
+    float y;
+}
+
+struct vec3 {
+    float x;
+    float y;
+    float z;
+}
+
+vec3 vec3_add(vec3 a, vec3 b) {
+    return { 
+        x = a.x + b.x, 
+        y = a.y + b.y, 
+        z = a.z + b.z 
+    };
+}
+
+vec3 vec3_sub(vec3 a, vec3 b) {
+    return {
+        x = a.x - b.x,
+        y = a.y - b.y,
+        z = a.z - b.z
+    };
+}
+
+vec3 vec3_scale(vec3 v, float s) {
+    return {
+        x = v.x * s,
+        y = v.y * s,
+        z = v.z * s
+    };
+}
+
+float vec3_distance(vec3 v0, vec3 v1) {
+    vec3 d = vec3_sub(v1, v0);
+    return vec3_dot(d, d);
+}
+
+float vec3_dot(vec3 a, vec3 b) {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
