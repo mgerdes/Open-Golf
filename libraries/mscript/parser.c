@@ -14,6 +14,7 @@ struct expr;
 struct parser;
 struct pre_compiler;
 struct compiler;
+struct vm;
 
 array_t(struct mscript_type, array_mscript_type)
 typedef map_t(struct mscript_type) map_mscript_type_t;
@@ -30,6 +31,7 @@ static void type_to_string(struct mscript_type type, char *buffer, int buffer_le
 static int type_size(struct mscript_program *program, struct mscript_type type);
 
 enum lvalue_type {
+    LVALUE_INVALID,
     LVALUE_LOCAL,
     LVALUE_ARRAY,
 };
@@ -39,6 +41,7 @@ struct lvalue {
     int offset;
 };
 
+struct lvalue lvalue_invalid(void);
 struct lvalue lvalue_local(int offset);
 struct lvalue lvalue_array(void);
 
@@ -191,8 +194,8 @@ enum opcode_type {
     OPCODE_F2I,
     OPCODE_I2F,
     OPCODE_DUP,
-    OPCODE_CONST_INT,
-    OPCODE_CONST_FLOAT,
+    OPCODE_INT,
+    OPCODE_FLOAT,
     OPCODE_LOCAL_STORE,
     OPCODE_LOCAL_LOAD,
     OPCODE_JF,
@@ -214,8 +217,8 @@ struct opcode {
     union {
         int label;
         int function;
-        int const_int;
-        float const_float;
+        int int_val;
+        float float_val;
         int size;
 
         struct {
@@ -261,9 +264,9 @@ static void opcode_iinc(struct mscript_program *program);
 static void opcode_finc(struct mscript_program *program);
 static void opcode_f2i(struct mscript_program *program);
 static void opcode_i2f(struct mscript_program *program);
-static void opcode_dup(struct mscript_program *program);
-static void opcode_const_int(struct mscript_program *program, int val);
-static void opcode_const_float(struct mscript_program *program, float val);
+static void opcode_dup(struct mscript_program *program, int size);
+static void opcode_int(struct mscript_program *program, int val);
+static void opcode_float(struct mscript_program *program, float val);
 static void opcode_local_store(struct mscript_program *program, int offset, int size);
 static void opcode_local_load(struct mscript_program *program, int offset, int size);
 static void opcode_jf(struct mscript_program *program, int label);
@@ -279,6 +282,7 @@ static void opcode_array_length(struct mscript_program *program);
 static void opcode_label(struct mscript_program *program, int label);
 
 struct compiler {
+    int cur_label;
     struct array_opcode opcodes; 
 };
 
@@ -286,7 +290,6 @@ static void compiler_init(struct mscript_program *program);
 static void compiler_deinit(struct mscript_program *program);
 static void compiler_push_opcode(struct mscript_program *program, struct opcode op);
 static int compiler_new_label(struct mscript_program *program);
-static struct lvalue compiler_get_lvalue(struct mscript_program *program, struct expr *expr);
 
 static void compile_stmt(struct mscript_program *program, struct stmt *stmt);
 static void compile_if_stmt(struct mscript_program *program, struct stmt *stmt);
@@ -298,6 +301,7 @@ static void compile_function_declaration_stmt(struct mscript_program *program, s
 static void compile_variable_declaration_stmt(struct mscript_program *program, struct stmt *stmt);
 
 static void compile_expr(struct mscript_program *program, struct expr *expr);
+static void compile_lvalue_expr(struct mscript_program *program, struct expr *expr);
 static void compile_unary_op_expr(struct mscript_program *program, struct expr *expr);
 static void compile_binary_op_expr(struct mscript_program *program, struct expr *expr);
 static void compile_call_expr(struct mscript_program *program, struct expr *expr);
@@ -312,6 +316,29 @@ static void compile_string_expr(struct mscript_program *program, struct expr *ex
 static void compile_array_expr(struct mscript_program *program, struct expr *expr);
 static void compile_object_expr(struct mscript_program *program, struct expr *expr);
 static void compile_cast_expr(struct mscript_program *program, struct expr *expr);
+
+struct vm_array {
+    int member_size;
+    struct array_char array;
+};
+array_t(struct vm_array, array_vm_array)
+
+struct vm {
+    int ip;
+    struct array_int ip_stack;
+
+    int fp;
+    struct array_int fp_stack;
+    struct array_char stack;
+
+    struct array_vm_array arrays;
+};
+
+static void vm_init(struct mscript_program *program);
+static void vm_run(struct mscript_program *program, struct array_opcode opcodes);
+static void vm_push(struct mscript_program *program, char *v, int n);
+static void vm_push_val(struct mscript_program *program, char v, int n);
+static char *vm_pop(struct mscript_program *program, int n);
 
 enum expr_type {
     EXPR_UNARY_OP,
@@ -410,7 +437,7 @@ struct expr {
 
     // set by precompiler
     struct mscript_type result_type;
-    int lvalue;
+    struct lvalue lvalue;
 };
 array_t(struct expr *, array_expr_ptr)
 
@@ -456,6 +483,9 @@ struct stmt {
             struct mscript_type *arg_types;
             char **arg_names;
             struct stmt *body;
+
+            // set by precompiler
+            int block_size;
         } function_declaration;
 
         struct {
@@ -592,6 +622,7 @@ struct mscript_program {
     struct parser parser;
     struct pre_compiler pre_compiler;
     struct compiler compiler; 
+    struct vm vm;
 
     char *error;
     struct token error_token;
@@ -767,6 +798,12 @@ static int type_size(struct mscript_program *program, struct mscript_type type) 
     return 0;
 }
 
+struct lvalue lvalue_invalid(void) {
+    struct lvalue lvalue;
+    lvalue.type = LVALUE_INVALID;
+    return lvalue;
+}
+
 struct lvalue lvalue_local(int offset) {
     struct lvalue lvalue;
     lvalue.type = LVALUE_LOCAL;
@@ -788,7 +825,7 @@ static struct expr *new_unary_op_expr(struct allocator *allocator, struct token 
     expr->unary_op.operand = operand;
 
     expr->result_type = void_type();
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
     return expr;
 }
 
@@ -801,7 +838,7 @@ static struct expr *new_binary_op_expr(struct allocator *allocator, struct token
     expr->binary_op.right = right;
 
     expr->result_type = void_type();
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
     return expr;
 }
 
@@ -813,7 +850,7 @@ static struct expr *new_assignment_expr(struct allocator *allocator, struct toke
     expr->assignment.right = right;
 
     expr->result_type = void_type();
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
     return expr;
 }
 
@@ -825,7 +862,7 @@ static struct expr *new_array_access_expr(struct allocator *allocator, struct to
     expr->array_access.right = right;
 
     expr->result_type = void_type();
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
     return expr;
 }
 
@@ -837,7 +874,7 @@ static struct expr *new_member_access_expr(struct allocator *allocator, struct t
     expr->member_access.member_name = member_name;
 
     expr->result_type = void_type();
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
     return expr;
 }
 
@@ -853,7 +890,7 @@ static struct expr *new_call_expr(struct allocator *allocator, struct token toke
     memcpy(expr->call.args, args.data, num_args * sizeof(struct expr*));
 
     expr->result_type = void_type();
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
     return expr;
 }
 
@@ -868,7 +905,7 @@ static struct expr *new_debug_print_expr(struct allocator *allocator, struct tok
     memcpy(expr->debug_print.args, args.data, num_args * sizeof(struct expr*));
 
     expr->result_type = void_type();
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
     return expr;
 }
 
@@ -883,7 +920,7 @@ static struct expr *new_array_expr(struct allocator *allocator, struct token tok
     memcpy(expr->array.args, args.data, num_args * sizeof(struct expr*));
 
     expr->result_type = void_type();
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
     return expr;
 }
 
@@ -901,7 +938,7 @@ static struct expr *new_object_expr(struct allocator *allocator, struct token to
     memcpy(expr->object.args, args.data, num_args * sizeof(struct expr *));
 
     expr->result_type = void_type();
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
     return expr;
 }
 
@@ -913,7 +950,7 @@ static struct expr *new_cast_expr(struct allocator *allocator, struct token toke
     expr->cast.arg = arg;
 
     expr->result_type = void_type();
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
     return expr;
 }
 
@@ -924,7 +961,7 @@ static struct expr *new_int_expr(struct allocator *allocator, struct token token
     expr->int_value = int_value;
 
     expr->result_type = void_type();
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
     return expr;
 }
 
@@ -935,7 +972,7 @@ static struct expr *new_float_expr(struct allocator *allocator, struct token tok
     expr->float_value = float_value;
 
     expr->result_type = void_type();
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
     return expr;
 }
 
@@ -946,7 +983,7 @@ static struct expr *new_symbol_expr(struct allocator *allocator, struct token to
     expr->symbol = symbol;
 
     expr->result_type = void_type();
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
     return expr;
 }
 
@@ -957,7 +994,7 @@ static struct expr *new_string_expr(struct allocator *allocator, struct token to
     expr->string = string;
 
     expr->result_type = void_type();
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
     return expr;
 }
 
@@ -1014,6 +1051,7 @@ static struct stmt *new_function_declaration_stmt(struct allocator *allocator, s
     stmt->function_declaration.arg_names = allocator_alloc(allocator, num_args * sizeof(char *));
     memcpy(stmt->function_declaration.arg_names, arg_names.data, num_args * sizeof(char *));
     stmt->function_declaration.body = body;
+    stmt->function_declaration.block_size = -1;
     return stmt;
 }
 
@@ -2244,6 +2282,7 @@ static void parser_run(struct mscript_program *program, struct mscript *mscript)
                 compile_stmt(program, stmt);
                 debug_log_opcodes(program->compiler.opcodes.data, 
                         program->compiler.opcodes.length);
+                vm_run(program, program->compiler.opcodes);
             }
             if (program->error) goto cleanup;
         }
@@ -2266,6 +2305,7 @@ static void program_init(struct mscript_program *prog, struct mscript *mscript, 
     parser_init(&prog->parser, prog_text);
     pre_compiler_init(prog);
     compiler_init(prog);
+    vm_init(prog);
 
     parser_run(prog, mscript);
 }
@@ -2564,7 +2604,10 @@ static void pre_compiler_env_add_var(struct mscript_program *program, const char
     struct pre_compiler_env_var var;
     var.offset = block->offset + block->size;
     var.type = type;
-    block->size += type_size(program, type);
+    if (l > 1) {
+        // don't count function arguments for the blocks size 
+        block->size += type_size(program, type);
+    }
     map_set(&block->map, symbol, var);
 
     int cur_size = 0;
@@ -2621,6 +2664,7 @@ static void pre_compiler_start(struct mscript_program *program, struct stmt *fun
         program_error(program, function_decl->function_declaration.token, "Not all paths return from function.");
     }
 
+   function_decl->function_declaration.block_size =  program->pre_compiler.env_blocks.data[0].max_size;
 cleanup:
     pre_compiler_env_pop_block(program);
 }
@@ -2966,7 +3010,7 @@ static void pre_compiler_expr_lvalue(struct mscript_program *program, struct exp
 
                 expr->result_type = left_type;
                 expr->result_type.type = left_type.array_type;
-                expr->lvalue = -1;
+                expr->lvalue = lvalue_array();
             }
             break;
         case EXPR_MEMBER_ACCESS:
@@ -2995,8 +3039,22 @@ static void pre_compiler_expr_lvalue(struct mscript_program *program, struct exp
                     return;
                 }
 
+                struct lvalue lvalue;
+                struct lvalue left_lvalue = expr->member_access.left->lvalue;
+                switch (left_lvalue.type) {
+                    case LVALUE_INVALID:
+                        assert(false);
+                        break;
+                    case LVALUE_LOCAL:
+                        lvalue = lvalue_local(left_lvalue.offset + member_offset);
+                        break;
+                    case LVALUE_ARRAY:
+                        lvalue = lvalue_array();
+                        break;
+                }
+
                 expr->result_type = member_type;
-                expr->lvalue = expr->member_access.left->lvalue + member_offset;
+                expr->lvalue = lvalue;
             }
             break;
         case EXPR_SYMBOL:
@@ -3086,7 +3144,7 @@ static void pre_compiler_unary_op_expr(struct mscript_program *program, struct e
             break;
     }
 
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
 }
 
 static void pre_compiler_binary_op_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
@@ -3161,7 +3219,7 @@ static void pre_compiler_binary_op_expr(struct mscript_program *program, struct 
             break;
     }
 
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
 }
 
 static void pre_compiler_call_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
@@ -3190,7 +3248,7 @@ static void pre_compiler_call_expr(struct mscript_program *program, struct expr 
     }
 
     expr->result_type = decl->return_type;
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
 }
 
 static void pre_compiler_debug_print_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
@@ -3202,7 +3260,7 @@ static void pre_compiler_debug_print_expr(struct mscript_program *program, struc
     }
 
     expr->result_type = void_type();
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
 }
 
 static void pre_compiler_member_access_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
@@ -3226,8 +3284,22 @@ static void pre_compiler_member_access_expr(struct mscript_program *program, str
             return;
         }
 
+        struct lvalue lvalue;
+        struct lvalue left_lvalue = expr->member_access.left->lvalue;
+        switch (left_lvalue.type) {
+            case LVALUE_INVALID:
+                assert(false);
+                break;
+            case LVALUE_LOCAL:
+                lvalue = lvalue_local(left_lvalue.offset + member_offset);
+                break;
+            case LVALUE_ARRAY:
+                lvalue = lvalue_array();
+                break;
+        }
+
         expr->result_type = member_type;
-        expr->lvalue = expr->member_access.left->lvalue + member_offset;
+        expr->lvalue = lvalue;
     }
     else if (left_type.type == MSCRIPT_TYPE_ARRAY) {
         if (strcmp(expr->member_access.member_name, "length") == 0) {
@@ -3238,7 +3310,7 @@ static void pre_compiler_member_access_expr(struct mscript_program *program, str
             return;
         }
 
-        expr->lvalue = -1;
+        expr->lvalue = lvalue_array();
     }
     else {
         program_error(program, expr->token, "Invalid type for member access.");
@@ -3258,19 +3330,19 @@ static void pre_compiler_assignment_expr(struct mscript_program *program, struct
     if (program->error) return;
 
     expr->result_type = left_type;
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
 }
 
 static void pre_compiler_int_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
     assert(expr->type == EXPR_INT);
     expr->result_type = int_type();
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
 }
 
 static void pre_compiler_float_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
     assert(expr->type == EXPR_FLOAT);
     expr->result_type = float_type();
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
 }
 
 static void pre_compiler_symbol_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
@@ -3282,13 +3354,13 @@ static void pre_compiler_symbol_expr(struct mscript_program *program, struct exp
         return;
     }
     expr->result_type = var->type;
-    expr->lvalue = var->offset;
+    expr->lvalue = lvalue_local(var->offset);
 }
 
 static void pre_compiler_string_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
     assert(expr->type == EXPR_STRING);
     expr->result_type = string_type();
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
 }
 
 static void pre_compiler_array_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
@@ -3312,7 +3384,7 @@ static void pre_compiler_array_expr(struct mscript_program *program, struct expr
     }
 
     expr->result_type = *expected_type;
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
 }
 
 static void pre_compiler_array_access_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
@@ -3332,7 +3404,7 @@ static void pre_compiler_array_access_expr(struct mscript_program *program, stru
 
     expr->result_type = left_type;
     expr->result_type.type = left_type.array_type;
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_array();
 }
 
 static void pre_compiler_object_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
@@ -3371,7 +3443,7 @@ static void pre_compiler_object_expr(struct mscript_program *program, struct exp
     }
 
     expr->result_type = *expected_type;
-    expr->lvalue = -1;
+    expr->lvalue = lvalue_invalid();
 }
 
 static void pre_compiler_cast_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
@@ -3522,23 +3594,24 @@ static void opcode_i2f(struct mscript_program *program) {
     compiler_push_opcode(program, op);
 }
 
-static void opcode_dup(struct mscript_program *program) {
+static void opcode_dup(struct mscript_program *program, int size) {
     struct opcode op;
     op.type = OPCODE_DUP;
+    op.size = size;
     compiler_push_opcode(program, op);
 }
 
-static void opcode_const_int(struct mscript_program *program, int val) {
+static void opcode_int(struct mscript_program *program, int val) {
     struct opcode op;
-    op.type = OPCODE_CONST_INT;
-    op.const_int = val;
+    op.type = OPCODE_INT;
+    op.int_val = val;
     compiler_push_opcode(program, op);
 }
 
-static void opcode_const_float(struct mscript_program *program, float val) {
+static void opcode_float(struct mscript_program *program, float val) {
     struct opcode op;
-    op.type = OPCODE_CONST_FLOAT;
-    op.const_float = val;
+    op.type = OPCODE_FLOAT;
+    op.float_val = val;
     compiler_push_opcode(program, op);
 }
 
@@ -3636,6 +3709,7 @@ static void opcode_label(struct mscript_program *program, int label) {
 
 static void compiler_init(struct mscript_program *program) {
     struct compiler *compiler = &program->compiler;
+    compiler->cur_label = 0;
     array_init(&compiler->opcodes);
 }
 
@@ -3647,71 +3721,8 @@ static void compiler_push_opcode(struct mscript_program *program, struct opcode 
 }
 
 static int compiler_new_label(struct mscript_program *program) {
-    return 0;
-}
-
-static struct lvalue compiler_get_lvalue(struct mscript_program *program, struct expr *expr) {
-    switch (expr->type) {
-        case EXPR_UNARY_OP:
-        case EXPR_BINARY_OP:
-        case EXPR_CALL:
-        case EXPR_DEBUG_PRINT:
-        case EXPR_ASSIGNMENT:
-        case EXPR_INT:
-        case EXPR_FLOAT:
-        case EXPR_STRING:
-        case EXPR_ARRAY:
-        case EXPR_OBJECT:
-        case EXPR_CAST:
-            break;
-        case EXPR_ARRAY_ACCESS:
-            {
-                compile_expr(program, expr->array_access.left);
-                compile_expr(program, expr->array_access.right);
-                opcode_const_int(program, type_size(program, expr->result_type));
-                opcode_imul(program);
-                return lvalue_array();
-            }
-            break;
-        case EXPR_MEMBER_ACCESS:
-            {
-                struct mscript_type struct_type = expr->member_access.left->result_type;
-                assert(struct_type.type == MSCRIPT_TYPE_STRUCT);
-
-                struct struct_decl *decl = program_get_struct_decl(program, struct_type.struct_name);
-                assert(decl);
-
-                bool found_member = false;
-                int offset = 0;
-                for (int i = 0; i < decl->num_members; i++) {
-                    if (strcmp(expr->member_access.member_name, decl->members[i].name) == 0) {
-                        found_member = true;
-                        break;
-                    }
-                    offset += type_size(program, decl->members[i].type);
-                }
-                assert(found_member);
-
-                struct lvalue left_lvalue = compiler_get_lvalue(program, expr->member_access.left); 
-                if (left_lvalue.type == LVALUE_LOCAL) {
-                    return lvalue_local(left_lvalue.offset + offset);
-                }
-                else if (left_lvalue.type == LVALUE_ARRAY) {
-                    opcode_const_int(program, offset);
-                    opcode_iadd(program);
-                    return lvalue_array();
-                }
-            }
-            break;
-        case EXPR_SYMBOL:
-            {
-                return lvalue_local(expr->lvalue);
-            }
-            break;
-    }
-
-    m_logf("%d\n", expr->type);
-    assert(false);
+    struct compiler *compiler = &program->compiler;
+    return compiler->cur_label++;
 }
 
 static void compile_stmt(struct mscript_program *program, struct stmt *stmt) {
@@ -3824,8 +3835,8 @@ static void compile_expr_stmt(struct mscript_program *program, struct stmt *stmt
 static void compile_function_declaration_stmt(struct mscript_program *program, struct stmt *stmt) {
     assert(stmt->type == STMT_FUNCTION_DECLARATION);
 
-    struct stmt *body = stmt->function_declaration.body;
-    compile_stmt(program, body); 
+    opcode_push(program, stmt->function_declaration.block_size);
+    compile_stmt(program, stmt->function_declaration.body); 
 }
 
 static void compile_variable_declaration_stmt(struct mscript_program *program, struct stmt *stmt) {
@@ -3885,6 +3896,69 @@ static void compile_expr(struct mscript_program *program, struct expr *expr) {
     }
 }
 
+static void compile_lvalue_expr(struct mscript_program *program, struct expr *expr) {
+    switch (expr->type) {
+        case EXPR_UNARY_OP:
+        case EXPR_BINARY_OP:
+        case EXPR_CALL:
+        case EXPR_DEBUG_PRINT:
+        case EXPR_ASSIGNMENT:
+        case EXPR_INT:
+        case EXPR_FLOAT:
+        case EXPR_STRING:
+        case EXPR_ARRAY:
+        case EXPR_OBJECT:
+        case EXPR_CAST:
+            assert(false);
+            break;
+        case EXPR_ARRAY_ACCESS:
+            {
+                compile_expr(program, expr->array_access.left);
+                compile_expr(program, expr->array_access.right);
+                opcode_int(program, type_size(program, expr->result_type));
+                opcode_imul(program);
+            }
+            break;
+        case EXPR_MEMBER_ACCESS:
+            {
+                struct mscript_type struct_type = expr->member_access.left->result_type;
+                assert(struct_type.type == MSCRIPT_TYPE_STRUCT);
+
+                struct struct_decl *decl = program_get_struct_decl(program, struct_type.struct_name);
+                assert(decl);
+
+                bool found_member = false;
+                int offset = 0;
+                for (int i = 0; i < decl->num_members; i++) {
+                    if (strcmp(expr->member_access.member_name, decl->members[i].name) == 0) {
+                        found_member = true;
+                        break;
+                    }
+                    offset += type_size(program, decl->members[i].type);
+                }
+                assert(found_member);
+
+                compile_lvalue_expr(program, expr->member_access.left);
+
+                struct lvalue left_lvalue = expr->member_access.left->lvalue; 
+                switch (left_lvalue.type) {
+                    case LVALUE_LOCAL:
+                        break;
+                    case LVALUE_ARRAY:
+                        opcode_int(program, offset);
+                        opcode_iadd(program);
+                        break;
+                    case LVALUE_INVALID:
+                        assert(false);
+                        break;
+                }
+            }
+            break;
+        case EXPR_SYMBOL:
+            break;
+    }
+}
+
 static void compile_unary_op_expr(struct mscript_program *program, struct expr *expr) {
     assert(expr->type == EXPR_UNARY_OP);
 
@@ -3901,7 +3975,7 @@ static void compile_unary_op_expr(struct mscript_program *program, struct expr *
         assert(false);
     }
 
-    opcode_local_store(program, operand->lvalue, type_size(program, operand->result_type));
+    //opcode_local_store(program, operand->lvalue, type_size(program, operand->result_type));
 }
 
 static void compile_binary_op_expr(struct mscript_program *program, struct expr *expr) {
@@ -4004,12 +4078,19 @@ static void compile_array_access_expr(struct mscript_program *program, struct ex
     assert(left->result_type.type == MSCRIPT_TYPE_ARRAY);
     assert(right->result_type.type == MSCRIPT_TYPE_INT);
 
-    struct lvalue lvalue = compiler_get_lvalue(program, left);
-    if (lvalue.type == LVALUE_LOCAL) {
-        opcode_local_load(program, lvalue.offset, type_size(program, left->result_type));
-    }
-    else if (lvalue.type == LVALUE_ARRAY) {
-        opcode_array_load(program, type_size(program, left->result_type));
+    compile_lvalue_expr(program, left);
+
+    struct lvalue lvalue = left->lvalue;
+    switch (lvalue.type) {
+        case LVALUE_LOCAL:
+            opcode_local_load(program, lvalue.offset, type_size(program, left->result_type));
+            break;
+        case LVALUE_ARRAY:
+            opcode_array_load(program, type_size(program, left->result_type));
+            break;
+        case LVALUE_INVALID:
+            assert(false);
+            break;
     }
 
     compile_expr(program, right);
@@ -4022,21 +4103,33 @@ static void compile_member_access_expr(struct mscript_program *program, struct e
     struct expr *left = expr->member_access.left;
 
     if (left->result_type.type == MSCRIPT_TYPE_STRUCT) {
-        struct lvalue lvalue = compiler_get_lvalue(program, expr);
-        if (lvalue.type == LVALUE_LOCAL) {
-            opcode_local_load(program, lvalue.offset, type_size(program, expr->result_type));
-        }
-        else if (lvalue.type == LVALUE_ARRAY) {
-            opcode_array_load(program, type_size(program, expr->result_type));
+        compile_lvalue_expr(program, expr);
+        struct lvalue lvalue = expr->lvalue;
+        switch (lvalue.type) {
+            case LVALUE_LOCAL:
+                opcode_local_load(program, lvalue.offset, type_size(program, expr->result_type));
+                break;
+            case LVALUE_ARRAY:
+                opcode_array_load(program, type_size(program, expr->result_type));
+                break;
+            case LVALUE_INVALID:
+                assert(false);
+                break;
         }
     }
     else if (left->result_type.type == MSCRIPT_TYPE_ARRAY) {
-        struct lvalue lvalue = compiler_get_lvalue(program, left);
-        if (lvalue.type == LVALUE_LOCAL) {
-            opcode_local_load(program, lvalue.offset, type_size(program, left->result_type));
-        }
-        else if (lvalue.type == LVALUE_ARRAY) {
-            opcode_array_load(program, type_size(program, left->result_type));
+        compile_lvalue_expr(program, left);
+        struct lvalue lvalue = left->lvalue;
+        switch (lvalue.type) {
+            case LVALUE_LOCAL:
+                opcode_local_load(program, lvalue.offset, type_size(program, left->result_type));
+                break;
+            case LVALUE_ARRAY:
+                opcode_array_load(program, type_size(program, left->result_type));
+                break;
+            case LVALUE_INVALID:
+                assert(false);
+                break;
         }
         opcode_array_length(program);
     }
@@ -4049,40 +4142,54 @@ static void compile_assignment_expr(struct mscript_program *program, struct expr
     assert(expr->type == EXPR_ASSIGNMENT);
     assert(types_equal(expr->result_type, expr->assignment.right->result_type));
 
-    struct lvalue lvalue = compiler_get_lvalue(program, expr->assignment.left);
-    compile_expr(program, expr->assignment.right);
+    struct expr *left = expr->assignment.left;
+    struct expr *right = expr->assignment.right;
+    struct lvalue lvalue = left->lvalue;
+
+    compile_expr(program, right);
+    compile_lvalue_expr(program, left);
+
     switch (lvalue.type) {
         case LVALUE_LOCAL:
-            {
-                opcode_local_store(program, lvalue.offset, type_size(program, expr->result_type));
-            }
+            opcode_local_store(program, lvalue.offset, type_size(program, expr->result_type));
             break;
         case LVALUE_ARRAY:
-            {
-                opcode_array_store(program, type_size(program, expr->result_type));
-            }
+            opcode_array_store(program, type_size(program, expr->result_type));
+            break;
+        case LVALUE_INVALID:
+            assert(false);
             break;
     }
 }
 
 static void compile_int_expr(struct mscript_program *program, struct expr *expr) {
     assert(expr->type == EXPR_INT);
-    opcode_const_int(program, expr->int_value);
+    opcode_int(program, expr->int_value);
 }
 
 static void compile_float_expr(struct mscript_program *program, struct expr *expr) {
     assert(expr->type == EXPR_FLOAT);
-    opcode_const_float(program, expr->float_value);
+    opcode_float(program, expr->float_value);
 }
 
 static void compile_symbol_expr(struct mscript_program *program, struct expr *expr) {
     assert(expr->type == EXPR_SYMBOL);
-    opcode_local_load(program, expr->lvalue, type_size(program, expr->result_type));
+
+    struct lvalue lvalue = expr->lvalue;
+    switch (lvalue.type) {
+        case LVALUE_INVALID:
+        case LVALUE_ARRAY:
+            assert(false);
+            break;
+        case LVALUE_LOCAL:
+            opcode_local_load(program, lvalue.offset, type_size(program, expr->result_type));
+            break;
+    }
 }
 
 static void compile_string_expr(struct mscript_program *program, struct expr *expr) {
     assert(expr->type == EXPR_STRING);
-    opcode_const_int(program, expr->lvalue);
+    //opcode_int(program, expr->lvalue);
 }
 
 static void compile_array_expr(struct mscript_program *program, struct expr *expr) {
@@ -4097,13 +4204,14 @@ static void compile_array_expr(struct mscript_program *program, struct expr *exp
 
     int num_args = expr->array.num_args;
     if (num_args > 0) {
-        opcode_dup(program);
-        opcode_const_int(program, 0);
+        opcode_dup(program, type_size(program, expr->result_type));
+        opcode_int(program, 0);
         for (int i = 0; i < expr->array.num_args; i++) {
             struct expr *arg = expr->array.args[i];
             compile_expr(program, arg);
         }
         opcode_array_store(program, expr->array.num_args * size);
+        opcode_pop(program, expr->array.num_args * size);
     }
 }
 
@@ -4124,6 +4232,8 @@ static void compile_cast_expr(struct mscript_program *program, struct expr *expr
     struct mscript_type arg_type = expr->cast.arg->result_type;
     struct expr *arg = expr->cast.arg;
 
+    compile_expr(program, arg);
+
     if (cast_type.type == MSCRIPT_TYPE_INT && arg_type.type == MSCRIPT_TYPE_INT) {
     }
     else if (cast_type.type == MSCRIPT_TYPE_FLOAT && arg_type.type == MSCRIPT_TYPE_FLOAT) {
@@ -4139,6 +4249,390 @@ static void compile_cast_expr(struct mscript_program *program, struct expr *expr
     }
 }
 
+static void vm_init(struct mscript_program *program) {
+    struct vm *vm = &program->vm;
+    vm->ip = 0;
+    array_init(&vm->ip_stack);
+    vm->fp = 0;
+    array_init(&vm->fp_stack);
+    array_init(&vm->stack);
+    array_init(&vm->arrays);
+
+    array_push(&vm->ip_stack, -1);
+    array_push(&vm->fp_stack, 0);
+}
+
+static void vm_run(struct mscript_program *program, struct array_opcode opcodes) {
+    struct vm *vm = &program->vm;
+
+    while (true) {
+        if (vm->ip == -1) {
+            break;
+        }
+
+        struct opcode op = opcodes.data[vm->ip];
+        switch (op.type) {
+            case OPCODE_IADD:
+                {
+                    int *v1 = (int*) vm_pop(program, 4);
+                    int *v0 = (int*) vm_pop(program, 4);
+                    int v = *v0 + *v1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_FADD:
+                {
+                    float *v1 = (float*) vm_pop(program, 4);
+                    float *v0 = (float*) vm_pop(program, 4);
+                    float v = *v0 + *v1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_ISUB:
+                {
+                    int *v1 = (int*) vm_pop(program, 4);
+                    int *v0 = (int*) vm_pop(program, 4);
+                    int v = *v0 - *v1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_FSUB:
+                {
+                    float *v1 = (float*) vm_pop(program, 4);
+                    float *v0 = (float*) vm_pop(program, 4);
+                    float v = *v0 - *v1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_IMUL:
+                {
+                    int *v1 = (int*) vm_pop(program, 4);
+                    int *v0 = (int*) vm_pop(program, 4);
+                    int v = *v0 * *v1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_FMUL:
+                {
+                    float *v1 = (float*) vm_pop(program, 4);
+                    float *v0 = (float*) vm_pop(program, 4);
+                    float v = *v0 * *v1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_IDIV:
+                {
+                    int *v1 = (int*) vm_pop(program, 4);
+                    int *v0 = (int*) vm_pop(program, 4);
+                    int v = *v0 / *v1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_FDIV:
+                {
+                    float *v1 = (float*) vm_pop(program, 4);
+                    float *v0 = (float*) vm_pop(program, 4);
+                    float v = *v0 / *v1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_ILTE:
+                {
+                    int *v1 = (int*) vm_pop(program, 4);
+                    int *v0 = (int*) vm_pop(program, 4);
+                    int v = *v0 <= *v1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_FLTE:
+                {
+                    float *v1 = (float*) vm_pop(program, 4);
+                    float *v0 = (float*) vm_pop(program, 4);
+                    int v = *v0 <= *v1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_ILT:
+                {
+                    int *v1 = (int*) vm_pop(program, 4);
+                    int *v0 = (int*) vm_pop(program, 4);
+                    int v = *v0 < *v1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_FLT:
+                {
+                    float *v1 = (float*) vm_pop(program, 4);
+                    float *v0 = (float*) vm_pop(program, 4);
+                    int v = *v0 < *v1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_IGTE:
+                {
+                    int *v1 = (int*) vm_pop(program, 4);
+                    int *v0 = (int*) vm_pop(program, 4);
+                    int v = *v0 >= *v1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_FGTE:
+                {
+                    float *v1 = (float*) vm_pop(program, 4);
+                    float *v0 = (float*) vm_pop(program, 4);
+                    int v = *v0 >= *v1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_IGT:
+                {
+                    int *v1 = (int*) vm_pop(program, 4);
+                    int *v0 = (int*) vm_pop(program, 4);
+                    int v = *v0 > *v1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_FGT:
+                {
+                    float *v1 = (float*) vm_pop(program, 4);
+                    float *v0 = (float*) vm_pop(program, 4);
+                    int v = *v0 > *v1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_IEQ:
+                {
+                    int *v1 = (int*) vm_pop(program, 4);
+                    int *v0 = (int*) vm_pop(program, 4);
+                    int v = *v0 == *v1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_FEQ:
+                {
+                    float *v1 = (float*) vm_pop(program, 4);
+                    float *v0 = (float*) vm_pop(program, 4);
+                    int v = *v0 == *v1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_INEQ:
+                {
+                    int *v1 = (int*) vm_pop(program, 4);
+                    int *v0 = (int*) vm_pop(program, 4);
+                    int v = *v0 != *v1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_FNEQ:
+                {
+                    float *v1 = (float*) vm_pop(program, 4);
+                    float *v0 = (float*) vm_pop(program, 4);
+                    int v = *v0 != *v1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_IINC:
+                {
+                    int *v0 = (int*) vm_pop(program, 4);
+                    int v = (*v0) + 1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_FINC:
+                {
+                    float *v0 = (float*) vm_pop(program, 4);
+                    float v = (*v0) + 1;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_F2I:
+                {
+                    float *v0 = (float*) vm_pop(program, 4);
+                    int v = (int) *v0;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_I2F:
+                {
+                    int *v0 = (int*) vm_pop(program, 4);
+                    float v = (float) *v0;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_DUP:
+                {
+                    int start = vm->stack.length - op.size;
+                    for (int i = 0; i < op.size; i++) {
+                        char data = vm->stack.data[start + i];
+                        vm_push(program, &data, 1);
+                    }
+                }
+                break;
+            case OPCODE_INT:
+                {
+                    int v = op.int_val;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_FLOAT:
+                {
+                    float v = op.float_val;
+                    vm_push(program, (char*) (&v), 4);
+                }
+                break;
+            case OPCODE_LOCAL_STORE:
+                {
+                    int offset = op.local_store.offset;
+                    int size = op.local_store.size;
+                    assert(vm->fp + offset < vm->stack.length);
+                    char *src = vm->stack.data + vm->stack.length - size;
+                    char *dest = vm->stack.data + vm->fp + offset;
+                    memcpy(dest, src, size);
+                }
+                break;
+            case OPCODE_LOCAL_LOAD:
+                {
+                    int offset = op.local_load.offset;
+                    int size = op.local_load.size;
+                    assert(vm->fp + offset < vm->stack.length);
+                    array_reserve(&vm->stack, vm->stack.length + size);
+                    char *data = vm->stack.data + vm->fp + offset;
+                    vm_push(program, data, size);
+                }
+                break;
+            case OPCODE_JF:
+                {
+                    int *v = (int*) vm_pop(program, 4);
+                    if (!(*v)) {
+                        bool found_label = false;
+                        for (int i = 0; i < opcodes.length; i++) {
+                            if (opcodes.data[i].type == OPCODE_LABEL && opcodes.data[i].label == op.label) {
+                                vm->ip = i;
+                                found_label = true;
+                                break;
+                            }
+                        }
+                        assert(found_label);
+                    }
+                }
+                break;
+            case OPCODE_JMP:
+                {
+                    bool found_label = false;
+                    for (int i = 0; i < opcodes.length; i++) {
+                        if (opcodes.data[i].type == OPCODE_LABEL && opcodes.data[i].label == op.label) {
+                            vm->ip = i;
+                            found_label = true;
+                            break;
+                        }
+                    }
+                    assert(found_label);
+                }
+                break;
+            case OPCODE_CALL:
+                {
+                    assert(false);
+                }
+                break;
+            case OPCODE_RETURN:
+                {
+                    vm->ip = -2;
+                }
+                break;
+            case OPCODE_PUSH:
+                {
+                    int size = op.size;
+                    vm_push_val(program, 0, size);
+                }
+                break;
+            case OPCODE_POP:
+                {
+                    vm_pop(program, op.size);
+                }
+                break;
+            case OPCODE_ARRAY_CREATE:
+                {
+                    int size = op.size;
+                    int array_idx = vm->arrays.length;
+
+                    struct vm_array new_array;
+                    new_array.member_size = size;
+                    array_init(&new_array.array);
+                    array_push(&vm->arrays, new_array);
+                    vm_push(program, (char*) (&array_idx), 4);
+                }
+                break;
+            case OPCODE_ARRAY_STORE:
+                {
+                    int size = op.array_store.size;
+
+                    int *offset = (int*) vm_pop(program, 4);
+                    int *array_idx = (int*) vm_pop(program, 4);
+                    char *data = vm->stack.data + vm->stack.length - size;
+                    struct vm_array *array = vm->arrays.data + (*array_idx);
+
+                    int member_idx = (*offset) / array->member_size;
+                    array_reserve(&array->array, (member_idx + 1) * array->member_size);
+                    if (array->array.length < array->member_size * (member_idx + 1)) {
+                        array->array.length = array->member_size * (member_idx + 1);
+                    }
+                    
+                    for (int i = 0; i < size; i++) {
+                        array->array.data[(*offset) + i] = data[i];
+                    }
+                }
+                break;
+            case OPCODE_ARRAY_LOAD:
+                {
+                    int size = op.array_load.size;
+
+                    int *offset = (int*) vm_pop(program, 4);
+                    int *array_idx = (int*) vm_pop(program, 4);
+                    struct vm_array *array = vm->arrays.data + (*array_idx);
+
+                    assert((*offset) + size <= array->array.length);
+                    vm_push(program, array->array.data + (*offset), size);
+                }
+                break;
+            case OPCODE_ARRAY_LENGTH:
+                {
+                    int *array_idx = (int*) vm_pop(program, 4);
+                    struct vm_array *array = vm->arrays.data + (*array_idx);
+
+                    int len = array->array.length / array->member_size;
+                    vm_push(program, (char*) (&len), 4);
+                }
+                break;
+            case OPCODE_LABEL:
+                {
+                }
+                break;
+        }
+        (vm->ip)++;
+    }
+}
+
+static void vm_push(struct mscript_program *program, char *v, int n) {
+    struct vm *vm = &program->vm;
+    array_pusharr(&vm->stack, v, n);
+}
+
+static void vm_push_val(struct mscript_program *program, char v, int n) {
+    struct vm *vm = &program->vm;
+    for (int i = 0; i < n; i++) {
+        array_push(&vm->stack, v);
+    }
+}
+
+static char *vm_pop(struct mscript_program *program, int n) {
+    struct vm *vm = &program->vm;
+    if (vm->stack.length < n) {
+        assert(false);
+    }
+    vm->stack.length -= n;
+    return vm->stack.data + vm->stack.length;
+}
 
 static void debug_log_token(struct token token) {
     switch (token.type) {
@@ -4428,6 +4922,7 @@ static void debug_log_expr(struct expr *expr) {
 
 static void debug_log_opcodes(struct opcode *opcodes, int num_opcodes) {
     for (int i = 0; i < num_opcodes; i++) {
+        m_logf("%d: ", i);
         struct opcode op = opcodes[i];
         switch (op.type) {
             case OPCODE_IADD:
@@ -4505,11 +5000,11 @@ static void debug_log_opcodes(struct opcode *opcodes, int num_opcodes) {
             case OPCODE_DUP:
                 m_logf("DUP");
                 break;
-            case OPCODE_CONST_INT:
-                m_logf("CONST_INT %d", op.const_int);
+            case OPCODE_INT:
+                m_logf("INT %d", op.int_val);
                 break;
-            case OPCODE_CONST_FLOAT:
-                m_logf("CONST_FLOAT %f", op.const_float);
+            case OPCODE_FLOAT:
+                m_logf("CONST_FLOAT %f", op.float_val);
                 break;
             case OPCODE_LOCAL_STORE:
                 m_logf("LOCAL_STORE %d %d", op.local_store.offset, op.local_store.size);
@@ -4530,7 +5025,7 @@ static void debug_log_opcodes(struct opcode *opcodes, int num_opcodes) {
                 m_logf("RETURN %d", op.size);
                 break;
             case OPCODE_PUSH:
-                m_logf("POP %d", op.size);
+                m_logf("PUSH %d", op.size);
                 break;
             case OPCODE_POP:
                 m_logf("POP %d", op.size);
@@ -4586,6 +5081,3 @@ struct mscript_program *mscript_load_program(struct mscript *mscript, const char
     }
     return program;
 }
-
-
-

@@ -122,30 +122,38 @@ struct foo {
     bar[] bars;
 }
 
-int test() {
-    foo f = { bars = [ { foobars = [ { t = { x = 3, y = 5 } } ] } ] };
-    f.bars[0].foobars[0].t = { x = 0, y = 1 };
+int fib(int n) {
+    if (n <= 0) {
+        return 0;
+    }
+    else if (n == 1) {
+        return 1;
+    }
+    else {
+        return fib(n - 1) + fib(n - 2);
+    }
+}
 
-    //
-    // LOCAL_LOAD 0, 4
-    // CONST_INT 0
-    // CONST_INT 0
-    // IADD
-    // ARRAY_LOAD 4
-    // CONST_INT 0
-    // CONST_INT 0
-    // IADD
-    // ARRAY_STORE 8
-    //
+int test(int x, int y) {
+    //foo f = { bars = [ { foobars = [ { t = { x = 3, y = 5 } } ] } ] };
+    //f.bars[0].foobars[1].t = { x = 0, y = 1 };
 
-    vec3 a = { x = 1, y = 2, z = 3 };
-    vec3 b = { x = 1, y = 2, z = 3 };
-    vec3 c = { x = a.x + b.x, y = a.y - b.y, z = a.z / b.z };
+    vec3 a = { x = 1, y = 2, z = 100 };
+    vec3 b = { x = 2, y = 3, z = 10 };
+    vec3 c = { x = a.x + b.x, y = a.y + b.y, z = a.z / b.z };
 
     vec3[] array = [];
-    array[array.length] = a;
-    array[array.length] = b;
-    array[array.length] = c;
 
-    return 0;
+    if (0 > 1) {
+        array[array.length] = a;
+        array[array.length] = b;
+        array[array.length] = c;
+    }
+    else {
+        array[10] = c;
+    }
+
+    //return f.bars[0].foobars[1].t.y + f.bars[0].foobars[0].t.y + f.bars[0].foobars[0].t.x;
+    //return a.x + b.x + c.x;
+    return array.length; 
 }
