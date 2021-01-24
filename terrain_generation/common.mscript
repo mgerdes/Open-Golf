@@ -1,0 +1,14 @@
+import "math.mscript";
+
+struct terrain_model_face {
+    int mat_idx, smooth_normal;
+    int x, y, z, w;
+    vec2 tc0, tc1, tc2, tc3;
+    float tex_coord_scale;
+    float cor, friction, vel_scale;
+    int auto_texture;
+}
+
+import_function void terrain_model_add_point(void* terrain_model, vec3 point);
+import_function vec3 terrain_model_get_point(void* terrain_model, int idx);
+import_function void terrain_model_add_face(void* terrain_model, terrain_model_face face);

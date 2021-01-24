@@ -43,35 +43,6 @@ void double_array(int[] array) {
     }
 }
 
-struct test {
-    vec2 t;
-}
-
-struct foo {
-    vec3 v0;
-    vec3 v1;
-}
-
-struct bar {
-    vec3[] a;
-    bar[] children;
-}
-
-struct a {
-    bar b;
-}
-
-struct b {
-    a a;
-}
-
-void recurse(bar b) {
-    int i;
-    for (i = 0; i < b.children.length; i++) {
-        recurse((b.children)[i]);
-    }
-}
-
 int recur1(int a) {
     if (a > 0) {
         return recur2(a - 1);
@@ -89,17 +60,6 @@ int recur2(int b) {
 int do_stuff(void *terrain_model) {
     terrain_model_add_point(terrain_model, { x = 2, y = 3, z = 4 });
     return 1;
-}
-
-terrain_model_face create_terrain_model_face(int x) {
-    if (x == 0) {
-        terrain_model_face face;
-        return face;
-    }
-    else {
-        terrain_model_face face;
-        return face;
-    }
 }
 
 int run(void* terrain_model) {
@@ -146,6 +106,46 @@ int run(void* terrain_model) {
     debug_print("array: ", array, "\n");
     debug_print("length: ", array.length, "\n");
     debug_print("face: ", face, "\n");
+
+    return 0;
+}
+
+struct foobar {
+    vec2 t;
+}
+
+struct bar {
+    foobar[] foobars;
+}
+
+struct foo {
+    bar[] bars;
+}
+
+int test() {
+    foo f = { bars = [ { foobars = [ { t = { x = 0, y = 1 } } ] } ] };
+    f.bars[0].foobars[0].t = { x = 0, y = 1 };
+
+    //
+    // LOCAL_LOAD 0, 4
+    // CONST_INT 0
+    // CONST_INT 0
+    // IADD
+    // ARRAY_LOAD 4
+    // CONST_INT 0
+    // CONST_INT 0
+    // IADD
+    // ARRAY_STORE 8
+    //
+
+    vec3 a = { x = 1, y = 2, z = 3 };
+    vec3 b = { x = 1, y = 2, z = 3 };
+    vec3 c = { x = a.x + b.x, y = a.y - b.y, z = a.z / b.z };
+
+    vec3[] array = [];
+    array[array.length] = a;
+    array[array.length] = b;
+    array[array.length] = c;
 
     return 0;
 }
