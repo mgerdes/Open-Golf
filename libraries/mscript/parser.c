@@ -195,10 +195,11 @@ enum opcode_type {
     OPCODE_CONST_FLOAT,
     OPCODE_LOCAL_STORE,
     OPCODE_LOCAL_LOAD,
-    OPCODE_JF_LABEL,
-    OPCODE_JMP_LABEL,
-    OPCODE_CALL_LABEL,
+    OPCODE_JF,
+    OPCODE_JMP,
+    OPCODE_CALL,
     OPCODE_RETURN,
+    OPCODE_PUSH,
     OPCODE_POP,
     OPCODE_ARRAY_CREATE,
     OPCODE_ARRAY_STORE,
@@ -209,6 +210,30 @@ enum opcode_type {
 
 struct opcode {
     enum opcode_type type;
+
+    union {
+        int label;
+        int function;
+        int const_int;
+        float const_float;
+        int size;
+
+        struct {
+            int offset, size;
+        } local_load;
+
+        struct {
+            int offset, size;
+        } local_store;
+
+        struct {
+            int size;
+        } array_load;
+
+        struct {
+            int size;
+        } array_store;
+    };
 };
 array_t(struct opcode, array_opcode)
 
@@ -239,14 +264,15 @@ static void opcode_i2f(struct mscript_program *program);
 static void opcode_dup(struct mscript_program *program);
 static void opcode_const_int(struct mscript_program *program, int val);
 static void opcode_const_float(struct mscript_program *program, float val);
-static void opcode_local_store(struct mscript_program *program, int idx, int size);
-static void opcode_local_load(struct mscript_program *program, int idx, int size);
+static void opcode_local_store(struct mscript_program *program, int offset, int size);
+static void opcode_local_load(struct mscript_program *program, int offset, int size);
 static void opcode_jf(struct mscript_program *program, int label);
 static void opcode_jmp(struct mscript_program *program, int label);
-static void opcode_call(struct mscript_program *program, char *function);
+static void opcode_call(struct mscript_program *program, int function);
 static void opcode_return(struct mscript_program *program, int size);
+static void opcode_push(struct mscript_program *program, int size);
 static void opcode_pop(struct mscript_program *program, int size);
-static void opcode_array_create(struct mscript_program *program);
+static void opcode_array_create(struct mscript_program *program, int size);
 static void opcode_array_store(struct mscript_program *program, int size);
 static void opcode_array_load(struct mscript_program *program, int size);
 static void opcode_array_length(struct mscript_program *program);
@@ -527,6 +553,7 @@ static void debug_log_tokens(struct token *tokens);
 static void debug_log_type(struct mscript_type type);
 static void debug_log_stmt(struct stmt *stmt);
 static void debug_log_expr(struct expr *expr);
+static void debug_log_opcodes(struct opcode *opcodes, int num_opcodes);
 
 struct function_decl_arg {
     struct mscript_type type;
@@ -742,6 +769,7 @@ static int type_size(struct mscript_program *program, struct mscript_type type) 
 
 struct lvalue lvalue_local(int offset) {
     struct lvalue lvalue;
+    lvalue.type = LVALUE_LOCAL;
     lvalue.offset = offset;
     return lvalue;
 }
@@ -2203,6 +2231,29 @@ static void parser_run(struct mscript_program *program, struct mscript *mscript)
         //debug_log_stmt(stmt);
     }
 
+    for (int i = 0; i < global_stmts.length; i++) {
+        struct stmt *stmt = global_stmts.data[i];
+        if (stmt->type == STMT_IMPORT) {
+        }
+        else if (stmt->type == STMT_IMPORT_FUNCTION) {
+        }
+        else if (stmt->type == STMT_STRUCT_DECLARATION) {
+        }
+        else if (stmt->type == STMT_FUNCTION_DECLARATION) {
+            if (strcmp(stmt->function_declaration.name, "test") == 0) {
+                compile_stmt(program, stmt);
+                debug_log_opcodes(program->compiler.opcodes.data, 
+                        program->compiler.opcodes.length);
+            }
+            if (program->error) goto cleanup;
+        }
+        else {
+            assert(false);
+        }
+
+        //debug_log_stmt(stmt);
+    }
+
 cleanup:
     array_deinit(&global_stmts);
 }
@@ -3480,72 +3531,93 @@ static void opcode_dup(struct mscript_program *program) {
 static void opcode_const_int(struct mscript_program *program, int val) {
     struct opcode op;
     op.type = OPCODE_CONST_INT;
+    op.const_int = val;
     compiler_push_opcode(program, op);
 }
 
 static void opcode_const_float(struct mscript_program *program, float val) {
     struct opcode op;
     op.type = OPCODE_CONST_FLOAT;
+    op.const_float = val;
     compiler_push_opcode(program, op);
 }
 
-static void opcode_local_store(struct mscript_program *program, int idx, int size) {
+static void opcode_local_store(struct mscript_program *program, int offset, int size) {
     struct opcode op;
     op.type = OPCODE_LOCAL_STORE;
+    op.local_store.offset = offset;
+    op.local_store.size = size;
     compiler_push_opcode(program, op);
 }
 
-static void opcode_local_load(struct mscript_program *program, int idx, int size) {
+static void opcode_local_load(struct mscript_program *program, int offset, int size) {
     struct opcode op;
     op.type = OPCODE_LOCAL_LOAD;
+    op.local_load.offset = offset;
+    op.local_load.size = size;
     compiler_push_opcode(program, op);
 }
 
 static void opcode_jf(struct mscript_program *program, int label) {
     struct opcode op;
     op.type = OPCODE_JF;
+    op.label = label;
     compiler_push_opcode(program, op);
 }
 
 static void opcode_jmp(struct mscript_program *program, int label) {
     struct opcode op;
     op.type = OPCODE_JMP;
+    op.label = label;
     compiler_push_opcode(program, op);
 }
 
-static void opcode_call(struct mscript_program *program, char *function) {
+static void opcode_call(struct mscript_program *program, int function) {
     struct opcode op;
     op.type = OPCODE_CALL;
+    op.function = function;
     compiler_push_opcode(program, op);
 }
 
 static void opcode_return(struct mscript_program *program, int size) {
     struct opcode op;
     op.type = OPCODE_RETURN;
+    op.size = size;
+    compiler_push_opcode(program, op);
+}
+
+static void opcode_push(struct mscript_program *program, int size) {
+    struct opcode op;
+    op.type = OPCODE_PUSH;
+    op.size = size;
     compiler_push_opcode(program, op);
 }
 
 static void opcode_pop(struct mscript_program *program, int size) {
     struct opcode op;
     op.type = OPCODE_POP;
+    op.size = size;
     compiler_push_opcode(program, op);
 }
 
-static void opcode_array_create(struct mscript_program *program) {
+static void opcode_array_create(struct mscript_program *program, int size) {
     struct opcode op;
     op.type = OPCODE_ARRAY_CREATE;
+    op.size = size;
     compiler_push_opcode(program, op);
 }
 
 static void opcode_array_store(struct mscript_program *program, int size) {
     struct opcode op;
     op.type = OPCODE_ARRAY_STORE;
+    op.array_store.size = size;
     compiler_push_opcode(program, op);
 }
 
 static void opcode_array_load(struct mscript_program *program, int size) {
     struct opcode op;
     op.type = OPCODE_ARRAY_LOAD;
+    op.array_store.size = size;
     compiler_push_opcode(program, op);
 }
 
@@ -3558,6 +3630,7 @@ static void opcode_array_length(struct mscript_program *program) {
 static void opcode_label(struct mscript_program *program, int label) {
     struct opcode op;
     op.type = OPCODE_LABEL;
+    op.label = label;
     compiler_push_opcode(program, op);
 }
 
@@ -3637,6 +3710,7 @@ static struct lvalue compiler_get_lvalue(struct mscript_program *program, struct
             break;
     }
 
+    m_logf("%d\n", expr->type);
     assert(false);
 }
 
@@ -3930,16 +4004,45 @@ static void compile_array_access_expr(struct mscript_program *program, struct ex
     assert(left->result_type.type == MSCRIPT_TYPE_ARRAY);
     assert(right->result_type.type == MSCRIPT_TYPE_INT);
 
-    opcode_local_load(program, left->lvalue, type_size(program, left->result_type));
+    struct lvalue lvalue = compiler_get_lvalue(program, left);
+    if (lvalue.type == LVALUE_LOCAL) {
+        opcode_local_load(program, lvalue.offset, type_size(program, left->result_type));
+    }
+    else if (lvalue.type == LVALUE_ARRAY) {
+        opcode_array_load(program, type_size(program, left->result_type));
+    }
+
     compile_expr(program, right);
     opcode_array_load(program, type_size(program, expr->result_type));
 }
 
 static void compile_member_access_expr(struct mscript_program *program, struct expr *expr) {
     assert(expr->type == EXPR_MEMBER_ACCESS);
-    assert(expr->binary_op.left->result_type.type == MSCRIPT_TYPE_STRUCT);
 
-    opcode_local_load(program, expr->lvalue, type_size(program, expr->result_type));
+    struct expr *left = expr->member_access.left;
+
+    if (left->result_type.type == MSCRIPT_TYPE_STRUCT) {
+        struct lvalue lvalue = compiler_get_lvalue(program, expr);
+        if (lvalue.type == LVALUE_LOCAL) {
+            opcode_local_load(program, lvalue.offset, type_size(program, expr->result_type));
+        }
+        else if (lvalue.type == LVALUE_ARRAY) {
+            opcode_array_load(program, type_size(program, expr->result_type));
+        }
+    }
+    else if (left->result_type.type == MSCRIPT_TYPE_ARRAY) {
+        struct lvalue lvalue = compiler_get_lvalue(program, left);
+        if (lvalue.type == LVALUE_LOCAL) {
+            opcode_local_load(program, lvalue.offset, type_size(program, left->result_type));
+        }
+        else if (lvalue.type == LVALUE_ARRAY) {
+            opcode_array_load(program, type_size(program, left->result_type));
+        }
+        opcode_array_length(program);
+    }
+    else {
+        assert(false);
+    }
 }
 
 static void compile_assignment_expr(struct mscript_program *program, struct expr *expr) {
@@ -3985,7 +4088,12 @@ static void compile_string_expr(struct mscript_program *program, struct expr *ex
 static void compile_array_expr(struct mscript_program *program, struct expr *expr) {
     assert(expr->type == EXPR_ARRAY);
 
-    opcode_array_create(program);
+    struct mscript_type arg_type = expr->result_type;
+    assert(arg_type.type == MSCRIPT_TYPE_ARRAY);
+    arg_type.type = arg_type.array_type;
+
+    int size = type_size(program, arg_type);
+    opcode_array_create(program, size);
 
     int num_args = expr->array.num_args;
     if (num_args > 0) {
@@ -3995,8 +4103,7 @@ static void compile_array_expr(struct mscript_program *program, struct expr *exp
             struct expr *arg = expr->array.args[i];
             compile_expr(program, arg);
         }
-        int size = expr->array.num_args * type_size(program, expr->array.args[0]->result_type);
-        opcode_array_store(program, size);
+        opcode_array_store(program, expr->array.num_args * size);
     }
 }
 
@@ -4316,6 +4423,135 @@ static void debug_log_expr(struct expr *expr) {
             }
             m_logf(")");
             break;
+    }
+}
+
+static void debug_log_opcodes(struct opcode *opcodes, int num_opcodes) {
+    for (int i = 0; i < num_opcodes; i++) {
+        struct opcode op = opcodes[i];
+        switch (op.type) {
+            case OPCODE_IADD:
+                m_logf("IADD");
+                break;
+            case OPCODE_FADD:
+                m_logf("FADD");
+                break;
+            case OPCODE_ISUB:
+                m_logf("ISUB");
+                break;
+            case OPCODE_FSUB:
+                m_logf("FSUB");
+                break;
+            case OPCODE_IMUL:
+                m_logf("IMUL");
+                break;
+            case OPCODE_FMUL:
+                m_logf("FMUL");
+                break;
+            case OPCODE_IDIV:
+                m_logf("IDIV");
+                break;
+            case OPCODE_FDIV:
+                m_logf("FDIV");
+                break;
+            case OPCODE_ILTE:
+                m_logf("ILTE");
+                break;
+            case OPCODE_FLTE:
+                m_logf("FLTE");
+                break;
+            case OPCODE_ILT:
+                m_logf("ILT");
+                break;
+            case OPCODE_FLT:
+                m_logf("FLT");
+                break;
+            case OPCODE_IGTE:
+                m_logf("IGTE");
+                break;
+            case OPCODE_FGTE:
+                m_logf("FGTE");
+                break;
+            case OPCODE_IGT:
+                m_logf("IGT");
+                break;
+            case OPCODE_FGT:
+                m_logf("FGT");
+                break;
+            case OPCODE_IEQ:
+                m_logf("IEQ");
+                break;
+            case OPCODE_FEQ:
+                m_logf("FEQ");
+                break;
+            case OPCODE_INEQ:
+                m_logf("INEQ");
+                break;
+            case OPCODE_FNEQ:
+                m_logf("FNEQ");
+                break;
+            case OPCODE_IINC:
+                m_logf("IINC");
+                break;
+            case OPCODE_FINC:
+                m_logf("FINC");
+                break;
+            case OPCODE_F2I:
+                m_logf("F2I");
+                break;
+            case OPCODE_I2F:
+                m_logf("I2F");
+                break;
+            case OPCODE_DUP:
+                m_logf("DUP");
+                break;
+            case OPCODE_CONST_INT:
+                m_logf("CONST_INT %d", op.const_int);
+                break;
+            case OPCODE_CONST_FLOAT:
+                m_logf("CONST_FLOAT %f", op.const_float);
+                break;
+            case OPCODE_LOCAL_STORE:
+                m_logf("LOCAL_STORE %d %d", op.local_store.offset, op.local_store.size);
+                break;
+            case OPCODE_LOCAL_LOAD:
+                m_logf("LOCAL_LOAD %d %d", op.local_store.offset, op.local_store.size);
+                break;
+            case OPCODE_JF:
+                m_logf("JF %d", op.label);
+                break;
+            case OPCODE_JMP:
+                m_logf("JMP %d", op.label);
+                break;
+            case OPCODE_CALL:
+                m_logf("CALL %d", op.function);
+                break;
+            case OPCODE_RETURN:
+                m_logf("RETURN %d", op.size);
+                break;
+            case OPCODE_PUSH:
+                m_logf("POP %d", op.size);
+                break;
+            case OPCODE_POP:
+                m_logf("POP %d", op.size);
+                break;
+            case OPCODE_ARRAY_CREATE:
+                m_logf("ARRAY_CREATE %d", op.size);
+                break;
+            case OPCODE_ARRAY_STORE:
+                m_logf("ARRAY_STORE %d", op.size);
+                break;
+            case OPCODE_ARRAY_LOAD:
+                m_logf("ARRAY_LOAD %d", op.size);
+                break;
+            case OPCODE_ARRAY_LENGTH:
+                m_logf("ARRAY_LENGTH");
+                break;
+            case OPCODE_LABEL:
+                m_logf("LABEL %d", op.label);
+                break;
+        }
+        m_logf("\n");
     }
 }
 
