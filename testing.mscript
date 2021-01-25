@@ -134,9 +134,22 @@ int fib(int n) {
     }
 }
 
+struct testing {
+    vec3 v0;
+    vec3 v1;
+}
+
 int test(int x, int y) {
-    //foo f = { bars = [ { foobars = [ { t = { x = 3, y = 5 } } ] } ] };
-    //f.bars[0].foobars[1].t = { x = 0, y = 1 };
+    foo f = { 
+        bars = [ 
+        { foobars = [ { t = { x = 3, y = 5 } } ] },
+        { foobars = [ { t = { x = 3, y = 5 } } ] } 
+        ] 
+    };
+    f.bars[0].foobars[0].t = { x = 0, y = 1 };
+
+    f.bars[2] = { foobars = [] };
+    f.bars[2].foobars[0].t = { x = 0, y = 1 };
 
     vec3 a = { x = 1, y = 2, z = 100 };
     vec3 b = { x = 2, y = 3, z = 10 };
@@ -144,13 +157,10 @@ int test(int x, int y) {
 
     vec3[] array = [];
 
-    if (0 > 1) {
-        array[array.length] = a;
-        array[array.length] = b;
-        array[array.length] = c;
-    }
-    else {
-        array[10] = c;
+    int i;
+    for (i = 0; i < 100; i++) {
+        array[i] = { x = i * i, y = i * i, z = i * i };
+        debug_print(i, ": ", array[i], "\n");
     }
 
     //return f.bars[0].foobars[1].t.y + f.bars[0].foobars[0].t.y + f.bars[0].foobars[0].t.x;
