@@ -212,9 +212,8 @@ enum opcode_type {
     OPCODE_DEBUG_PRINT_INT,
     OPCODE_DEBUG_PRINT_FLOAT,
     OPCODE_DEBUG_PRINT_STRING,
+    OPCODE_DEBUG_PRINT_STRING_CONST,
 };
-
-#define OPCODE_MAX_STRING_LEN 15
 
 struct opcode {
     enum opcode_type type;
@@ -225,7 +224,7 @@ struct opcode {
         int int_val;
         float float_val;
         int size;
-        char string[OPCODE_MAX_STRING_LEN + 1];
+        char short_string[MSCRIPT_MAX_SYMBOL_LEN + 1];
 
         struct {
             int offset, size;
@@ -276,17 +275,20 @@ static void opcode_array_length(struct mscript_program *program);
 static void opcode_label(struct mscript_program *program, int label);
 static void opcode_debug_print_int(struct mscript_program *program);
 static void opcode_debug_print_float(struct mscript_program *program);
-static void opcode_debug_print_string(struct mscript_program *program, char *str);
+static void opcode_debug_print_string(struct mscript_program *program);
+static void opcode_debug_print_string_const(struct mscript_program *program, char *str);
 
 struct compiler {
     int cur_label;
     struct array_opcode opcodes; 
+    struct array_char strings;
 };
 
 static void compiler_init(struct mscript_program *program);
 static void compiler_deinit(struct mscript_program *program);
 static void compiler_push_opcode(struct mscript_program *program, struct opcode op);
 static int compiler_new_label(struct mscript_program *program);
+static int compiler_add_string(struct mscript_program *program, char *string);
 
 static void compile_stmt(struct mscript_program *program, struct stmt *stmt);
 static void compile_if_stmt(struct mscript_program *program, struct stmt *stmt);
@@ -329,6 +331,7 @@ struct vm {
     struct array_char stack;
 
     struct array_vm_array arrays;
+    struct array_char strings;
 };
 
 static void vm_init(struct mscript_program *program);
@@ -2304,8 +2307,7 @@ static void parser_run(struct mscript_program *program, struct mscript *mscript)
         else if (stmt->type == STMT_FUNCTION_DECLARATION) {
             if (strcmp(stmt->function_declaration.name, "test") == 0) {
                 compile_stmt(program, stmt);
-                debug_log_opcodes(program->compiler.opcodes.data, 
-                        program->compiler.opcodes.length);
+                //debug_log_opcodes(program->compiler.opcodes.data, program->compiler.opcodes.length);
                 vm_run(program, program->compiler.opcodes);
             }
             if (program->error) goto cleanup;
@@ -3744,11 +3746,17 @@ static void opcode_debug_print_float(struct mscript_program *program) {
     compiler_push_opcode(program, op);
 }
 
-static void opcode_debug_print_string(struct mscript_program *program, char *string) {
+static void opcode_debug_print_string(struct mscript_program *program) {
     struct opcode op;
     op.type = OPCODE_DEBUG_PRINT_STRING;
-    strncpy(op.string, string, OPCODE_MAX_STRING_LEN);
-    op.string[OPCODE_MAX_STRING_LEN] = 0;
+    compiler_push_opcode(program, op);
+}
+
+static void opcode_debug_print_string_const(struct mscript_program *program, char *string) {
+    struct opcode op;
+    op.type = OPCODE_DEBUG_PRINT_STRING_CONST;
+    strncpy(op.short_string, string, MSCRIPT_MAX_SYMBOL_LEN);
+    op.short_string[MSCRIPT_MAX_SYMBOL_LEN] = 0;
     compiler_push_opcode(program, op);
 }
 
@@ -3756,6 +3764,7 @@ static void compiler_init(struct mscript_program *program) {
     struct compiler *compiler = &program->compiler;
     compiler->cur_label = 0;
     array_init(&compiler->opcodes);
+    array_init(&compiler->strings);
 }
 
 static void compiler_deinit(struct mscript_program *program) {
@@ -3768,6 +3777,14 @@ static void compiler_push_opcode(struct mscript_program *program, struct opcode 
 static int compiler_new_label(struct mscript_program *program) {
     struct compiler *compiler = &program->compiler;
     return compiler->cur_label++;
+}
+
+static int compiler_add_string(struct mscript_program *program, char *string) {
+    struct compiler *compiler = &program->compiler;
+
+    int len = strlen(string);
+    array_pusharr(&compiler->strings, string, len + 1);
+    return compiler->strings.length - len - 1;
 }
 
 static void compile_stmt(struct mscript_program *program, struct stmt *stmt) {
@@ -4124,8 +4141,14 @@ static void compile_call_expr(struct mscript_program *program, struct expr *expr
 static void compile_debug_print_type(struct mscript_program *program, struct mscript_type type) {
     switch (type.type) {
         case MSCRIPT_TYPE_VOID:
+            {
+                assert(false);
+            }
             break;
         case MSCRIPT_TYPE_VOID_STAR:
+            {
+                assert(false);
+            }
             break;
         case MSCRIPT_TYPE_INT:
             {
@@ -4143,31 +4166,37 @@ static void compile_debug_print_type(struct mscript_program *program, struct msc
                 assert(decl);
                 int size = decl->size;
 
-                opcode_debug_print_string(program, "{");
+                opcode_debug_print_string_const(program, "{");
                 int member_offset = 0;
                 for (int i = 0; i < decl->num_members; i++) {
                     struct mscript_type member_type = decl->members[i].type;
                     int member_type_size = type_size(program, member_type);
                     char *member_name = decl->members[i].name;
 
-                    opcode_debug_print_string(program, member_name);
-                    opcode_debug_print_string(program, ": ");
+                    opcode_debug_print_string_const(program, member_name);
+                    opcode_debug_print_string_const(program, ": ");
                     opcode_copy(program, size - member_offset, member_type_size); 
                     compile_debug_print_type(program, member_type);
                     member_offset += member_type_size;
                     
                     if (i != decl->num_members - 1) {
-                        opcode_debug_print_string(program, ", ");
+                        opcode_debug_print_string_const(program, ", ");
                     }
                 }
-                opcode_debug_print_string(program, "}");
+                opcode_debug_print_string_const(program, "}");
 
                 opcode_pop(program, size);
             }
             break;
         case MSCRIPT_TYPE_ARRAY:
+            {
+                assert(false);
+            }
             break;
         case MSCRIPT_TYPE_STRING:
+            {
+                opcode_debug_print_string(program);
+            }
             break;
     }
 }
@@ -4182,12 +4211,7 @@ static void compile_debug_print_expr(struct mscript_program *program, struct exp
         struct mscript_type arg_type = arg->result_type;
 
         compile_expr(program, arg);
-        if (arg_type.type == MSCRIPT_TYPE_STRING) {
-            opcode_debug_print_string(program, arg->string);
-        }
-        else {
-            compile_debug_print_type(program, arg_type);
-        }
+        compile_debug_print_type(program, arg_type);
     }
 }
 
@@ -4313,7 +4337,9 @@ static void compile_symbol_expr(struct mscript_program *program, struct expr *ex
 
 static void compile_string_expr(struct mscript_program *program, struct expr *expr) {
     assert(expr->type == EXPR_STRING);
-    //opcode_int(program, expr->lvalue);
+
+    int str_pos = compiler_add_string(program, expr->string);
+    opcode_int(program, str_pos);
 }
 
 static void compile_array_expr(struct mscript_program *program, struct expr *expr) {
@@ -4383,12 +4409,14 @@ static void vm_init(struct mscript_program *program) {
     array_init(&vm->fp_stack);
     array_init(&vm->stack);
     array_init(&vm->arrays);
+    array_init(&vm->strings);
 
     array_push(&vm->ip_stack, -1);
     array_push(&vm->fp_stack, 0);
 }
 
 static void vm_run(struct mscript_program *program, struct array_opcode opcodes) {
+    struct compiler *compiler = &program->compiler;
     struct vm *vm = &program->vm;
 
     while (true) {
@@ -4753,7 +4781,14 @@ static void vm_run(struct mscript_program *program, struct array_opcode opcodes)
                 break;
             case OPCODE_DEBUG_PRINT_STRING:
                 {
-                    m_logf(op.string);
+                    int *str_pos = (int*) vm_pop(program, 4);
+                    char *str = compiler->strings.data + (*str_pos);
+                    m_logf("%s", str);
+                }
+                break;
+            case OPCODE_DEBUG_PRINT_STRING_CONST:
+                {
+                    m_logf(op.short_string);
                 }
                 break;
         }
@@ -5200,7 +5235,10 @@ static void debug_log_opcodes(struct opcode *opcodes, int num_opcodes) {
                 m_logf("DEBUG_PRINT_FLOAT");
                 break;
             case OPCODE_DEBUG_PRINT_STRING:
-                m_logf("DEBUG_PRINT_STRING: %s", op.string);
+                m_logf("DEBUG_PRINT_STRING");
+                break;
+            case OPCODE_DEBUG_PRINT_STRING_CONST:
+                m_logf("DEBUG_PRINT_SHORT_STRING: %s", op.short_string);
                 break;
         }
         m_logf("\n");

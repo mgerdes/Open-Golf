@@ -155,13 +155,23 @@ int test(int x, int y) {
     vec3 b = { x = 2, y = 3, z = 10 };
     vec3 c = { x = a.x + b.x, y = a.y + b.y, z = a.z / b.z };
 
-    vec3[] array = [];
+    testing[] array = [];
 
     int i;
     for (i = 0; i < 100; i++) {
-        array[i] = { x = i * i, y = i * i, z = i * i };
-        debug_print(i, ": ", array[i], "\n");
+        array[i] = { 
+            v0 = { x = 0, y = 1, z = i * i }, 
+            v1 = { x = i * i, y = 0, z = 1 }
+        };
     }
+
+    int count = 0;
+    for (i = 0; i < 100; i++) {
+        vec3 v = array[i].v0;
+        count = count + v.x + v.y + v.z;
+        debug_print("i: ", array[i], "\n");
+    }
+    debug_print("I want to be with you everywhere.", count, "\n");
 
     //return f.bars[0].foobars[1].t.y + f.bars[0].foobars[0].t.y + f.bars[0].foobars[0].t.x;
     //return a.x + b.x + c.x;
