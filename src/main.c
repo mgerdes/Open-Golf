@@ -50,11 +50,6 @@ static void init(void) {
     memset(&inputs, 0, sizeof(inputs));
     profiler_init();
     last_time = 0;
-
-    {
-        struct mscript *mscript = mscript_create();
-        mscript_load_program(mscript, "testing.mscript");
-    }
 }
 
 static void get_world_ray_from_window_pos(vec2 window_pos, vec3 *world_ro, vec3 *world_rd) {
@@ -90,6 +85,11 @@ static void frame(void) {
         game.state = GAME_STATE_MAIN_MENU;
         main_menu_init(&main_menu);
         profiler_pop_section();
+
+        {
+            struct mscript *mscript = mscript_create();
+            //mscript_load_program(mscript, "testing.mscript");
+        }
     }
 
     hotloader_update();

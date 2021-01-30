@@ -1,0 +1,6 @@
+import "a.mscript";
+
+struct b_struct {
+    float y;
+    a_struct a;
+}

@@ -1,6 +1,6 @@
 import "math.mscript";
 import "util.mscript";
-import "terrain_generation/common.mscript";
+import "terrain_generation_common.mscript";
 
 int array_to_int(int[] array) {
     if (array.length > 0) {
@@ -58,7 +58,7 @@ int recur2(int b) {
 }
 
 int do_stuff(void *terrain_model) {
-    terrain_model_add_point(terrain_model, { x = 2, y = 3, z = 4 });
+    //terrain_model_add_point(terrain_model, { x = 2, y = 3, z = 4 });
     return 1;
 }
 
@@ -101,7 +101,7 @@ int run(void* terrain_model) {
         auto_texture = 0
     };
     face.friction = 100;
-    terrain_model_add_face(terrain_model, face);
+    //terrain_model_add_face(terrain_model, face);
 
     debug_print("array: ", array, "\n");
     debug_print("length: ", array.length, "\n");
@@ -134,9 +134,14 @@ int fib(int n) {
     }
 }
 
+struct testing2 {
+    vec3 t;
+}
+
 struct testing {
     vec3 v0;
     vec3 v1;
+    testing2 t;
 }
 
 int test(int x, int y) {
@@ -161,7 +166,8 @@ int test(int x, int y) {
     for (i = 0; i < 100; i++) {
         array[i] = { 
             v0 = { x = 0, y = 1, z = i * i }, 
-            v1 = { x = i * i, y = 0, z = 1 }
+            v1 = { x = i * i, y = 0, z = 1 },
+            t = { t = { x = 0, y = 0, z = 0 } }
         };
     }
 

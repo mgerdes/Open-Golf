@@ -1,0 +1,5 @@
+import "a.mscript";
+
+struct c_struct {
+    float z;
+}
