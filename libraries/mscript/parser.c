@@ -82,6 +82,8 @@ struct parsed_type {
 
 array_t(struct parsed_type, array_parsed_type)
 
+static struct parsed_type parsed_type_create(const char *name, bool is_array);
+
 struct allocator {
     size_t bytes_allocated;
     struct array_void_ptr ptrs;
@@ -162,7 +164,6 @@ static void pre_compiler_return_stmt(struct mscript_program *program, struct stm
 static void pre_compiler_block_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
 static void pre_compiler_expr_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
 static void pre_compiler_variable_declaration_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return);
-static bool pre_compiler_is_struct_declaration_recursive(struct mscript_program *program, struct stmt *stmt, struct mscript_type cur);
 static void pre_compiler_import(struct mscript_program *program, struct stmt *stmt);
 static void pre_compiler_function_declaration(struct mscript_program *program, struct stmt *stmt);
 static void pre_compiler_struct_declaration_1(struct mscript_program *program, struct stmt *stmt);
@@ -576,7 +577,7 @@ static struct stmt *new_import_stmt(struct allocator *allocator, struct token to
 static struct stmt *new_import_function_stmt(struct allocator *allocator, struct token token, struct parsed_type return_type, char *name, struct array_parsed_type arg_types, struct array_char_ptr arg_names);
 static struct stmt *new_expr_stmt(struct allocator *allocator, struct token token, struct expr *expr);
 
-static void parse_type(struct mscript_program *program, struct parsed_type *type);  
+static struct parsed_type parse_type(struct mscript_program *program);  
 
 static struct expr *parse_expr(struct mscript_program *program);
 static struct expr *parse_assignment_expr(struct mscript_program *program);
@@ -993,37 +994,40 @@ static struct stmt *new_expr_stmt(struct allocator *allocator, struct token toke
     return stmt;
 }
 
-static void parse_type(struct mscript_program *program, struct parsed_type *type) {
+static struct parsed_type parse_type(struct mscript_program *program) {
+    const char *name = NULL;
+    bool is_array = false;
+
     if (match_symbol(program, "void")) {
         if (match_char(program, '*')) {
-            strncpy(type->string, "void*", MSCRIPT_MAX_SYMBOL_LEN);
+            name = "void*";
         }
         else {
-            strncpy(type->string, "void", MSCRIPT_MAX_SYMBOL_LEN);
+            name = "void";
         }
     }
     else if (match_symbol(program, "int")) {
-        strncpy(type->string, "int", MSCRIPT_MAX_SYMBOL_LEN);
+        name = "int";
     }
     else if (match_symbol(program, "float")) {
-        strncpy(type->string, "float", MSCRIPT_MAX_SYMBOL_LEN);
+        name = "float";
     }
     else {
         struct token tok = peek(program);
         if (tok.type != TOKEN_SYMBOL) {
             program_error(program, tok, "Expected symbol");
-            return;
+            return parsed_type_create("", false);
         }
         eat(program);
 
-        strncpy(type->string, tok.symbol, MSCRIPT_MAX_SYMBOL_LEN);
+        name = tok.symbol;
     }
-    type->string[MSCRIPT_MAX_SYMBOL_LEN] = 0;
 
     if (match_char_n(program, 2, '[', ']')) {
-        strcat(type->string, "[]");
+        is_array = true;
     }
-    type->string[MSCRIPT_MAX_SYMBOL_LEN + 2] = 0;
+
+    return parsed_type_create(name, is_array);
 }
 
 static struct expr *parse_object_expr(struct mscript_program *program) {
@@ -1534,8 +1538,7 @@ static struct stmt *parse_variable_declaration_stmt(struct mscript_program *prog
     struct token token = peek(program);
     struct stmt *stmt = NULL;
 
-    struct parsed_type type;
-    parse_type(program, &type);
+    struct parsed_type type = parse_type(program);
     if (program->error) goto cleanup;
 
     struct token name = peek(program);
@@ -1573,8 +1576,7 @@ static struct stmt *parse_function_declaration_stmt(struct mscript_program *prog
 
     struct stmt *stmt = NULL;
 
-    struct parsed_type return_type;
-    parse_type(program, &return_type);
+    struct parsed_type return_type = parse_type(program);
     if (program->error) goto cleanup;
 
     struct token name = peek(program);
@@ -1591,8 +1593,7 @@ static struct stmt *parse_function_declaration_stmt(struct mscript_program *prog
 
     if (!match_char(program, ')')) {
         while (true) {
-            struct parsed_type arg_type;
-            parse_type(program, &arg_type);
+            struct parsed_type arg_type = parse_type(program);
             if (program->error) goto cleanup;
 
             struct token arg_name = peek(program);
@@ -1657,8 +1658,7 @@ static struct stmt *parse_struct_declaration_stmt(struct mscript_program *progra
             break;
         }
 
-        struct parsed_type member_type;
-        parse_type(program, &member_type);
+        struct parsed_type member_type = parse_type(program);
         if (program->error) goto cleanup;
 
         while (true) {
@@ -1721,8 +1721,7 @@ static struct stmt *parse_import_function_stmt(struct mscript_program *program) 
     array_init(&arg_types);
     array_init(&arg_names);
 
-    struct parsed_type return_type;
-    parse_type(program, &return_type);
+    struct parsed_type return_type = parse_type(program);
     if (program->error) goto cleanup;
 
     struct token name = peek(program);
@@ -1738,8 +1737,7 @@ static struct stmt *parse_import_function_stmt(struct mscript_program *program) 
     }
 
     while (true) {
-        struct parsed_type arg_type;
-        parse_type(program, &arg_type);
+        struct parsed_type arg_type = parse_type(program);
         if (program->error) goto cleanup;
 
         struct token arg_name = peek(program);
@@ -2395,6 +2393,16 @@ static struct function_decl *program_get_function_decl(struct mscript_program *p
 }
 #endif
 
+static struct parsed_type parsed_type_create(const char *name, bool is_array) {
+    struct parsed_type type;
+    strncpy(type.string, name, MSCRIPT_MAX_SYMBOL_LEN);
+    type.string[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+    if (is_array) {
+        strcat(type.string, "[]");
+    }
+    return type;
+}
+
 static void allocator_init(struct allocator *allocator) {
     allocator->bytes_allocated = 0;
     array_init(&allocator->ptrs);
@@ -2704,6 +2712,8 @@ static void pre_compiler_type(struct mscript_program *program, struct token toke
     }
 }
 
+#endif
+
 static void pre_compiler_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
     *all_paths_return = false;
     switch (stmt->type) {
@@ -2736,6 +2746,7 @@ static void pre_compiler_stmt(struct mscript_program *program, struct stmt *stmt
 }
 
 static void pre_compiler_if_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
+#if 0
     assert(stmt->type == STMT_IF);
 
     *all_paths_return = true;
@@ -2764,9 +2775,11 @@ static void pre_compiler_if_stmt(struct mscript_program *program, struct stmt *s
     else {
         *all_paths_return = false;
     }
+#endif
 }
 
 static void pre_compiler_for_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
+#if 0
     assert(stmt->type == STMT_FOR);
 
     pre_compiler_expr(program, stmt->for_stmt.init, NULL);
@@ -2777,9 +2790,11 @@ static void pre_compiler_for_stmt(struct mscript_program *program, struct stmt *
     if (program->error) return;
     pre_compiler_stmt(program, stmt->for_stmt.body, all_paths_return);
     if (program->error) return;
+#endif
 }
 
 static void pre_compiler_return_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
+#if 0
     assert(stmt->type == STMT_RETURN);
     *all_paths_return = true;
 
@@ -2800,9 +2815,11 @@ static void pre_compiler_return_stmt(struct mscript_program *program, struct stm
             pre_compiler_expr_with_cast(program, &(stmt->return_stmt.expr), return_type);
         }
     }
+#endif
 }
 
 static void pre_compiler_block_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
+#if 0
     assert(stmt->type == STMT_BLOCK);
 
     pre_compiler_env_push_block(program);
@@ -2823,14 +2840,18 @@ static void pre_compiler_block_stmt(struct mscript_program *program, struct stmt
 
 cleanup:
     pre_compiler_env_pop_block(program);
+#endif
 }
 
 static void pre_compiler_expr_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
+#if 0
     assert(stmt->type == STMT_EXPR);
     pre_compiler_expr(program, stmt->expr, NULL);
+#endif
 }
 
 static void pre_compiler_variable_declaration_stmt(struct mscript_program *program, struct stmt *stmt, bool *all_paths_return) {
+#if 0
     assert(stmt->type == STMT_VARIABLE_DECLARATION);
 
     char *name = stmt->variable_declaration.name;
@@ -2849,37 +2870,11 @@ static void pre_compiler_variable_declaration_stmt(struct mscript_program *progr
         pre_compiler_expr(program, stmt->variable_declaration.assignment_expr, NULL);
         if (program->error) return;
     }
-}
-
-static bool pre_compiler_is_struct_declaration_recursive(struct mscript_program *program, struct stmt *stmt, struct mscript_type cur) {
-    assert(stmt->type == STMT_STRUCT_DECLARATION);
-
-    struct mscript_type parent = struct_type(stmt->struct_declaration.name);
-    if (types_equal(parent, cur)) {
-        return true;
-    }
-
-    if (cur.type != MSCRIPT_TYPE_STRUCT) {
-        return false;
-    }
-
-    struct struct_decl *decl = program_get_struct_decl(program, cur.struct_name);
-    if (!decl) {
-        program_error(program, stmt->token, "Unknown type %s", cur.struct_name);
-        return false;
-    }
-
-    for (int i = 0; i < decl->num_members; i++) {
-        struct mscript_type type = decl->members[i].type;
-        if (pre_compiler_is_struct_declaration_recursive(program, stmt, type)) {
-            return true;
-        }
-    }
-
-    return false;
+#endif
 }
 
 static void pre_compiler_set_struct_declaration_size(struct mscript_program *program, struct struct_decl *decl) {
+#if 0
     // If it's already been set then skip this
     if (decl->size >= 0) {
         return;
@@ -2919,9 +2914,8 @@ static void pre_compiler_set_struct_declaration_size(struct mscript_program *pro
         }
     }
     decl->size = size;
-}
-
 #endif
+}
 
 static void pre_compiler_import(struct mscript_program *program, struct stmt *stmt) {
     assert(stmt->type == STMT_IMPORT);
@@ -2964,7 +2958,6 @@ static void pre_compiler_import(struct mscript_program *program, struct stmt *st
 
 static void pre_compiler_function_declaration(struct mscript_program *program, struct stmt *stmt) {
     assert(stmt->type == STMT_FUNCTION_DECLARATION);
-
     pre_compiler_env_push_block(program);
 
     struct mscript_type *return_type = program_get_type(program, stmt->function_declaration.return_type.string);
@@ -2972,8 +2965,7 @@ static void pre_compiler_function_declaration(struct mscript_program *program, s
 
     for (int i = 0; i < stmt->function_declaration.num_args; i++) {
         char *arg_name = stmt->function_declaration.arg_names[i];
-        struct parsed_type parsed_type = stmt->function_declaration.arg_types[i];
-        struct mscript_type *arg_type = program_get_type(program, parsed_type.string);
+        struct mscript_type *arg_type = program_get_type(program, stmt->function_declaration.arg_types[i].string);
         if (program->error) goto cleanup;
         pre_compiler_env_add_var(program, arg_name, arg_type);
     }
