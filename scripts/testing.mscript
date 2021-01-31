@@ -101,7 +101,7 @@ int run(void* terrain_model) {
         auto_texture = 0
     };
     face.friction = 100;
-    //terrain_model_add_face(terrain_model, face);
+    terrain_model_add_face(terrain_model, face);
 
     debug_print("array: ", array, "\n");
     debug_print("length: ", array.length, "\n");

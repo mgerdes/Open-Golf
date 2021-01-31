@@ -1,5 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 
+#if 0
 #include "mscript.h"
 
 #include <assert.h>
@@ -4165,3 +4166,4 @@ void mscript_compile(const char *prog_text) {
     //assert(decl);
     //mscript_vm_run(&vm, decl->label);
 }
+#endif
