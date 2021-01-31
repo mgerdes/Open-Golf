@@ -4842,7 +4842,7 @@ static void program_import_recur(struct mscript_program *program, struct mscript
         map_iter_t iter = map_iter(&import->type_map);
         while ((key = map_next(&import->type_map, &iter))) {
             struct mscript_type **type = map_get(&import->type_map, key);
-            map_set(&program->type_map, (*type)->name, *type);
+            map_set(&program->type_map, key, *type);
         }
     }
 
@@ -4851,7 +4851,7 @@ static void program_import_recur(struct mscript_program *program, struct mscript
         map_iter_t iter = map_iter(&import->function_decl_map);
         while ((key = map_next(&import->function_decl_map, &iter))) {
             struct function_decl **decl = map_get(&import->function_decl_map, key);
-            map_set(&program->function_decl_map, (*decl)->name, *decl);
+            map_set(&program->function_decl_map, key, *decl);
         }
     }
 

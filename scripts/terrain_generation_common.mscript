@@ -12,3 +12,4 @@ struct terrain_model_face {
 import_function void terrain_model_add_point(void* terrain_model, vec3 point);
 import_function vec3 terrain_model_get_point(void* terrain_model, int idx);
 import_function void terrain_model_add_face(void* terrain_model, terrain_model_face face);
+
