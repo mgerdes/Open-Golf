@@ -9,6 +9,7 @@
 #include "hotloader.h"
 #include "log.h"
 #include "map.h"
+#include "sokol_time.h"
 
 struct stmt;
 struct expr;
@@ -16,6 +17,70 @@ struct parser;
 struct pre_compiler;
 struct compiler;
 struct vm;
+
+enum opcode_type {
+    OPCODE_IADD,
+    OPCODE_FADD,
+    OPCODE_ISUB,
+    OPCODE_FSUB,
+    OPCODE_IMUL,
+    OPCODE_FMUL,
+    OPCODE_IDIV,
+    OPCODE_FDIV,
+    OPCODE_ILTE,
+    OPCODE_FLTE,
+    OPCODE_ILT,
+    OPCODE_FLT,
+    OPCODE_IGTE,
+    OPCODE_FGTE,
+    OPCODE_IGT,
+    OPCODE_FGT,
+    OPCODE_IEQ,
+    OPCODE_FEQ,
+    OPCODE_INEQ,
+    OPCODE_FNEQ,
+    OPCODE_IINC,
+    OPCODE_FINC,
+    OPCODE_F2I,
+    OPCODE_I2F,
+    OPCODE_COPY,
+    OPCODE_INT,
+    OPCODE_FLOAT,
+    OPCODE_LOCAL_STORE,
+    OPCODE_LOCAL_LOAD,
+    OPCODE_JF,
+    OPCODE_JMP,
+    OPCODE_CALL,
+    OPCODE_RETURN,
+    OPCODE_PUSH,
+    OPCODE_POP,
+    OPCODE_ARRAY_CREATE,
+    OPCODE_ARRAY_STORE,
+    OPCODE_ARRAY_LOAD,
+    OPCODE_ARRAY_LENGTH,
+    OPCODE_LABEL,
+    OPCODE_DEBUG_PRINT_INT,
+    OPCODE_DEBUG_PRINT_FLOAT,
+    OPCODE_DEBUG_PRINT_STRING,
+    OPCODE_DEBUG_PRINT_STRING_CONST,
+};
+
+struct opcode {
+    enum opcode_type type;
+
+    union {
+        int label;
+        int int_val;
+        float float_val;
+        int size;
+        char string[MSCRIPT_MAX_SYMBOL_LEN + 1];
+
+        struct {
+            int offset, size;
+        } load_store;
+    };
+};
+array_t(struct opcode, array_opcode)
 
 struct struct_decl_arg {
     char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
@@ -37,12 +102,17 @@ struct function_decl_arg {
 };
 
 struct function_decl {
+    struct array_int labels; 
+    struct array_opcode opcodes;
+    int block_size;
     struct mscript_type *return_type;
     char name[MSCRIPT_MAX_SYMBOL_LEN + 1]; 
     int num_args;
     struct function_decl_arg args[MSCRIPT_MAX_FUNCTION_ARGS];
+    int args_size;
 };
 
+array_t(struct function_decl*, array_function_decl_ptr)
 typedef map_t(struct function_decl *) map_function_decl_ptr_t;
 
 struct mscript_type {
@@ -207,71 +277,6 @@ static void pre_compiler_array_access_expr(struct mscript_program *program, stru
 static void pre_compiler_object_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
 static void pre_compiler_cast_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
 
-enum opcode_type {
-    OPCODE_IADD,
-    OPCODE_FADD,
-    OPCODE_ISUB,
-    OPCODE_FSUB,
-    OPCODE_IMUL,
-    OPCODE_FMUL,
-    OPCODE_IDIV,
-    OPCODE_FDIV,
-    OPCODE_ILTE,
-    OPCODE_FLTE,
-    OPCODE_ILT,
-    OPCODE_FLT,
-    OPCODE_IGTE,
-    OPCODE_FGTE,
-    OPCODE_IGT,
-    OPCODE_FGT,
-    OPCODE_IEQ,
-    OPCODE_FEQ,
-    OPCODE_INEQ,
-    OPCODE_FNEQ,
-    OPCODE_IINC,
-    OPCODE_FINC,
-    OPCODE_F2I,
-    OPCODE_I2F,
-    OPCODE_COPY,
-    OPCODE_INT,
-    OPCODE_FLOAT,
-    OPCODE_LOCAL_STORE,
-    OPCODE_LOCAL_LOAD,
-    OPCODE_JF,
-    OPCODE_JMP,
-    OPCODE_CALL,
-    OPCODE_RETURN,
-    OPCODE_PUSH,
-    OPCODE_POP,
-    OPCODE_ARRAY_CREATE,
-    OPCODE_ARRAY_STORE,
-    OPCODE_ARRAY_LOAD,
-    OPCODE_ARRAY_LENGTH,
-    OPCODE_LABEL,
-    OPCODE_DEBUG_PRINT_INT,
-    OPCODE_DEBUG_PRINT_FLOAT,
-    OPCODE_DEBUG_PRINT_STRING,
-    OPCODE_DEBUG_PRINT_STRING_CONST,
-};
-
-struct opcode {
-    enum opcode_type type;
-
-    union {
-        int label;
-        int function;
-        int int_val;
-        float float_val;
-        int size;
-        char short_string[MSCRIPT_MAX_SYMBOL_LEN + 1];
-
-        struct {
-            int offset, size;
-        } load_store;
-    };
-};
-array_t(struct opcode, array_opcode)
-
 static void opcode_iadd(struct mscript_program *program);
 static void opcode_fadd(struct mscript_program *program);
 static void opcode_isub(struct mscript_program *program);
@@ -303,8 +308,8 @@ static void opcode_local_store(struct mscript_program *program, int offset, int 
 static void opcode_local_load(struct mscript_program *program, int offset, int size);
 static void opcode_jf(struct mscript_program *program, int label);
 static void opcode_jmp(struct mscript_program *program, int label);
-static void opcode_call(struct mscript_program *program, int function);
-static void opcode_return(struct mscript_program *program, int size);
+static void opcode_call(struct mscript_program *program, char *str);
+static void opcode_return(struct mscript_program *program);
 static void opcode_push(struct mscript_program *program, int size);
 static void opcode_pop(struct mscript_program *program, int size);
 static void opcode_array_create(struct mscript_program *program, int size);
@@ -319,7 +324,7 @@ static void opcode_debug_print_string_const(struct mscript_program *program, cha
 
 struct compiler {
     int cur_label;
-    struct array_opcode opcodes; 
+    struct function_decl *cur_function_decl;
     struct array_char strings;
 };
 
@@ -362,20 +367,23 @@ struct vm_array {
 };
 array_t(struct vm_array, array_vm_array)
 
+struct stack_frame {
+    int ip, fp;
+    struct function_decl *decl;
+};
+array_t(struct stack_frame, array_stack_frame)
+
+static struct stack_frame stack_frame_create(int ip, int fp, struct function_decl *decl);
+
 struct vm {
-    int ip;
-    struct array_int ip_stack;
-
-    int fp;
-    struct array_int fp_stack;
     struct array_char stack;
-
+    struct array_stack_frame stack_frames;
     struct array_vm_array arrays;
     struct array_char strings;
 };
 
 static void vm_init(struct mscript_program *program);
-static void vm_run(struct mscript_program *program, struct array_opcode opcodes);
+static void vm_run(struct mscript_program *program);
 static void vm_push(struct mscript_program *program, char *v, int n);
 static void vm_push_val(struct mscript_program *program, char v, int n);
 static char *vm_pop(struct mscript_program *program, int n);
@@ -663,6 +671,7 @@ static bool program_load_2(struct file file, bool first_time, struct mscript* ms
 static bool program_load_3(struct file file, bool first_time, struct mscript* mscript);
 static bool program_load_4(struct file file, bool first_time, struct mscript* mscript);
 static bool program_load_5(struct file file, bool first_time, struct mscript* mscript);
+static bool program_load_6(struct file file, bool first_time, struct mscript* mscript);
 
 //
 // DEFINITIONS
@@ -2219,21 +2228,18 @@ static void pre_compiler_env_add_var(struct mscript_program *program, const char
     struct pre_compiler_env_var var;
     var.offset = block->offset + block->size;
     var.type = type;
-    if (l > 1) {
-        // don't count function arguments for the blocks size 
-        block->size += type->size;
-    }
+    block->size += type->size;
     map_set(&block->map, symbol, var);
 
     int cur_size = 0;
-    for (int i = 0; i < l; i++) {
+    for (int i = 1; i < l; i++) {
         struct pre_compiler_env_block *b = &(pre_compiler->env_blocks.data[i]);
         cur_size += b->size;
     }
 
     struct pre_compiler_env_block *b0 = &(pre_compiler->env_blocks.data[0]);
     if (b0->max_size < cur_size) {
-        b0->max_size += cur_size;
+        b0->max_size = cur_size;
     }
 }
 
@@ -2429,6 +2435,8 @@ static void pre_compiler_struct_declaration_2_recur(struct mscript_program *prog
     type->recur_state = 1;
 
     for (int i = 0; i < type->struct_decl->num_members; i++) {
+        type->struct_decl->members[i].offset = type->size;
+
         struct mscript_type *member_type = type->struct_decl->members[i].type;
         assert(member_type);
 
@@ -2531,6 +2539,9 @@ static void pre_compiler_function_declaration_1(struct mscript_program *program,
         decl->args[i].name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
     }
 
+    array_init(&decl->labels);
+    array_init(&decl->opcodes);
+
 cleanup:
     return;
 }
@@ -2544,20 +2555,24 @@ static void pre_compiler_function_declaration_2(struct mscript_program *program,
 
     program->pre_compiler.cur_function_decl = decl;
 
+    decl->args_size = 0;
     for (int i = 0; i < decl->num_args; i++) {
         struct mscript_type *arg_type = decl->args[i].type;
         assert(arg_type);
         pre_compiler_env_add_var(program, decl->args[i].name, arg_type);
+        decl->args_size += decl->args[i].type->size;
     }
 
     bool all_paths_return = false;
     pre_compiler_stmt(program, stmt->function_declaration.body, &all_paths_return);
     if (program->error) goto cleanup;
 
-    if (decl->return_type->type != MSCRIPT_TYPE_VOID && !all_paths_return) {
+    if (!all_paths_return) { // && decl->return_type->type != MSCRIPT_TYPE_VOID
         program_error(program, stmt->function_declaration.token, "Not all paths return from function.");
         goto cleanup;
     }
+
+    decl->block_size = program->pre_compiler.env_blocks.data[0].max_size;
 
 cleanup:
     pre_compiler_env_pop_block(program);
@@ -3069,7 +3084,7 @@ static void opcode_fadd(struct mscript_program *program) {
 static void opcode_isub(struct mscript_program *program) {
     struct opcode op;
     op.type = OPCODE_ISUB;
-    array_push(&(program->compiler.opcodes), op);
+    compiler_push_opcode(program, op);
 }
 
 static void opcode_fsub(struct mscript_program *program) {
@@ -3199,6 +3214,8 @@ static void opcode_i2f(struct mscript_program *program) {
 }
 
 static void opcode_copy(struct mscript_program *program, int offset, int size) {
+    assert(offset >= 0 && size >= 0);
+
     struct opcode op;
     op.type = OPCODE_COPY;
     op.load_store.offset = offset;
@@ -3221,6 +3238,8 @@ static void opcode_float(struct mscript_program *program, float val) {
 }
 
 static void opcode_local_store(struct mscript_program *program, int offset, int size) {
+    assert(offset >= 0 && size >= 0);
+
     struct opcode op;
     op.type = OPCODE_LOCAL_STORE;
     op.load_store.offset = offset;
@@ -3229,6 +3248,8 @@ static void opcode_local_store(struct mscript_program *program, int offset, int 
 }
 
 static void opcode_local_load(struct mscript_program *program, int offset, int size) {
+    assert(offset >= 0 && size >= 0);
+
     struct opcode op;
     op.type = OPCODE_LOCAL_LOAD;
     op.load_store.offset = offset;
@@ -3250,21 +3271,23 @@ static void opcode_jmp(struct mscript_program *program, int label) {
     compiler_push_opcode(program, op);
 }
 
-static void opcode_call(struct mscript_program *program, int function) {
+static void opcode_call(struct mscript_program *program, char *str) {
     struct opcode op;
     op.type = OPCODE_CALL;
-    op.function = function;
+    strncpy(op.string, str, MSCRIPT_MAX_SYMBOL_LEN);
+    op.string[MSCRIPT_MAX_SYMBOL_LEN] = 0;
     compiler_push_opcode(program, op);
 }
 
-static void opcode_return(struct mscript_program *program, int size) {
+static void opcode_return(struct mscript_program *program) {
     struct opcode op;
     op.type = OPCODE_RETURN;
-    op.size = size;
     compiler_push_opcode(program, op);
 }
 
 static void opcode_push(struct mscript_program *program, int size) {
+    assert(size >= 0);
+
     struct opcode op;
     op.type = OPCODE_PUSH;
     op.size = size;
@@ -3272,6 +3295,8 @@ static void opcode_push(struct mscript_program *program, int size) {
 }
 
 static void opcode_pop(struct mscript_program *program, int size) {
+    assert(size >= 0);
+
     struct opcode op;
     op.type = OPCODE_POP;
     op.size = size;
@@ -3279,6 +3304,8 @@ static void opcode_pop(struct mscript_program *program, int size) {
 }
 
 static void opcode_array_create(struct mscript_program *program, int size) {
+    assert(size >= 0);
+
     struct opcode op;
     op.type = OPCODE_ARRAY_CREATE;
     op.size = size;
@@ -3286,6 +3313,8 @@ static void opcode_array_create(struct mscript_program *program, int size) {
 }
 
 static void opcode_array_store(struct mscript_program *program, int size) {
+    assert(size >= 0);
+
     struct opcode op;
     op.type = OPCODE_ARRAY_STORE;
     op.size = size;
@@ -3293,6 +3322,8 @@ static void opcode_array_store(struct mscript_program *program, int size) {
 }
 
 static void opcode_array_load(struct mscript_program *program, int size) {
+    assert(size >= 0);
+
     struct opcode op;
     op.type = OPCODE_ARRAY_LOAD;
     op.size = size;
@@ -3333,15 +3364,15 @@ static void opcode_debug_print_string(struct mscript_program *program) {
 static void opcode_debug_print_string_const(struct mscript_program *program, char *string) {
     struct opcode op;
     op.type = OPCODE_DEBUG_PRINT_STRING_CONST;
-    strncpy(op.short_string, string, MSCRIPT_MAX_SYMBOL_LEN);
-    op.short_string[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+    strncpy(op.string, string, MSCRIPT_MAX_SYMBOL_LEN);
+    op.string[MSCRIPT_MAX_SYMBOL_LEN] = 0;
     compiler_push_opcode(program, op);
 }
 
 static void compiler_init(struct mscript_program *program) {
     struct compiler *compiler = &program->compiler;
     compiler->cur_label = 0;
-    array_init(&compiler->opcodes);
+    compiler->cur_function_decl = NULL;
     array_init(&compiler->strings);
 }
 
@@ -3349,7 +3380,8 @@ static void compiler_deinit(struct mscript_program *program) {
 }
 
 static void compiler_push_opcode(struct mscript_program *program, struct opcode op) {
-    array_push(&(program->compiler.opcodes), op);
+    struct array_opcode *opcodes = &(program->compiler.cur_function_decl->opcodes);
+    array_push(opcodes, op);
 }
 
 static int compiler_new_label(struct mscript_program *program) {
@@ -3452,10 +3484,13 @@ static void compile_return_stmt(struct mscript_program *program, struct stmt *st
     struct expr *expr = stmt->return_stmt.expr;
     if (expr) {
         compile_expr(program, stmt->return_stmt.expr);
-        opcode_return(program, expr->result_type->size);
+        opcode_local_store(program, 0, expr->result_type->size);
+        opcode_pop(program, program->compiler.cur_function_decl->block_size + program->compiler.cur_function_decl->args_size);
+        opcode_return(program);
     }
     else {
-        opcode_return(program, 0);
+        opcode_pop(program, program->compiler.cur_function_decl->block_size + program->compiler.cur_function_decl->args_size);
+        opcode_return(program);
     }
 }
 
@@ -3480,8 +3515,23 @@ static void compile_expr_stmt(struct mscript_program *program, struct stmt *stmt
 static void compile_function_declaration_stmt(struct mscript_program *program, struct stmt *stmt) {
     assert(stmt->type == STMT_FUNCTION_DECLARATION);
 
-    //opcode_push(program, stmt->function_declaration.block_size);
+    struct function_decl *decl = program_get_function_decl(program, stmt->function_declaration.name);
+    assert(decl);
+    program->compiler.cur_function_decl = decl;
+
+    opcode_push(program, decl->block_size);
     compile_stmt(program, stmt->function_declaration.body); 
+
+    for (int i = 0; i < decl->opcodes.length; i++) {
+        struct opcode op = decl->opcodes.data[i];
+        if (op.type == OPCODE_LABEL) {
+            array_reserve(&(decl->labels), op.label + 1);
+            decl->labels.data[op.label] = i;
+            if (decl->labels.length <= op.label) {
+                decl->labels.length = op.label + 1;
+            }
+        }
+    }
 }
 
 static void compile_variable_declaration_stmt(struct mscript_program *program, struct stmt *stmt) {
@@ -3719,6 +3769,12 @@ static void compile_binary_op_expr(struct mscript_program *program, struct expr 
 
 static void compile_call_expr(struct mscript_program *program, struct expr *expr) {
     assert(expr->type == EXPR_CALL);
+
+    for (int i = 0; i < expr->call.num_args; i++) {
+        compile_expr(program, expr->call.args[i]);
+    }
+    assert(expr->call.function->type == EXPR_SYMBOL);
+    opcode_call(program, expr->call.function->symbol);
 }
 
 static void compile_debug_print_type(struct mscript_program *program, struct mscript_type *type) {
@@ -3985,30 +4041,34 @@ static void compile_cast_expr(struct mscript_program *program, struct expr *expr
     }
 }
 
+static struct stack_frame stack_frame_create(int ip, int fp, struct function_decl *decl) {
+    struct stack_frame frame;
+    frame.ip = ip;
+    frame.fp = fp;
+    frame.decl = decl;
+    return frame;
+}
+
 static void vm_init(struct mscript_program *program) {
     struct vm *vm = &program->vm;
-    vm->ip = 0;
-    array_init(&vm->ip_stack);
-    vm->fp = 0;
-    array_init(&vm->fp_stack);
+    array_init(&vm->stack_frames);
     array_init(&vm->stack);
     array_init(&vm->arrays);
     array_init(&vm->strings);
-
-    array_push(&vm->ip_stack, -1);
-    array_push(&vm->fp_stack, 0);
 }
 
-static void vm_run(struct mscript_program *program, struct array_opcode opcodes) {
+static void vm_run(struct mscript_program *program) {
     struct compiler *compiler = &program->compiler;
     struct vm *vm = &program->vm;
 
     while (true) {
-        if (vm->ip == -1) {
+        if (vm->stack_frames.length == 0) {
             break;
         }
 
-        struct opcode op = opcodes.data[vm->ip];
+        struct stack_frame *frame = &(vm->stack_frames.data[vm->stack_frames.length - 1]);
+        struct array_opcode *opcodes = &(frame->decl->opcodes);
+        struct opcode op = opcodes->data[frame->ip];
         switch (op.type) {
             case OPCODE_IADD:
                 {
@@ -4224,9 +4284,9 @@ static void vm_run(struct mscript_program *program, struct array_opcode opcodes)
                 {
                     int offset = op.load_store.offset;
                     int size = op.load_store.size;
-                    assert(vm->fp + offset < vm->stack.length);
+                    assert(frame->fp + offset < vm->stack.length);
                     char *src = vm->stack.data + vm->stack.length - size;
-                    char *dest = vm->stack.data + vm->fp + offset;
+                    char *dest = vm->stack.data + frame->fp + offset;
                     memcpy(dest, src, size);
                 }
                 break;
@@ -4234,9 +4294,9 @@ static void vm_run(struct mscript_program *program, struct array_opcode opcodes)
                 {
                     int offset = op.load_store.offset;
                     int size = op.load_store.size;
-                    assert(vm->fp + offset < vm->stack.length);
+                    assert(frame->fp + offset < vm->stack.length);
                     array_reserve(&vm->stack, vm->stack.length + size);
-                    char *data = vm->stack.data + vm->fp + offset;
+                    char *data = vm->stack.data + frame->fp + offset;
                     vm_push(program, data, size);
                 }
                 break;
@@ -4244,39 +4304,32 @@ static void vm_run(struct mscript_program *program, struct array_opcode opcodes)
                 {
                     int *v = (int*) vm_pop(program, 4);
                     if (!(*v)) {
-                        bool found_label = false;
-                        for (int i = 0; i < opcodes.length; i++) {
-                            if (opcodes.data[i].type == OPCODE_LABEL && opcodes.data[i].label == op.label) {
-                                vm->ip = i;
-                                found_label = true;
-                                break;
-                            }
-                        }
-                        assert(found_label);
+                        assert(frame->decl->labels.length > op.label);
+                        frame->ip = frame->decl->labels.data[op.label];
+                        assert(frame->ip >= 0);
                     }
                 }
                 break;
             case OPCODE_JMP:
                 {
-                    bool found_label = false;
-                    for (int i = 0; i < opcodes.length; i++) {
-                        if (opcodes.data[i].type == OPCODE_LABEL && opcodes.data[i].label == op.label) {
-                            vm->ip = i;
-                            found_label = true;
-                            break;
-                        }
-                    }
-                    assert(found_label);
+                    assert(frame->decl->labels.length > op.label);
+                    frame->ip = frame->decl->labels.data[op.label];
+                    assert(frame->ip >= 0);
                 }
                 break;
             case OPCODE_CALL:
                 {
-                    assert(false);
+                    struct function_decl *decl = program_get_function_decl(program, op.string);
+                    assert(decl);
+
+                    (frame->ip)++;
+                    struct stack_frame new_frame = stack_frame_create(0, vm->stack.length - decl->args_size, decl);
+                    array_push(&(vm->stack_frames), new_frame);
                 }
                 break;
             case OPCODE_RETURN:
                 {
-                    vm->ip = -2;
+                    array_pop(&vm->stack_frames);
                 }
                 break;
             case OPCODE_PUSH:
@@ -4372,11 +4425,14 @@ static void vm_run(struct mscript_program *program, struct array_opcode opcodes)
                 break;
             case OPCODE_DEBUG_PRINT_STRING_CONST:
                 {
-                    m_logf(op.short_string);
+                    m_logf(op.string);
                 }
                 break;
         }
-        (vm->ip)++;
+
+        if (op.type != OPCODE_RETURN && op.type != OPCODE_CALL) {
+            (frame->ip)++;
+        }
     }
 }
 
@@ -4751,10 +4807,10 @@ static void debug_log_opcodes(struct opcode *opcodes, int num_opcodes) {
                 m_logf("JMP %d", op.label);
                 break;
             case OPCODE_CALL:
-                m_logf("CALL %d", op.function);
+                m_logf("CALL %s", op.string);
                 break;
             case OPCODE_RETURN:
-                m_logf("RETURN %d", op.size);
+                m_logf("RETURN");
                 break;
             case OPCODE_PUSH:
                 m_logf("PUSH %d", op.size);
@@ -4787,7 +4843,7 @@ static void debug_log_opcodes(struct opcode *opcodes, int num_opcodes) {
                 m_logf("DEBUG_PRINT_STRING");
                 break;
             case OPCODE_DEBUG_PRINT_STRING_CONST:
-                m_logf("DEBUG_PRINT_SHORT_STRING: %s", op.short_string);
+                m_logf("DEBUG_PRINT_SHORT_STRING: %s", op.string);
                 break;
         }
         m_logf("\n");
@@ -5144,15 +5200,36 @@ static bool program_load_5(struct file file, bool first_time, struct mscript *ms
         }
     }
 
+cleanup:
+    if (program->error) {
+        struct token tok = program->error_token;
+        int line = tok.line;
+        int col = tok.col;
+
+        m_logf("ERROR: %s. Line %d. Col %d.\n", script_name, line, col); 
+        m_logf("%s\n", program->error);
+    }
+
+    return true;
+}
+
+static bool program_load_6(struct file file, bool first_time, struct mscript *mscript) {
+    if (!first_time) return true;
+
+    char *script_name = file.path + strlen("scripts/");
+    struct mscript_program **cached_program = map_get(&mscript->map, script_name);
+    if (!cached_program) {
+        return false;
+    }
+
+    struct mscript_program *program = *cached_program;
+    if (program->error) return true;
+
     for (int i = 0; i < program->global_stmts.length; i++) {
         struct stmt *stmt = program->global_stmts.data[i];
         if (stmt->type == STMT_FUNCTION_DECLARATION) {
-            if (strcmp(stmt->function_declaration.name, "test") == 0) {
-                compile_stmt(program, stmt);
-                debug_log_opcodes(program->compiler.opcodes.data, program->compiler.opcodes.length);
-            }
-            //pre_compiler_function_declaration_2(program, stmt);
-            //if (program->error) goto cleanup;
+            compile_stmt(program, stmt);
+            if (program->error) goto cleanup;
         }
     }
 
@@ -5187,6 +5264,26 @@ struct mscript *mscript_create(void) {
     hotloader_watch_files("scripts", ".mscript", mscript, program_load_3);
     hotloader_watch_files("scripts", ".mscript", mscript, program_load_4);
     hotloader_watch_files("scripts", ".mscript", mscript, program_load_5);
+    hotloader_watch_files("scripts", ".mscript", mscript, program_load_6);
+
+    uint64_t time0 = stm_now();
+    {
+        struct mscript_program **cached_program = map_get(&mscript->map, "testing.mscript");
+        assert(cached_program);
+
+        struct mscript_program *program = *cached_program;
+
+        struct function_decl *decl = program_get_function_decl(program, "test");
+        assert(decl);
+
+        struct stack_frame frame = stack_frame_create(0, 0, decl);
+        array_push(&(program->vm.stack_frames), frame);
+        vm_run(program);
+    }
+    uint64_t time1 = stm_now();
+    double time_sec = stm_ms(stm_diff(time1, time0));
+    m_logf("TIME: %f\n", (float)time_sec);
+
     return mscript;
 }
 

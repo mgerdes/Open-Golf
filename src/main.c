@@ -244,9 +244,6 @@ static void event(const sapp_event *event) {
 }
 
 sapp_desc sokol_main(int argc, char *argv[]) {
-    m_log("-------------------------\n");
-    m_log("        BEGIN LOG        \n");
-    m_log("-------------------------\n");
     return (sapp_desc){
         .init_cb = init,
             .frame_cb = frame,

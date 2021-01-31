@@ -9,18 +9,12 @@
 #include <time.h>
 
 void m_log(const char *msg) {
-    FILE *f = fopen("log.txt", "a");
-    if (f) {
-        fprintf(f, "%s", msg);
-        fclose(f);
-    }
+    printf("%s", msg);
 }
 
 void m_logf(const char *fmt, ...) {
-    char str[1024];
     va_list arg;
     va_start(arg, fmt);
-    vsprintf(str, fmt, arg);
+    vprintf(fmt, arg);
     va_end(arg);
-    m_log(str);
 }

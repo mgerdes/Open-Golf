@@ -41,6 +41,7 @@ void double_array(int[] array) {
             return;
         }
     }
+    return;
 }
 
 int recur1(int a) {
@@ -122,18 +123,6 @@ struct foo {
     bar[] bars;
 }
 
-int fib(int n) {
-    if (n <= 0) {
-        return 0;
-    }
-    else if (n == 1) {
-        return 1;
-    }
-    else {
-        return fib(n - 1) + fib(n - 2);
-    }
-}
-
 struct testing2 {
     vec3 t;
 }
@@ -144,7 +133,7 @@ struct testing {
     testing2 t;
 }
 
-int test(int x, int y) {
+int test2() {
     foo f = { 
         bars = [ 
         { foobars = [ { t = { x = 3, y = 5 } } ] },
@@ -162,8 +151,10 @@ int test(int x, int y) {
 
     testing[] array = [];
 
+    int l = 1000;
+
     int i;
-    for (i = 0; i < 100; i++) {
+    for (i = 0; i < l; i++) {
         array[i] = { 
             v0 = { x = 0, y = 1, z = i * i }, 
             v1 = { x = i * i, y = 0, z = 1 },
@@ -171,15 +162,58 @@ int test(int x, int y) {
         };
     }
 
-    int count = 0;
-    for (i = 0; i < 100; i++) {
-        vec3 v = array[i].v0;
-        count = count + v.x + v.y + v.z;
-        debug_print("i: ", array[i], "\n");
+    {
+        int count = 0;
+        for (i = 0; i < l; i++) {
+            vec3 v = array[i].v0;
+            count = count + v.x + v.y + v.z;
+            //debug_print(i, ": ", array[i], ", ", v, "\n");
+        }
+        //debug_print("I want to be with you everywhere.\n", count, "\n");
     }
-    debug_print("I want to be with you everywhere.", count, "\n");
+
+    {
+        terrain_model_face face = {
+            mat_idx = 0, smooth_normal = 0,
+            x = 0, y = 1, z = 2, w = 3,
+            tc0 = { x = 0, y = 1 }, 
+            tc1 = { x = 0, y = 1 }, 
+            tc2 = { x = 0, y = 1 }, 
+            tc3 = { x = 0, y = 1 }, 
+            tex_coord_scale = 0.0,
+            cor = 0.0,
+            friction = 0.0,
+            vel_scale = 0.0,
+            auto_texture = 0
+        };
+        //debug_print(face, "\n");
+    }
 
     //return f.bars[0].foobars[1].t.y + f.bars[0].foobars[0].t.y + f.bars[0].foobars[0].t.x;
     //return a.x + b.x + c.x;
     return array.length; 
+}
+
+int fib(int n) {
+    if (n <= 0) {
+        return 0;
+    }
+    else if (n == 1) {
+        return 1;
+    }
+    else {
+        return fib(n - 1) + fib(n - 2);
+    }
+}
+
+int thing1(int x) {
+    return x + test2();
+}
+
+int thing2(int x) {
+    return 6 * x;
+}
+
+int test() {
+    return fib(10) + thing1(2) + thing2(3);
 }
