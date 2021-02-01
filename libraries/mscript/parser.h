@@ -14,6 +14,7 @@ enum mscript_type_type {
     MSCRIPT_TYPE_FLOAT,
     MSCRIPT_TYPE_CHAR_STAR,
     MSCRIPT_TYPE_STRUCT,
+    MSCRIPT_TYPE_ENUM,
     MSCRIPT_TYPE_ARRAY,
 };
 

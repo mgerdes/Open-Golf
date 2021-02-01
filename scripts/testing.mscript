@@ -214,6 +214,16 @@ int thing2(int x) {
     return 6 * x;
 }
 
+enum ui_state {
+    UI_STATE_1,
+    UI_STATE_2
+}
+
 int test() {
-    return fib(10) + thing1(2) + thing2(3);
+    ui_state thing = UI_STATE_2;
+    if (thing == UI_STATE_2) {
+        debug_print(UI_STATE_1, ", ", UI_STATE_2, "\n");
+    }
+
+    return fib(10);
 }
