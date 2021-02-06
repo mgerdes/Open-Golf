@@ -9,3 +9,12 @@ int fib2(int n) {
         return fib2(n - 1) + fib2(n - 2);
     }
 }
+
+int testing2(int[] array) {
+    int i;
+    int j = array.length;
+    for (i = 0; i < j; i++) {
+        array[i] = 2 * array[i];
+    }
+    return 1;
+}

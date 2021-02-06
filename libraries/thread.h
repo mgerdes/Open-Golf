@@ -611,6 +611,7 @@ struct thread_queue_t
     
 #elif defined( __linux__ ) || defined( __APPLE__ ) || defined( __ANDROID__ ) || defined( __EMSCRIPTEN__ )
 
+    #include <stdint.h>
     #include <pthread.h>
     #include <sys/time.h>
     #include <errno.h>

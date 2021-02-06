@@ -102,7 +102,7 @@ int run(void* terrain_model) {
         auto_texture = 0
     };
     face.friction = 100;
-    terrain_model_add_face(terrain_model, face);
+    //terrain_model_add_face(terrain_model, face);
 
     debug_print("array: ", array, "\n");
     debug_print("length: ", array.length, "\n");
@@ -226,4 +226,32 @@ int test() {
     }
 
     return fib(10);
+}
+
+int run2(int n) {
+    return n;
+}
+
+int[] create(int n) {
+    int[] a = [];
+    int i;
+    for (i = 0; i <= n; i++) {
+        a[i] = i;
+    }
+    return a;
+}
+
+int sum(int[] array) {
+    int sum = 0;
+    int i;
+    for (i = 0; i < array.length; i++) {
+        sum = sum + array[i];
+    }
+    return sum;
+}
+
+int run(int n) {
+    int[] a = create(10);
+    int s = sum(a);
+    return s;
 }

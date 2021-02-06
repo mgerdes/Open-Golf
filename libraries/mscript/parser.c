@@ -205,11 +205,17 @@ enum opcode_type {
     OPCODE_ARRAY_STORE,
     OPCODE_ARRAY_LOAD,
     OPCODE_ARRAY_LENGTH,
-    OPCODE_LABEL,
     OPCODE_DEBUG_PRINT_INT,
     OPCODE_DEBUG_PRINT_FLOAT,
     OPCODE_DEBUG_PRINT_STRING,
     OPCODE_DEBUG_PRINT_STRING_CONST,
+
+    // Intermediate opcodes
+    OPCODE_INTERMEDIATE_LABEL,
+    OPCODE_INTERMEDIATE_FUNC,
+    OPCODE_INTERMEDIATE_CALL,
+    OPCODE_INTERMEDIATE_JMP,
+    OPCODE_INTERMEDIATE_JF,
 };
 
 struct opcode {
@@ -225,6 +231,10 @@ struct opcode {
         struct {
             int offset, size;
         } load_store;
+
+        struct {
+            int label, args_size;
+        } call;
     };
 };
 array_t(struct opcode, array_opcode)
@@ -261,18 +271,22 @@ static void opcode_local_load(struct mscript_program *program, int offset, int s
 static void opcode_jf(struct mscript_program *program, int label);
 static void opcode_jmp(struct mscript_program *program, int label);
 static void opcode_call(struct mscript_program *program, char *str);
-static void opcode_return(struct mscript_program *program);
+static void opcode_return(struct mscript_program *program, int size);
 static void opcode_push(struct mscript_program *program, int size);
 static void opcode_pop(struct mscript_program *program, int size);
 static void opcode_array_create(struct mscript_program *program, int size);
 static void opcode_array_store(struct mscript_program *program, int size);
 static void opcode_array_load(struct mscript_program *program, int size);
 static void opcode_array_length(struct mscript_program *program);
-static void opcode_label(struct mscript_program *program, int label);
 static void opcode_debug_print_int(struct mscript_program *program);
 static void opcode_debug_print_float(struct mscript_program *program);
 static void opcode_debug_print_string(struct mscript_program *program);
 static void opcode_debug_print_string_const(struct mscript_program *program, char *str);
+static void opcode_intermediate_label(struct mscript_program *program, int label);
+static void opcode_intermediate_func(struct mscript_program *program, char *str);
+static void opcode_intermediate_call(struct mscript_program *program, char *str);
+static void opcode_intermediate_jmp(struct mscript_program *program, int label);
+static void opcode_intermediate_jf(struct mscript_program *program, int label);
 
 struct compiler {
     int cur_label;
@@ -637,19 +651,24 @@ struct enum_value {
     struct mscript_type *type;
     int val;
 };
+array_t(struct enum_value, array_enum_value)
 typedef map_t(struct enum_value) map_enum_value_t;
 
 static struct enum_value enum_value_create(struct mscript_type *type, int val);
 
 struct mscript_program {
+    struct file file;
     bool visited;
     struct mscript *mscript;
 
     map_function_decl_ptr_t function_decl_map;
+    map_int_t used_functions_map;
     map_mscript_type_ptr_t type_map;
     map_enum_value_t enum_map;
+
     struct array_stmt_ptr global_stmts;
     struct array_program_ptr imported_programs;
+    struct array_opcode opcodes;
 
     struct parser parser;
     struct pre_compiler pre_compiler;
@@ -658,8 +677,10 @@ struct mscript_program {
 
     char *error;
     struct token error_token;
-};
 
+    map_int_t func_label_map;
+};
+array_t(struct mscript_program *, array_mscript_program_ptr)
 typedef map_t(struct mscript_program *) map_mscript_program_ptr_t;
 
 struct mscript {
@@ -667,29 +688,33 @@ struct mscript {
                         float_type, float_array_type,
                         void_type, void_star_type, void_star_array_type,
                         char_star_type;
-    map_mscript_program_ptr_t map;
+
+    map_mscript_program_ptr_t programs_map;
+    struct array_mscript_program_ptr programs_array;
 };
 
-static void program_init(struct mscript_program *program, struct mscript *mscript, const char *prog_text);
+static void program_init(struct mscript_program *program, struct mscript *mscript, struct file file);
 static void program_error(struct mscript_program *program, struct token token, char *fmt, ...);
 static void program_import_recur(struct mscript_program *program, struct mscript_program *import);
 static void program_import(struct mscript_program *program, struct mscript_program *import, struct mscript *mscript);
+static void program_add_function_decl(struct mscript_program *program, const char *name, struct function_decl *decl);
 static struct function_decl *program_get_function_decl(struct mscript_program *program, const char *name);
 static void program_add_type(struct mscript_program *program, char *name, struct mscript_type *type);
 static struct mscript_type *program_get_type(struct mscript_program *program, const char *name);
-static bool program_load_1(struct file file, bool first_time, struct mscript* mscript);
-static bool program_load_2(struct file file, bool first_time, struct mscript* mscript);
-static bool program_load_3(struct file file, bool first_time, struct mscript* mscript);
-static bool program_load_4(struct file file, bool first_time, struct mscript* mscript);
-static bool program_load_5(struct file file, bool first_time, struct mscript* mscript);
-static bool program_load_6(struct file file, bool first_time, struct mscript* mscript);
+static void program_add_enum_value(struct mscript_program *program, char *name, struct enum_value value);
+static void program_load_stage_1(struct mscript *mscript, struct file file);
+static void program_load_stage_2(struct mscript *mscript, struct mscript_program *program);
+static void program_load_stage_3(struct mscript *mscript, struct mscript_program *program);
+static void program_load_stage_4(struct mscript *mscript, struct mscript_program *program);
+static void program_load_stage_5(struct mscript *mscript, struct mscript_program *program);
+static void program_load_stage_6(struct mscript *mscript, struct mscript_program *program);
+static void program_load_stage_7(struct mscript *mscript, struct mscript_program *program);
 
 static void debug_log_token(struct token token);
 static void debug_log_tokens(struct token *tokens);
 static void debug_log_stmt(struct stmt *stmt);
 static void debug_log_expr(struct expr *expr);
 static void debug_log_opcodes(struct opcode *opcodes, int num_opcodes);
-
 
 //
 // DEFINITIONS
@@ -1961,6 +1986,7 @@ static struct token number_token(const char *text, int *len, int line, int col) 
         struct token token;
         token.type = TOKEN_FLOAT;
         token.float_value = (float)int_part + float_part;
+        if (is_negative) token.float_value = -token.float_value;
         token.line = line;
         token.col = col;
         return token;
@@ -1969,6 +1995,7 @@ static struct token number_token(const char *text, int *len, int line, int col) 
         struct token token;
         token.type = TOKEN_INT;
         token.int_value = int_part;
+        if (is_negative) token.int_value = -token.int_value;
         token.line = line;
         token.col = col;
         return token;
@@ -2287,6 +2314,11 @@ static void pre_compiler_env_push_block(struct mscript_program *program) {
 
     if (pre_compiler->env_blocks.length == 0) {
         block.offset = 0;
+        block.size = 12; // allocate 12 bytes for the frame pointer, instruction pointer, and stack pointer
+    } 
+    else if (pre_compiler->env_blocks.length == 1) {
+        block.offset = 0;
+        block.size = 0;
     }
     else {
         int l = pre_compiler->env_blocks.length;
@@ -2309,9 +2341,16 @@ static void pre_compiler_env_add_var(struct mscript_program *program, const char
     assert(pre_compiler->env_blocks.length > 0);
     int l = pre_compiler->env_blocks.length;
     struct pre_compiler_env_block *block = &(pre_compiler->env_blocks.data[l - 1]);
+
     struct pre_compiler_env_var var;
-    var.offset = block->offset + block->size;
-    var.type = type;
+    if (l == 1) {
+        var.offset = -block->size - type->size;
+        var.type = type;
+    }
+    else {
+        var.offset = block->offset + block->size;
+        var.type = type;
+    }
     block->size += type->size;
     map_set(&block->map, symbol, var);
 
@@ -2652,7 +2691,7 @@ static void pre_compiler_function_declaration_2(struct mscript_program *program,
     pre_compiler_stmt(program, stmt->function_declaration.body, &all_paths_return);
     if (program->error) goto cleanup;
 
-    if (!all_paths_return) { // && decl->return_type->type != MSCRIPT_TYPE_VOID
+    if (!all_paths_return) { 
         program_error(program, stmt->function_declaration.token, "Not all paths return from function.");
         goto cleanup;
     }
@@ -2964,6 +3003,7 @@ static void pre_compiler_call_expr(struct mscript_program *program, struct expr 
         if (program->error) return;
     }
 
+    map_set(&program->used_functions_map, decl->name, 1);
     expr->result_type = decl->return_type;
     expr->lvalue = lvalue_invalid();
 }
@@ -3344,7 +3384,7 @@ static void opcode_local_store(struct mscript_program *program, int offset, int 
 }
 
 static void opcode_local_load(struct mscript_program *program, int offset, int size) {
-    assert(offset >= 0 && size >= 0);
+    assert(size >= 0);
 
     struct opcode op;
     op.type = OPCODE_LOCAL_LOAD;
@@ -3368,6 +3408,7 @@ static void opcode_jmp(struct mscript_program *program, int label) {
 }
 
 static void opcode_call(struct mscript_program *program, char *str) {
+    assert(false);
     struct opcode op;
     op.type = OPCODE_CALL;
     strncpy(op.string, str, MSCRIPT_MAX_SYMBOL_LEN);
@@ -3375,9 +3416,10 @@ static void opcode_call(struct mscript_program *program, char *str) {
     compiler_push_opcode(program, op);
 }
 
-static void opcode_return(struct mscript_program *program) {
+static void opcode_return(struct mscript_program *program, int size) {
     struct opcode op;
     op.type = OPCODE_RETURN;
+    op.size = size;
     compiler_push_opcode(program, op);
 }
 
@@ -3432,13 +3474,6 @@ static void opcode_array_length(struct mscript_program *program) {
     compiler_push_opcode(program, op);
 }
 
-static void opcode_label(struct mscript_program *program, int label) {
-    struct opcode op;
-    op.type = OPCODE_LABEL;
-    op.label = label;
-    compiler_push_opcode(program, op);
-}
-
 static void opcode_debug_print_int(struct mscript_program *program) {
     struct opcode op;
     op.type = OPCODE_DEBUG_PRINT_INT;
@@ -3462,6 +3497,43 @@ static void opcode_debug_print_string_const(struct mscript_program *program, cha
     op.type = OPCODE_DEBUG_PRINT_STRING_CONST;
     strncpy(op.string, string, MSCRIPT_MAX_SYMBOL_LEN);
     op.string[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+    compiler_push_opcode(program, op);
+}
+
+static void opcode_intermediate_label(struct mscript_program *program, int label) {
+    struct opcode op;
+    op.type = OPCODE_INTERMEDIATE_LABEL;
+    op.label = label;
+    compiler_push_opcode(program, op);
+}
+
+static void opcode_intermediate_func(struct mscript_program *program, char *str) {
+    struct opcode op;
+    op.type = OPCODE_INTERMEDIATE_FUNC;
+    strncpy(op.string, str, MSCRIPT_MAX_SYMBOL_LEN);
+    op.string[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+    compiler_push_opcode(program, op);
+}
+
+static void opcode_intermediate_call(struct mscript_program *program, char *str) {
+    struct opcode op;
+    op.type = OPCODE_INTERMEDIATE_CALL;
+    strncpy(op.string, str, MSCRIPT_MAX_SYMBOL_LEN);
+    op.string[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+    compiler_push_opcode(program, op);
+}
+
+static void opcode_intermediate_jmp(struct mscript_program *program, int label) {
+    struct opcode op;
+    op.type = OPCODE_INTERMEDIATE_JMP;
+    op.label = label;
+    compiler_push_opcode(program, op);
+}
+
+static void opcode_intermediate_jf(struct mscript_program *program, int label) {
+    struct opcode op;
+    op.type = OPCODE_INTERMEDIATE_JF;
+    op.label = label;
     compiler_push_opcode(program, op);
 }
 
@@ -3539,17 +3611,17 @@ static void compile_if_stmt(struct mscript_program *program, struct stmt *stmt) 
     for (int i = 0; i < num_stmts; i++) {
         compile_expr(program, conds[i]);
         else_if_label = compiler_new_label(program);
-        opcode_jf(program, else_if_label);
+        opcode_intermediate_jf(program, else_if_label);
         compile_stmt(program, stmts[i]);
-        opcode_jmp(program, final_label);
-        opcode_label(program, else_if_label);
+        opcode_intermediate_jmp(program, final_label);
+        opcode_intermediate_label(program, else_if_label);
     }
 
     if (else_stmt) {
         compile_stmt(program, else_stmt);
     }
 
-    opcode_label(program, final_label);
+    opcode_intermediate_label(program, final_label);
 }
 
 static void compile_for_stmt(struct mscript_program *program, struct stmt *stmt) {
@@ -3565,29 +3637,30 @@ static void compile_for_stmt(struct mscript_program *program, struct stmt *stmt)
 
     compile_expr(program, init);
     opcode_pop(program, init->result_type->size);
-    opcode_label(program, cond_label);
+    opcode_intermediate_label(program, cond_label);
     compile_expr(program, cond);
-    opcode_jf(program, end_label);
+    opcode_intermediate_jf(program, end_label);
     compile_stmt(program, body);
     compile_expr(program, inc);
     opcode_pop(program, inc->result_type->size);
-    opcode_jmp(program, cond_label);
-    opcode_label(program, end_label);
+    opcode_intermediate_jmp(program, cond_label);
+    opcode_intermediate_label(program, end_label);
 }
 
 static void compile_return_stmt(struct mscript_program *program, struct stmt *stmt) {
     assert(stmt->type == STMT_RETURN);
 
+    struct function_decl *decl = program->compiler.cur_function_decl;
+    assert(decl);
+
     struct expr *expr = stmt->return_stmt.expr;
     if (expr) {
         compile_expr(program, stmt->return_stmt.expr);
-        opcode_local_store(program, 0, expr->result_type->size);
-        opcode_pop(program, program->compiler.cur_function_decl->block_size + program->compiler.cur_function_decl->args_size);
-        opcode_return(program);
+        opcode_return(program, decl->return_type->size);
     }
     else {
-        opcode_pop(program, program->compiler.cur_function_decl->block_size + program->compiler.cur_function_decl->args_size);
-        opcode_return(program);
+        opcode_pop(program, program->compiler.cur_function_decl->block_size);
+        opcode_return(program, 0);
     }
 }
 
@@ -3614,14 +3687,17 @@ static void compile_function_declaration_stmt(struct mscript_program *program, s
 
     struct function_decl *decl = program_get_function_decl(program, stmt->function_declaration.name);
     assert(decl);
-    program->compiler.cur_function_decl = decl;
 
+    program->compiler.cur_function_decl = decl;
+    program->compiler.cur_label = 0;
+
+    opcode_intermediate_func(program, decl->name);
     opcode_push(program, decl->block_size);
     compile_stmt(program, stmt->function_declaration.body); 
 
     for (int i = 0; i < decl->opcodes.length; i++) {
         struct opcode op = decl->opcodes.data[i];
-        if (op.type == OPCODE_LABEL) {
+        if (op.type == OPCODE_INTERMEDIATE_LABEL) {
             array_reserve(&(decl->labels), op.label + 1);
             decl->labels.data[op.label] = i;
             if (decl->labels.length <= op.label) {
@@ -3895,11 +3971,11 @@ static void compile_binary_op_expr(struct mscript_program *program, struct expr 
 static void compile_call_expr(struct mscript_program *program, struct expr *expr) {
     assert(expr->type == EXPR_CALL);
 
-    for (int i = 0; i < expr->call.num_args; i++) {
+    for (int i = expr->call.num_args - 1; i >= 0; i--) {
         compile_expr(program, expr->call.args[i]);
     }
     assert(expr->call.function->type == EXPR_SYMBOL);
-    opcode_call(program, expr->call.function->symbol);
+    opcode_intermediate_call(program, expr->call.function->symbol);
 }
 
 static void compile_debug_print_type(struct mscript_program *program, struct mscript_type *type) {
@@ -4197,286 +4273,336 @@ static void vm_run(struct mscript_program *program) {
     struct compiler *compiler = &program->compiler;
     struct vm *vm = &program->vm;
 
+    int start_ip = *(map_get(&program->func_label_map, "run"));
+
+    struct opcode *opcodes = program->opcodes.data;
+
+    char *stack = malloc(sizeof(char)*8096);
+    int sp = 0;
+
+    *((int*) (stack + sp)) = (int) (5);
+    sp += 4;
+
+    *((int*) (stack + sp)) = (int) (0);
+    *((int*) (stack + sp + 4)) = (int) (-2);
+    *((int*) (stack + sp + 8)) = (int) (0);
+    sp += 12;
+
+    int ip = start_ip;
+    int fp = sp;
+
     while (true) {
-        if (vm->stack_frames.length == 0) {
+        if (ip == -1) {
             break;
         }
 
-        struct stack_frame *frame = &(vm->stack_frames.data[vm->stack_frames.length - 1]);
-        struct array_opcode *opcodes = &(frame->decl->opcodes);
-        struct opcode op = opcodes->data[frame->ip];
+        struct opcode op = opcodes[ip];
         switch (op.type) {
             case OPCODE_IADD:
                 {
-                    int *v1 = (int*) vm_pop(program, 4);
-                    int *v0 = (int*) vm_pop(program, 4);
-                    int v = *v0 + *v1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 8);
+                    int *v1 = (int*) (stack + sp - 4);
+                    int *v0 = (int*) (stack + sp - 8);
+                    *((int*) (stack + sp - 8)) = (*v0 + *v1);
+                    sp -= 4;
                 }
                 break;
             case OPCODE_FADD:
                 {
-                    float *v1 = (float*) vm_pop(program, 4);
-                    float *v0 = (float*) vm_pop(program, 4);
-                    float v = *v0 + *v1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 8);
+                    float *v1 = (float*) (stack + sp - 4);
+                    float *v0 = (float*) (stack + sp - 8);
+                    *((float*) (stack + sp - 8)) = (*v0 + *v1);
+                    sp -= 4;
                 }
                 break;
             case OPCODE_ISUB:
                 {
-                    int *v1 = (int*) vm_pop(program, 4);
-                    int *v0 = (int*) vm_pop(program, 4);
-                    int v = *v0 - *v1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 8);
+                    int *v1 = (int*) (stack + sp - 4);
+                    int *v0 = (int*) (stack + sp - 8);
+                    *((int*) (stack + sp - 8)) = (*v0 - *v1);
+                    sp -= 4;
                 }
                 break;
             case OPCODE_FSUB:
                 {
-                    float *v1 = (float*) vm_pop(program, 4);
-                    float *v0 = (float*) vm_pop(program, 4);
-                    float v = *v0 - *v1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 8);
+                    float *v1 = (float*) (stack + sp - 4);
+                    float *v0 = (float*) (stack + sp - 8);
+                    *((float*) (stack + sp - 8)) = (*v0 - *v1);
+                    sp -= 4;
                 }
                 break;
             case OPCODE_IMUL:
                 {
-                    int *v1 = (int*) vm_pop(program, 4);
-                    int *v0 = (int*) vm_pop(program, 4);
-                    int v = *v0 * *v1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 8);
+                    int *v1 = (int*) (stack + sp - 4);
+                    int *v0 = (int*) (stack + sp - 8);
+                    *((int*) (stack + sp - 8)) = ((*v0) * (*v1));
+                    sp -= 4;
                 }
                 break;
             case OPCODE_FMUL:
                 {
-                    float *v1 = (float*) vm_pop(program, 4);
-                    float *v0 = (float*) vm_pop(program, 4);
-                    float v = *v0 * *v1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 8);
+                    float *v1 = (float*) (stack + sp - 4);
+                    float *v0 = (float*) (stack + sp - 8);
+                    *((float*) (stack + sp - 8)) = ((*v0) * (*v1));
+                    sp -= 4;
                 }
                 break;
             case OPCODE_IDIV:
                 {
-                    int *v1 = (int*) vm_pop(program, 4);
-                    int *v0 = (int*) vm_pop(program, 4);
-                    int v = *v0 / *v1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 8);
+                    int *v1 = (int*) (stack + sp - 4);
+                    int *v0 = (int*) (stack + sp - 8);
+                    *((int*) (stack + sp - 8)) = (*v0 / *v1);
+                    sp -= 4;
                 }
                 break;
             case OPCODE_FDIV:
                 {
-                    float *v1 = (float*) vm_pop(program, 4);
-                    float *v0 = (float*) vm_pop(program, 4);
-                    float v = *v0 / *v1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 8);
+                    float *v1 = (float*) (stack + sp - 4);
+                    float *v0 = (float*) (stack + sp - 8);
+                    *((float*) (stack + sp - 8)) = (*v0 / *v1);
+                    sp -= 4;
                 }
                 break;
             case OPCODE_ILTE:
                 {
-                    int *v1 = (int*) vm_pop(program, 4);
-                    int *v0 = (int*) vm_pop(program, 4);
-                    int v = *v0 <= *v1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 8);
+                    int *v1 = (int*) (stack + sp - 4);
+                    int *v0 = (int*) (stack + sp - 8);
+                    *((int*) (stack + sp - 8)) = (*v0 <= *v1);
+                    sp -= 4;
                 }
                 break;
             case OPCODE_FLTE:
                 {
-                    float *v1 = (float*) vm_pop(program, 4);
-                    float *v0 = (float*) vm_pop(program, 4);
-                    int v = *v0 <= *v1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 8);
+                    float *v1 = (float*) (stack + sp - 4);
+                    float *v0 = (float*) (stack + sp - 8);
+                    *((int*) (stack + sp - 8)) = (*v0 <= *v1);
+                    sp -= 4;
                 }
                 break;
             case OPCODE_ILT:
                 {
-                    int *v1 = (int*) vm_pop(program, 4);
-                    int *v0 = (int*) vm_pop(program, 4);
-                    int v = *v0 < *v1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 8);
+                    int *v1 = (int*) (stack + sp - 4);
+                    int *v0 = (int*) (stack + sp - 8);
+                    *((int*) (stack + sp - 8)) = (*v0 < *v1);
+                    sp -= 4;
                 }
                 break;
             case OPCODE_FLT:
                 {
-                    float *v1 = (float*) vm_pop(program, 4);
-                    float *v0 = (float*) vm_pop(program, 4);
-                    int v = *v0 < *v1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 8);
+                    float *v1 = (float*) (stack + sp - 4);
+                    float *v0 = (float*) (stack + sp - 8);
+                    *((int*) (stack + sp - 8)) = (*v0 < *v1);
+                    sp -= 4;
                 }
                 break;
             case OPCODE_IGTE:
                 {
-                    int *v1 = (int*) vm_pop(program, 4);
-                    int *v0 = (int*) vm_pop(program, 4);
-                    int v = *v0 >= *v1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 8);
+                    int *v1 = (int*) (stack + sp - 4);
+                    int *v0 = (int*) (stack + sp - 8);
+                    *((int*) (stack + sp - 8)) = (*v0 >= *v1);
+                    sp -= 4;
                 }
                 break;
             case OPCODE_FGTE:
                 {
-                    float *v1 = (float*) vm_pop(program, 4);
-                    float *v0 = (float*) vm_pop(program, 4);
-                    int v = *v0 >= *v1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 8);
+                    float *v1 = (float*) (stack + sp - 4);
+                    float *v0 = (float*) (stack + sp - 8);
+                    *((int*) (stack + sp - 8)) = (*v0 >= *v1);
+                    sp -= 4;
                 }
                 break;
             case OPCODE_IGT:
                 {
-                    int *v1 = (int*) vm_pop(program, 4);
-                    int *v0 = (int*) vm_pop(program, 4);
-                    int v = *v0 > *v1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 8);
+                    int *v1 = (int*) (stack + sp - 4);
+                    int *v0 = (int*) (stack + sp - 8);
+                    *((int*) (stack + sp - 8)) = (*v0 > *v1);
+                    sp -= 4;
                 }
                 break;
             case OPCODE_FGT:
                 {
-                    float *v1 = (float*) vm_pop(program, 4);
-                    float *v0 = (float*) vm_pop(program, 4);
-                    int v = *v0 > *v1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 8);
+                    float *v1 = (float*) (stack + sp - 4);
+                    float *v0 = (float*) (stack + sp - 8);
+                    *((int*) (stack + sp - 8)) = (*v0 > *v1);
+                    sp -= 4;
                 }
                 break;
             case OPCODE_IEQ:
                 {
-                    int *v1 = (int*) vm_pop(program, 4);
-                    int *v0 = (int*) vm_pop(program, 4);
-                    int v = *v0 == *v1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 8);
+                    int *v1 = (int*) (stack + sp - 4);
+                    int *v0 = (int*) (stack + sp - 8);
+                    *((int*) (stack + sp - 8)) = (*v0 == *v1);
+                    sp -= 4;
                 }
                 break;
             case OPCODE_FEQ:
                 {
-                    float *v1 = (float*) vm_pop(program, 4);
-                    float *v0 = (float*) vm_pop(program, 4);
-                    int v = *v0 == *v1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 8);
+                    float *v1 = (float*) (stack + sp - 4);
+                    float *v0 = (float*) (stack + sp - 8);
+                    *((int*) (stack + sp - 8)) = (*v0 == *v1);
+                    sp -= 4;
                 }
                 break;
             case OPCODE_INEQ:
                 {
-                    int *v1 = (int*) vm_pop(program, 4);
-                    int *v0 = (int*) vm_pop(program, 4);
-                    int v = *v0 != *v1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 8);
+                    int *v1 = (int*) (stack + sp - 4);
+                    int *v0 = (int*) (stack + sp - 8);
+                    *((int*) (stack + sp - 8)) = (*v0 != *v1);
+                    sp -= 4;
                 }
                 break;
             case OPCODE_FNEQ:
                 {
-                    float *v1 = (float*) vm_pop(program, 4);
-                    float *v0 = (float*) vm_pop(program, 4);
-                    int v = *v0 != *v1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 8);
+                    float *v1 = (float*) (stack + sp - 4);
+                    float *v0 = (float*) (stack + sp - 8);
+                    *((int*) (stack + sp - 8)) = (*v0 != *v1);
+                    sp -= 4;
                 }
                 break;
             case OPCODE_IINC:
                 {
-                    int *v0 = (int*) vm_pop(program, 4);
-                    int v = (*v0) + 1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 4);
+                    int *v0 = (int*) (stack + sp - 4);
+                    *((int*) (stack + sp - 4)) = (*v0 + 1);
                 }
                 break;
             case OPCODE_FINC:
                 {
-                    float *v0 = (float*) vm_pop(program, 4);
-                    float v = (*v0) + 1;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 4);
+                    float *v0 = (float*) (stack + sp - 4);
+                    *((float*) (stack + sp - 4)) = (*v0 + 1.0);
                 }
                 break;
             case OPCODE_F2I:
                 {
-                    float *v0 = (float*) vm_pop(program, 4);
-                    int v = (int) *v0;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 4);
+                    float *v0 = (float*) (stack + sp - 4);
+                    *((int*) (stack + sp - 4)) = (int) (*v0);
                 }
                 break;
             case OPCODE_I2F:
                 {
-                    int *v0 = (int*) vm_pop(program, 4);
-                    float v = (float) *v0;
-                    vm_push(program, (char*) (&v), 4);
+                    assert(sp >= 4);
+                    int *v0 = (int*) (stack + sp - 4);
+                    *((float*) (stack + sp - 4)) = (float) (*v0);
                 }
                 break;
             case OPCODE_COPY:
                 {
-                    int start = vm->stack.length - op.load_store.offset; 
-                    assert((start >= 0) && (start + op.load_store.size <= vm->stack.length));
-                    for (int i = 0; i < op.load_store.size; i++) {
-                        char data = vm->stack.data[start + i];
-                        vm_push(program, &data, 1);
-                    }
+                    int offset = op.load_store.offset;
+                    int size = op.load_store.size;
+                    int start = sp - offset; 
+                    assert((start >= 0) && (start + size <= sp));
+
+                    char *dest = stack + sp;
+                    char *src = stack + start;
+                    memmove(dest, src, size);
+                    sp += size;
                 }
                 break;
             case OPCODE_INT:
                 {
-                    int v = op.int_val;
-                    vm_push(program, (char*) (&v), 4);
+                    *((int*) (stack + sp)) = op.int_val;
+                    sp += 4;
                 }
                 break;
             case OPCODE_FLOAT:
                 {
-                    float v = op.float_val;
-                    vm_push(program, (char*) (&v), 4);
+                    *((float*) (stack + sp)) = op.int_val;
+                    sp += 4;
                 }
                 break;
             case OPCODE_LOCAL_STORE:
                 {
                     int offset = op.load_store.offset;
                     int size = op.load_store.size;
-                    assert(frame->fp + offset < vm->stack.length);
-                    char *src = vm->stack.data + vm->stack.length - size;
-                    char *dest = vm->stack.data + frame->fp + offset;
-                    memcpy(dest, src, size);
+                    assert(fp + offset + size <= sp);
+
+                    char *dest = stack + fp + offset;
+                    char *src = stack + sp - size;
+                    memmove(dest, src, size);
                 }
                 break;
             case OPCODE_LOCAL_LOAD:
                 {
                     int offset = op.load_store.offset;
                     int size = op.load_store.size;
-                    assert(frame->fp + offset < vm->stack.length);
-                    array_reserve(&vm->stack, vm->stack.length + size);
-                    char *data = vm->stack.data + frame->fp + offset;
-                    vm_push(program, data, size);
+                    assert(fp + offset + size <= sp);
+
+                    char *dest = stack + sp;
+                    char *src = stack + fp + offset;
+                    memmove(dest, src, size);
+                    sp += size;
                 }
                 break;
             case OPCODE_JF:
                 {
-                    int *v = (int*) vm_pop(program, 4);
+                    assert(sp >= 4);
+
+                    int *v = (int*) (stack + sp - 4);
+                    sp -= 4;
                     if (!(*v)) {
-                        assert(frame->decl->labels.length > op.label);
-                        frame->ip = frame->decl->labels.data[op.label];
-                        assert(frame->ip >= 0);
+                        ip = op.label - 1;
+                        assert(ip >= 0);
                     }
                 }
                 break;
             case OPCODE_JMP:
                 {
-                    assert(frame->decl->labels.length > op.label);
-                    frame->ip = frame->decl->labels.data[op.label];
-                    assert(frame->ip >= 0);
+                    ip = op.label - 1;
+                    assert(ip >= 0);
                 }
                 break;
             case OPCODE_CALL:
                 {
-                    struct function_decl *decl = program_get_function_decl(program, op.string);
-                    assert(decl);
-
-                    (frame->ip)++;
-                    struct stack_frame new_frame = stack_frame_create(0, vm->stack.length - decl->args_size, decl);
-                    array_push(&(vm->stack_frames), new_frame);
+                    *((int*) (stack + sp)) = fp;
+                    *((int*) (stack + sp + 4)) = ip;
+                    *((int*) (stack + sp + 8)) = sp - op.call.args_size;
+                    sp += 12;
+                    ip = op.call.label - 1;
+                    fp = sp;
                 }
                 break;
             case OPCODE_RETURN:
                 {
-                    array_pop(&vm->stack_frames);
+                    assert(sp >= op.size);
+
+                    char *return_data = stack + sp - op.size;
+                    sp = *((int*) (stack + fp - 4));
+                    ip = *((int*) (stack + fp - 8));
+                    fp = *((int*) (stack + fp - 12));
+
+                    memmove(stack + sp, return_data, op.size);
+                    sp += op.size;
                 }
                 break;
             case OPCODE_PUSH:
                 {
-                    int size = op.size;
-                    vm_push_val(program, 0, size);
+                    sp += op.size;
                 }
                 break;
             case OPCODE_POP:
                 {
-                    vm_pop(program, op.size);
+                    sp -= op.size;
                 }
                 break;
             case OPCODE_ARRAY_CREATE:
@@ -4488,16 +4614,20 @@ static void vm_run(struct mscript_program *program) {
                     new_array.member_size = size;
                     array_init(&new_array.array);
                     array_push(&vm->arrays, new_array);
-                    vm_push(program, (char*) (&array_idx), 4);
+
+                    *((int*) (stack + sp)) = array_idx;
+                    sp += 4;
                 }
                 break;
             case OPCODE_ARRAY_STORE:
                 {
                     int size = op.size;
 
-                    int *offset = (int*) vm_pop(program, 4);
-                    int *array_idx = (int*) vm_pop(program, 4);
-                    char *data = vm->stack.data + vm->stack.length - size;
+                    int *offset = (int*) (stack + sp - 4);
+                    int *array_idx = (int*) (stack + sp - 8);
+                    sp -= 8;
+
+                    char *data = stack + sp - size;
                     struct vm_array *array = vm->arrays.data + (*array_idx);
 
                     int reserve_size = (*offset) + size;
@@ -4510,51 +4640,51 @@ static void vm_run(struct mscript_program *program) {
                         array->array.length = reserve_size;
                     }
                     
-                    for (int i = 0; i < size; i++) {
-                        array->array.data[(*offset) + i] = data[i];
-                    }
+                    memmove(array->array.data + (*offset), data, size);
                 }
                 break;
             case OPCODE_ARRAY_LOAD:
                 {
                     int size = op.size;
 
-                    int *offset = (int*) vm_pop(program, 4);
-                    int *array_idx = (int*) vm_pop(program, 4);
+                    int *offset = (int*) (stack + sp - 4);
+                    int *array_idx = (int*) (stack + sp - 8);
+                    sp -= 8;
+
                     struct vm_array *array = vm->arrays.data + (*array_idx);
 
                     assert((*offset) + size <= array->array.length);
-                    vm_push(program, array->array.data + (*offset), size);
+                    memmove(stack + sp, array->array.data + (*offset), size);
+                    sp += size;
                 }
                 break;
             case OPCODE_ARRAY_LENGTH:
                 {
-                    int *array_idx = (int*) vm_pop(program, 4);
+                    int *array_idx = (int*) (stack + sp - 4);
                     struct vm_array *array = vm->arrays.data + (*array_idx);
 
                     int len = array->array.length / array->member_size;
-                    vm_push(program, (char*) (&len), 4);
-                }
-                break;
-            case OPCODE_LABEL:
-                {
+                    *((int*) (stack + sp - 4)) = len;
                 }
                 break;
             case OPCODE_DEBUG_PRINT_INT:
                 {
-                    int *v = (int*) vm_pop(program, 4);
-                    m_logf("%d", *v);
+                    int *v = (int*) (stack + sp - 4);
+                    sp -= 4;
+                    m_logf("%d\n", *v);
                 }
                 break;
             case OPCODE_DEBUG_PRINT_FLOAT:
                 {
-                    float *v = (float*) vm_pop(program, 4);
+                    float *v = (float*) (stack + sp - 4);
+                    sp -= 4;
                     m_logf("%f", *v);
                 }
                 break;
             case OPCODE_DEBUG_PRINT_STRING:
                 {
-                    int *str_pos = (int*) vm_pop(program, 4);
+                    int *str_pos = (int*) (stack + sp - 4);
+                    sp -= 4;
                     char *str = compiler->strings.data + (*str_pos);
                     m_logf("%s", str);
                 }
@@ -4564,12 +4694,21 @@ static void vm_run(struct mscript_program *program) {
                     m_logf(op.string);
                 }
                 break;
+            case OPCODE_INTERMEDIATE_LABEL:
+            case OPCODE_INTERMEDIATE_FUNC:
+            case OPCODE_INTERMEDIATE_CALL:
+            case OPCODE_INTERMEDIATE_JF:
+            case OPCODE_INTERMEDIATE_JMP:
+                assert(false);
+                break;
+
         }
 
-        if (op.type != OPCODE_RETURN && op.type != OPCODE_CALL) {
-            (frame->ip)++;
-        }
+        ip++;
     }
+
+    //m_logf("%d\n", sp);
+    m_logf("%d\n", *((int*) stack));
 }
 
 static void vm_push(struct mscript_program *program, char *v, int n) {
@@ -4593,20 +4732,26 @@ static char *vm_pop(struct mscript_program *program, int n) {
     return vm->stack.data + vm->stack.length;
 }
 
-static void program_init(struct mscript_program *prog, struct mscript *mscript, const char *prog_text) {
+static void program_init(struct mscript_program *prog, struct mscript *mscript, struct file file) {
+    prog->file = file;
     prog->error = NULL;
     prog->mscript = mscript;
 
-    array_init(&prog->global_stmts);
-    array_init(&prog->imported_programs);
     map_init(&prog->function_decl_map);
+    map_init(&prog->used_functions_map);
     map_init(&prog->type_map);
     map_init(&prog->enum_map);
 
-    parser_init(&prog->parser, prog_text);
+    array_init(&prog->global_stmts);
+    array_init(&prog->imported_programs);
+    array_init(&prog->opcodes);
+
+    parser_init(&prog->parser, file.data);
     pre_compiler_init(prog);
     compiler_init(prog);
     vm_init(prog);
+
+    map_init(&prog->func_label_map);
 
     map_set(&prog->type_map, "void", &mscript->void_type);
     map_set(&prog->type_map, "void*", &mscript->void_star_type);
@@ -4673,13 +4818,17 @@ static void program_import(struct mscript_program *program, struct mscript_progr
     const char *key;
     map_iter_t iter = map_iter(&mscript->map);
 
-    while ((key = map_next(&mscript->map, &iter))) {
-        struct mscript_program **p = map_get(&mscript->map, key);
+    while ((key = map_next(&mscript->programs_map, &iter))) {
+        struct mscript_program **p = map_get(&mscript->programs_map, key);
         (*p)->visited = false;
     }
 
     program->visited = true;
     program_import_recur(program, import);
+}
+
+static void program_add_function_decl(struct mscript_program *program, const char *name, struct function_decl *decl) {
+    map_set(&program->function_decl_map, name, decl);
 }
 
 static struct function_decl *program_get_function_decl(struct mscript_program *program, const char *name) {
@@ -4704,313 +4853,8 @@ static struct mscript_type *program_get_type(struct mscript_program *program, co
     return NULL;
 }
 
-static bool program_load_1(struct file file, bool first_time, struct mscript *mscript) {
-    if (!first_time) return true;
-
-    char *script_name = file.path + strlen("scripts/");
-    m_logf("%s\n", script_name);
-    struct mscript_program **cached_program = map_get(&mscript->map, script_name);
-    if (cached_program) {
-        return true;
-    }
-
-    if (!file_load_data(&file)) {
-        return false;
-    }
-
-    struct mscript_program *program = malloc(sizeof(struct mscript_program));
-    map_set(&mscript->map, script_name, program);
-    program_init(program, mscript, file.data);
-
-    {
-        tokenize(program);
-        if (program->error) goto cleanup;
-
-        while (true) {
-            if (match_eof(program)) {
-                break;
-            }
-
-            struct stmt *stmt;
-            if (match_symbol(program, "import")) {
-                stmt = parse_import_stmt(program);
-                if (program->error) goto cleanup;
-            }
-            else if (match_symbol(program, "import_function")) {
-                stmt = parse_import_function_stmt(program);
-                if (program->error) goto cleanup;
-            }
-            else if (match_symbol(program, "struct")) {
-                stmt = parse_struct_declaration_stmt(program);
-                if (program->error) goto cleanup;
-            }
-            else if (match_symbol(program, "enum")) {
-                stmt = parse_enum_declaration_stmt(program);
-                if (program->error) goto cleanup;
-            }
-            else if (check_type(program)) {
-                stmt = parse_function_declaration_stmt(program);
-                if (program->error) goto cleanup;
-            }
-            else {
-                program_error(program, peek(program), "Unknown token.");
-                goto cleanup;
-            }
-
-            array_push(&program->global_stmts, stmt);
-        }
-    }
-
-    for (int i = 0; i < program->global_stmts.length; i++) {
-        struct stmt *stmt = program->global_stmts.data[i];
-        if (stmt->type == STMT_STRUCT_DECLARATION) {
-            struct struct_decl *decl = malloc(sizeof(struct struct_decl));
-            strncpy(decl->name, stmt->struct_declaration.name, MSCRIPT_MAX_SYMBOL_LEN);
-            decl->name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
-            decl->num_members = stmt->struct_declaration.num_members;
-            for (int i = 0; i < decl->num_members; i++) {
-                strncpy(decl->members[i].name, stmt->struct_declaration.member_names[i], MSCRIPT_MAX_SYMBOL_LEN);
-                decl->members[i].name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
-                decl->members[i].type = NULL;
-                decl->members[i].offset = -1;
-            }
-
-            struct mscript_type *struct_type = malloc(sizeof(struct mscript_type));
-            mscript_type_init(struct_type, decl->name, MSCRIPT_TYPE_STRUCT, NULL, decl, -1);
-            map_set(&program->type_map, stmt->struct_declaration.name, struct_type);
-
-            char struct_array_type_string[MSCRIPT_MAX_SYMBOL_LEN + 3];
-            strncpy(struct_array_type_string, stmt->struct_declaration.name, MSCRIPT_MAX_SYMBOL_LEN);
-            struct_array_type_string[MSCRIPT_MAX_SYMBOL_LEN] = 0;
-            strcat(struct_array_type_string, "[]");
-
-            struct mscript_type *struct_array_type = malloc(sizeof(struct mscript_type));
-            mscript_type_init(struct_array_type, struct_array_type_string, MSCRIPT_TYPE_ARRAY, struct_type, NULL, 4);
-            map_set(&program->type_map, struct_array_type_string, struct_array_type);
-        }
-        else if (stmt->type == STMT_ENUM_DECLARATION) {
-            struct mscript_type *enum_type = malloc(sizeof(struct mscript_type));
-            mscript_type_init(enum_type, stmt->enum_declaration.name, MSCRIPT_TYPE_ENUM, NULL, NULL, 4);
-            map_set(&program->type_map, stmt->enum_declaration.name, enum_type);
-
-            for (int i = 0; i < stmt->enum_declaration.num_values; i++) {
-                struct enum_value value = enum_value_create(enum_type, i); 
-                map_set(&program->enum_map, stmt->enum_declaration.value_names[i], value);
-            }
-        }
-        else if (stmt->type == STMT_FUNCTION_DECLARATION) {
-            struct function_decl *decl = malloc(sizeof(struct function_decl));
-            map_set(&program->function_decl_map, stmt->function_declaration.name, decl);
-        }
-        else if (stmt->type == STMT_IMPORT_FUNCTION) {
-            struct function_decl *decl = malloc(sizeof(struct function_decl));
-            map_set(&program->function_decl_map, stmt->import_function.name, decl);
-        }
-    }
-
-cleanup:
-    if (program->error) {
-        struct token tok = program->error_token;
-        int line = tok.line;
-        int col = tok.col;
-
-        m_logf("ERROR: %s. Line %d. Col %d.\n", script_name, line, col); 
-        m_logf("%s\n", program->error);
-    }
-
-    file_delete_data(&file);
-    return true;
-}
-
-static bool program_load_2(struct file file, bool first_time, struct mscript *mscript) {
-    if (!first_time) return true;
-    
-    char *script_name = file.path + strlen("scripts/");
-    struct mscript_program **cached_program = map_get(&mscript->map, script_name);
-    if (!cached_program) {
-        return false;
-    }
-
-    struct mscript_program *program = *cached_program;
-    if (program->error) return true;
-
-    for (int i = 0; i < program->global_stmts.length; i++) {
-        struct stmt *stmt = program->global_stmts.data[i];
-        if (stmt->type == STMT_IMPORT) {
-            struct mscript_program **import = map_get(&mscript->map, stmt->import.program_name);
-            if (!import) {
-                program_error(program, stmt->token, "Cannot find import %s.", stmt->import.program_name);
-                goto cleanup;
-            }
-            if ((*import)->error) {
-                program_error(program, stmt->token, "Failed to import %s.", stmt->import.program_name);
-                goto cleanup;
-            }
-
-            array_push(&program->imported_programs, *import);
-        }
-    }
-
-cleanup:
-    if (program->error) {
-        struct token tok = program->error_token;
-        int line = tok.line;
-        int col = tok.col;
-
-        m_logf("ERROR: %s. Line %d. Col %d.\n", script_name, line, col); 
-        m_logf("%s\n", program->error);
-    }
-
-    return true;
-}
-
-static bool program_load_3(struct file file, bool first_time, struct mscript *mscript) {
-    if (!first_time) return true;
-    
-    char *script_name = file.path + strlen("scripts/");
-    struct mscript_program **cached_program = map_get(&mscript->map, script_name);
-    if (!cached_program) {
-        return false;
-    }
-
-    struct mscript_program *program = *cached_program;
-    if (program->error) return true;
-
-    for (int i = 0; i < program->imported_programs.length; i++) {
-        program_import(program, program->imported_programs.data[i], mscript);
-        if (program->error) goto cleanup;
-    }
-
-    for (int i = 0; i < program->global_stmts.length; i++) {
-        struct stmt *stmt = program->global_stmts.data[i];
-        if (stmt->type == STMT_STRUCT_DECLARATION) {
-            pre_compiler_struct_declaration_1(program, stmt);
-            if (program->error) goto cleanup;
-        }
-    }
-
-    for (int i = 0; i < program->global_stmts.length; i++) {
-        struct stmt *stmt = program->global_stmts.data[i];
-        if (stmt->type == STMT_FUNCTION_DECLARATION) {
-            pre_compiler_function_declaration_1(program, stmt);
-            if (program->error) goto cleanup;
-        }
-        else if (stmt->type == STMT_IMPORT_FUNCTION) {
-            pre_compiler_import_function(program, stmt);
-            if (program->error) goto cleanup;
-        }
-    }
-
-cleanup:
-    if (program->error) {
-        struct token tok = program->error_token;
-        int line = tok.line;
-        int col = tok.col;
-
-        m_logf("ERROR: %s. Line %d. Col %d.\n", script_name, line, col); 
-        m_logf("%s\n", program->error);
-    }
-
-    return true;
-}
-
-static bool program_load_4(struct file file, bool first_time, struct mscript *mscript) {
-    if (!first_time) return true;
-
-    char *script_name = file.path + strlen("scripts/");
-    struct mscript_program **cached_program = map_get(&mscript->map, script_name);
-    if (!cached_program) {
-        return false;
-    }
-
-    struct mscript_program *program = *cached_program;
-    if (program->error) return true;
-
-    for (int i = 0; i < program->global_stmts.length; i++) {
-        struct stmt *stmt = program->global_stmts.data[i];
-        if (stmt->type == STMT_STRUCT_DECLARATION) {
-            pre_compiler_struct_declaration_2(program, stmt);
-            if (program->error) goto cleanup;
-        }
-    }
-
-cleanup:
-    if (program->error) {
-        struct token tok = program->error_token;
-        int line = tok.line;
-        int col = tok.col;
-
-        m_logf("ERROR: %s. Line %d. Col %d.\n", script_name, line, col); 
-        m_logf("%s\n", program->error);
-    }
-
-    return true;
-}
-
-static bool program_load_5(struct file file, bool first_time, struct mscript *mscript) {
-    if (!first_time) return true;
-
-    char *script_name = file.path + strlen("scripts/");
-    struct mscript_program **cached_program = map_get(&mscript->map, script_name);
-    if (!cached_program) {
-        return false;
-    }
-
-    struct mscript_program *program = *cached_program;
-    if (program->error) return true;
-
-    for (int i = 0; i < program->global_stmts.length; i++) {
-        struct stmt *stmt = program->global_stmts.data[i];
-        if (stmt->type == STMT_FUNCTION_DECLARATION) {
-            pre_compiler_function_declaration_2(program, stmt);
-            if (program->error) goto cleanup;
-        }
-    }
-
-cleanup:
-    if (program->error) {
-        struct token tok = program->error_token;
-        int line = tok.line;
-        int col = tok.col;
-
-        m_logf("ERROR: %s. Line %d. Col %d.\n", script_name, line, col); 
-        m_logf("%s\n", program->error);
-    }
-
-    return true;
-}
-
-static bool program_load_6(struct file file, bool first_time, struct mscript *mscript) {
-    if (!first_time) return true;
-
-    char *script_name = file.path + strlen("scripts/");
-    struct mscript_program **cached_program = map_get(&mscript->map, script_name);
-    if (!cached_program) {
-        return false;
-    }
-
-    struct mscript_program *program = *cached_program;
-    if (program->error) return true;
-
-    for (int i = 0; i < program->global_stmts.length; i++) {
-        struct stmt *stmt = program->global_stmts.data[i];
-        if (stmt->type == STMT_FUNCTION_DECLARATION) {
-            compile_stmt(program, stmt);
-            if (program->error) goto cleanup;
-        }
-    }
-
-cleanup:
-    if (program->error) {
-        struct token tok = program->error_token;
-        int line = tok.line;
-        int col = tok.col;
-
-        m_logf("ERROR: %s. Line %d. Col %d.\n", script_name, line, col); 
-        m_logf("%s\n", program->error);
-    }
-
-    return true;
+static void program_add_enum_value(struct mscript_program *program, char *name, struct enum_value value) {
+    map_set(&program->enum_map, name, value);
 }
 
 static void debug_log_token(struct token token) {
@@ -5370,7 +5214,7 @@ static void debug_log_opcodes(struct opcode *opcodes, int num_opcodes) {
                 m_logf("JMP %d", op.label);
                 break;
             case OPCODE_CALL:
-                m_logf("CALL %s", op.string);
+                m_logf("CALL %d %d", op.call.label, op.call.args_size);
                 break;
             case OPCODE_RETURN:
                 m_logf("RETURN");
@@ -5393,9 +5237,6 @@ static void debug_log_opcodes(struct opcode *opcodes, int num_opcodes) {
             case OPCODE_ARRAY_LENGTH:
                 m_logf("ARRAY_LENGTH");
                 break;
-            case OPCODE_LABEL:
-                m_logf("LABEL %d", op.label);
-                break;
             case OPCODE_DEBUG_PRINT_INT:
                 m_logf("DEBUG_PRINT_INT");
                 break;
@@ -5408,14 +5249,636 @@ static void debug_log_opcodes(struct opcode *opcodes, int num_opcodes) {
             case OPCODE_DEBUG_PRINT_STRING_CONST:
                 m_logf("DEBUG_PRINT_SHORT_STRING: %s", op.string);
                 break;
+            case OPCODE_INTERMEDIATE_LABEL:
+                m_logf("LABEL %d", op.label);
+                break;
+            case OPCODE_INTERMEDIATE_FUNC:
+                m_logf("FUNC %s", op.string);
+                break;
+            case OPCODE_INTERMEDIATE_CALL:
+                m_logf("CALL %s", op.string);
+                break;
+            case OPCODE_INTERMEDIATE_JF:
+                m_logf("JF %d", op.label);
+                break;
+            case OPCODE_INTERMEDIATE_JMP:
+                m_logf("JMP %d", op.label);
+                break;
         }
         m_logf("\n");
     }
 }
 
+static void program_load_stage_1(struct mscript *mscript, struct file file) {
+    if (!file_load_data(&file)) {
+        return;
+    }
+
+    char *script_name = file.path + strlen("scripts/");
+    struct mscript_program *program = malloc(sizeof(struct mscript_program));
+    program_init(program, mscript, file);
+    map_set(&mscript->programs_map, script_name, program);
+    array_push(&mscript->programs_array, program);
+
+    {
+        tokenize(program);
+        if (program->error) goto cleanup;
+
+        while (true) {
+            if (match_eof(program)) {
+                break;
+            }
+
+            struct stmt *stmt;
+            if (match_symbol(program, "import")) {
+                stmt = parse_import_stmt(program);
+                if (program->error) goto cleanup;
+            }
+            else if (match_symbol(program, "import_function")) {
+                stmt = parse_import_function_stmt(program);
+                if (program->error) goto cleanup;
+            }
+            else if (match_symbol(program, "struct")) {
+                stmt = parse_struct_declaration_stmt(program);
+                if (program->error) goto cleanup;
+            }
+            else if (match_symbol(program, "enum")) {
+                stmt = parse_enum_declaration_stmt(program);
+                if (program->error) goto cleanup;
+            }
+            else if (check_type(program)) {
+                stmt = parse_function_declaration_stmt(program);
+                if (program->error) goto cleanup;
+            }
+            else {
+                program_error(program, peek(program), "Unknown token.");
+                goto cleanup;
+            }
+
+            array_push(&program->global_stmts, stmt);
+        }
+    }
+
+    for (int i = 0; i < program->global_stmts.length; i++) {
+        struct stmt *stmt = program->global_stmts.data[i];
+        switch (stmt->type) {
+            case STMT_IMPORT:
+                {
+                }
+                break;
+            case STMT_STRUCT_DECLARATION:
+                {
+                    struct struct_decl *decl = malloc(sizeof(struct struct_decl));
+                    strncpy(decl->name, stmt->struct_declaration.name, MSCRIPT_MAX_SYMBOL_LEN);
+                    decl->name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+                    decl->num_members = stmt->struct_declaration.num_members;
+                    for (int i = 0; i < decl->num_members; i++) {
+                        strncpy(decl->members[i].name, stmt->struct_declaration.member_names[i], MSCRIPT_MAX_SYMBOL_LEN);
+                        decl->members[i].name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+                        decl->members[i].type = NULL;
+                        decl->members[i].offset = -1;
+                    }
+
+                    struct mscript_type *struct_type = malloc(sizeof(struct mscript_type));
+                    mscript_type_init(struct_type, decl->name, MSCRIPT_TYPE_STRUCT, NULL, decl, -1);
+                    program_add_type(program, decl->name, struct_type);
+
+                    char struct_array_type_string[MSCRIPT_MAX_SYMBOL_LEN + 3];
+                    strncpy(struct_array_type_string, stmt->struct_declaration.name, MSCRIPT_MAX_SYMBOL_LEN);
+                    struct_array_type_string[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+                    strcat(struct_array_type_string, "[]");
+
+                    struct mscript_type *struct_array_type = malloc(sizeof(struct mscript_type));
+                    mscript_type_init(struct_array_type, struct_array_type_string, MSCRIPT_TYPE_ARRAY, struct_type, NULL, 4);
+                    program_add_type(program, struct_array_type_string, struct_array_type);
+                }
+                break;
+            case STMT_ENUM_DECLARATION:
+                {
+                    struct mscript_type *enum_type = malloc(sizeof(struct mscript_type));
+                    mscript_type_init(enum_type, stmt->enum_declaration.name, MSCRIPT_TYPE_ENUM, NULL, NULL, 4);
+                    program_add_type(program, stmt->enum_declaration.name, enum_type);
+
+                    for (int i = 0; i < stmt->enum_declaration.num_values; i++) {
+                        struct enum_value value = enum_value_create(enum_type, i);
+                        program_add_enum_value(program, stmt->enum_declaration.value_names[i], value);
+                    }
+                }
+                break;
+            case STMT_FUNCTION_DECLARATION:
+                {
+                    struct function_decl *decl = malloc(sizeof(struct function_decl));
+                    strncpy(decl->name, stmt->function_declaration.name, MSCRIPT_MAX_SYMBOL_LEN);
+                    decl->name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+                    program_add_function_decl(program, decl->name, decl);
+                }
+                break;
+            case STMT_IMPORT_FUNCTION:
+                {
+                    struct function_decl *decl = malloc(sizeof(struct function_decl));
+                    strncpy(decl->name, stmt->import_function.name, MSCRIPT_MAX_SYMBOL_LEN);
+                    decl->name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+                    program_add_function_decl(program, decl->name, decl);
+                }
+                break;
+            case STMT_IF:
+            case STMT_RETURN:
+            case STMT_BLOCK:
+            case STMT_EXPR:
+            case STMT_FOR:
+            case STMT_VARIABLE_DECLARATION:
+                assert(false);
+                break;
+        }
+    }
+
+cleanup:
+    if (program->error) {
+        struct token tok = program->error_token;
+        int line = tok.line;
+        int col = tok.col;
+
+        m_logf("ERROR: %s. Line %d. Col %d.\n", program->file.path, line, col); 
+        m_logf("%s\n", program->error);
+    }
+
+    file_delete_data(&file);
+}
+
+static void program_load_stage_2(struct mscript *mscript, struct mscript_program *program) {
+    if (program->error) return;
+
+    for (int i = 0; i < program->global_stmts.length; i++) {
+        struct stmt *stmt = program->global_stmts.data[i];
+        switch (stmt->type) {
+            case STMT_IMPORT:
+                {
+                    struct mscript_program **import = map_get(&mscript->programs_map, stmt->import.program_name);
+                    if (!import) {
+                        program_error(program, stmt->token, "Cannot find import %s.", stmt->import.program_name);
+                        goto cleanup;
+                    }
+                    if ((*import)->error) {
+                        program_error(program, stmt->token, "Failed to import %s.", stmt->import.program_name);
+                        goto cleanup;
+                    }
+
+                    array_push(&program->imported_programs, *import);
+                }
+                break;
+            case STMT_STRUCT_DECLARATION:
+                {
+                }
+                break;
+            case STMT_ENUM_DECLARATION:
+                {
+                }
+                break;
+            case STMT_FUNCTION_DECLARATION:
+                {
+                }
+                break;
+            case STMT_IMPORT_FUNCTION:
+                {
+                }
+                break;
+            case STMT_IF:
+            case STMT_RETURN:
+            case STMT_BLOCK:
+            case STMT_EXPR:
+            case STMT_FOR:
+            case STMT_VARIABLE_DECLARATION:
+                assert(false);
+                break;
+        }
+    }
+
+cleanup:
+    if (program->error) {
+        struct token tok = program->error_token;
+        int line = tok.line;
+        int col = tok.col;
+
+        m_logf("ERROR: %s. Line %d. Col %d.\n", program->file.path, line, col); 
+        m_logf("%s\n", program->error);
+    }
+}
+
+static void program_load_stage_3(struct mscript *mscript, struct mscript_program *program) {
+    if (program->error) return;
+
+    for (int i = 0; i < program->imported_programs.length; i++) {
+        program_import(program, program->imported_programs.data[i], mscript);
+        if (program->error) goto cleanup;
+    }
+
+    for (int i = 0; i < program->global_stmts.length; i++) {
+        struct stmt *stmt = program->global_stmts.data[i];
+        switch (stmt->type) {
+            case STMT_IMPORT:
+                {
+                }
+                break;
+            case STMT_STRUCT_DECLARATION:
+                {
+                    pre_compiler_struct_declaration_1(program, stmt);
+                    if (program->error) goto cleanup;
+                }
+                break;
+            case STMT_ENUM_DECLARATION:
+                {
+                }
+                break;
+            case STMT_FUNCTION_DECLARATION:
+                {
+                    pre_compiler_function_declaration_1(program, stmt);
+                }
+                break;
+            case STMT_IMPORT_FUNCTION:
+                {
+                    pre_compiler_import_function(program, stmt);
+                }
+                break;
+            case STMT_IF:
+            case STMT_RETURN:
+            case STMT_BLOCK:
+            case STMT_EXPR:
+            case STMT_FOR:
+            case STMT_VARIABLE_DECLARATION:
+                assert(false);
+                break;
+        }
+    }
+
+cleanup:
+    if (program->error) {
+        struct token tok = program->error_token;
+        int line = tok.line;
+        int col = tok.col;
+
+        m_logf("ERROR: %s. Line %d. Col %d.\n", program->file.path, line, col); 
+        m_logf("%s\n", program->error);
+    }
+}
+
+static void program_load_stage_4(struct mscript *mscript, struct mscript_program *program) {
+    if (program->error) return;
+
+    for (int i = 0; i < program->global_stmts.length; i++) {
+        struct stmt *stmt = program->global_stmts.data[i];
+        switch (stmt->type) {
+            case STMT_IMPORT:
+                {
+                }
+                break;
+            case STMT_STRUCT_DECLARATION:
+                {
+                    pre_compiler_struct_declaration_2(program, stmt);
+                    if (program->error) goto cleanup;
+                }
+                break;
+            case STMT_ENUM_DECLARATION:
+                {
+                }
+                break;
+            case STMT_FUNCTION_DECLARATION:
+                {
+                }
+                break;
+            case STMT_IMPORT_FUNCTION:
+                {
+                }
+                break;
+            case STMT_IF:
+            case STMT_RETURN:
+            case STMT_BLOCK:
+            case STMT_EXPR:
+            case STMT_FOR:
+            case STMT_VARIABLE_DECLARATION:
+                assert(false);
+                break;
+        }
+    }
+
+cleanup:
+    if (program->error) {
+        struct token tok = program->error_token;
+        int line = tok.line;
+        int col = tok.col;
+
+        m_logf("ERROR: %s. Line %d. Col %d.\n", program->file.path, line, col); 
+        m_logf("%s\n", program->error);
+    }
+}
+
+static void program_load_stage_5(struct mscript *mscript, struct mscript_program *program) {
+    if (program->error) return;
+
+    for (int i = 0; i < program->global_stmts.length; i++) {
+        struct stmt *stmt = program->global_stmts.data[i];
+        switch (stmt->type) {
+            case STMT_IMPORT:
+                {
+                }
+                break;
+            case STMT_STRUCT_DECLARATION:
+                {
+                }
+                break;
+            case STMT_ENUM_DECLARATION:
+                {
+                }
+                break;
+            case STMT_FUNCTION_DECLARATION:
+                {
+                    pre_compiler_function_declaration_2(program, stmt);
+                    if (program->error) goto cleanup;
+                }
+                break;
+            case STMT_IMPORT_FUNCTION:
+                {
+                }
+                break;
+            case STMT_IF:
+            case STMT_RETURN:
+            case STMT_BLOCK:
+            case STMT_EXPR:
+            case STMT_FOR:
+            case STMT_VARIABLE_DECLARATION:
+                assert(false);
+                break;
+        }
+    }
+
+cleanup:
+    if (program->error) {
+        struct token tok = program->error_token;
+        int line = tok.line;
+        int col = tok.col;
+
+        m_logf("ERROR: %s. Line %d. Col %d.\n", program->file.path, line, col); 
+        m_logf("%s\n", program->error);
+    }
+}
+
+static void program_load_stage_6(struct mscript *mscript, struct mscript_program *program) {
+    if (program->error) return;
+
+    for (int i = 0; i < program->global_stmts.length; i++) {
+        struct stmt *stmt = program->global_stmts.data[i];
+        switch (stmt->type) {
+            case STMT_IMPORT:
+                {
+                }
+                break;
+            case STMT_STRUCT_DECLARATION:
+                {
+                }
+                break;
+            case STMT_ENUM_DECLARATION:
+                {
+                }
+                break;
+            case STMT_FUNCTION_DECLARATION:
+                {
+                    compile_stmt(program, stmt);
+                    if (program->error) goto cleanup;
+                }
+                break;
+            case STMT_IMPORT_FUNCTION:
+                {
+                }
+                break;
+            case STMT_IF:
+            case STMT_RETURN:
+            case STMT_BLOCK:
+            case STMT_EXPR:
+            case STMT_FOR:
+            case STMT_VARIABLE_DECLARATION:
+                assert(false);
+                break;
+        }
+    }
+
+cleanup:
+    if (program->error) {
+        struct token tok = program->error_token;
+        int line = tok.line;
+        int col = tok.col;
+
+        m_logf("ERROR: %s. Line %d. Col %d.\n", program->file.path, line, col); 
+        m_logf("%s\n", program->error);
+    }
+}
+
+static void program_load_stage_7(struct mscript *mscript, struct mscript_program *program) {
+    if (program->error) return;
+
+    struct array_opcode intermediate_opcodes;
+    array_init(&intermediate_opcodes);
+
+    {
+        const char *key;
+        map_iter_t iter = map_iter(&program->used_functions_map);
+        while ((key = map_next(&program->used_functions_map, &iter))) {
+            struct function_decl *decl = program_get_function_decl(program, key);
+            assert(decl);
+
+            array_pusharr(&intermediate_opcodes, decl->opcodes.data, decl->opcodes.length);
+        }
+    }
+
+    for (int i = 0; i < program->global_stmts.length; i++) {
+        struct stmt *stmt = program->global_stmts.data[i];
+        switch (stmt->type) {
+            case STMT_IMPORT:
+                {
+                }
+                break;
+            case STMT_STRUCT_DECLARATION:
+                {
+                }
+                break;
+            case STMT_ENUM_DECLARATION:
+                {
+                }
+                break;
+            case STMT_FUNCTION_DECLARATION:
+                {
+                    const char *name = stmt->function_declaration.name;
+                    if (!map_get(&program->used_functions_map, name)) {
+                        struct function_decl *decl = program_get_function_decl(program, stmt->function_declaration.name);
+                        assert(decl);
+
+                        array_pusharr(&intermediate_opcodes, decl->opcodes.data, decl->opcodes.length);
+                    }
+                }
+                break;
+            case STMT_IMPORT_FUNCTION:
+                {
+                }
+                break;
+            case STMT_IF:
+            case STMT_RETURN:
+            case STMT_BLOCK:
+            case STMT_EXPR:
+            case STMT_FOR:
+            case STMT_VARIABLE_DECLARATION:
+                assert(false);
+                break;
+        }
+    }
+
+    struct array_int labels;
+    array_init(&labels);
+
+    for (int i = 0; i < intermediate_opcodes.length; i++) {
+        struct opcode op = intermediate_opcodes.data[i];
+        switch (op.type) {
+            case OPCODE_IADD:
+            case OPCODE_FADD:
+            case OPCODE_ISUB:
+            case OPCODE_FSUB:
+            case OPCODE_IMUL:
+            case OPCODE_FMUL:
+            case OPCODE_IDIV:
+            case OPCODE_FDIV:
+            case OPCODE_ILTE:
+            case OPCODE_FLTE:
+            case OPCODE_ILT:
+            case OPCODE_FLT:
+            case OPCODE_IGTE:
+            case OPCODE_FGTE:
+            case OPCODE_IGT:
+            case OPCODE_FGT:
+            case OPCODE_IEQ:
+            case OPCODE_FEQ:
+            case OPCODE_INEQ:
+            case OPCODE_FNEQ:
+            case OPCODE_IINC:
+            case OPCODE_FINC:
+            case OPCODE_F2I:
+            case OPCODE_I2F:
+            case OPCODE_COPY:
+            case OPCODE_INT:
+            case OPCODE_FLOAT:
+            case OPCODE_LOCAL_STORE:
+            case OPCODE_LOCAL_LOAD:
+            case OPCODE_RETURN:
+            case OPCODE_PUSH:
+            case OPCODE_POP:
+            case OPCODE_ARRAY_CREATE:
+            case OPCODE_ARRAY_STORE:
+            case OPCODE_ARRAY_LOAD:
+            case OPCODE_ARRAY_LENGTH:
+            case OPCODE_DEBUG_PRINT_INT:
+            case OPCODE_DEBUG_PRINT_FLOAT:
+            case OPCODE_DEBUG_PRINT_STRING:
+            case OPCODE_DEBUG_PRINT_STRING_CONST:
+                {
+                    array_push(&program->opcodes, op);
+                }
+                break;
+
+            case OPCODE_INTERMEDIATE_LABEL:
+                {
+
+                }
+                break;
+            case OPCODE_INTERMEDIATE_FUNC:
+                {
+                    map_set(&program->func_label_map, op.string, program->opcodes.length);
+                    labels.length = 0;
+
+                    int j = i + 1;
+                    int line_num = program->opcodes.length;
+                    while (j < intermediate_opcodes.length) {
+                        struct opcode op2 = intermediate_opcodes.data[j];
+
+                        if (op2.type == OPCODE_INTERMEDIATE_LABEL) {
+                            while (op2.label >= labels.length) {
+                                array_push(&labels, -1);
+                            }
+                            labels.data[op2.label] = line_num;
+                        }
+                        else if (op2.type == OPCODE_INTERMEDIATE_FUNC) {
+                            break;
+                        }
+                        else {
+                            line_num++;
+                        }
+
+                        j++;
+                    }
+                }
+                break;
+            case OPCODE_INTERMEDIATE_CALL:
+                {
+                    array_push(&program->opcodes, op);
+                }
+                break;
+            case OPCODE_INTERMEDIATE_JMP:
+                {
+                    assert(op.label < labels.length);
+
+                    struct opcode op2;
+                    op2.type = OPCODE_JMP;
+                    op2.label = labels.data[op.label];
+                    array_push(&program->opcodes, op2);
+                }
+                break;
+            case OPCODE_INTERMEDIATE_JF:
+                {
+                    assert(op.label < labels.length);
+
+                    struct opcode op2;
+                    op2.type = OPCODE_JF;
+                    op2.label = labels.data[op.label];
+                    array_push(&program->opcodes, op2);
+                }
+                break;
+
+            case OPCODE_JF:
+            case OPCODE_JMP:
+            case OPCODE_CALL:
+                assert(false);
+                break;
+        }
+    }
+
+    for (int i = 0; i < program->opcodes.length; i++) {
+        struct opcode *op = &(program->opcodes.data[i]);
+        if (op->type == OPCODE_INTERMEDIATE_CALL) {
+            int *label = map_get(&program->func_label_map, op->string);
+            assert(label);
+
+            struct function_decl *decl = program_get_function_decl(program, op->string);
+            assert(decl);
+
+            op->type = OPCODE_CALL;
+            op->call.label = *label;
+            op->call.args_size = decl->args_size;
+        }
+    }
+
+    //m_logf("%s\n", program->file.path);
+    //debug_log_opcodes(program->opcodes.data, program->opcodes.length);
+
+cleanup:
+    if (program->error) {
+        struct token tok = program->error_token;
+        int line = tok.line;
+        int col = tok.col;
+
+        m_logf("ERROR: %s. Line %d. Col %d.\n", program->file.path, line, col); 
+        m_logf("%s\n", program->error);
+    }
+}
+
 struct mscript *mscript_create(void) {
     struct mscript *mscript = malloc(sizeof(struct mscript));
-    map_init(&mscript->map);
+    map_init(&mscript->programs_map);
+    array_init(&mscript->programs_array);
 
     mscript_type_init(&mscript->void_type, "void", MSCRIPT_TYPE_VOID, NULL, NULL, 0);
     mscript_type_init(&mscript->void_star_type, "void*", MSCRIPT_TYPE_VOID_STAR, NULL, NULL, 4);
@@ -5426,14 +5889,52 @@ struct mscript *mscript_create(void) {
     mscript_type_init(&mscript->float_array_type, "float[]", MSCRIPT_TYPE_ARRAY, &mscript->float_type, NULL, 4);
     mscript_type_init(&mscript->char_star_type, "char*", MSCRIPT_TYPE_CHAR_STAR, NULL, NULL, 4);
 
-    hotloader_watch_files("scripts", ".mscript", mscript, program_load_1);
-    hotloader_watch_files("scripts", ".mscript", mscript, program_load_2);
-    hotloader_watch_files("scripts", ".mscript", mscript, program_load_3);
-    hotloader_watch_files("scripts", ".mscript", mscript, program_load_4);
-    hotloader_watch_files("scripts", ".mscript", mscript, program_load_5);
-    hotloader_watch_files("scripts", ".mscript", mscript, program_load_6);
+    struct directory dir;
+    directory_init(&dir, "scripts");
+    for (int i = 0; i < dir.num_files; i++) {
+        if (strcmp(dir.files[i].ext, ".mscript") != 0) {
+            continue;
+        }
+        program_load_stage_1(mscript, dir.files[i]);
+    }
+    directory_deinit(&dir);
 
-    uint64_t time0 = stm_now();
+    for (int i = 0; i < mscript->programs_array.length; i++) {
+        program_load_stage_2(mscript, mscript->programs_array.data[i]);
+    }
+
+    for (int i = 0; i < mscript->programs_array.length; i++) {
+        program_load_stage_3(mscript, mscript->programs_array.data[i]);
+    }
+
+    for (int i = 0; i < mscript->programs_array.length; i++) {
+        program_load_stage_4(mscript, mscript->programs_array.data[i]);
+    }
+
+    for (int i = 0; i < mscript->programs_array.length; i++) {
+        program_load_stage_5(mscript, mscript->programs_array.data[i]);
+    }
+
+    for (int i = 0; i < mscript->programs_array.length; i++) {
+        program_load_stage_6(mscript, mscript->programs_array.data[i]);
+    }
+
+    for (int i = 0; i < mscript->programs_array.length; i++) {
+        program_load_stage_7(mscript, mscript->programs_array.data[i]);
+    }
+
+    struct mscript_program *program = *(map_get(&mscript->programs_map, "testing.mscript"));
+
+    uint64_t time0, time1;
+    double time_sec;
+
+    time0 = stm_now();
+    vm_run(program);
+    time1 = stm_now();
+    time_sec = stm_ms(stm_diff(time1, time0));
+    m_logf("TIME: %f\n", (float)time_sec);
+
+    /*
     {
         struct mscript_program **cached_program = map_get(&mscript->map, "testing.mscript");
         assert(cached_program);
@@ -5448,9 +5949,7 @@ struct mscript *mscript_create(void) {
             vm_run(program);
         }
     }
-    uint64_t time1 = stm_now();
-    double time_sec = stm_ms(stm_diff(time1, time0));
-    m_logf("TIME: %f\n", (float)time_sec);
+    */
 
     return mscript;
 }
