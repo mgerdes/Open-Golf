@@ -63,7 +63,54 @@ void print_array(vec3[] array) {
     print("]\n");
 }
 
+enum ui_state {
+    UI_STATE_MAIN,
+    UI_STATE_SETTINGS
+}
+
 int run(int n) {
+    ui_state state = UI_STATE_MAIN;
+
+    if (state == UI_STATE_MAIN) {
+        state = UI_STATE_SETTINGS;
+        print("YESYSEYYEYES\n");
+    }
+    else if (state == UI_STATE_SETTINGS) {
+        print("NONONONOON\n");
+    }
+    else {
+        print("NONONONOON\n");
+    }
+
+    if (state == UI_STATE_MAIN) {
+        print("NONONONOON\n");
+    }
+    else if (state == UI_STATE_SETTINGS) {
+        print("YESYSEYYEYES\n");
+    }
+    else {
+        print("NONONONOON\n");
+    }
+
+    vec3[] t = NULL;
+    if (t) {
+        print("NONONONON\n");
+    }
+    else {
+        print("YESYESYEYYES\n");
+    }
+
+    t = [{ x = 1, y = 2, z = 3 }];
+    if (t) {
+        print("YESYESYEYYES\n");
+    }
+    else {
+        print("NONONONON\n");
+    }
+
+    int i = t;
+    print("i: ", i, "\n");
+
     vec3[] a = create_array(n);
     print_array(a);
     double_array(a);

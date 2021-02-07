@@ -159,6 +159,7 @@ static void pre_compiler_assignment_expr(struct mscript_program *program, struct
 static void pre_compiler_int_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
 static void pre_compiler_float_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
 static void pre_compiler_symbol_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
+static void pre_compiler_null_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
 static void pre_compiler_string_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
 static void pre_compiler_array_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
 static void pre_compiler_array_access_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
@@ -322,6 +323,7 @@ static void compile_assignment_expr(struct mscript_program *program, struct expr
 static void compile_int_expr(struct mscript_program *program, struct expr *expr);
 static void compile_float_expr(struct mscript_program *program, struct expr *expr);
 static void compile_symbol_expr(struct mscript_program *program, struct expr *expr);
+static void compile_null_expr(struct mscript_program *program, struct expr *expr);
 static void compile_string_expr(struct mscript_program *program, struct expr *expr);
 static void compile_array_expr(struct mscript_program *program, struct expr *expr);
 static void compile_object_expr(struct mscript_program *program, struct expr *expr);
@@ -362,6 +364,7 @@ enum expr_type {
     EXPR_INT,
     EXPR_FLOAT,
     EXPR_SYMBOL,
+    EXPR_NULL,
     EXPR_STRING,
     EXPR_ARRAY,
     EXPR_OBJECT,
@@ -551,6 +554,7 @@ static struct expr *new_cast_expr(struct allocator *allocator, struct token toke
 static struct expr *new_int_expr(struct allocator *allocator, struct token token, int int_value);
 static struct expr *new_float_expr(struct allocator *allocator, struct token token, float float_value);
 static struct expr *new_symbol_expr(struct allocator *allocator, struct token token, char *symbol);
+static struct expr *new_null_expr(struct allocator *allocator, struct token token);
 
 static struct stmt *new_if_stmt(struct allocator *allocator, struct token token, 
         struct array_expr_ptr conds, struct array_stmt_ptr stmts, struct stmt *else_stmt);
@@ -933,6 +937,16 @@ static struct expr *new_symbol_expr(struct allocator *allocator, struct token to
     return expr;
 }
 
+static struct expr *new_null_expr(struct allocator *allocator, struct token token) {
+    struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
+    expr->type = EXPR_NULL;
+    expr->token = token;
+
+    expr->result_type = NULL;
+    expr->lvalue = lvalue_invalid();
+    return expr;
+}
+
 static struct expr *new_string_expr(struct allocator *allocator, struct token token, char *string) {
     struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_STRING;
@@ -1210,6 +1224,9 @@ static struct expr *parse_primary_expr(struct mscript_program *program) {
     else if (tok.type == TOKEN_FLOAT) {
         expr = new_float_expr(&program->parser.allocator, tok, tok.float_value);
         eat(program);
+    }
+    else if (match_symbol(program, "NULL")) {
+        expr = new_null_expr(&program->parser.allocator, tok);
     }
     else if (tok.type == TOKEN_SYMBOL) {
         expr = new_symbol_expr(&program->parser.allocator, tok, tok.symbol);
@@ -2708,7 +2725,8 @@ static void pre_compiler_expr_with_cast(struct mscript_program *program, struct 
     }
 
     if (type->type == MSCRIPT_TYPE_INT) {
-        if ((*expr)->result_type->type == MSCRIPT_TYPE_FLOAT) {
+        enum mscript_type_type result_type_type = (*expr)->result_type->type;
+        if (result_type_type == MSCRIPT_TYPE_FLOAT || result_type_type == MSCRIPT_TYPE_ARRAY) {
             struct parsed_type parsed_type = parsed_type_create("int", false);
             *expr = new_cast_expr(&program->parser.allocator, (*expr)->token, parsed_type, *expr);
             (*expr)->result_type = program_get_type(program, parsed_type.string);
@@ -2809,6 +2827,12 @@ static void pre_compiler_expr_lvalue(struct mscript_program *program, struct exp
                 pre_compiler_expr(program, expr, NULL);
             }
             break;
+        case EXPR_NULL:
+            {
+                program_error(program, expr->token, "NULL cannot be an lvalue.");;
+                return;
+            }
+            break;
         case EXPR_STRING:
             {
                 program_error(program, expr->token, "A string cannot be an lvalue.");
@@ -2846,6 +2870,9 @@ static void pre_compiler_expr(struct mscript_program *program, struct expr *expr
             break;
         case EXPR_SYMBOL:
             pre_compiler_symbol_expr(program, expr, expected_type);
+            break;
+        case EXPR_NULL:
+            pre_compiler_null_expr(program, expr, expected_type);
             break;
         case EXPR_STRING:
             pre_compiler_string_expr(program, expr, expected_type);
@@ -3112,6 +3139,23 @@ static void pre_compiler_symbol_expr(struct mscript_program *program, struct exp
         expr->result_type = var->type;
         expr->lvalue = lvalue_local(var->offset);
     }
+}
+
+static void pre_compiler_null_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
+    assert(expr->type == EXPR_NULL);
+
+    if (!expected_type) {
+        program_error(program, expr->token, "Cannot determine type of NULL.");
+        return;
+    }
+
+    if (expected_type->type != MSCRIPT_TYPE_ARRAY) {
+        program_error(program, expr->token, "Can only use NULL as an array.");
+        return;
+    }
+
+    expr->result_type = expected_type; 
+    expr->lvalue = lvalue_invalid();
 }
 
 static void pre_compiler_string_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
@@ -3749,6 +3793,9 @@ static void compile_expr(struct mscript_program *program, struct expr *expr) {
         case EXPR_SYMBOL:
             compile_symbol_expr(program, expr);
             break;
+        case EXPR_NULL:
+            compile_null_expr(program, expr);
+            break;
         case EXPR_STRING:
             compile_string_expr(program, expr);
             break;
@@ -3777,6 +3824,7 @@ static void compile_lvalue_expr(struct mscript_program *program, struct expr *ex
         case EXPR_ARRAY:
         case EXPR_OBJECT:
         case EXPR_CAST:
+        case EXPR_NULL:
             assert(false);
             break;
         case EXPR_ARRAY_ACCESS:
@@ -4188,6 +4236,13 @@ static void compile_symbol_expr(struct mscript_program *program, struct expr *ex
     }
 }
 
+static void compile_null_expr(struct mscript_program *program, struct expr *expr) {
+    assert(expr->type == EXPR_NULL);
+
+    assert(expr->result_type->type == MSCRIPT_TYPE_ARRAY);
+    opcode_int(program, 0);
+}
+
 static void compile_string_expr(struct mscript_program *program, struct expr *expr) {
     assert(expr->type == EXPR_STRING);
 
@@ -4241,6 +4296,8 @@ static void compile_cast_expr(struct mscript_program *program, struct expr *expr
     if (cast_type->type == MSCRIPT_TYPE_INT && arg_type->type == MSCRIPT_TYPE_INT) {
     }
     else if (cast_type->type == MSCRIPT_TYPE_FLOAT && arg_type->type == MSCRIPT_TYPE_FLOAT) {
+    }
+    else if (cast_type->type == MSCRIPT_TYPE_INT && arg_type->type == MSCRIPT_TYPE_ARRAY) {
     }
     else if (cast_type->type == MSCRIPT_TYPE_FLOAT && arg_type->type == MSCRIPT_TYPE_INT) {
         opcode_i2f(program);
@@ -4542,7 +4599,7 @@ static void vm_run(struct mscript_program *program) {
             case OPCODE_ARRAY_CREATE:
                 {
                     int size = op.size;
-                    int array_idx = vm->arrays.length;
+                    int array_idx = vm->arrays.length + 1;
 
                     struct vm_array new_array;
                     new_array.member_size = size;
@@ -4558,7 +4615,7 @@ static void vm_run(struct mscript_program *program) {
                     int size = op.size;
 
                     int offset = *((int*) (stack + sp - 4));
-                    int array_idx = *((int*) (stack + sp - 8));
+                    int array_idx = (*((int*) (stack + sp - 8))) - 1;
                     sp -= 8;
 
                     char *data = stack + sp - size;
@@ -4582,7 +4639,7 @@ static void vm_run(struct mscript_program *program) {
                     int size = op.size;
 
                     int offset = *((int*) (stack + sp - 4));
-                    int array_idx = *((int*) (stack + sp - 8));
+                    int array_idx = (*((int*) (stack + sp - 8))) - 1;
                     sp -= 8;
 
                     struct vm_array *array = vm->arrays.data + array_idx;
@@ -4594,7 +4651,7 @@ static void vm_run(struct mscript_program *program) {
                 break;
             case OPCODE_ARRAY_LENGTH:
                 {
-                    int array_idx = *((int*) (stack + sp - 4));
+                    int array_idx = (*((int*) (stack + sp - 4))) - 1;
                     struct vm_array *array = vm->arrays.data + array_idx;
 
                     int len = array->array.length / array->member_size;
@@ -4981,6 +5038,9 @@ static void debug_log_expr(struct expr *expr) {
             break;
         case EXPR_SYMBOL:
             m_logf("%s", expr->symbol);
+            break;
+        case EXPR_NULL:
+            m_logf("NULL");
             break;
         case EXPR_STRING:
             m_logf("\"%s\"", expr->string);
