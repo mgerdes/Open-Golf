@@ -76,3 +76,8 @@ float vec3_distance(vec3 v0, vec3 v1) {
 float vec3_dot(vec3 a, vec3 b) {
     return a.x * b.x + a.y * b.y + a.z * b.z;
 }
+
+float vec3_length_sqrd(vec3 v) {
+    print("vec3_length_sqrd\n");
+    return vec3_dot(v, v);
+}

@@ -65,6 +65,10 @@ void print_array(vec3[] array) {
 }
 
 int run(int n) {
+    vec3 v = { x = 1, y = 2, z = 3 };
+    float f = vec3_length_sqrd(v);
+    print("length_sqrd: ", f, "\n");
+
     vec3[] a = create_array(n);
     print_array(a);
     double_array(a);

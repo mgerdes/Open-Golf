@@ -216,6 +216,7 @@ enum opcode_type {
     OPCODE_INTERMEDIATE_CALL,
     OPCODE_INTERMEDIATE_JMP,
     OPCODE_INTERMEDIATE_JF,
+    OPCODE_INTERMEDIATE_STRING,
 };
 
 struct opcode {
@@ -235,6 +236,8 @@ struct opcode {
         struct {
             int label, args_size;
         } call;
+
+        char *intermediate_string;
     };
 };
 array_t(struct opcode, array_opcode)
@@ -287,18 +290,17 @@ static void opcode_intermediate_func(struct mscript_program *program, char *str)
 static void opcode_intermediate_call(struct mscript_program *program, char *str);
 static void opcode_intermediate_jmp(struct mscript_program *program, int label);
 static void opcode_intermediate_jf(struct mscript_program *program, int label);
+static void opcode_intermediate_string(struct mscript_program *program, char *string);
 
 struct compiler {
     int cur_label;
     struct function_decl *cur_function_decl;
-    struct array_char strings;
 };
 
 static void compiler_init(struct mscript_program *program);
 static void compiler_deinit(struct mscript_program *program);
 static void compiler_push_opcode(struct mscript_program *program, struct opcode op);
 static int compiler_new_label(struct mscript_program *program);
-static int compiler_add_string(struct mscript_program *program, char *string);
 
 static void compile_stmt(struct mscript_program *program, struct stmt *stmt);
 static void compile_if_stmt(struct mscript_program *program, struct stmt *stmt);
@@ -659,13 +661,13 @@ struct mscript_program {
     struct mscript *mscript;
 
     map_function_decl_ptr_t function_decl_map;
-    map_int_t used_functions_map;
     map_mscript_type_ptr_t type_map;
     map_enum_value_t enum_map;
 
     struct array_stmt_ptr global_stmts;
     struct array_program_ptr imported_programs;
     struct array_opcode opcodes;
+    struct array_char strings;
 
     struct parser parser;
     struct pre_compiler pre_compiler;
@@ -699,6 +701,7 @@ static struct function_decl *program_get_function_decl(struct mscript_program *p
 static void program_add_type(struct mscript_program *program, char *name, struct mscript_type *type);
 static struct mscript_type *program_get_type(struct mscript_program *program, const char *name);
 static void program_add_enum_value(struct mscript_program *program, char *name, struct enum_value value);
+static int program_add_string(struct mscript_program *program, char *string);
 static void program_load_stage_1(struct mscript *mscript, struct file file);
 static void program_load_stage_2(struct mscript *mscript, struct mscript_program *program);
 static void program_load_stage_3(struct mscript *mscript, struct mscript_program *program);
@@ -3000,7 +3003,6 @@ static void pre_compiler_call_expr(struct mscript_program *program, struct expr 
         if (program->error) return;
     }
 
-    map_set(&program->used_functions_map, decl->name, 1);
     expr->result_type = decl->return_type;
     expr->lvalue = lvalue_invalid();
 }
@@ -3534,11 +3536,17 @@ static void opcode_intermediate_jf(struct mscript_program *program, int label) {
     compiler_push_opcode(program, op);
 }
 
+static void opcode_intermediate_string(struct mscript_program *program, char *string) {
+    struct opcode op;
+    op.type = OPCODE_INTERMEDIATE_STRING;
+    op.intermediate_string = string;
+    compiler_push_opcode(program, op);
+}
+
 static void compiler_init(struct mscript_program *program) {
     struct compiler *compiler = &program->compiler;
     compiler->cur_label = 0;
     compiler->cur_function_decl = NULL;
-    array_init(&compiler->strings);
 }
 
 static void compiler_deinit(struct mscript_program *program) {
@@ -3552,14 +3560,6 @@ static void compiler_push_opcode(struct mscript_program *program, struct opcode 
 static int compiler_new_label(struct mscript_program *program) {
     struct compiler *compiler = &program->compiler;
     return compiler->cur_label++;
-}
-
-static int compiler_add_string(struct mscript_program *program, char *string) {
-    struct compiler *compiler = &program->compiler;
-
-    int len = (int) strlen(string);
-    array_pusharr(&compiler->strings, string, len + 1);
-    return compiler->strings.length - len - 1;
 }
 
 static void compile_stmt(struct mscript_program *program, struct stmt *stmt) {
@@ -4191,8 +4191,7 @@ static void compile_symbol_expr(struct mscript_program *program, struct expr *ex
 static void compile_string_expr(struct mscript_program *program, struct expr *expr) {
     assert(expr->type == EXPR_STRING);
 
-    int str_pos = compiler_add_string(program, expr->string);
-    opcode_int(program, str_pos);
+    opcode_intermediate_string(program, expr->string);
 }
 
 static void compile_array_expr(struct mscript_program *program, struct expr *expr) {
@@ -4617,7 +4616,7 @@ static void vm_run(struct mscript_program *program) {
                 {
                     int str_pos = *((int*) (stack + sp - 4));
                     sp -= 4;
-                    char *str = compiler->strings.data + str_pos;
+                    char *str = program->strings.data + str_pos;
                     m_logf("%s", str);
                 }
                 break;
@@ -4631,6 +4630,7 @@ static void vm_run(struct mscript_program *program) {
             case OPCODE_INTERMEDIATE_CALL:
             case OPCODE_INTERMEDIATE_JF:
             case OPCODE_INTERMEDIATE_JMP:
+            case OPCODE_INTERMEDIATE_STRING:
                 assert(false);
                 break;
         }
@@ -4651,13 +4651,13 @@ static void program_init(struct mscript_program *prog, struct mscript *mscript, 
     prog->mscript = mscript;
 
     map_init(&prog->function_decl_map);
-    map_init(&prog->used_functions_map);
     map_init(&prog->type_map);
     map_init(&prog->enum_map);
 
     array_init(&prog->global_stmts);
     array_init(&prog->imported_programs);
     array_init(&prog->opcodes);
+    array_init(&prog->strings);
 
     parser_init(&prog->parser, file.data);
     pre_compiler_init(prog);
@@ -4768,6 +4768,12 @@ static struct mscript_type *program_get_type(struct mscript_program *program, co
 
 static void program_add_enum_value(struct mscript_program *program, char *name, struct enum_value value) {
     map_set(&program->enum_map, name, value);
+}
+
+static int program_add_string(struct mscript_program *program, char *string) {
+    int len = strlen(string);
+    array_pusharr(&program->strings, string, len + 1);
+    return program->strings.length - len - 1;
 }
 
 static void debug_log_token(struct token token) {
@@ -5163,19 +5169,22 @@ static void debug_log_opcodes(struct opcode *opcodes, int num_opcodes) {
                 m_logf("DEBUG_PRINT_SHORT_STRING: %s", op.string);
                 break;
             case OPCODE_INTERMEDIATE_LABEL:
-                m_logf("LABEL %d", op.label);
+                m_logf("INTERMEDIATE_LABEL %d", op.label);
                 break;
             case OPCODE_INTERMEDIATE_FUNC:
-                m_logf("FUNC %s", op.string);
+                m_logf("INTERMEDIATE_FUNC %s", op.string);
                 break;
             case OPCODE_INTERMEDIATE_CALL:
-                m_logf("CALL %s", op.string);
+                m_logf("INTERMEDIATE_CALL %s", op.string);
                 break;
             case OPCODE_INTERMEDIATE_JF:
-                m_logf("JF %d", op.label);
+                m_logf("INTERMEDIATE_JF %d", op.label);
                 break;
             case OPCODE_INTERMEDIATE_JMP:
-                m_logf("JMP %d", op.label);
+                m_logf("INTERMEDIATE_JMP %d", op.label);
+                break;
+            case OPCODE_INTERMEDIATE_STRING:
+                m_logf("INTERMEDIATE_STRING %s", op.intermediate_string);
                 break;
         }
         m_logf("\n");
@@ -5592,53 +5601,12 @@ static void program_load_stage_7(struct mscript *mscript, struct mscript_program
 
     {
         const char *key;
-        map_iter_t iter = map_iter(&program->used_functions_map);
-        while ((key = map_next(&program->used_functions_map, &iter))) {
+        map_iter_t iter = map_iter(&program->function_decl_map);
+        while ((key = map_next(&program->function_decl_map, &iter))) {
             struct function_decl *decl = program_get_function_decl(program, key);
             assert(decl);
 
             array_pusharr(&intermediate_opcodes, decl->opcodes.data, decl->opcodes.length);
-        }
-    }
-
-    for (int i = 0; i < program->global_stmts.length; i++) {
-        struct stmt *stmt = program->global_stmts.data[i];
-        switch (stmt->type) {
-            case STMT_IMPORT:
-                {
-                }
-                break;
-            case STMT_STRUCT_DECLARATION:
-                {
-                }
-                break;
-            case STMT_ENUM_DECLARATION:
-                {
-                }
-                break;
-            case STMT_FUNCTION_DECLARATION:
-                {
-                    const char *name = stmt->function_declaration.name;
-                    if (!map_get(&program->used_functions_map, name)) {
-                        struct function_decl *decl = program_get_function_decl(program, stmt->function_declaration.name);
-                        assert(decl);
-
-                        array_pusharr(&intermediate_opcodes, decl->opcodes.data, decl->opcodes.length);
-                    }
-                }
-                break;
-            case STMT_IMPORT_FUNCTION:
-                {
-                }
-                break;
-            case STMT_IF:
-            case STMT_RETURN:
-            case STMT_BLOCK:
-            case STMT_EXPR:
-            case STMT_FOR:
-            case STMT_VARIABLE_DECLARATION:
-                assert(false);
-                break;
         }
     }
 
@@ -5747,6 +5715,16 @@ static void program_load_stage_7(struct mscript *mscript, struct mscript_program
                     struct opcode op2;
                     op2.type = OPCODE_JF;
                     op2.label = labels.data[op.label];
+                    array_push(&program->opcodes, op2);
+                }
+                break;
+            case OPCODE_INTERMEDIATE_STRING:
+                {
+                    int pos = program_add_string(program, op.intermediate_string);
+
+                    struct opcode op2;
+                    op2.type = OPCODE_INT;
+                    op2.int_val = pos;
                     array_push(&program->opcodes, op2);
                 }
                 break;
