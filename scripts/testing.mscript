@@ -30,8 +30,7 @@ vec3[] create_array(int n) {
     vec3[] a = [];
     int i;
     for (i = 0; i < n; i++) {
-        a[i] = { x = i + 1, y = i + 1, z = i + 1 };
-        print(a[i], ", ", i + 1, "\n");
+        a[i] = { x = 3 * i + 0, y = 3 * i + 1, z = 3 * i + 2 };
     }
     return a;
 }
@@ -58,7 +57,7 @@ void print_array(vec3[] array) {
     for (i = 0; i < array.length; i++) {
         print(array[i]);
         if (i != array.length - 1) {
-            print(", ", zero(), ", ");
+            print(", ");
         }
     }
     print("]\n");
@@ -69,11 +68,5 @@ int run(int n) {
     print_array(a);
     double_array(a);
     vec3 s = sum_array(a);
-    return s.x;
-
-    //vec3[] a = create_array(1000);
-    //double_array(a);
-    //vec3 s = sum_array(a);
-    //print_array(a);
-    //return n;
+    return s.x + s.y + s.z;
 }
