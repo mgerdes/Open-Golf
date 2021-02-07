@@ -4296,6 +4296,10 @@ static void vm_run(struct mscript_program *program) {
     fp = sp;
     ip = *(map_get(&program->func_label_map, "run"));
 
+    uint64_t time0, time1;
+    double time_sec;
+    time0 = stm_now();
+
     while (true) {
         if (ip == -1) {
             break;
@@ -4427,7 +4431,7 @@ static void vm_run(struct mscript_program *program) {
             case OPCODE_I2F:
                 {
                     int vi = *((int*) (stack + sp - 4));
-                    float vf = (float) vf;
+                    float vf = (float) vi;
                     memcpy(stack + sp - 4, &vf, 4);
                 }
                 break;
@@ -4633,6 +4637,10 @@ static void vm_run(struct mscript_program *program) {
 
         ip++;
     }
+
+    time1 = stm_now();
+    time_sec = stm_ms(stm_diff(time1, time0));
+    m_logf("TIME: %f\n", (float)time_sec);
 
     m_logf("%d\n", *((int*) stack));
 }
@@ -5830,14 +5838,8 @@ struct mscript *mscript_create(void) {
 
     struct mscript_program *program = *(map_get(&mscript->programs_map, "testing.mscript"));
 
-    uint64_t time0, time1;
-    double time_sec;
 
-    time0 = stm_now();
     vm_run(program);
-    time1 = stm_now();
-    time_sec = stm_ms(stm_diff(time1, time0));
-    m_logf("TIME: %f\n", (float)time_sec);
 
     return mscript;
 }
