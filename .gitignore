@@ -46,3 +46,7 @@ minigolf.data
 minigolf.js
 minigolf.wasm
 minigolf.worker.js
+
+*.d
+
+*.o

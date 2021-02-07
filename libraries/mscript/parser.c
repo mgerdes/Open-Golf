@@ -2691,7 +2691,7 @@ static void pre_compiler_function_declaration_2(struct mscript_program *program,
     pre_compiler_stmt(program, stmt->function_declaration.body, &all_paths_return);
     if (program->error) goto cleanup;
 
-    if (!all_paths_return) { 
+    if (!all_paths_return && (decl->return_type->type != MSCRIPT_TYPE_VOID)) { 
         program_error(program, stmt->function_declaration.token, "Not all paths return from function.");
         goto cleanup;
     }
@@ -3694,6 +3694,9 @@ static void compile_function_declaration_stmt(struct mscript_program *program, s
     opcode_intermediate_func(program, decl->name);
     opcode_push(program, decl->block_size);
     compile_stmt(program, stmt->function_declaration.body); 
+    if (decl->return_type->type == MSCRIPT_TYPE_VOID) {
+        opcode_return(program, 0);
+    }
 
     for (int i = 0; i < decl->opcodes.length; i++) {
         struct opcode op = decl->opcodes.data[i];
@@ -4671,7 +4674,7 @@ static void vm_run(struct mscript_program *program) {
                 {
                     int *v = (int*) (stack + sp - 4);
                     sp -= 4;
-                    m_logf("%d\n", *v);
+                    m_logf("%d", *v);
                 }
                 break;
             case OPCODE_DEBUG_PRINT_FLOAT:
