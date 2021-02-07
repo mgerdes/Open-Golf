@@ -350,9 +350,6 @@ struct vm {
 
 static void vm_init(struct mscript_program *program);
 static void vm_run(struct mscript_program *program);
-static void vm_push(struct mscript_program *program, char *v, int n);
-static void vm_push_val(struct mscript_program *program, char v, int n);
-static char *vm_pop(struct mscript_program *program, int n);
 
 enum expr_type {
     EXPR_UNARY_OP,
@@ -1269,7 +1266,7 @@ static struct expr *parse_call_expr(struct mscript_program *program) {
             }
         }
 
-        if (expr->type == EXPR_SYMBOL && (strcmp(expr->symbol, "debug_print") == 0)) {
+        if (expr->type == EXPR_SYMBOL && (strcmp(expr->symbol, "print") == 0)) {
             expr = new_debug_print_expr(&program->parser.allocator, token, args);
         }
         else {
@@ -4272,27 +4269,32 @@ static void vm_init(struct mscript_program *program) {
     array_init(&vm->strings);
 }
 
+#define VM_BINARY_OP(op, arg_type, result_type)\
+    assert(sp >= 8);\
+    arg_type v1 = *((arg_type*) (stack + sp - 4));\
+    arg_type v0 = *((arg_type*) (stack + sp - 8));\
+    result_type v = (result_type) (v0 op v1);\
+    memcpy(stack + sp - 8, &v, 4);\
+    sp -= 4;
+
 static void vm_run(struct mscript_program *program) {
     struct compiler *compiler = &program->compiler;
     struct vm *vm = &program->vm;
-
-    int start_ip = *(map_get(&program->func_label_map, "run"));
-
     struct opcode *opcodes = program->opcodes.data;
 
     char *stack = malloc(sizeof(char)*8096);
+    int fp = 0;
     int sp = 0;
+    int ip = 0;
 
-    *((int*) (stack + sp)) = (int) (5);
-    sp += 4;
+    *((int*) (stack + sp + 0)) = (int) (5);
+    *((int*) (stack + sp + 4)) = (int) (0);
+    *((int*) (stack + sp + 8)) = (int) (-2);
+    *((int*) (stack + sp + 12)) = (int) (0);
 
-    *((int*) (stack + sp)) = (int) (0);
-    *((int*) (stack + sp + 4)) = (int) (-2);
-    *((int*) (stack + sp + 8)) = (int) (0);
-    sp += 12;
-
-    int ip = start_ip;
-    int fp = sp;
+    sp += 16;
+    fp = sp;
+    ip = *(map_get(&program->func_label_map, "run"));
 
     while (true) {
         if (ip == -1) {
@@ -4303,210 +4305,130 @@ static void vm_run(struct mscript_program *program) {
         switch (op.type) {
             case OPCODE_IADD:
                 {
-                    assert(sp >= 8);
-                    int *v1 = (int*) (stack + sp - 4);
-                    int *v0 = (int*) (stack + sp - 8);
-                    *((int*) (stack + sp - 8)) = (*v0 + *v1);
-                    sp -= 4;
+                    VM_BINARY_OP(+, int, int);
                 }
                 break;
             case OPCODE_FADD:
                 {
-                    assert(sp >= 8);
-                    float *v1 = (float*) (stack + sp - 4);
-                    float *v0 = (float*) (stack + sp - 8);
-                    *((float*) (stack + sp - 8)) = (*v0 + *v1);
-                    sp -= 4;
+                    VM_BINARY_OP(+, float, float);
                 }
                 break;
             case OPCODE_ISUB:
                 {
-                    assert(sp >= 8);
-                    int *v1 = (int*) (stack + sp - 4);
-                    int *v0 = (int*) (stack + sp - 8);
-                    *((int*) (stack + sp - 8)) = (*v0 - *v1);
-                    sp -= 4;
+                    VM_BINARY_OP(-, int, int);
                 }
                 break;
             case OPCODE_FSUB:
                 {
-                    assert(sp >= 8);
-                    float *v1 = (float*) (stack + sp - 4);
-                    float *v0 = (float*) (stack + sp - 8);
-                    *((float*) (stack + sp - 8)) = (*v0 - *v1);
-                    sp -= 4;
+                    VM_BINARY_OP(-, float, float);
                 }
                 break;
             case OPCODE_IMUL:
                 {
-                    assert(sp >= 8);
-                    int *v1 = (int*) (stack + sp - 4);
-                    int *v0 = (int*) (stack + sp - 8);
-                    *((int*) (stack + sp - 8)) = ((*v0) * (*v1));
-                    sp -= 4;
+                    VM_BINARY_OP(*, int, int);
                 }
                 break;
             case OPCODE_FMUL:
                 {
-                    assert(sp >= 8);
-                    float *v1 = (float*) (stack + sp - 4);
-                    float *v0 = (float*) (stack + sp - 8);
-                    *((float*) (stack + sp - 8)) = ((*v0) * (*v1));
-                    sp -= 4;
+                    VM_BINARY_OP(*, float, float);
                 }
                 break;
             case OPCODE_IDIV:
                 {
-                    assert(sp >= 8);
-                    int *v1 = (int*) (stack + sp - 4);
-                    int *v0 = (int*) (stack + sp - 8);
-                    *((int*) (stack + sp - 8)) = (*v0 / *v1);
-                    sp -= 4;
+                    VM_BINARY_OP(/, int, int);
                 }
                 break;
             case OPCODE_FDIV:
                 {
-                    assert(sp >= 8);
-                    float *v1 = (float*) (stack + sp - 4);
-                    float *v0 = (float*) (stack + sp - 8);
-                    *((float*) (stack + sp - 8)) = (*v0 / *v1);
-                    sp -= 4;
+                    VM_BINARY_OP(/, float, float);
                 }
                 break;
             case OPCODE_ILTE:
                 {
-                    assert(sp >= 8);
-                    int *v1 = (int*) (stack + sp - 4);
-                    int *v0 = (int*) (stack + sp - 8);
-                    *((int*) (stack + sp - 8)) = (*v0 <= *v1);
-                    sp -= 4;
+                    VM_BINARY_OP(<=, int, int);
                 }
                 break;
             case OPCODE_FLTE:
                 {
-                    assert(sp >= 8);
-                    float *v1 = (float*) (stack + sp - 4);
-                    float *v0 = (float*) (stack + sp - 8);
-                    *((int*) (stack + sp - 8)) = (*v0 <= *v1);
-                    sp -= 4;
+                    VM_BINARY_OP(<=, float, int);
                 }
                 break;
             case OPCODE_ILT:
                 {
-                    assert(sp >= 8);
-                    int *v1 = (int*) (stack + sp - 4);
-                    int *v0 = (int*) (stack + sp - 8);
-                    *((int*) (stack + sp - 8)) = (*v0 < *v1);
-                    sp -= 4;
+                    VM_BINARY_OP(<, int, int);
                 }
                 break;
             case OPCODE_FLT:
                 {
-                    assert(sp >= 8);
-                    float *v1 = (float*) (stack + sp - 4);
-                    float *v0 = (float*) (stack + sp - 8);
-                    *((int*) (stack + sp - 8)) = (*v0 < *v1);
-                    sp -= 4;
+                    VM_BINARY_OP(<, float, int);
                 }
                 break;
             case OPCODE_IGTE:
                 {
-                    assert(sp >= 8);
-                    int *v1 = (int*) (stack + sp - 4);
-                    int *v0 = (int*) (stack + sp - 8);
-                    *((int*) (stack + sp - 8)) = (*v0 >= *v1);
-                    sp -= 4;
+                    VM_BINARY_OP(>=, int, int);
                 }
                 break;
             case OPCODE_FGTE:
                 {
-                    assert(sp >= 8);
-                    float *v1 = (float*) (stack + sp - 4);
-                    float *v0 = (float*) (stack + sp - 8);
-                    *((int*) (stack + sp - 8)) = (*v0 >= *v1);
-                    sp -= 4;
+                    VM_BINARY_OP(>=, float, int);
                 }
                 break;
             case OPCODE_IGT:
                 {
-                    assert(sp >= 8);
-                    int *v1 = (int*) (stack + sp - 4);
-                    int *v0 = (int*) (stack + sp - 8);
-                    *((int*) (stack + sp - 8)) = (*v0 > *v1);
-                    sp -= 4;
+                    VM_BINARY_OP(>, int, int);
                 }
                 break;
             case OPCODE_FGT:
                 {
-                    assert(sp >= 8);
-                    float *v1 = (float*) (stack + sp - 4);
-                    float *v0 = (float*) (stack + sp - 8);
-                    *((int*) (stack + sp - 8)) = (*v0 > *v1);
-                    sp -= 4;
+                    VM_BINARY_OP(>, float, int);
                 }
                 break;
             case OPCODE_IEQ:
                 {
-                    assert(sp >= 8);
-                    int *v1 = (int*) (stack + sp - 4);
-                    int *v0 = (int*) (stack + sp - 8);
-                    *((int*) (stack + sp - 8)) = (*v0 == *v1);
-                    sp -= 4;
+                    VM_BINARY_OP(==, int, int);
                 }
                 break;
             case OPCODE_FEQ:
                 {
-                    assert(sp >= 8);
-                    float *v1 = (float*) (stack + sp - 4);
-                    float *v0 = (float*) (stack + sp - 8);
-                    *((int*) (stack + sp - 8)) = (*v0 == *v1);
-                    sp -= 4;
+                    VM_BINARY_OP(==, float, int);
                 }
                 break;
             case OPCODE_INEQ:
                 {
-                    assert(sp >= 8);
-                    int *v1 = (int*) (stack + sp - 4);
-                    int *v0 = (int*) (stack + sp - 8);
-                    *((int*) (stack + sp - 8)) = (*v0 != *v1);
-                    sp -= 4;
+                    VM_BINARY_OP(!=, int, int);
                 }
                 break;
             case OPCODE_FNEQ:
                 {
-                    assert(sp >= 8);
-                    float *v1 = (float*) (stack + sp - 4);
-                    float *v0 = (float*) (stack + sp - 8);
-                    *((int*) (stack + sp - 8)) = (*v0 != *v1);
-                    sp -= 4;
+                    VM_BINARY_OP(!=, float, int);
                 }
                 break;
             case OPCODE_IINC:
                 {
-                    assert(sp >= 4);
-                    int *v0 = (int*) (stack + sp - 4);
-                    *((int*) (stack + sp - 4)) = (*v0 + 1);
+                    int v = *((int*) (stack + sp - 4));
+                    v = v + 1;
+                    memcpy(stack + sp - 4, &v, 4);
                 }
                 break;
             case OPCODE_FINC:
                 {
-                    assert(sp >= 4);
-                    float *v0 = (float*) (stack + sp - 4);
-                    *((float*) (stack + sp - 4)) = (*v0 + 1.0);
+                    float v = *((float*) (stack + sp - 4));
+                    v = v + 1.0f;
+                    memcpy(stack + sp - 4, &v, 4);
                 }
                 break;
             case OPCODE_F2I:
                 {
-                    assert(sp >= 4);
-                    float *v0 = (float*) (stack + sp - 4);
-                    *((int*) (stack + sp - 4)) = (int) (*v0);
+                    float vf = *((float*) (stack + sp - 4));
+                    int vi = (int) vf;
+                    memcpy(stack + sp - 4, &vi, 4);
                 }
                 break;
             case OPCODE_I2F:
                 {
-                    assert(sp >= 4);
-                    int *v0 = (int*) (stack + sp - 4);
-                    *((float*) (stack + sp - 4)) = (float) (*v0);
+                    int vi = *((int*) (stack + sp - 4));
+                    float vf = (float) vf;
+                    memcpy(stack + sp - 4, &vf, 4);
                 }
                 break;
             case OPCODE_COPY:
@@ -4530,7 +4452,7 @@ static void vm_run(struct mscript_program *program) {
                 break;
             case OPCODE_FLOAT:
                 {
-                    *((float*) (stack + sp)) = op.int_val;
+                    *((float*) (stack + sp)) = op.float_val;
                     sp += 4;
                 }
                 break;
@@ -4561,9 +4483,9 @@ static void vm_run(struct mscript_program *program) {
                 {
                     assert(sp >= 4);
 
-                    int *v = (int*) (stack + sp - 4);
+                    int v = *((int*) (stack + sp - 4));
                     sp -= 4;
-                    if (!(*v)) {
+                    if (!v) {
                         ip = op.label - 1;
                         assert(ip >= 0);
                     }
@@ -4577,9 +4499,12 @@ static void vm_run(struct mscript_program *program) {
                 break;
             case OPCODE_CALL:
                 {
-                    *((int*) (stack + sp)) = fp;
-                    *((int*) (stack + sp + 4)) = ip;
-                    *((int*) (stack + sp + 8)) = sp - op.call.args_size;
+                    int ret_sp = sp - op.call.args_size;
+
+                    memcpy(stack + sp + 0, &fp, 4);
+                    memcpy(stack + sp + 4, &ip, 4);
+                    memcpy(stack + sp + 8, &ret_sp, 4);
+
                     sp += 12;
                     ip = op.call.label - 1;
                     fp = sp;
@@ -4618,7 +4543,7 @@ static void vm_run(struct mscript_program *program) {
                     array_init(&new_array.array);
                     array_push(&vm->arrays, new_array);
 
-                    *((int*) (stack + sp)) = array_idx;
+                    memcpy(stack + sp, &array_idx, 4);
                     sp += 4;
                 }
                 break;
@@ -4626,14 +4551,14 @@ static void vm_run(struct mscript_program *program) {
                 {
                     int size = op.size;
 
-                    int *offset = (int*) (stack + sp - 4);
-                    int *array_idx = (int*) (stack + sp - 8);
+                    int offset = *((int*) (stack + sp - 4));
+                    int array_idx = *((int*) (stack + sp - 8));
                     sp -= 8;
 
                     char *data = stack + sp - size;
-                    struct vm_array *array = vm->arrays.data + (*array_idx);
+                    struct vm_array *array = vm->arrays.data + array_idx;
 
-                    int reserve_size = (*offset) + size;
+                    int reserve_size = offset + size;
                     if ((reserve_size % array->member_size) != 0) {
                         reserve_size = array->member_size * ((int) (reserve_size / array->member_size) + 1);
                     }
@@ -4643,52 +4568,52 @@ static void vm_run(struct mscript_program *program) {
                         array->array.length = reserve_size;
                     }
                     
-                    memmove(array->array.data + (*offset), data, size);
+                    memmove(array->array.data + offset, data, size);
                 }
                 break;
             case OPCODE_ARRAY_LOAD:
                 {
                     int size = op.size;
 
-                    int *offset = (int*) (stack + sp - 4);
-                    int *array_idx = (int*) (stack + sp - 8);
+                    int offset = *((int*) (stack + sp - 4));
+                    int array_idx = *((int*) (stack + sp - 8));
                     sp -= 8;
 
-                    struct vm_array *array = vm->arrays.data + (*array_idx);
+                    struct vm_array *array = vm->arrays.data + array_idx;
 
-                    assert((*offset) + size <= array->array.length);
-                    memmove(stack + sp, array->array.data + (*offset), size);
+                    assert(offset + size <= array->array.length);
+                    memmove(stack + sp, array->array.data + offset, size);
                     sp += size;
                 }
                 break;
             case OPCODE_ARRAY_LENGTH:
                 {
-                    int *array_idx = (int*) (stack + sp - 4);
-                    struct vm_array *array = vm->arrays.data + (*array_idx);
+                    int array_idx = *((int*) (stack + sp - 4));
+                    struct vm_array *array = vm->arrays.data + array_idx;
 
                     int len = array->array.length / array->member_size;
-                    *((int*) (stack + sp - 4)) = len;
+                    memcpy(stack + sp - 4, &len, 4);
                 }
                 break;
             case OPCODE_DEBUG_PRINT_INT:
                 {
-                    int *v = (int*) (stack + sp - 4);
+                    int v = *((int*) (stack + sp - 4));
                     sp -= 4;
-                    m_logf("%d", *v);
+                    m_logf("%d", v);
                 }
                 break;
             case OPCODE_DEBUG_PRINT_FLOAT:
                 {
-                    float *v = (float*) (stack + sp - 4);
+                    float v = *((float*) (stack + sp - 4));
                     sp -= 4;
-                    m_logf("%f", *v);
+                    m_logf("%f", v);
                 }
                 break;
             case OPCODE_DEBUG_PRINT_STRING:
                 {
-                    int *str_pos = (int*) (stack + sp - 4);
+                    int str_pos = *((int*) (stack + sp - 4));
                     sp -= 4;
-                    char *str = compiler->strings.data + (*str_pos);
+                    char *str = compiler->strings.data + str_pos;
                     m_logf("%s", str);
                 }
                 break;
@@ -4704,35 +4629,12 @@ static void vm_run(struct mscript_program *program) {
             case OPCODE_INTERMEDIATE_JMP:
                 assert(false);
                 break;
-
         }
 
         ip++;
     }
 
-    //m_logf("%d\n", sp);
     m_logf("%d\n", *((int*) stack));
-}
-
-static void vm_push(struct mscript_program *program, char *v, int n) {
-    struct vm *vm = &program->vm;
-    array_pusharr(&vm->stack, v, n);
-}
-
-static void vm_push_val(struct mscript_program *program, char v, int n) {
-    struct vm *vm = &program->vm;
-    for (int i = 0; i < n; i++) {
-        array_push(&vm->stack, v);
-    }
-}
-
-static char *vm_pop(struct mscript_program *program, int n) {
-    struct vm *vm = &program->vm;
-    if (vm->stack.length < n) {
-        assert(false);
-    }
-    vm->stack.length -= n;
-    return vm->stack.data + vm->stack.length;
 }
 
 static void program_init(struct mscript_program *prog, struct mscript *mscript, struct file file) {
@@ -5936,23 +5838,6 @@ struct mscript *mscript_create(void) {
     time1 = stm_now();
     time_sec = stm_ms(stm_diff(time1, time0));
     m_logf("TIME: %f\n", (float)time_sec);
-
-    /*
-    {
-        struct mscript_program **cached_program = map_get(&mscript->map, "testing.mscript");
-        assert(cached_program);
-
-        struct mscript_program *program = *cached_program;
-        if (!program->error) {
-            struct function_decl *decl = program_get_function_decl(program, "test");
-            assert(decl);
-
-            struct stack_frame frame = stack_frame_create(0, 0, decl);
-            array_push(&(program->vm.stack_frames), frame);
-            vm_run(program);
-        }
-    }
-    */
 
     return mscript;
 }

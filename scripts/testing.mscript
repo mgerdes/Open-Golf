@@ -29,8 +29,9 @@ int two() {
 vec3[] create_array(int n) {
     vec3[] a = [];
     int i;
-    for (i = 0; i <= n; i++) {
-        a[i] = { x = 0, y = 0, z = 0};
+    for (i = 0; i < n; i++) {
+        a[i] = { x = i + 1, y = i + 1, z = i + 1 };
+        print(a[i], ", ", i + 1, "\n");
     }
     return a;
 }
@@ -44,21 +45,35 @@ vec3 sum_array(vec3[] array) {
     return sum;
 }
 
-void print_array(vec3[] array) {
-    debug_print("[");
+void double_array(vec3[] array) {
     int i;
     for (i = 0; i < array.length; i++) {
-        debug_print(array[i]);
+        array[i] = vec3_scale(array[i], 2.0);
+    }
+}
+
+void print_array(vec3[] array) {
+    print("[");
+    int i;
+    for (i = 0; i < array.length; i++) {
+        print(array[i]);
         if (i != array.length - 1) {
-            debug_print(", ");
+            print(", ", zero(), ", ");
         }
     }
-    debug_print("]\n");
+    print("]\n");
 }
 
 int run(int n) {
-    vec3[] a = create_array(10);
-    vec3 s = sum_array(a);
+    vec3[] a = create_array(n);
     print_array(a);
-    return fib(10);
+    double_array(a);
+    vec3 s = sum_array(a);
+    return s.x;
+
+    //vec3[] a = create_array(1000);
+    //double_array(a);
+    //vec3 s = sum_array(a);
+    //print_array(a);
+    //return n;
 }
