@@ -63,15 +63,39 @@ void print_array(vec3[] array) {
     print("]\n");
 }
 
-enum ui_state {
-    UI_STATE_MAIN,
-    UI_STATE_SETTINGS
-}
-
 int run(int n) {
-    vec3 v = { x = 1, y = 2, z = 3 };
-    float f = vec3_length_sqrd(v);
-    print("length_sqrd: ", f, "\n");
+    {
+        ui_state state = UI_STATE_MAIN;
+        print_ui_state(state);
+        print("\n");
+        if (state == UI_STATE_MAIN) {
+            state = UI_STATE_SETTINGS;
+        }
+        print_ui_state(state);
+        print("\n");
+        if (state == UI_STATE_SETTINGS) {
+            state = UI_STATE_MAIN;
+        }
+        print_ui_state(state);
+        print("\n");
+    }
+
+    {
+        int[] testing = NULL;
+
+        if (!testing) {
+            print("YES NULL\n");
+        }
+        else {
+            print("NO NULL\n");
+        }
+    }
+
+    {
+        vec3 v = { x = 1, y = 2, z = 3 };
+        float f = vec3_length_sqrd(v);
+        print("length_sqrd: ", f, "\n");
+    }
 
     vec3[] a = create_array(n);
     print_array(a);

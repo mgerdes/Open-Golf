@@ -1,3 +1,20 @@
+enum ui_state {
+    UI_STATE_MAIN,
+    UI_STATE_SETTINGS
+}
+
+void print_ui_state(ui_state state) {
+    if (state == UI_STATE_MAIN) {
+        print("UI_STATE_MAIN");
+    }
+    else if (state == UI_STATE_SETTINGS) {
+        print("UI_STATE_SETTINGS");
+    }
+    else {
+        print("UI_STATE_INVALID");
+    }
+}
+
 int fib2(int n) {
     if (n <= 0) {
         return 0;

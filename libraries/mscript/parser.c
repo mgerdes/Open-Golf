@@ -189,6 +189,7 @@ enum opcode_type {
     OPCODE_FNEQ,
     OPCODE_IINC,
     OPCODE_FINC,
+    OPCODE_NOT,
     OPCODE_F2I,
     OPCODE_I2F,
     OPCODE_COPY,
@@ -265,6 +266,7 @@ static void opcode_ineq(struct mscript_program *program);
 static void opcode_fneq(struct mscript_program *program);
 static void opcode_iinc(struct mscript_program *program);
 static void opcode_finc(struct mscript_program *program);
+static void opcode_not(struct mscript_program *program);
 static void opcode_f2i(struct mscript_program *program);
 static void opcode_i2f(struct mscript_program *program);
 static void opcode_copy(struct mscript_program *program, int offset, int size);
@@ -375,6 +377,7 @@ enum expr_type {
 
 enum unary_op_type {
     UNARY_OP_POST_INC,
+    UNARY_OP_LOGICAL_NOT,
 };
 
 enum binary_op_type {
@@ -1336,11 +1339,22 @@ cleanup:
 
 static struct expr *parse_unary_expr(struct mscript_program *program) {
     struct token token = peek(program);
-    struct expr *expr = parse_member_access_or_array_access_expr(program);
-    if (program->error) goto cleanup;
 
-    if (match_char_n(program, 2, '+', '+')) {
-        expr = new_unary_op_expr(&program->parser.allocator, token, UNARY_OP_POST_INC, expr);
+    struct expr *expr = NULL;
+
+    if (match_char(program, '!')) {
+        expr = parse_member_access_or_array_access_expr(program); 
+        if (program->error) goto cleanup;
+
+        expr = new_unary_op_expr(&program->parser.allocator, token, UNARY_OP_LOGICAL_NOT, expr);
+    }
+    else {
+        expr = parse_member_access_or_array_access_expr(program);
+        if (program->error) goto cleanup;
+
+        if (match_char_n(program, 2, '+', '+')) {
+            expr = new_unary_op_expr(&program->parser.allocator, token, UNARY_OP_POST_INC, expr);
+        }
     }
 
 cleanup:
@@ -2898,13 +2912,13 @@ static void pre_compiler_expr(struct mscript_program *program, struct expr *expr
 static void pre_compiler_unary_op_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
     assert(expr->type == EXPR_UNARY_OP);
 
-    pre_compiler_expr_lvalue(program, expr->unary_op.operand);
-    if (program->error) return;
-
-    struct mscript_type *operand_type = expr->unary_op.operand->result_type;
     switch (expr->unary_op.type) {
         case UNARY_OP_POST_INC:
             {
+                pre_compiler_expr_lvalue(program, expr->unary_op.operand);
+                if (program->error) return;
+
+                struct mscript_type *operand_type = expr->unary_op.operand->result_type;
                 if (operand_type->type == MSCRIPT_TYPE_INT) {
                     expr->result_type = program_get_type(program, "int");
                 }
@@ -2915,6 +2929,14 @@ static void pre_compiler_unary_op_expr(struct mscript_program *program, struct e
                     program_error(program, expr->token, "Unable to do increment on type %s.", operand_type->name);
                     return;
                 }
+            }
+            break;
+        case UNARY_OP_LOGICAL_NOT:
+            {
+                pre_compiler_expr_with_cast(program, &(expr->unary_op.operand), program_get_type(program, "int"));
+                if (program->error) return;
+
+                expr->result_type = program_get_type(program, "int");
             }
             break;
     }
@@ -3380,6 +3402,12 @@ static void opcode_finc(struct mscript_program *program) {
     compiler_push_opcode(program, op);
 }
 
+static void opcode_not(struct mscript_program *program) {
+    struct opcode op;
+    op.type = OPCODE_NOT;
+    compiler_push_opcode(program, op);
+}
+
 static void opcode_f2i(struct mscript_program *program) {
     struct opcode op;
     op.type = OPCODE_F2I;
@@ -3733,6 +3761,7 @@ static void compile_function_declaration_stmt(struct mscript_program *program, s
     program->compiler.cur_label = 0;
 
     opcode_intermediate_func(program, decl->name);
+
     opcode_push(program, decl->block_size);
     compile_stmt(program, stmt->function_declaration.body); 
     if (decl->return_type->type == MSCRIPT_TYPE_VOID) {
@@ -3881,26 +3910,42 @@ static void compile_unary_op_expr(struct mscript_program *program, struct expr *
     struct expr *operand = expr->unary_op.operand;
     compile_expr(program, operand);
 
-    if (operand->result_type->type == MSCRIPT_TYPE_INT) {
-        opcode_iinc(program);
-    }
-    else if (operand->result_type->type == MSCRIPT_TYPE_FLOAT) {
-        opcode_finc(program);
-    }
-    else {
-        assert(false);
-    }
+    switch (expr->unary_op.type) {
+        case UNARY_OP_POST_INC:
+            {
+                if (operand->result_type->type == MSCRIPT_TYPE_INT) {
+                    opcode_iinc(program);
+                }
+                else if (operand->result_type->type == MSCRIPT_TYPE_FLOAT) {
+                    opcode_finc(program);
+                }
+                else {
+                    assert(false);
+                }
 
-    compile_lvalue_expr(program, operand);
-    switch (operand->lvalue.type) {
-        case LVALUE_LOCAL:
-            opcode_local_store(program, operand->lvalue.offset, expr->result_type->size);
+                compile_lvalue_expr(program, operand);
+                switch (operand->lvalue.type) {
+                    case LVALUE_LOCAL:
+                        opcode_local_store(program, operand->lvalue.offset, expr->result_type->size);
+                        break;
+                    case LVALUE_ARRAY:
+                        opcode_array_store(program, expr->result_type->size);
+                        break;
+                    case LVALUE_INVALID:
+                        assert(false);
+                        break;
+                }
+            }
             break;
-        case LVALUE_ARRAY:
-            opcode_array_store(program, expr->result_type->size);
-            break;
-        case LVALUE_INVALID:
-            assert(false);
+        case UNARY_OP_LOGICAL_NOT:
+            {
+                if (operand->result_type->type == MSCRIPT_TYPE_INT) {
+                    opcode_not(program);
+                }
+                else {
+                    assert(false);
+                }
+            }
             break;
     }
 }
@@ -4478,6 +4523,13 @@ static void vm_run(struct mscript_program *program) {
                     memcpy(stack + sp - 4, &v, 4);
                 }
                 break;
+            case OPCODE_NOT:
+                {
+                    int v = *((int*) (stack + sp - 4));
+                    v = !v;
+                    memcpy(stack + sp - 4, &v, 4);
+                }
+                break;
             case OPCODE_F2I:
                 {
                     float vf = *((float*) (stack + sp - 4));
@@ -4995,6 +5047,11 @@ static void debug_log_expr(struct expr *expr) {
                     debug_log_expr(expr->unary_op.operand);
                     m_log(")++");
                     break;
+                case UNARY_OP_LOGICAL_NOT:
+                    m_log("!(");
+                    debug_log_expr(expr->unary_op.operand);
+                    m_log(")");
+                    break;
             }
             break;
         case EXPR_BINARY_OP:
@@ -5166,6 +5223,9 @@ static void debug_log_opcodes(struct opcode *opcodes, int num_opcodes) {
                 break;
             case OPCODE_FINC:
                 m_logf("FINC");
+                break;
+            case OPCODE_NOT:
+                m_logf("NOT");
                 break;
             case OPCODE_F2I:
                 m_logf("F2I");
@@ -5700,6 +5760,7 @@ static void program_load_stage_7(struct mscript *mscript, struct mscript_program
             case OPCODE_FNEQ:
             case OPCODE_IINC:
             case OPCODE_FINC:
+            case OPCODE_NOT:
             case OPCODE_F2I:
             case OPCODE_I2F:
             case OPCODE_COPY:
@@ -5722,10 +5783,8 @@ static void program_load_stage_7(struct mscript *mscript, struct mscript_program
                     array_push(&program->opcodes, op);
                 }
                 break;
-
             case OPCODE_INTERMEDIATE_LABEL:
                 {
-
                 }
                 break;
             case OPCODE_INTERMEDIATE_FUNC:
@@ -5790,10 +5849,12 @@ static void program_load_stage_7(struct mscript *mscript, struct mscript_program
                     array_push(&program->opcodes, op2);
                 }
                 break;
-
             case OPCODE_JF:
             case OPCODE_JMP:
             case OPCODE_CALL:
+                assert(false);
+                break;
+            default:
                 assert(false);
                 break;
         }
