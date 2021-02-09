@@ -2,6 +2,30 @@ import "math.mscript";
 import "util.mscript";
 import "terrain_generation_common.mscript";
 
+int fib1(int n) {
+    if (n <= 0) {
+        return 0;
+    }
+    else if (n == 1) {
+        return 1;
+    }
+    else {
+        return fib1(n - 1) + fib2(n - 2);
+    }
+}
+
+int fib2(int n) {
+    if (n <= 0) {
+        return 0;
+    }
+    else if (n == 1) {
+        return 1;
+    }
+    else {
+        return fib2(n - 1) + fib1(n - 2);
+    }
+}
+
 int fib(int n) {
     if (n <= zero()) {
         return zero();
@@ -10,7 +34,7 @@ int fib(int n) {
         return one();
     }
     else {
-        return fib(n - one()) + fib(n - two());
+        return fib1(n - one()) + fib2(n - two());
     }
 }
 
@@ -30,7 +54,7 @@ vec3[] create_array(int n) {
     vec3[] a = [];
     int i;
     for (i = 0; i < n; i++) {
-        a[i] = { x = 3 * i + 0, y = 3 * i + 1, z = 3 * i + 2 };
+        a[i] = { x = 3.0 * i + 0.0, y = 3.0 * i + 1.0, z = 3.0 * i + 2.0 };
     }
     return a;
 }
@@ -63,7 +87,48 @@ void print_array(vec3[] array) {
     print("]\n");
 }
 
+void update_state(state[] s, float dt) {
+    s[0].t += dt;
+}
+
+struct state {
+    float t;
+}
+
 int run(int n) {
+    float x = 5;
+    print("x = ", x, "\n");
+
+    x += 5;
+    print("x = ", x, "\n");
+
+    x += 10;
+    print("x = ", x, "\n");
+    
+    x /= 3;
+    print("x = ", x, "\n");
+
+    x *= 3;
+    print("x = ", x, "\n");
+
+    {
+        state[] s = [ { t = 0.0 } ];
+        float dt = 1.0 / 60.0;
+
+        int i;
+        for (i = 0; i < 1000; i++) {
+            update_state(s, dt);
+            update_state(s, dt);
+            update_state(s, dt);
+            update_state(s, dt);
+            update_state(s, dt);
+        }
+
+        print("s.t = ", s[0].t, "\n");
+    }
+
+    print("fib(10) = ", fib(10), "\n");
+
     {
         ui_state state = UI_STATE_MAIN;
         print_ui_state(state);
@@ -89,12 +154,39 @@ int run(int n) {
         else {
             print("NO NULL\n");
         }
+
+        vec2 p0 = { x = 0.00, y = 0.00 };
+        vec2 p1 = { x = 0.33, y = 0.10 };
+        vec2 p2 = { x = 0.66, y = 0.50 };
+        vec2 p3 = { x = 1.00, y = 1.00 };
+        float t = 1.0;
+        vec2 p = vec2_bezier(p0, p1, p2, p3, t);
+        print("p: ", p, "\n");
     }
 
     {
         vec3 v = { x = 1, y = 2, z = 3 };
         float f = vec3_length_sqrd(v);
         print("length_sqrd: ", f, "\n");
+    }
+
+    int i = 10;
+    bool b;
+    if (i == 10) {
+        b = true;
+    }
+    else {
+        b = false;
+    }
+    print("b: ", b, "\n");
+
+    bool b0 = true;
+    bool b1 = false;
+    if (b0 == b1) {
+        print("nonononono\n");
+    }
+    if (b0 != b1) {
+        print("yesyeysyesy\n");
     }
 
     vec3[] a = create_array(n);

@@ -106,6 +106,7 @@ static bool match_symbol(struct mscript_program *program, const char *symbol);
 static bool match_symbol_n(struct mscript_program *program, int n, ...);
 static bool match_eof(struct mscript_program *program);
 static bool check_type(struct mscript_program *program);
+static bool is_char_token(struct token tok, char c);
 
 struct pre_compiler_env_var {
     int offset;
@@ -160,6 +161,7 @@ static void pre_compiler_int_expr(struct mscript_program *program, struct expr *
 static void pre_compiler_float_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
 static void pre_compiler_symbol_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
 static void pre_compiler_null_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
+static void pre_compiler_bool_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
 static void pre_compiler_string_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
 static void pre_compiler_array_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
 static void pre_compiler_array_access_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
@@ -209,6 +211,7 @@ enum opcode_type {
     OPCODE_ARRAY_LENGTH,
     OPCODE_DEBUG_PRINT_INT,
     OPCODE_DEBUG_PRINT_FLOAT,
+    OPCODE_DEBUG_PRINT_BOOL,
     OPCODE_DEBUG_PRINT_STRING,
     OPCODE_DEBUG_PRINT_STRING_CONST,
 
@@ -286,6 +289,7 @@ static void opcode_array_load(struct mscript_program *program, int size);
 static void opcode_array_length(struct mscript_program *program);
 static void opcode_debug_print_int(struct mscript_program *program);
 static void opcode_debug_print_float(struct mscript_program *program);
+static void opcode_debug_print_bool(struct mscript_program *program);
 static void opcode_debug_print_string(struct mscript_program *program);
 static void opcode_debug_print_string_const(struct mscript_program *program, char *str);
 static void opcode_intermediate_label(struct mscript_program *program, int label);
@@ -328,6 +332,7 @@ static void compile_int_expr(struct mscript_program *program, struct expr *expr)
 static void compile_float_expr(struct mscript_program *program, struct expr *expr);
 static void compile_symbol_expr(struct mscript_program *program, struct expr *expr);
 static void compile_null_expr(struct mscript_program *program, struct expr *expr);
+static void compile_bool_expr(struct mscript_program *program, struct expr *expr);
 static void compile_string_expr(struct mscript_program *program, struct expr *expr);
 static void compile_array_expr(struct mscript_program *program, struct expr *expr);
 static void compile_object_expr(struct mscript_program *program, struct expr *expr);
@@ -369,6 +374,7 @@ enum expr_type {
     EXPR_FLOAT,
     EXPR_SYMBOL,
     EXPR_NULL,
+    EXPR_BOOL,
     EXPR_STRING,
     EXPR_ARRAY,
     EXPR_OBJECT,
@@ -448,6 +454,7 @@ struct expr {
             struct expr *arg;
         } cast;
 
+        bool bool_value;
         int int_value;
         float float_value;
         char *symbol;
@@ -560,6 +567,7 @@ static struct expr *new_int_expr(struct allocator *allocator, struct token token
 static struct expr *new_float_expr(struct allocator *allocator, struct token token, float float_value);
 static struct expr *new_symbol_expr(struct allocator *allocator, struct token token, char *symbol);
 static struct expr *new_null_expr(struct allocator *allocator, struct token token);
+static struct expr *new_bool_expr(struct allocator *allocator, struct token token, bool val);
 
 static struct stmt *new_if_stmt(struct allocator *allocator, struct token token, 
         struct array_expr_ptr conds, struct array_stmt_ptr stmts, struct stmt *else_stmt);
@@ -670,6 +678,7 @@ struct mscript_program {
     map_function_decl_ptr_t function_decl_map;
     map_mscript_type_ptr_t type_map;
     map_enum_value_t enum_map;
+    map_int_t func_label_map;
 
     struct array_stmt_ptr global_stmts;
     struct array_program_ptr imported_programs;
@@ -683,8 +692,6 @@ struct mscript_program {
 
     char *error;
     struct token error_token;
-
-    map_int_t func_label_map;
 };
 array_t(struct mscript_program *, array_mscript_program_ptr)
 typedef map_t(struct mscript_program *) map_mscript_program_ptr_t;
@@ -692,6 +699,7 @@ typedef map_t(struct mscript_program *) map_mscript_program_ptr_t;
 struct mscript {
     struct mscript_type int_type, int_array_type,
                         float_type, float_array_type,
+                        bool_type, bool_array_type,
                         void_type, void_star_type, void_star_array_type,
                         char_star_type;
 
@@ -953,6 +961,17 @@ static struct expr *new_null_expr(struct allocator *allocator, struct token toke
     return expr;
 }
 
+static struct expr *new_bool_expr(struct allocator *allocator, struct token token, bool val) {
+    struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
+    expr->type = EXPR_BOOL;
+    expr->token = token;
+    expr->bool_value = val;
+
+    expr->result_type = NULL;
+    expr->lvalue = lvalue_invalid();
+    return expr;
+}
+
 static struct expr *new_string_expr(struct allocator *allocator, struct token token, char *string) {
     struct expr *expr = allocator_alloc(allocator, sizeof(struct expr));
     expr->type = EXPR_STRING;
@@ -1126,6 +1145,9 @@ static struct parsed_type parse_type(struct mscript_program *program) {
     else if (match_symbol(program, "float")) {
         name = "float";
     }
+    else if (match_symbol(program, "bool")) {
+        name = "bool";
+    }
     else {
         struct token tok = peek(program);
         if (tok.type != TOKEN_SYMBOL) {
@@ -1233,6 +1255,12 @@ static struct expr *parse_primary_expr(struct mscript_program *program) {
     }
     else if (match_symbol(program, "NULL")) {
         expr = new_null_expr(&program->parser.allocator, tok);
+    }
+    else if (match_symbol(program, "false")) {
+        expr = new_bool_expr(&program->parser.allocator, tok, false);
+    }
+    else if (match_symbol(program, "true")) {
+        expr = new_bool_expr(&program->parser.allocator, tok, true);
     }
     else if (tok.type == TOKEN_SYMBOL) {
         expr = new_symbol_expr(&program->parser.allocator, tok, tok.symbol);
@@ -1369,11 +1397,15 @@ static struct expr *parse_factor_expr(struct mscript_program *program) {
     while (true) {
         enum binary_op_type binary_op_type;
 
-        if (match_char(program, '*')) {
+        struct token tok0 = peek_n(program, 0);
+        struct token tok1 = peek_n(program, 1);
+        if (is_char_token(tok0, '*') && !is_char_token(tok1, '=')) {
             binary_op_type = BINARY_OP_MUL;
+            eat(program);
         }
-        else if (match_char(program, '/')) {
+        else if (is_char_token(tok0, '/') && !is_char_token(tok1, '=')) {
             binary_op_type = BINARY_OP_DIV;
+            eat(program);
         }
         else {
             break;
@@ -1396,11 +1428,15 @@ static struct expr *parse_term_expr(struct mscript_program *program) {
     while (true) {
         enum binary_op_type binary_op_type;
 
-        if (match_char(program, '+')) {
+        struct token tok0 = peek_n(program, 0);
+        struct token tok1 = peek_n(program, 1);
+        if (is_char_token(tok0, '+') && !is_char_token(tok1, '=')) {
             binary_op_type = BINARY_OP_ADD;
+            eat(program);
         }
-        else if (match_char(program, '-')) {
+        else if (is_char_token(tok0, '-') && !is_char_token(tok1, '=')) {
             binary_op_type = BINARY_OP_SUB;
+            eat(program);
         }
         else {
             break;
@@ -1460,7 +1496,39 @@ static struct expr *parse_assignment_expr(struct mscript_program *program) {
     if (program->error) goto cleanup;
 
     while (true) {
-        if (match_char(program, '=')) {
+        if (match_char_n(program, 2, '+', '=')) {
+            struct expr *right = parse_assignment_expr(program);
+            if (program->error) goto cleanup;
+
+            struct expr *lvalue = expr;
+            expr = new_binary_op_expr(&program->parser.allocator, token, BINARY_OP_ADD, lvalue, right);
+            expr = new_assignment_expr(&program->parser.allocator, token, lvalue, expr);
+        }
+        else if (match_char_n(program, 2, '-', '=')) {
+            struct expr *right = parse_assignment_expr(program);
+            if (program->error) goto cleanup;
+
+            struct expr *lvalue = expr;
+            expr = new_binary_op_expr(&program->parser.allocator, token, BINARY_OP_SUB, lvalue, right);
+            expr = new_assignment_expr(&program->parser.allocator, token, lvalue, expr);
+        }
+        else if (match_char_n(program, 2, '*', '=')) {
+            struct expr *right = parse_assignment_expr(program);
+            if (program->error) goto cleanup;
+
+            struct expr *lvalue = expr;
+            expr = new_binary_op_expr(&program->parser.allocator, token, BINARY_OP_MUL, lvalue, right);
+            expr = new_assignment_expr(&program->parser.allocator, token, lvalue, expr);
+        }
+        else if (match_char_n(program, 2, '/', '=')) {
+            struct expr *right = parse_assignment_expr(program);
+            if (program->error) goto cleanup;
+
+            struct expr *lvalue = expr;
+            expr = new_binary_op_expr(&program->parser.allocator, token, BINARY_OP_DIV, lvalue, right);
+            expr = new_assignment_expr(&program->parser.allocator, token, lvalue, expr);
+        }
+        else if (match_char(program, '=')) {
             struct expr *right = parse_assignment_expr(program);
             if (program->error) goto cleanup;
 
@@ -2242,6 +2310,15 @@ static void eat(struct mscript_program *program) {
     parser->token_idx++;
 }
 
+static bool is_char_token(struct token tok, char c) {
+    if (tok.type == TOKEN_CHAR && tok.char_value == c) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
 static bool match_char(struct mscript_program *program, char c) {
     struct token tok = peek(program);
     if (tok.type == TOKEN_CHAR && tok.char_value == c) {
@@ -2456,7 +2533,7 @@ static void pre_compiler_if_stmt(struct mscript_program *program, struct stmt *s
 
     *all_paths_return = true;
     for (int i = 0; i < stmt->if_stmt.num_stmts; i++) {
-        pre_compiler_expr_with_cast(program, &(stmt->if_stmt.conds[i]), program_get_type(program, "int"));
+        pre_compiler_expr_with_cast(program, &(stmt->if_stmt.conds[i]), program_get_type(program, "bool"));
         if (program->error) return;
 
         bool stmt_all_paths_return;
@@ -2487,7 +2564,7 @@ static void pre_compiler_for_stmt(struct mscript_program *program, struct stmt *
 
     pre_compiler_expr(program, stmt->for_stmt.init, NULL);
     if (program->error) return;
-    pre_compiler_expr_with_cast(program, &(stmt->for_stmt.cond), program_get_type(program, "int"));
+    pre_compiler_expr_with_cast(program, &(stmt->for_stmt.cond), program_get_type(program, "bool"));
     if (program->error) return;
     pre_compiler_expr(program, stmt->for_stmt.inc, NULL);
     if (program->error) return;
@@ -2741,9 +2818,9 @@ static void pre_compiler_expr_with_cast(struct mscript_program *program, struct 
         return;
     }
 
+    enum mscript_type_type result_type_type = (*expr)->result_type->type;
     if (type->type == MSCRIPT_TYPE_INT) {
-        enum mscript_type_type result_type_type = (*expr)->result_type->type;
-        if (result_type_type == MSCRIPT_TYPE_FLOAT || result_type_type == MSCRIPT_TYPE_ARRAY) {
+        if (result_type_type == MSCRIPT_TYPE_FLOAT) {
             struct parsed_type parsed_type = parsed_type_create("int", false);
             *expr = new_cast_expr(&program->parser.allocator, (*expr)->token, parsed_type, *expr);
             (*expr)->result_type = program_get_type(program, parsed_type.string);
@@ -2754,7 +2831,7 @@ static void pre_compiler_expr_with_cast(struct mscript_program *program, struct 
         }
     }
     else if (type->type == MSCRIPT_TYPE_FLOAT) {
-        if ((*expr)->result_type->type == MSCRIPT_TYPE_INT) {
+        if (result_type_type == MSCRIPT_TYPE_INT) {
             struct parsed_type parsed_type = parsed_type_create("float", false);
             *expr = new_cast_expr(&program->parser.allocator, (*expr)->token, parsed_type, *expr);
             (*expr)->result_type = program_get_type(program, parsed_type.string);
@@ -2762,6 +2839,16 @@ static void pre_compiler_expr_with_cast(struct mscript_program *program, struct 
         else {
             program_error(program, (*expr)->token, "Unable cast from %s to %s.", (*expr)->result_type->name, type->name);
             return;
+        }
+    }
+    else if (type->type == MSCRIPT_TYPE_BOOL) {
+        if (result_type_type == MSCRIPT_TYPE_ARRAY) {
+            struct parsed_type parsed_type = parsed_type_create("bool", false);
+            *expr = new_cast_expr(&program->parser.allocator, (*expr)->token, parsed_type, *expr);
+            (*expr)->result_type = program_get_type(program, parsed_type.string);
+        }
+        else {
+            program_error(program, (*expr)->token, "Unable to cast from %s to %s.", (*expr)->result_type->name, type->name);
         }
     }
     else {
@@ -2782,6 +2869,9 @@ static void pre_compiler_expr_lvalue(struct mscript_program *program, struct exp
         case EXPR_ARRAY:
         case EXPR_OBJECT:
         case EXPR_CAST:
+        case EXPR_NULL:
+        case EXPR_BOOL:
+        case EXPR_STRING:
             {
                 program_error(program, expr->token, "Invalid lvalue.");
             }
@@ -2844,18 +2934,6 @@ static void pre_compiler_expr_lvalue(struct mscript_program *program, struct exp
                 pre_compiler_expr(program, expr, NULL);
             }
             break;
-        case EXPR_NULL:
-            {
-                program_error(program, expr->token, "NULL cannot be an lvalue.");;
-                return;
-            }
-            break;
-        case EXPR_STRING:
-            {
-                program_error(program, expr->token, "A string cannot be an lvalue.");
-                return;
-            }
-            break;
     }
 }
 
@@ -2890,6 +2968,9 @@ static void pre_compiler_expr(struct mscript_program *program, struct expr *expr
             break;
         case EXPR_NULL:
             pre_compiler_null_expr(program, expr, expected_type);
+            break;
+        case EXPR_BOOL:
+            pre_compiler_bool_expr(program, expr, expected_type);
             break;
         case EXPR_STRING:
             pre_compiler_string_expr(program, expr, expected_type);
@@ -2933,10 +3014,10 @@ static void pre_compiler_unary_op_expr(struct mscript_program *program, struct e
             break;
         case UNARY_OP_LOGICAL_NOT:
             {
-                pre_compiler_expr_with_cast(program, &(expr->unary_op.operand), program_get_type(program, "int"));
+                pre_compiler_expr_with_cast(program, &(expr->unary_op.operand), program_get_type(program, "bool"));
                 if (program->error) return;
 
-                expr->result_type = program_get_type(program, "int");
+                expr->result_type = program_get_type(program, "bool");
             }
             break;
     }
@@ -2990,10 +3071,8 @@ static void pre_compiler_binary_op_expr(struct mscript_program *program, struct 
         case BINARY_OP_LT:
         case BINARY_OP_GTE:
         case BINARY_OP_GT:
-        case BINARY_OP_EQ:
-        case BINARY_OP_NEQ:
             {
-                expr->result_type = program_get_type(program, "int");
+                expr->result_type = program_get_type(program, "bool");
 
                 if (left_result_type->type == MSCRIPT_TYPE_INT && right_result_type->type == MSCRIPT_TYPE_INT) {
                     // no casts needed
@@ -3013,6 +3092,41 @@ static void pre_compiler_binary_op_expr(struct mscript_program *program, struct 
                 }
                 else if (left_result_type->type == MSCRIPT_TYPE_ENUM && right_result_type->type == MSCRIPT_TYPE_ENUM && 
                         left_result_type == right_result_type) {
+                    // no casts needed
+                }
+                else {
+                    program_error(program, expr->token, "Unable to do this binary operation on types %s and %s.",
+                            left_result_type->name, right_result_type->name);
+                    return;
+                }
+            }
+            break;
+        case BINARY_OP_EQ:
+        case BINARY_OP_NEQ:
+            {
+                expr->result_type = program_get_type(program, "bool");
+
+                if (left_result_type->type == MSCRIPT_TYPE_INT && right_result_type->type == MSCRIPT_TYPE_INT) {
+                    // no casts needed
+                }
+                else if (left_result_type->type == MSCRIPT_TYPE_FLOAT && right_result_type->type == MSCRIPT_TYPE_FLOAT) {
+                    // no casts needed
+                }
+                else if (left_result_type->type == MSCRIPT_TYPE_FLOAT && right_result_type->type == MSCRIPT_TYPE_INT) {
+                    struct parsed_type parsed_type = parsed_type_create("float", false);
+                    expr->binary_op.right = new_cast_expr(&program->parser.allocator, expr->token, parsed_type, expr->binary_op.right);
+                    expr->binary_op.right->result_type = program_get_type(program, parsed_type.string);
+                }
+                else if (left_result_type->type == MSCRIPT_TYPE_INT && right_result_type->type == MSCRIPT_TYPE_FLOAT) {
+                    struct parsed_type parsed_type = parsed_type_create("float", false);
+                    expr->binary_op.left = new_cast_expr(&program->parser.allocator, expr->token, parsed_type, expr->binary_op.left);
+                    expr->binary_op.left->result_type = program_get_type(program, parsed_type.string);
+                }
+                else if (left_result_type->type == MSCRIPT_TYPE_ENUM && right_result_type->type == MSCRIPT_TYPE_ENUM && 
+                        left_result_type == right_result_type) {
+                    // no casts needed
+                }
+                else if (left_result_type->type == MSCRIPT_TYPE_BOOL && right_result_type->type == MSCRIPT_TYPE_BOOL) {
                     // no casts needed
                 }
                 else {
@@ -3149,19 +3263,29 @@ static void pre_compiler_float_expr(struct mscript_program *program, struct expr
 static void pre_compiler_symbol_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
     assert(expr->type == EXPR_SYMBOL);
 
-    struct enum_value *enum_value = map_get(&program->enum_map, expr->symbol);
-    if (enum_value) {
-        expr->result_type = enum_value->type;
+    if (strcmp(expr->symbol, "false") == 0) {
+        expr->result_type = program_get_type(program, "bool");
+        expr->lvalue = lvalue_invalid();
+    }
+    else if (strcmp(expr->symbol, "true") == 0) {
+        expr->result_type = program_get_type(program, "bool");
         expr->lvalue = lvalue_invalid();
     }
     else {
-        struct pre_compiler_env_var *var = pre_compiler_env_get_var(program, expr->symbol);
-        if (!var) {
-            program_error(program, expr->token, "Undeclared variable %s.", expr->symbol);
-            return;
+        struct enum_value *enum_value = map_get(&program->enum_map, expr->symbol);
+        if (enum_value) {
+            expr->result_type = enum_value->type;
+            expr->lvalue = lvalue_invalid();
         }
-        expr->result_type = var->type;
-        expr->lvalue = lvalue_local(var->offset);
+        else {
+            struct pre_compiler_env_var *var = pre_compiler_env_get_var(program, expr->symbol);
+            if (!var) {
+                program_error(program, expr->token, "Undeclared variable %s.", expr->symbol);
+                return;
+            }
+            expr->result_type = var->type;
+            expr->lvalue = lvalue_local(var->offset);
+        }
     }
 }
 
@@ -3179,6 +3303,12 @@ static void pre_compiler_null_expr(struct mscript_program *program, struct expr 
     }
 
     expr->result_type = expected_type; 
+    expr->lvalue = lvalue_invalid();
+}
+
+static void pre_compiler_bool_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
+    assert(expr->type == EXPR_BOOL);
+    expr->result_type = program_get_type(program, "bool"); 
     expr->lvalue = lvalue_invalid();
 }
 
@@ -3445,7 +3575,7 @@ static void opcode_float(struct mscript_program *program, float val) {
 }
 
 static void opcode_local_store(struct mscript_program *program, int offset, int size) {
-    assert(offset >= 0 && size >= 0);
+    assert(size >= 0);
 
     struct opcode op;
     op.type = OPCODE_LOCAL_STORE;
@@ -3554,6 +3684,12 @@ static void opcode_debug_print_int(struct mscript_program *program) {
 static void opcode_debug_print_float(struct mscript_program *program) {
     struct opcode op;
     op.type = OPCODE_DEBUG_PRINT_FLOAT;
+    compiler_push_opcode(program, op);
+}
+
+static void opcode_debug_print_bool(struct mscript_program *program) {
+    struct opcode op;
+    op.type = OPCODE_DEBUG_PRINT_BOOL;
     compiler_push_opcode(program, op);
 }
 
@@ -3825,6 +3961,9 @@ static void compile_expr(struct mscript_program *program, struct expr *expr) {
         case EXPR_NULL:
             compile_null_expr(program, expr);
             break;
+        case EXPR_BOOL:
+            compile_bool_expr(program, expr);
+            break;
         case EXPR_STRING:
             compile_string_expr(program, expr);
             break;
@@ -3854,6 +3993,7 @@ static void compile_lvalue_expr(struct mscript_program *program, struct expr *ex
         case EXPR_OBJECT:
         case EXPR_CAST:
         case EXPR_NULL:
+        case EXPR_BOOL:
             assert(false);
             break;
         case EXPR_ARRAY_ACCESS:
@@ -3939,12 +4079,8 @@ static void compile_unary_op_expr(struct mscript_program *program, struct expr *
             break;
         case UNARY_OP_LOGICAL_NOT:
             {
-                if (operand->result_type->type == MSCRIPT_TYPE_INT) {
-                    opcode_not(program);
-                }
-                else {
-                    assert(false);
-                }
+                assert(operand->result_type->type == MSCRIPT_TYPE_BOOL);
+                opcode_not(program);
             }
             break;
     }
@@ -4056,6 +4192,26 @@ static void compile_binary_op_expr(struct mscript_program *program, struct expr 
                 break;
         }
     }
+    else if (left->result_type->type == MSCRIPT_TYPE_BOOL) {
+        switch (expr->binary_op.type) {
+            case BINARY_OP_ADD:
+            case BINARY_OP_SUB:
+            case BINARY_OP_MUL:
+            case BINARY_OP_DIV:
+            case BINARY_OP_LTE:
+            case BINARY_OP_LT:
+            case BINARY_OP_GTE:
+            case BINARY_OP_GT:
+                assert(false);
+                break;
+            case BINARY_OP_EQ:
+                opcode_ieq(program);
+                break;
+            case BINARY_OP_NEQ:
+                opcode_ineq(program);
+                break;
+        }
+    }
     else {
         assert(false);
     }
@@ -4093,6 +4249,16 @@ static void compile_debug_print_type(struct mscript_program *program, struct msc
         case MSCRIPT_TYPE_FLOAT:
             {
                 opcode_debug_print_float(program);
+            }
+            break;
+        case MSCRIPT_TYPE_VEC3:
+            {
+                //opcode_debug_print_float(program);
+            }
+            break;
+        case MSCRIPT_TYPE_BOOL:
+            {
+                opcode_debug_print_bool(program);
             }
             break;
         case MSCRIPT_TYPE_STRUCT:
@@ -4288,6 +4454,13 @@ static void compile_null_expr(struct mscript_program *program, struct expr *expr
     opcode_int(program, 0);
 }
 
+static void compile_bool_expr(struct mscript_program *program, struct expr *expr) {
+    assert(expr->type == EXPR_BOOL);
+
+    assert(expr->result_type->type == MSCRIPT_TYPE_BOOL);
+    opcode_int(program, (int) expr->bool_value);
+}
+
 static void compile_string_expr(struct mscript_program *program, struct expr *expr) {
     assert(expr->type == EXPR_STRING);
 
@@ -4341,7 +4514,9 @@ static void compile_cast_expr(struct mscript_program *program, struct expr *expr
     }
     else if (cast_type->type == MSCRIPT_TYPE_FLOAT && arg_type->type == MSCRIPT_TYPE_FLOAT) {
     }
-    else if (cast_type->type == MSCRIPT_TYPE_INT && arg_type->type == MSCRIPT_TYPE_ARRAY) {
+    else if (cast_type->type == MSCRIPT_TYPE_BOOL && arg_type->type == MSCRIPT_TYPE_BOOL) {
+    }
+    else if (cast_type->type == MSCRIPT_TYPE_BOOL && arg_type->type == MSCRIPT_TYPE_ARRAY) {
     }
     else if (cast_type->type == MSCRIPT_TYPE_FLOAT && arg_type->type == MSCRIPT_TYPE_INT) {
         opcode_i2f(program);
@@ -4723,6 +4898,19 @@ static void vm_run(struct mscript_program *program) {
                     m_logf("%f", v);
                 }
                 break;
+            case OPCODE_DEBUG_PRINT_BOOL:
+                {
+                    int v = *((int*) (stack + sp - 4));
+                    sp -= 4;
+
+                    if (v) {
+                        m_logf("true");
+                    }
+                    else {
+                        m_logf("false");
+                    }
+                }
+                break;
             case OPCODE_DEBUG_PRINT_STRING:
                 {
                     int str_pos = *((int*) (stack + sp - 4));
@@ -4784,6 +4972,8 @@ static void program_init(struct mscript_program *prog, struct mscript *mscript, 
     map_set(&prog->type_map, "int[]", &mscript->int_array_type);
     map_set(&prog->type_map, "float", &mscript->float_type);
     map_set(&prog->type_map, "float[]", &mscript->float_array_type);
+    map_set(&prog->type_map, "bool", &mscript->bool_type);
+    map_set(&prog->type_map, "bool[]", &mscript->bool_array_type);
     map_set(&prog->type_map, "char*", &mscript->char_star_type);
 }
 
@@ -5102,6 +5292,14 @@ static void debug_log_expr(struct expr *expr) {
         case EXPR_SYMBOL:
             m_logf("%s", expr->symbol);
             break;
+        case EXPR_BOOL:
+            if (expr->bool_value) {
+                m_logf("true");
+            }
+            else {
+                m_logf("false");
+            }
+            break;
         case EXPR_NULL:
             m_logf("NULL");
             break;
@@ -5283,6 +5481,9 @@ static void debug_log_opcodes(struct opcode *opcodes, int num_opcodes) {
                 break;
             case OPCODE_DEBUG_PRINT_FLOAT:
                 m_logf("DEBUG_PRINT_FLOAT");
+                break;
+            case OPCODE_DEBUG_PRINT_BOOL:
+                m_logf("DEBUG_PRINT_BOOL");
                 break;
             case OPCODE_DEBUG_PRINT_STRING:
                 m_logf("DEBUG_PRINT_STRING");
@@ -5777,6 +5978,7 @@ static void program_load_stage_7(struct mscript *mscript, struct mscript_program
             case OPCODE_ARRAY_LENGTH:
             case OPCODE_DEBUG_PRINT_INT:
             case OPCODE_DEBUG_PRINT_FLOAT:
+            case OPCODE_DEBUG_PRINT_BOOL:
             case OPCODE_DEBUG_PRINT_STRING:
             case OPCODE_DEBUG_PRINT_STRING_CONST:
                 {
@@ -5854,9 +6056,6 @@ static void program_load_stage_7(struct mscript *mscript, struct mscript_program
             case OPCODE_CALL:
                 assert(false);
                 break;
-            default:
-                assert(false);
-                break;
         }
     }
 
@@ -5901,6 +6100,8 @@ struct mscript *mscript_create(void) {
     mscript_type_init(&mscript->int_array_type, "int[]", MSCRIPT_TYPE_ARRAY, &mscript->int_type, NULL, 4);
     mscript_type_init(&mscript->float_type, "float", MSCRIPT_TYPE_FLOAT, NULL, NULL, 4);
     mscript_type_init(&mscript->float_array_type, "float[]", MSCRIPT_TYPE_ARRAY, &mscript->float_type, NULL, 4);
+    mscript_type_init(&mscript->bool_type, "bool", MSCRIPT_TYPE_BOOL, NULL, NULL, 4);
+    mscript_type_init(&mscript->bool_array_type, "bool[]", MSCRIPT_TYPE_ARRAY, &mscript->bool_type, NULL, 4);
     mscript_type_init(&mscript->char_star_type, "char*", MSCRIPT_TYPE_CHAR_STAR, NULL, NULL, 4);
 
     struct directory dir;
