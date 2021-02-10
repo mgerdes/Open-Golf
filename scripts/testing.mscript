@@ -92,8 +92,14 @@ void update_state(state[] s, float dt) {
 }
 
 struct state {
+    int thing1;
+    int thing2;
+    int thing3;
+
     float t;
 }
+
+state s = { thing1 = 1, thing2 = 2, thing3 = 3, t = 10.0 };
 
 int run(int n) {
     float x = 5;
@@ -110,22 +116,6 @@ int run(int n) {
 
     x *= 3;
     print("x = ", x, "\n");
-
-    {
-        state[] s = [ { t = 0.0 } ];
-        float dt = 1.0 / 60.0;
-
-        int i;
-        for (i = 0; i < 1000; i++) {
-            update_state(s, dt);
-            update_state(s, dt);
-            update_state(s, dt);
-            update_state(s, dt);
-            update_state(s, dt);
-        }
-
-        print("s.t = ", s[0].t, "\n");
-    }
 
     print("fib(10) = ", fib(10), "\n");
 
