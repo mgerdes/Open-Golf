@@ -182,6 +182,6 @@ int run(int n) {
     vec3[] a = create_array(n);
     print_array(a);
     double_array(a);
-    vec3 s = sum_array(a);
-    return s.x + s.y + s.z;
+    vec3 sum = sum_array(a);
+    return sum.x + sum.y + sum.z;
 }
