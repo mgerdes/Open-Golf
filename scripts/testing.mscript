@@ -87,11 +87,7 @@ void print_array(vec3[] array) {
     print("]\n");
 }
 
-void update_state(ui_state[] s, float dt) {
-    s[0].t += dt;
-}
-
-ui_state cur_state = UI_STATE_MAIN;
+float PI2 = 2.0*PI;
 
 int run(int n) {
     float x = 5;
@@ -151,6 +147,8 @@ int run(int n) {
         float f = vec3_length_sqrd(v);
         print("length_sqrd: ", f, "\n");
     }
+
+    float pipi = 2.0*PI;
 
     int i = 10;
     bool b;

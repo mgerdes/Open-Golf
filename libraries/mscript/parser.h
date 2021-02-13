@@ -7,18 +7,17 @@
 #define MSCRIPT_MAX_FUNCTION_ARGS 15
 #define MSCRIPT_MAX_STRUCT_MEMBERS 15
 
-enum mscript_type_type {
+typedef enum mscript_type_type {
     MSCRIPT_TYPE_VOID,
     MSCRIPT_TYPE_VOID_STAR,
     MSCRIPT_TYPE_INT,
     MSCRIPT_TYPE_FLOAT,
-    MSCRIPT_TYPE_VEC3,
     MSCRIPT_TYPE_BOOL,
     MSCRIPT_TYPE_CHAR_STAR,
     MSCRIPT_TYPE_STRUCT,
     MSCRIPT_TYPE_ENUM,
     MSCRIPT_TYPE_ARRAY,
-};
+} mscript_type_type_t;
 
 struct mscript;
 typedef struct mscript mscript_t;
