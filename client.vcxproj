@@ -149,6 +149,7 @@
     <ClCompile Include="libraries\mscript.c" />
     <ClCompile Include="libraries\mscript\parser.c" />
     <ClCompile Include="libraries\s7.c" />
+    <ClCompile Include="libraries\vec.c" />
     <ClCompile Include="libraries\xatlas.cpp" />
     <ClCompile Include="libraries\imgui\imgui.cpp" />
     <ClCompile Include="libraries\imgui\imgui_draw.cpp" />
@@ -194,6 +195,7 @@
     <ClInclude Include="libraries\stb_vorbis.h" />
     <ClInclude Include="libraries\thread.h" />
     <ClInclude Include="libraries\tinyobj_loader_c.h" />
+    <ClInclude Include="libraries\vec.h" />
     <ClInclude Include="libraries\xatlas.h" />
     <ClInclude Include="libraries\xatlas_wrapper.h" />
     <ClInclude Include="libraries\imgui\imconfig.h" />

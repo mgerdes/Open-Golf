@@ -4520,6 +4520,10 @@ _SOKOL_PRIVATE void _sapp_wgl_init(void) {
     if (!_sapp.wgl.msg_dc) {
         _sapp_fail("Win32: failed to obtain helper window DC!\n");
     }
+    {
+        AllocConsole();
+        freopen("CONOUT$", "w", stdout);
+    }
 }
 
 _SOKOL_PRIVATE void _sapp_wgl_shutdown(void) {
