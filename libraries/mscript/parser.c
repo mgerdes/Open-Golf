@@ -4,7 +4,6 @@
 #include <assert.h>
 #include <stdbool.h>
 
-#include "array.h"
 #include "vec.h"
 #include "file.h"
 #include "hotloader.h"
@@ -18,68 +17,66 @@ typedef struct _ms_stmt _ms_stmt_t;
 struct _ms_expr;
 typedef struct _ms_expr _ms_expr_t;
 
-struct parser;
-struct compiler;
 struct vm;
 
-enum opcode_type {
-    OPCODE_IADD,
-    OPCODE_FADD,
-    OPCODE_ISUB,
-    OPCODE_FSUB,
-    OPCODE_IMUL,
-    OPCODE_FMUL,
-    OPCODE_IDIV,
-    OPCODE_FDIV,
-    OPCODE_ILTE,
-    OPCODE_FLTE,
-    OPCODE_ILT,
-    OPCODE_FLT,
-    OPCODE_IGTE,
-    OPCODE_FGTE,
-    OPCODE_IGT,
-    OPCODE_FGT,
-    OPCODE_IEQ,
-    OPCODE_FEQ,
-    OPCODE_INEQ,
-    OPCODE_FNEQ,
-    OPCODE_IINC,
-    OPCODE_FINC,
-    OPCODE_NOT,
-    OPCODE_F2I,
-    OPCODE_I2F,
-    OPCODE_COPY,
-    OPCODE_INT,
-    OPCODE_FLOAT,
-    OPCODE_LOCAL_STORE,
-    OPCODE_LOCAL_LOAD,
-    OPCODE_JF,
-    OPCODE_JMP,
-    OPCODE_CALL,
-    OPCODE_RETURN,
-    OPCODE_PUSH,
-    OPCODE_POP,
-    OPCODE_ARRAY_CREATE,
-    OPCODE_ARRAY_STORE,
-    OPCODE_ARRAY_LOAD,
-    OPCODE_ARRAY_LENGTH,
-    OPCODE_DEBUG_PRINT_INT,
-    OPCODE_DEBUG_PRINT_FLOAT,
-    OPCODE_DEBUG_PRINT_BOOL,
-    OPCODE_DEBUG_PRINT_STRING,
-    OPCODE_DEBUG_PRINT_STRING_CONST,
+typedef enum _ms_opcode_type {
+    _MS_OPCODE_IADD,
+    _MS_OPCODE_FADD,
+    _MS_OPCODE_ISUB,
+    _MS_OPCODE_FSUB,
+    _MS_OPCODE_IMUL,
+    _MS_OPCODE_FMUL,
+    _MS_OPCODE_IDIV,
+    _MS_OPCODE_FDIV,
+    _MS_OPCODE_ILTE,
+    _MS_OPCODE_FLTE,
+    _MS_OPCODE_ILT,
+    _MS_OPCODE_FLT,
+    _MS_OPCODE_IGTE,
+    _MS_OPCODE_FGTE,
+    _MS_OPCODE_IGT,
+    _MS_OPCODE_FGT,
+    _MS_OPCODE_IEQ,
+    _MS_OPCODE_FEQ,
+    _MS_OPCODE_INEQ,
+    _MS_OPCODE_FNEQ,
+    _MS_OPCODE_IINC,
+    _MS_OPCODE_FINC,
+    _MS_OPCODE_NOT,
+    _MS_OPCODE_F2I,
+    _MS_OPCODE_I2F,
+    _MS_OPCODE_COPY,
+    _MS_OPCODE_INT,
+    _MS_OPCODE_FLOAT,
+    _MS_OPCODE_LOCAL_STORE,
+    _MS_OPCODE_LOCAL_LOAD,
+    _MS_OPCODE_JF,
+    _MS_OPCODE_JMP,
+    _MS_OPCODE_CALL,
+    _MS_OPCODE_RETURN,
+    _MS_OPCODE_PUSH,
+    _MS_OPCODE_POP,
+    _MS_OPCODE_ARRAY_CREATE,
+    _MS_OPCODE_ARRAY_STORE,
+    _MS_OPCODE_ARRAY_LOAD,
+    _MS_OPCODE_ARRAY_LENGTH,
+    _MS_OPCODE_DEBUG_PRINT_INT,
+    _MS_OPCODE_DEBUG_PRINT_FLOAT,
+    _MS_OPCODE_DEBUG_PRINT_BOOL,
+    _MS_OPCODE_DEBUG_PRINT_STRING,
+    _MS_OPCODE_DEBUG_PRINT_STRING_CONST,
 
     // Intermediate opcodes
-    OPCODE_INTERMEDIATE_LABEL,
-    OPCODE_INTERMEDIATE_FUNC,
-    OPCODE_INTERMEDIATE_CALL,
-    OPCODE_INTERMEDIATE_JMP,
-    OPCODE_INTERMEDIATE_JF,
-    OPCODE_INTERMEDIATE_STRING,
-};
+    _MS_OPCODE_INTERMEDIATE_LABEL,
+    _MS_OPCODE_INTERMEDIATE_FUNC,
+    _MS_OPCODE_INTERMEDIATE_CALL,
+    _MS_OPCODE_INTERMEDIATE_JMP,
+    _MS_OPCODE_INTERMEDIATE_JF,
+    _MS_OPCODE_INTERMEDIATE_STRING,
+} _ms_opcode_type_t;
 
-struct opcode {
-    enum opcode_type type;
+typedef struct ms_opcode {
+    _ms_opcode_type_t type;
 
     union {
         int label;
@@ -98,8 +95,60 @@ struct opcode {
 
         char *intermediate_string;
     };
-};
-typedef vec_t(struct opcode) _vec_opcode_t;
+} _ms_opcode_t;
+typedef vec_t(_ms_opcode_t) _vec_ms_opcode_t;
+
+static _ms_opcode_t _ms_opcode_iadd(void);
+static _ms_opcode_t _ms_opcode_fadd(void);
+static _ms_opcode_t _ms_opcode_isub(void);
+static _ms_opcode_t _ms_opcode_fsub(void);
+static _ms_opcode_t _ms_opcode_imul(void);
+static _ms_opcode_t _ms_opcode_fmul(void);
+static _ms_opcode_t _ms_opcode_idiv(void);
+static _ms_opcode_t _ms_opcode_fdiv(void);
+static _ms_opcode_t _ms_opcode_ilte(void);
+static _ms_opcode_t _ms_opcode_flte(void);
+static _ms_opcode_t _ms_opcode_ilt(void);
+static _ms_opcode_t _ms_opcode_flt(void);
+static _ms_opcode_t _ms_opcode_igte(void);
+static _ms_opcode_t _ms_opcode_fgte(void);
+static _ms_opcode_t _ms_opcode_igt(void);
+static _ms_opcode_t _ms_opcode_fgt(void);
+static _ms_opcode_t _ms_opcode_ieq(void);
+static _ms_opcode_t _ms_opcode_feq(void);
+static _ms_opcode_t _ms_opcode_ineq(void);
+static _ms_opcode_t _ms_opcode_fneq(void);
+static _ms_opcode_t _ms_opcode_iinc(void);
+static _ms_opcode_t _ms_opcode_finc(void);
+static _ms_opcode_t _ms_opcode_not(void);
+static _ms_opcode_t _ms_opcode_f2i(void);
+static _ms_opcode_t _ms_opcode_i2f(void);
+static _ms_opcode_t _ms_opcode_copy(int offset, int size);
+static _ms_opcode_t _ms_opcode_int(int val);
+static _ms_opcode_t _ms_opcode_float(float val);
+static _ms_opcode_t _ms_opcode_local_store(int offset, int size);
+static _ms_opcode_t _ms_opcode_local_load(int offset, int size);
+static _ms_opcode_t _ms_opcode_jf(int label);
+static _ms_opcode_t _ms_opcode_jmp(int label);
+static _ms_opcode_t _ms_opcode_call(char *str);
+static _ms_opcode_t _ms_opcode_return(int size);
+static _ms_opcode_t _ms_opcode_push(int size);
+static _ms_opcode_t _ms_opcode_pop(int size);
+static _ms_opcode_t _ms_opcode_array_create(int size);
+static _ms_opcode_t _ms_opcode_array_store(int size);
+static _ms_opcode_t _ms_opcode_array_load(int size);
+static _ms_opcode_t _ms_opcode_array_length(void);
+static _ms_opcode_t _ms_opcode_debug_print_int(void);
+static _ms_opcode_t _ms_opcode_debug_print_float(void);
+static _ms_opcode_t _ms_opcode_debug_print_bool(void);
+static _ms_opcode_t _ms_opcode_debug_print_string(void);
+static _ms_opcode_t _ms_opcode_debug_print_string_const(char *str);
+static _ms_opcode_t _ms_opcode_intermediate_label(int label);
+static _ms_opcode_t _ms_opcode_intermediate_func(char *str);
+static _ms_opcode_t _ms_opcode_intermediate_call(char *str);
+static _ms_opcode_t _ms_opcode_intermediate_jmp(int label);
+static _ms_opcode_t _ms_opcode_intermediate_jf(int label);
+static _ms_opcode_t _ms_opcode_intermediate_string(char *string);
 
 typedef enum _ms_const_val_type {
     _MS_CONST_VAL_INT,
@@ -142,13 +191,18 @@ _ms_lvalue_t _ms_lvalue_invalid(void);
 _ms_lvalue_t _ms_lvalue_local(int offset);
 _ms_lvalue_t _ms_lvalue_array(void);
 
+static bool _ms_is_char_digit(char c);
+static bool _ms_is_char_start_of_symbol(char c);
+static bool _ms_is_char_part_of_symbol(char c);
+static bool _ms_is_char(char c);
+
 typedef enum _ms_token_type {
-    TOKEN_INT,
-    TOKEN_FLOAT,
-    TOKEN_SYMBOL,
-    TOKEN_STRING,
-    TOKEN_CHAR,
-    TOKEN_EOF,
+    _MS_TOKEN_INT,
+    _MS_TOKEN_FLOAT,
+    _MS_TOKEN_SYMBOL,
+    _MS_TOKEN_STRING,
+    _MS_TOKEN_CHAR,
+    _MS_TOKEN_EOF,
 } _ms_token_type_t;
 
 typedef struct _ms_token {
@@ -164,16 +218,11 @@ typedef struct _ms_token {
 } _ms_token_t;
 typedef vec_t(_ms_token_t) _vec_ms_token_t;
 
-static bool is_char_digit(char c);
-static bool is_char_start_of_symbol(char c);
-static bool is_char_part_of_symbol(char c);
-static bool is_char(char c);
 static _ms_token_t _ms_token_number(const char *text, int *len, int line, int col);
 static _ms_token_t _ms_token_char(char c, int line, int col);
 static _ms_token_t _ms_token_string(mscript_program_t *program, const char *text, int *len, int line, int col);
 static _ms_token_t _ms_token_symbol(const char *text, int *len, int line, int col);
 static _ms_token_t _ms_token_eof(int line, int col);
-static void _ms_tokenize(mscript_program_t *program);
 
 typedef struct _ms_parsed_type {
     char string[MSCRIPT_MAX_SYMBOL_LEN + 3];
@@ -183,46 +232,53 @@ typedef vec_t(_ms_parsed_type_t) _vec_ms_parsed_type_t;
 static _ms_parsed_type_t _ms_parsed_type(const char *name, bool is_array);
 
 typedef struct _ms_mem {
-    size_t bytes_allocated;
-    vec_void_t ptrs;
+    size_t pool_size;
+    size_t cur_pool_offset;
+    vec_char_ptr_t pools;
 } _ms_mem_t;
 
 static void _ms_mem_init(_ms_mem_t *mem);
 static void _ms_mem_deinit(_ms_mem_t *mem);
 static void *_ms_mem_alloc(_ms_mem_t *mem, size_t size);
 
-struct parser {
-    const char *prog_text;
+static _ms_token_t _ms_peek(mscript_program_t *program);
+static _ms_token_t _ms_peek_n(mscript_program_t *program, int n);
+static void _ms_eat(mscript_program_t *program); 
+static bool _ms_match_char(mscript_program_t *program, char c);
+static bool _ms_match_char_n(mscript_program_t *program, int n, ...);
+static bool _ms_match_symbol(mscript_program_t *program, const char *symbol);
+static bool _ms_match_symbol_n(mscript_program_t *program, int n, ...);
+static bool _ms_match_eof(mscript_program_t *program);
+static bool _ms_check_type(mscript_program_t *program);
+static bool _ms_is_char_token(_ms_token_t tok, char c);
 
-    _ms_mem_t mem;
+typedef struct _ms_struct_decl_arg {
+    char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
+    mscript_type_t *type;
+    int offset;
+} _ms_struct_decl_arg_t;
 
-    int token_idx;
-    _vec_ms_token_t tokens;
+typedef struct _ms_struct_decl {
+    _ms_stmt_t *stmt;
+    int recur_state;
+    char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
+    int num_members;
+    _ms_struct_decl_arg_t members[MSCRIPT_MAX_STRUCT_MEMBERS];
+} _ms_struct_decl_t;
 
-    char *error;
-    _ms_token_t error_token;
+static mscript_type_t *_ms_struct_decl_get_member(_ms_struct_decl_t *decl, const char *member, int *offset);
+
+struct mscript_type {
+    char name[MSCRIPT_MAX_SYMBOL_LEN + 3];
+    mscript_type_type_t type;
+    mscript_type_t *array_member_type;
+    _ms_struct_decl_t *struct_decl;
+    int size;
 };
+typedef vec_t(mscript_type_t*) _vec_mscript_type_ptr_t;
 
-static void parser_init(struct parser *parser, const char *prog_text);
-static void parser_deinit(struct parser *program);
-static _ms_token_t peek(mscript_program_t *program);
-static _ms_token_t peek_n(mscript_program_t *program, int n);
-static void eat(mscript_program_t *program); 
-static bool match_char(mscript_program_t *program, char c);
-static bool match_char_n(mscript_program_t *program, int n, ...);
-static bool match_symbol(mscript_program_t *program, const char *symbol);
-static bool match_symbol_n(mscript_program_t *program, int n, ...);
-static bool match_eof(mscript_program_t *program);
-static bool check_type(mscript_program_t *program);
-static bool is_char_token(_ms_token_t tok, char c);
-
-typedef enum _ms_symbol_type {
-    _MS_SYMBOL_LOCAL_VAR,
-    _MS_SYMBOL_GLOBAL_VAR,
-    _MS_SYMBOL_CONST,
-    _MS_SYMBOL_FUNCTION,
-    _MS_SYMBOL_TYPE,
-} _ms_symbol_type_t;
+static void _mscript_type_init(mscript_type_t *type, const char *name, mscript_type_type_t type_type,
+        mscript_type_t *array_member_type, _ms_struct_decl_t *struct_decl, int size);
 
 typedef struct _ms_function_decl_arg {
     mscript_type_t *type;
@@ -230,8 +286,8 @@ typedef struct _ms_function_decl_arg {
 } _ms_function_decl_arg_t;
 
 typedef struct _ms_function_decl {
-    struct array_int labels; 
-    _vec_opcode_t opcodes;
+    vec_int_t labels; 
+    _vec_ms_opcode_t opcodes;
     int block_size, args_size;
     mscript_type_t *return_type;
     char name[MSCRIPT_MAX_SYMBOL_LEN + 1]; 
@@ -255,7 +311,16 @@ typedef struct _ms_const_decl {
     _ms_const_val_t value;
 } _ms_const_decl_t;
 typedef vec_t(_ms_const_decl_t) _vec_ms_const_decl_t;
+
 static _ms_const_decl_t _ms_const_decl(const char *name, mscript_type_t *type, _ms_const_val_t value);
+
+typedef enum _ms_symbol_type {
+    _MS_SYMBOL_LOCAL_VAR,
+    _MS_SYMBOL_GLOBAL_VAR,
+    _MS_SYMBOL_CONST,
+    _MS_SYMBOL_FUNCTION,
+    _MS_SYMBOL_TYPE,
+} _ms_symbol_type_t;
 
 typedef struct _ms_symbol {
     _ms_symbol_type_t type;
@@ -302,135 +367,16 @@ static mscript_type_t *_ms_symbol_table_get_type(_ms_symbol_table_t *table, cons
 static _ms_function_decl_t *_ms_symbol_table_get_function_decl(_ms_symbol_table_t *table, const char *name);
 static _ms_symbol_t *_ms_symbol_table_get(_ms_symbol_table_t *table, const char *name);
 
-static void _ms_verify_stmt(mscript_program_t *program, _ms_stmt_t *stmt, bool *all_paths_return);
-static void _ms_verify_if_stmt(mscript_program_t *program, _ms_stmt_t *stmt, bool *all_paths_return);
-static void _ms_verify_for_stmt(mscript_program_t *program, _ms_stmt_t *stmt, bool *all_paths_return);
-static void _ms_verify_return_stmt(mscript_program_t *program, _ms_stmt_t *stmt, bool *all_paths_return);
-static void _ms_verify_block_stmt(mscript_program_t *program, _ms_stmt_t *stmt, bool *all_paths_return);
-static void _ms_verify_expr_stmt(mscript_program_t *program, _ms_stmt_t *stmt, bool *all_paths_return);
-static void _ms_verify_variable_declaration_stmt(mscript_program_t *program, _ms_stmt_t *stmt, bool *all_paths_return);
-static void _ms_verify_import_function_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
-static void _ms_verify_function_declaration_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
-
-static void _ms_verify_expr_with_cast(mscript_program_t *program, _ms_expr_t **expr, mscript_type_t *type);
-static void _ms_verify_expr_lvalue(mscript_program_t *program, _ms_expr_t *expr);
-static void _ms_verify_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
-static void _ms_verify_unary_op_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
-static void _ms_verify_binary_op_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
-static void _ms_verify_call_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
-static void _ms_verify_debug_print_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
-static void _ms_verify_member_access_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
-static void _ms_verify_assignment_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
-static void _ms_verify_int_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
-static void _ms_verify_float_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
-static void _ms_verify_symbol_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
-static void _ms_verify_null_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
-static void _ms_verify_string_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
-static void _ms_verify_array_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
-static void _ms_verify_array_access_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
-static void _ms_verify_object_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
-static void _ms_verify_cast_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
-
-static void opcode_iadd(mscript_program_t *program);
-static void opcode_fadd(mscript_program_t *program);
-static void opcode_isub(mscript_program_t *program);
-static void opcode_fsub(mscript_program_t *program);
-static void opcode_imul(mscript_program_t *program);
-static void opcode_fmul(mscript_program_t *program);
-static void opcode_idiv(mscript_program_t *program);
-static void opcode_fdiv(mscript_program_t *program);
-static void opcode_ilte(mscript_program_t *program);
-static void opcode_flte(mscript_program_t *program);
-static void opcode_ilt(mscript_program_t *program);
-static void opcode_flt(mscript_program_t *program);
-static void opcode_igte(mscript_program_t *program);
-static void opcode_fgte(mscript_program_t *program);
-static void opcode_igt(mscript_program_t *program);
-static void opcode_fgt(mscript_program_t *program);
-static void opcode_ieq(mscript_program_t *program);
-static void opcode_feq(mscript_program_t *program);
-static void opcode_ineq(mscript_program_t *program);
-static void opcode_fneq(mscript_program_t *program);
-static void opcode_iinc(mscript_program_t *program);
-static void opcode_finc(mscript_program_t *program);
-static void opcode_not(mscript_program_t *program);
-static void opcode_f2i(mscript_program_t *program);
-static void opcode_i2f(mscript_program_t *program);
-static void opcode_copy(mscript_program_t *program, int offset, int size);
-static void opcode_int(mscript_program_t *program, int val);
-static void opcode_float(mscript_program_t *program, float val);
-static void opcode_local_store(mscript_program_t *program, int offset, int size);
-static void opcode_local_load(mscript_program_t *program, int offset, int size);
-static void opcode_jf(mscript_program_t *program, int label);
-static void opcode_jmp(mscript_program_t *program, int label);
-static void opcode_call(mscript_program_t *program, char *str);
-static void opcode_return(mscript_program_t *program, int size);
-static void opcode_push(mscript_program_t *program, int size);
-static void opcode_pop(mscript_program_t *program, int size);
-static void opcode_array_create(mscript_program_t *program, int size);
-static void opcode_array_store(mscript_program_t *program, int size);
-static void opcode_array_load(mscript_program_t *program, int size);
-static void opcode_array_length(mscript_program_t *program);
-static void opcode_debug_print_int(mscript_program_t *program);
-static void opcode_debug_print_float(mscript_program_t *program);
-static void opcode_debug_print_bool(mscript_program_t *program);
-static void opcode_debug_print_string(mscript_program_t *program);
-static void opcode_debug_print_string_const(mscript_program_t *program, char *str);
-static void opcode_intermediate_label(mscript_program_t *program, int label);
-static void opcode_intermediate_func(mscript_program_t *program, char *str);
-static void opcode_intermediate_call(mscript_program_t *program, char *str);
-static void opcode_intermediate_jmp(mscript_program_t *program, int label);
-static void opcode_intermediate_jf(mscript_program_t *program, int label);
-static void opcode_intermediate_string(mscript_program_t *program, char *string);
-
-struct compiler {
-    int cur_label;
-    _ms_function_decl_t *cur_function_decl;
-};
-
-static void compiler_init(mscript_program_t *program);
-static void compiler_deinit(mscript_program_t *program);
-static void compiler_push_opcode(mscript_program_t *program, struct opcode op);
-static int compiler_new_label(mscript_program_t *program);
-
-static void compile_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
-static void compile_if_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
-static void compile_for_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
-static void compile_return_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
-static void compile_block_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
-static void compile_expr_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
-static void compile_function_declaration_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
-static void compile_variable_declaration_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
-
-static void compile_expr(mscript_program_t *program, _ms_expr_t *expr);
-static void compile_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr);
-static void compile_unary_op_expr(mscript_program_t *program, _ms_expr_t *expr);
-static void compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *expr);
-static void compile_call_expr(mscript_program_t *program, _ms_expr_t *expr);
-static void compile_debug_print_type(mscript_program_t *program, mscript_type_t *type);
-static void compile_debug_print_expr(mscript_program_t *program, _ms_expr_t *expr);
-static void compile_array_access_expr(mscript_program_t *program, _ms_expr_t *expr);
-static void compile_member_access_expr(mscript_program_t *program, _ms_expr_t *expr);
-static void compile_assignment_expr(mscript_program_t *program, _ms_expr_t *expr);
-static void compile_int_expr(mscript_program_t *program, _ms_expr_t *expr);
-static void compile_float_expr(mscript_program_t *program, _ms_expr_t *expr);
-static void compile_symbol_expr(mscript_program_t *program, _ms_expr_t *expr);
-static void compile_null_expr(mscript_program_t *program, _ms_expr_t *expr);
-static void compile_string_expr(mscript_program_t *program, _ms_expr_t *expr);
-static void compile_array_expr(mscript_program_t *program, _ms_expr_t *expr);
-static void compile_object_expr(mscript_program_t *program, _ms_expr_t *expr);
-static void compile_cast_expr(mscript_program_t *program, _ms_expr_t *expr);
-
 struct vm_array {
     int member_size;
-    struct array_char array;
+    vec_char_t array;
 };
-array_t(struct vm_array, array_vm_array)
+typedef vec_t(struct vm_array) _vec_vm_array_t;
 
 struct vm {
-    struct array_char stack;
-    struct array_vm_array arrays;
-    struct array_char strings;
+    vec_char_t stack;
+    _vec_vm_array_t arrays;
+    vec_char_t strings;
 };
 
 static void vm_init(mscript_program_t *program);
@@ -643,7 +589,7 @@ static _ms_expr_t *_ms_expr_member_access_new(_ms_mem_t *mem, _ms_token_t token,
 static _ms_expr_t *_ms_expr_call_new(_ms_mem_t *mem, _ms_token_t token, _ms_expr_t *function, _vec_expr_ptr_t args);
 static _ms_expr_t *_ms_expr_debug_print_new(_ms_mem_t *mem, _ms_token_t token, _vec_expr_ptr_t args);
 static _ms_expr_t *_ms_expr_array_new(_ms_mem_t *mem, _ms_token_t token, _vec_expr_ptr_t args);
-static _ms_expr_t *_ms_expr_object_new(_ms_mem_t *mem, _ms_token_t token, struct array_char_ptr names, _vec_expr_ptr_t args);
+static _ms_expr_t *_ms_expr_object_new(_ms_mem_t *mem, _ms_token_t token, vec_char_ptr_t names, _vec_expr_ptr_t args);
 static _ms_expr_t *_ms_expr_cast_new(_ms_mem_t *mem, _ms_token_t token, _ms_parsed_type_t type, _ms_expr_t *expr);
 static _ms_expr_t *_ms_expr_int_new(_ms_mem_t *mem, _ms_token_t token, int int_val);
 static _ms_expr_t *_ms_expr_float_new(_ms_mem_t *mem, _ms_token_t token, float float_val);
@@ -654,16 +600,16 @@ static _ms_stmt_t *_ms_stmt_if_new(_ms_mem_t *mem, _ms_token_t token, _vec_expr_
 static _ms_stmt_t *_ms_stmt_return_new(_ms_mem_t *mem, _ms_token_t token, _ms_expr_t *expr);
 static _ms_stmt_t *_ms_stmt_block_new(_ms_mem_t *mem, _ms_token_t token, _vec_ms_stmt_ptr_t stmts);
 static _ms_stmt_t *_ms_stmt_function_declaration_new(_ms_mem_t *mem, _ms_token_t token,
-        _ms_parsed_type_t return_type, char *name, _vec_ms_parsed_type_t arg_types, struct array_char_ptr arg_names, _ms_stmt_t *body);
+        _ms_parsed_type_t return_type, char *name, _vec_ms_parsed_type_t arg_types, vec_char_ptr_t arg_names, _ms_stmt_t *body);
 static _ms_stmt_t *_ms_stmt_global_declaration_new(_ms_mem_t *mem, _ms_token_t token, _ms_parsed_type_t type, char *name, _ms_expr_t *init_expr);
 static _ms_stmt_t *_ms_stmt_variable_declaration_new(_ms_mem_t *mem, _ms_token_t token, _ms_parsed_type_t type, char *name, _ms_expr_t *assignment_expr);
 static _ms_stmt_t *_ms_stmt_struct_declaration_new(_ms_mem_t *mem, _ms_token_t token, char *name,
-        _vec_ms_parsed_type_t member_types, struct array_char_ptr member_names);
-static _ms_stmt_t *_ms_stmt_enum_declaration_new(_ms_mem_t *mem, _ms_token_t token, char *name, struct array_char_ptr value_names);
+        _vec_ms_parsed_type_t member_types, vec_char_ptr_t member_names);
+static _ms_stmt_t *_ms_stmt_enum_declaration_new(_ms_mem_t *mem, _ms_token_t token, char *name, vec_char_ptr_t value_names);
 static _ms_stmt_t *_ms_stmt_for_new(_ms_mem_t *mem, _ms_token_t token, _ms_expr_t *init, _ms_expr_t *cond, _ms_expr_t *inc, _ms_stmt_t *body);
 static _ms_stmt_t *_ms_stmt_import_new(_ms_mem_t *mem, _ms_token_t token, char *program_name);
 static _ms_stmt_t *_ms_stmt_import_function_new(_ms_mem_t *mem, _ms_token_t token, _ms_parsed_type_t return_type, char *name,
-        _vec_ms_parsed_type_t arg_types, struct array_char_ptr arg_names);
+        _vec_ms_parsed_type_t arg_types, vec_char_ptr_t arg_names);
 static _ms_stmt_t *_ms_stmt_expr_new(_ms_mem_t *mem, _ms_token_t token, _ms_expr_t *expr);
 
 static _ms_parsed_type_t _ms_parse_type(mscript_program_t *program);  
@@ -693,33 +639,62 @@ static _ms_stmt_t *_ms_parse_enum_declaration_stmt(mscript_program_t *program);
 static _ms_stmt_t *_ms_parse_import_stmt(mscript_program_t *program);
 static _ms_stmt_t *_ms_parse_import_function_stmt(mscript_program_t *program);
 
-typedef struct _ms_struct_decl_arg {
-    char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
-    mscript_type_t *type;
-    int offset;
-} _ms_struct_decl_arg_t;
+static void _ms_verify_stmt(mscript_program_t *program, _ms_stmt_t *stmt, bool *all_paths_return);
+static void _ms_verify_if_stmt(mscript_program_t *program, _ms_stmt_t *stmt, bool *all_paths_return);
+static void _ms_verify_for_stmt(mscript_program_t *program, _ms_stmt_t *stmt, bool *all_paths_return);
+static void _ms_verify_return_stmt(mscript_program_t *program, _ms_stmt_t *stmt, bool *all_paths_return);
+static void _ms_verify_block_stmt(mscript_program_t *program, _ms_stmt_t *stmt, bool *all_paths_return);
+static void _ms_verify_expr_stmt(mscript_program_t *program, _ms_stmt_t *stmt, bool *all_paths_return);
+static void _ms_verify_variable_declaration_stmt(mscript_program_t *program, _ms_stmt_t *stmt, bool *all_paths_return);
+static void _ms_verify_import_function_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
+static void _ms_verify_function_declaration_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
 
-typedef struct _ms_struct_decl {
-    _ms_stmt_t *stmt;
-    int recur_state;
-    char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
-    int num_members;
-    _ms_struct_decl_arg_t members[MSCRIPT_MAX_STRUCT_MEMBERS];
-} _ms_struct_decl_t;
+static void _ms_verify_expr_with_cast(mscript_program_t *program, _ms_expr_t **expr, mscript_type_t *type);
+static void _ms_verify_expr_lvalue(mscript_program_t *program, _ms_expr_t *expr);
+static void _ms_verify_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
+static void _ms_verify_unary_op_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
+static void _ms_verify_binary_op_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
+static void _ms_verify_call_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
+static void _ms_verify_debug_print_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
+static void _ms_verify_member_access_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
+static void _ms_verify_assignment_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
+static void _ms_verify_int_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
+static void _ms_verify_float_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
+static void _ms_verify_symbol_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
+static void _ms_verify_null_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
+static void _ms_verify_string_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
+static void _ms_verify_array_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
+static void _ms_verify_array_access_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
+static void _ms_verify_object_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
+static void _ms_verify_cast_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
 
-static mscript_type_t *_ms_struct_decl_get_member(_ms_struct_decl_t *decl, const char *member, int *offset);
+static void _ms_compile_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
+static void _ms_compile_if_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
+static void _ms_compile_for_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
+static void _ms_compile_return_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
+static void _ms_compile_block_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
+static void _ms_compile_expr_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
+static void _ms_compile_function_declaration_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
+static void _ms_compile_variable_declaration_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
 
-struct mscript_type {
-    char name[MSCRIPT_MAX_SYMBOL_LEN + 3];
-    mscript_type_type_t type;
-    mscript_type_t *array_member_type;
-    _ms_struct_decl_t *struct_decl;
-    int size;
-};
-typedef vec_t(mscript_type_t*) _vec_mscript_type_ptr_t;
-
-static void _mscript_type_init(mscript_type_t *type, const char *name, mscript_type_type_t type_type,
-        mscript_type_t *array_member_type, _ms_struct_decl_t *struct_decl, int size);
+static void _ms_compile_expr(mscript_program_t *program, _ms_expr_t *expr);
+static void _ms_compile_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr);
+static void _ms_compile_unary_op_expr(mscript_program_t *program, _ms_expr_t *expr);
+static void _ms_compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *expr);
+static void _ms_compile_call_expr(mscript_program_t *program, _ms_expr_t *expr);
+static void _ms_compile_debug_print_type(mscript_program_t *program, mscript_type_t *type);
+static void _ms_compile_debug_print_expr(mscript_program_t *program, _ms_expr_t *expr);
+static void _ms_compile_array_access_expr(mscript_program_t *program, _ms_expr_t *expr);
+static void _ms_compile_member_access_expr(mscript_program_t *program, _ms_expr_t *expr);
+static void _ms_compile_assignment_expr(mscript_program_t *program, _ms_expr_t *expr);
+static void _ms_compile_int_expr(mscript_program_t *program, _ms_expr_t *expr);
+static void _ms_compile_float_expr(mscript_program_t *program, _ms_expr_t *expr);
+static void _ms_compile_symbol_expr(mscript_program_t *program, _ms_expr_t *expr);
+static void _ms_compile_null_expr(mscript_program_t *program, _ms_expr_t *expr);
+static void _ms_compile_string_expr(mscript_program_t *program, _ms_expr_t *expr);
+static void _ms_compile_array_expr(mscript_program_t *program, _ms_expr_t *expr);
+static void _ms_compile_object_expr(mscript_program_t *program, _ms_expr_t *expr);
+static void _ms_compile_cast_expr(mscript_program_t *program, _ms_expr_t *expr);
 
 typedef vec_t(mscript_program_t *) _vec_program_ptr;
 
@@ -735,21 +710,23 @@ struct mscript_program {
     _vec_ms_global_decl_ptr_t exported_global_decls;
     _vec_ms_const_decl_t exported_const_decls;
 
-    _ms_mem_t compiler_mem;
-
     map_int_t func_label_map;
 
     _vec_program_ptr imported_programs;
 
     _vec_ms_stmt_ptr_t global_stmts;
-    _vec_opcode_t opcodes;
-    struct array_char strings;
+    _vec_ms_opcode_t opcodes;
+    vec_char_t strings;
 
-    struct parser parser;
-    struct compiler compiler; 
+    // compiler data
+    _ms_mem_t compiler_mem;
+    int token_idx;
+    _vec_ms_token_t tokens;
+    int cur_label;
+    _ms_function_decl_t *cur_function_decl;
+    _vec_ms_opcode_t *cur_opcodes;
+
     struct vm vm;
-
-    _ms_function_decl_t *verify_function_decl;
 
     char *error;
     _ms_token_t error_token;
@@ -769,6 +746,7 @@ struct mscript {
 };
 
 static void _ms_program_init(mscript_program_t *program, mscript_t *mscript, struct file file);
+static void _ms_program_tokenize(mscript_program_t *program);
 static void _ms_program_error(mscript_program_t *program, _ms_token_t token, char *fmt, ...);
 static void _ms_program_error_no_token(mscript_program_t *program, char *fmt, ...);
 static void _ms_program_import_program(mscript_program_t *program, mscript_program_t *import);
@@ -795,7 +773,7 @@ static void debug_log_token(_ms_token_t token);
 static void debug_log_tokens(_ms_token_t *tokens);
 static void debug_log_stmt(_ms_stmt_t *stmt);
 static void debug_log_expr(_ms_expr_t *expr);
-static void debug_log_opcodes(struct opcode *opcodes, int num_opcodes);
+static void debug_log_opcodes(_ms_opcode_t *opcodes, int num_opcodes);
 
 //
 // DEFINITIONS
@@ -955,7 +933,7 @@ static _ms_expr_t *_ms_expr_array_new(_ms_mem_t *mem, _ms_token_t token, _vec_ex
     return expr;
 }
 
-static _ms_expr_t *_ms_expr_object_new(_ms_mem_t *mem, _ms_token_t token, struct array_char_ptr names, _vec_expr_ptr_t args) {
+static _ms_expr_t *_ms_expr_object_new(_ms_mem_t *mem, _ms_token_t token, vec_char_ptr_t names, _vec_expr_ptr_t args) {
     assert(names.length == args.length);
     int num_args = args.length;
 
@@ -1083,7 +1061,7 @@ static _ms_stmt_t *_ms_stmt_block_new(_ms_mem_t *mem, _ms_token_t token, _vec_ms
 }
 
 static _ms_stmt_t *_ms_stmt_function_declaration_new(_ms_mem_t *mem, _ms_token_t token, _ms_parsed_type_t return_type, char *name, 
-        _vec_ms_parsed_type_t arg_types, struct array_char_ptr arg_names, _ms_stmt_t *body) {
+        _vec_ms_parsed_type_t arg_types, vec_char_ptr_t arg_names, _ms_stmt_t *body) {
     assert(arg_types.length == arg_names.length);
     int num_args = arg_types.length;
 
@@ -1128,7 +1106,7 @@ static _ms_stmt_t *_ms_stmt_variable_declaration_new(_ms_mem_t *mem, _ms_token_t
 }
 
 static _ms_stmt_t *_ms_stmt_struct_declaration_new(_ms_mem_t *mem, _ms_token_t token, char *name, 
-        _vec_ms_parsed_type_t member_types, struct array_char_ptr member_names) {
+        _vec_ms_parsed_type_t member_types, vec_char_ptr_t member_names) {
     assert(member_types.length == member_names.length);
     int num_members = member_types.length;
 
@@ -1144,7 +1122,7 @@ static _ms_stmt_t *_ms_stmt_struct_declaration_new(_ms_mem_t *mem, _ms_token_t t
     return stmt;
 }
 
-static _ms_stmt_t *_ms_stmt_enum_declaration_new(_ms_mem_t *mem, _ms_token_t token, char *name, struct array_char_ptr value_names) {
+static _ms_stmt_t *_ms_stmt_enum_declaration_new(_ms_mem_t *mem, _ms_token_t token, char *name, vec_char_ptr_t value_names) {
     int num_values = value_names.length;
 
     _ms_stmt_t *stmt = _ms_mem_alloc(mem, sizeof(_ms_stmt_t));
@@ -1176,7 +1154,7 @@ static _ms_stmt_t *_ms_stmt_import_new(_ms_mem_t *mem, _ms_token_t token, char *
     return stmt;
 }
 
-static _ms_stmt_t *_ms_stmt_import_function_new(_ms_mem_t *mem, _ms_token_t token, _ms_parsed_type_t return_type, char *name, _vec_ms_parsed_type_t arg_types, struct array_char_ptr arg_names) {
+static _ms_stmt_t *_ms_stmt_import_function_new(_ms_mem_t *mem, _ms_token_t token, _ms_parsed_type_t return_type, char *name, _vec_ms_parsed_type_t arg_types, vec_char_ptr_t arg_names) {
     int num_args = arg_types.length;
     assert(arg_types.length == arg_names.length);
 
@@ -1205,35 +1183,35 @@ static _ms_parsed_type_t _ms_parse_type(mscript_program_t *program) {
     const char *name = NULL;
     bool is_array = false;
 
-    if (match_symbol(program, "void")) {
-        if (match_char(program, '*')) {
+    if (_ms_match_symbol(program, "void")) {
+        if (_ms_match_char(program, '*')) {
             name = "void*";
         }
         else {
             name = "void";
         }
     }
-    else if (match_symbol(program, "int")) {
+    else if (_ms_match_symbol(program, "int")) {
         name = "int";
     }
-    else if (match_symbol(program, "float")) {
+    else if (_ms_match_symbol(program, "float")) {
         name = "float";
     }
-    else if (match_symbol(program, "bool")) {
+    else if (_ms_match_symbol(program, "bool")) {
         name = "bool";
     }
     else {
-        _ms_token_t tok = peek(program);
-        if (tok.type != TOKEN_SYMBOL) {
+        _ms_token_t tok = _ms_peek(program);
+        if (tok.type != _MS_TOKEN_SYMBOL) {
             _ms_program_error(program, tok, "Expected symbol");
             return _ms_parsed_type("", false);
         }
-        eat(program);
+        _ms_eat(program);
 
         name = tok.symbol;
     }
 
-    if (match_char_n(program, 2, '[', ']')) {
+    if (_ms_match_char_n(program, 2, '[', ']')) {
         is_array = true;
     }
 
@@ -1241,26 +1219,26 @@ static _ms_parsed_type_t _ms_parse_type(mscript_program_t *program) {
 }
 
 static _ms_expr_t *_ms_parse_object_expr(mscript_program_t *program) {
-    _ms_token_t token = peek(program);
-    struct array_char_ptr names;
+    _ms_token_t token = _ms_peek(program);
+    vec_char_ptr_t names;
     _vec_expr_ptr_t args;
-    array_init(&names);
+    vec_init(&names);
     vec_init(&args);
 
     _ms_expr_t *expr = NULL;
 
-    if (!match_char(program, '}')) {
+    if (!_ms_match_char(program, '}')) {
         while (true) {
-            _ms_token_t tok = peek(program);
-            if (tok.type != TOKEN_SYMBOL) {
+            _ms_token_t tok = _ms_peek(program);
+            if (tok.type != _MS_TOKEN_SYMBOL) {
                 _ms_program_error(program, tok, "Expected symbol"); 
                 goto cleanup;
             }
-            array_push(&names, tok.symbol);
-            eat(program);
+            vec_push(&names, tok.symbol);
+            _ms_eat(program);
 
-            if (!match_char(program, '=')) {
-                _ms_program_error(program, peek(program), "Expected '='");
+            if (!_ms_match_char(program, '=')) {
+                _ms_program_error(program, _ms_peek(program), "Expected '='");
                 goto cleanup;
             }
 
@@ -1268,9 +1246,9 @@ static _ms_expr_t *_ms_parse_object_expr(mscript_program_t *program) {
             if (program->error) goto cleanup;
             vec_push(&args, arg);
 
-            if (!match_char(program, ',')) {
-                if (!match_char(program, '}')) {
-                    _ms_program_error(program, peek(program), "Expected '}'");
+            if (!_ms_match_char(program, ',')) {
+                if (!_ms_match_char(program, '}')) {
+                    _ms_program_error(program, _ms_peek(program), "Expected '}'");
                     goto cleanup;
                 }
                 break;
@@ -1278,29 +1256,29 @@ static _ms_expr_t *_ms_parse_object_expr(mscript_program_t *program) {
         }
     }
 
-    expr = _ms_expr_object_new(&program->parser.mem, token, names, args);
+    expr = _ms_expr_object_new(&program->compiler_mem, token, names, args);
 
 cleanup:
-    array_deinit(&names);
-    array_deinit(&args);
+    vec_deinit(&names);
+    vec_deinit(&args);
     return expr;
 }
 
 static _ms_expr_t *_ms_parse_array_expr(mscript_program_t *program) {
-    _ms_token_t token = peek(program);
+    _ms_token_t token = _ms_peek(program);
     _vec_expr_ptr_t args;
     vec_init(&args);
 
     _ms_expr_t *expr = NULL;
-    if (!match_char(program, ']')) {
+    if (!_ms_match_char(program, ']')) {
         while (true) {
             _ms_expr_t *arg = _ms_parse_expr(program);
             if (program->error) goto cleanup;
             vec_push(&args, arg);
 
-            if (!match_char(program, ',')) {
-                if (!match_char(program, ']')) {
-                    _ms_program_error(program, peek(program), "Expected ']'");
+            if (!_ms_match_char(program, ',')) {
+                if (!_ms_match_char(program, ']')) {
+                    _ms_program_error(program, _ms_peek(program), "Expected ']'");
                     goto cleanup;
                 }
                 break;
@@ -1308,46 +1286,46 @@ static _ms_expr_t *_ms_parse_array_expr(mscript_program_t *program) {
         }
     }
 
-    expr = _ms_expr_array_new(&program->parser.mem, token, args);
+    expr = _ms_expr_array_new(&program->compiler_mem, token, args);
 
 cleanup:
-    array_deinit(&args);
+    vec_deinit(&args);
     return expr;
 }
 
 static _ms_expr_t *_ms_parse_primary_expr(mscript_program_t *program) {
-    _ms_token_t tok = peek(program);
+    _ms_token_t tok = _ms_peek(program);
     _ms_expr_t *expr = NULL;
 
-    if (tok.type == TOKEN_INT) {
-        expr = _ms_expr_int_new(&program->parser.mem, tok, tok.int_val);
-        eat(program);
+    if (tok.type == _MS_TOKEN_INT) {
+        expr = _ms_expr_int_new(&program->compiler_mem, tok, tok.int_val);
+        _ms_eat(program);
     }
-    else if (tok.type == TOKEN_FLOAT) {
-        expr = _ms_expr_float_new(&program->parser.mem, tok, tok.float_val);
-        eat(program);
+    else if (tok.type == _MS_TOKEN_FLOAT) {
+        expr = _ms_expr_float_new(&program->compiler_mem, tok, tok.float_val);
+        _ms_eat(program);
     }
-    else if (match_symbol(program, "NULL")) {
-        expr = _ms_expr_null_new(&program->parser.mem, tok);
+    else if (_ms_match_symbol(program, "NULL")) {
+        expr = _ms_expr_null_new(&program->compiler_mem, tok);
     }
-    else if (tok.type == TOKEN_SYMBOL) {
-        expr = _ms_expr_symbol_new(&program->parser.mem, tok, tok.symbol);
-        eat(program);
+    else if (tok.type == _MS_TOKEN_SYMBOL) {
+        expr = _ms_expr_symbol_new(&program->compiler_mem, tok, tok.symbol);
+        _ms_eat(program);
     }
-    else if (tok.type == TOKEN_STRING) {
-        expr = new_string_expr(&program->parser.mem, tok, tok.string);
-        eat(program);
+    else if (tok.type == _MS_TOKEN_STRING) {
+        expr = new_string_expr(&program->compiler_mem, tok, tok.string);
+        _ms_eat(program);
     }
-    else if (match_char(program, '[')) {
+    else if (_ms_match_char(program, '[')) {
         expr = _ms_parse_array_expr(program);
     }
-    else if (match_char(program, '{')) {
+    else if (_ms_match_char(program, '{')) {
         expr = _ms_parse_object_expr(program);
     }
-    else if (match_char(program, '(')) {
+    else if (_ms_match_char(program, '(')) {
         expr = _ms_parse_expr(program);
-        if (!match_char(program, ')')) {
-            _ms_program_error(program, peek(program), "Expected ')'."); 
+        if (!_ms_match_char(program, ')')) {
+            _ms_program_error(program, _ms_peek(program), "Expected ')'."); 
             goto cleanup;
         }
     }
@@ -1364,20 +1342,20 @@ static _ms_expr_t *_ms_parse_call_expr(mscript_program_t *program) {
     _vec_expr_ptr_t args;
     vec_init(&args);
 
-    _ms_token_t token = peek(program);
+    _ms_token_t token = _ms_peek(program);
     _ms_expr_t *expr = _ms_parse_primary_expr(program);
     if (program->error) goto cleanup;
 
-    if (match_char(program, '(')) {
-        if (!match_char(program, ')')) {
+    if (_ms_match_char(program, '(')) {
+        if (!_ms_match_char(program, ')')) {
             while (true) {
                 _ms_expr_t *arg = _ms_parse_expr(program);
                 if (program->error) goto cleanup;
                 vec_push(&args, arg);
 
-                if (!match_char(program, ',')) {
-                    if (!match_char(program, ')')) {
-                        _ms_program_error(program, peek(program), "Expected ')'");
+                if (!_ms_match_char(program, ',')) {
+                    if (!_ms_match_char(program, ')')) {
+                        _ms_program_error(program, _ms_peek(program), "Expected ')'");
                         goto cleanup;
                     }
                     break;
@@ -1386,41 +1364,41 @@ static _ms_expr_t *_ms_parse_call_expr(mscript_program_t *program) {
         }
 
         if (expr->type == _MS_EXPR_SYMBOL && (strcmp(expr->symbol, "print") == 0)) {
-            expr = _ms_expr_debug_print_new(&program->parser.mem, token, args);
+            expr = _ms_expr_debug_print_new(&program->compiler_mem, token, args);
         }
         else {
-            expr = _ms_expr_call_new(&program->parser.mem, token, expr, args);
+            expr = _ms_expr_call_new(&program->compiler_mem, token, expr, args);
         }
     }
 
 cleanup:
-    array_deinit(&args);
+    vec_deinit(&args);
     return expr;
 }
 
 static _ms_expr_t *_ms_parse_expr_member_access_or_array_access(mscript_program_t *program) {
-    _ms_token_t token = peek(program);
+    _ms_token_t token = _ms_peek(program);
     _ms_expr_t *expr = _ms_parse_call_expr(program);
     if (program->error) goto cleanup;
 
     while (true) {
-        if (match_char(program, '.')) {
-            _ms_token_t tok = peek(program);
-            if (tok.type != TOKEN_SYMBOL) {
+        if (_ms_match_char(program, '.')) {
+            _ms_token_t tok = _ms_peek(program);
+            if (tok.type != _MS_TOKEN_SYMBOL) {
                 _ms_program_error(program, tok, "Expected symbol token");
                 goto cleanup;
             }
-            eat(program);
+            _ms_eat(program);
 
-            expr = _ms_expr_member_access_new(&program->parser.mem, token, expr, tok.symbol);
+            expr = _ms_expr_member_access_new(&program->compiler_mem, token, expr, tok.symbol);
         }
-        else if (match_char(program, '[')) {
+        else if (_ms_match_char(program, '[')) {
             _ms_expr_t *right = _ms_parse_expr(program);
             if (program->error) goto cleanup;
-            expr = _ms_expr_array_access_new(&program->parser.mem, token, expr, right);
+            expr = _ms_expr_array_access_new(&program->compiler_mem, token, expr, right);
 
-            if (!match_char(program, ']')) {
-                _ms_program_error(program, peek(program), "Expected ']'");
+            if (!_ms_match_char(program, ']')) {
+                _ms_program_error(program, _ms_peek(program), "Expected ']'");
                 goto cleanup;
             }
         }
@@ -1434,22 +1412,22 @@ cleanup:
 }
 
 static _ms_expr_t *_ms_parse_expr_unary(mscript_program_t *program) {
-    _ms_token_t token = peek(program);
+    _ms_token_t token = _ms_peek(program);
 
     _ms_expr_t *expr = NULL;
 
-    if (match_char(program, '!')) {
+    if (_ms_match_char(program, '!')) {
         expr = _ms_parse_expr_member_access_or_array_access(program); 
         if (program->error) goto cleanup;
 
-        expr = _ms_expr_unary_op_new(&program->parser.mem, token, _MS_UNARY_OP_LOGICAL_NOT, expr);
+        expr = _ms_expr_unary_op_new(&program->compiler_mem, token, _MS_UNARY_OP_LOGICAL_NOT, expr);
     }
     else {
         expr = _ms_parse_expr_member_access_or_array_access(program);
         if (program->error) goto cleanup;
 
-        if (match_char_n(program, 2, '+', '+')) {
-            expr = _ms_expr_unary_op_new(&program->parser.mem, token, _MS_UNARY_OP_POST_INC, expr);
+        if (_ms_match_char_n(program, 2, '+', '+')) {
+            expr = _ms_expr_unary_op_new(&program->compiler_mem, token, _MS_UNARY_OP_POST_INC, expr);
         }
     }
 
@@ -1458,22 +1436,22 @@ cleanup:
 }
 
 static _ms_expr_t *_ms_parse_expr_factor(mscript_program_t *program) {
-    _ms_token_t token = peek(program);
+    _ms_token_t token = _ms_peek(program);
     _ms_expr_t *expr = _ms_parse_expr_unary(program);
     if (program->error) goto cleanup;
 
     while (true) {
         _ms_binary_op_type_t binary_op_type;
 
-        _ms_token_t tok0 = peek_n(program, 0);
-        _ms_token_t tok1 = peek_n(program, 1);
-        if (is_char_token(tok0, '*') && !is_char_token(tok1, '=')) {
+        _ms_token_t tok0 = _ms_peek_n(program, 0);
+        _ms_token_t tok1 = _ms_peek_n(program, 1);
+        if (_ms_is_char_token(tok0, '*') && !_ms_is_char_token(tok1, '=')) {
             binary_op_type = _MS_BINARY_OP_MUL;
-            eat(program);
+            _ms_eat(program);
         }
-        else if (is_char_token(tok0, '/') && !is_char_token(tok1, '=')) {
+        else if (_ms_is_char_token(tok0, '/') && !_ms_is_char_token(tok1, '=')) {
             binary_op_type = _MS_BINARY_OP_DIV;
-            eat(program);
+            _ms_eat(program);
         }
         else {
             break;
@@ -1481,7 +1459,7 @@ static _ms_expr_t *_ms_parse_expr_factor(mscript_program_t *program) {
 
         _ms_expr_t *right = _ms_parse_expr_unary(program);
         if (program->error) goto cleanup;
-        expr = _ms_expr_binary_op_new(&program->parser.mem, token, binary_op_type, expr, right);
+        expr = _ms_expr_binary_op_new(&program->compiler_mem, token, binary_op_type, expr, right);
     }
 
 cleanup:
@@ -1489,22 +1467,22 @@ cleanup:
 }
 
 static _ms_expr_t *_ms_parse_expr_term(mscript_program_t *program) {
-    _ms_token_t token = peek(program);
+    _ms_token_t token = _ms_peek(program);
     _ms_expr_t *expr = _ms_parse_expr_factor(program);
     if (program->error) goto cleanup;
 
     while (true) {
         _ms_binary_op_type_t binary_op_type;
 
-        _ms_token_t tok0 = peek_n(program, 0);
-        _ms_token_t tok1 = peek_n(program, 1);
-        if (is_char_token(tok0, '+') && !is_char_token(tok1, '=')) {
+        _ms_token_t tok0 = _ms_peek_n(program, 0);
+        _ms_token_t tok1 = _ms_peek_n(program, 1);
+        if (_ms_is_char_token(tok0, '+') && !_ms_is_char_token(tok1, '=')) {
             binary_op_type = _MS_BINARY_OP_ADD;
-            eat(program);
+            _ms_eat(program);
         }
-        else if (is_char_token(tok0, '-') && !is_char_token(tok1, '=')) {
+        else if (_ms_is_char_token(tok0, '-') && !_ms_is_char_token(tok1, '=')) {
             binary_op_type = _MS_BINARY_OP_SUB;
-            eat(program);
+            _ms_eat(program);
         }
         else {
             break;
@@ -1512,7 +1490,7 @@ static _ms_expr_t *_ms_parse_expr_term(mscript_program_t *program) {
 
         _ms_expr_t *right = _ms_parse_expr_factor(program);
         if (program->error) goto cleanup;
-        expr = _ms_expr_binary_op_new(&program->parser.mem, token, binary_op_type, expr, right);
+        expr = _ms_expr_binary_op_new(&program->compiler_mem, token, binary_op_type, expr, right);
     }
 
 cleanup:
@@ -1520,29 +1498,29 @@ cleanup:
 }
 
 static _ms_expr_t *_ms_parse_expr_comparison(mscript_program_t *program) {
-    _ms_token_t token = peek(program);
+    _ms_token_t token = _ms_peek(program);
     _ms_expr_t *expr = _ms_parse_expr_term(program);
     if (program->error) goto cleanup;
 
     while (true) {
         _ms_binary_op_type_t binary_op_type;
 
-        if (match_char_n(program, 2, '<', '=')) {
+        if (_ms_match_char_n(program, 2, '<', '=')) {
             binary_op_type = _MS_BINARY_OP_LTE;
         }
-        else if (match_char_n(program, 1, '<')) {
+        else if (_ms_match_char_n(program, 1, '<')) {
             binary_op_type = _MS_BINARY_OP_LT;
         }
-        else if (match_char_n(program, 2, '>', '=')) {
+        else if (_ms_match_char_n(program, 2, '>', '=')) {
             binary_op_type = _MS_BINARY_OP_GTE;
         }
-        else if (match_char_n(program, 1, '>')) {
+        else if (_ms_match_char_n(program, 1, '>')) {
             binary_op_type = _MS_BINARY_OP_GT;
         }
-        else if (match_char_n(program, 2, '=', '=')) {
+        else if (_ms_match_char_n(program, 2, '=', '=')) {
             binary_op_type = _MS_BINARY_OP_EQ;
         }
-        else if (match_char_n(program, 2, '!', '=')) {
+        else if (_ms_match_char_n(program, 2, '!', '=')) {
             binary_op_type = _MS_BINARY_OP_NEQ;
         }
         else {
@@ -1551,7 +1529,7 @@ static _ms_expr_t *_ms_parse_expr_comparison(mscript_program_t *program) {
 
         _ms_expr_t *right = _ms_parse_expr_term(program);
         if (program->error) goto cleanup;
-        expr = _ms_expr_binary_op_new(&program->parser.mem, token, binary_op_type, expr, right);
+        expr = _ms_expr_binary_op_new(&program->compiler_mem, token, binary_op_type, expr, right);
     }
 
 cleanup:
@@ -1559,48 +1537,48 @@ cleanup:
 }
 
 static _ms_expr_t *_ms_parse_expr_assignment(mscript_program_t *program) {
-    _ms_token_t token = peek(program);
+    _ms_token_t token = _ms_peek(program);
     _ms_expr_t *expr = _ms_parse_expr_comparison(program);
     if (program->error) goto cleanup;
 
     while (true) {
-        if (match_char_n(program, 2, '+', '=')) {
+        if (_ms_match_char_n(program, 2, '+', '=')) {
             _ms_expr_t *right = _ms_parse_expr_assignment(program);
             if (program->error) goto cleanup;
 
             _ms_expr_t *lvalue = expr;
-            expr = _ms_expr_binary_op_new(&program->parser.mem, token, _MS_BINARY_OP_ADD, lvalue, right);
-            expr = _ms_expr_assignment_new(&program->parser.mem, token, lvalue, expr);
+            expr = _ms_expr_binary_op_new(&program->compiler_mem, token, _MS_BINARY_OP_ADD, lvalue, right);
+            expr = _ms_expr_assignment_new(&program->compiler_mem, token, lvalue, expr);
         }
-        else if (match_char_n(program, 2, '-', '=')) {
+        else if (_ms_match_char_n(program, 2, '-', '=')) {
             _ms_expr_t *right = _ms_parse_expr_assignment(program);
             if (program->error) goto cleanup;
 
             _ms_expr_t *lvalue = expr;
-            expr = _ms_expr_binary_op_new(&program->parser.mem, token, _MS_BINARY_OP_SUB, lvalue, right);
-            expr = _ms_expr_assignment_new(&program->parser.mem, token, lvalue, expr);
+            expr = _ms_expr_binary_op_new(&program->compiler_mem, token, _MS_BINARY_OP_SUB, lvalue, right);
+            expr = _ms_expr_assignment_new(&program->compiler_mem, token, lvalue, expr);
         }
-        else if (match_char_n(program, 2, '*', '=')) {
+        else if (_ms_match_char_n(program, 2, '*', '=')) {
             _ms_expr_t *right = _ms_parse_expr_assignment(program);
             if (program->error) goto cleanup;
 
             _ms_expr_t *lvalue = expr;
-            expr = _ms_expr_binary_op_new(&program->parser.mem, token, _MS_BINARY_OP_MUL, lvalue, right);
-            expr = _ms_expr_assignment_new(&program->parser.mem, token, lvalue, expr);
+            expr = _ms_expr_binary_op_new(&program->compiler_mem, token, _MS_BINARY_OP_MUL, lvalue, right);
+            expr = _ms_expr_assignment_new(&program->compiler_mem, token, lvalue, expr);
         }
-        else if (match_char_n(program, 2, '/', '=')) {
+        else if (_ms_match_char_n(program, 2, '/', '=')) {
             _ms_expr_t *right = _ms_parse_expr_assignment(program);
             if (program->error) goto cleanup;
 
             _ms_expr_t *lvalue = expr;
-            expr = _ms_expr_binary_op_new(&program->parser.mem, token, _MS_BINARY_OP_DIV, lvalue, right);
-            expr = _ms_expr_assignment_new(&program->parser.mem, token, lvalue, expr);
+            expr = _ms_expr_binary_op_new(&program->compiler_mem, token, _MS_BINARY_OP_DIV, lvalue, right);
+            expr = _ms_expr_assignment_new(&program->compiler_mem, token, lvalue, expr);
         }
-        else if (match_char(program, '=')) {
+        else if (_ms_match_char(program, '=')) {
             _ms_expr_t *right = _ms_parse_expr_assignment(program);
             if (program->error) goto cleanup;
 
-            expr = _ms_expr_assignment_new(&program->parser.mem, token, expr, right);
+            expr = _ms_expr_assignment_new(&program->compiler_mem, token, expr, right);
         }
         else {
             break;
@@ -1617,31 +1595,31 @@ static _ms_expr_t *_ms_parse_expr(mscript_program_t *program) {
 }
 
 static _ms_stmt_t *_ms_parse_stmt(mscript_program_t *program) {
-    if (match_symbol(program, "if")) {
+    if (_ms_match_symbol(program, "if")) {
         return _ms_parse_if_stmt(program);
     }
-    else if (match_symbol(program, "for")) {
+    else if (_ms_match_symbol(program, "for")) {
         return _ms_parse_for_stmt(program);
     }
-    else if (match_symbol(program, "return")) {
+    else if (_ms_match_symbol(program, "return")) {
         return _ms_parse_return_stmt(program);
     }
-    else if (check_type(program)) {
+    else if (_ms_check_type(program)) {
         return _ms_parse_variable_declaration_stmt(program);
     }
-    else if (match_char(program, '{')) {
+    else if (_ms_match_char(program, '{')) {
         return _ms_parse_block_stmt(program);
     }
     else {
-        _ms_token_t token = peek(program);
+        _ms_token_t token = _ms_peek(program);
         _ms_expr_t *expr = _ms_parse_expr(program);
         if (program->error) return NULL;
 
-        if (!match_char(program, ';')) {
-            _ms_program_error(program, peek(program), "Expected ';'");
+        if (!_ms_match_char(program, ';')) {
+            _ms_program_error(program, _ms_peek(program), "Expected ';'");
             return NULL;
         }
-        return _ms_stmt_expr_new(&program->parser.mem, token, expr);
+        return _ms_stmt_expr_new(&program->compiler_mem, token, expr);
     }
 }
 
@@ -1653,10 +1631,10 @@ static _ms_stmt_t *_ms_parse_if_stmt(mscript_program_t *program) {
     vec_init(&stmts);
 
     _ms_stmt_t *stmt = NULL;
-    _ms_token_t token = peek(program);
+    _ms_token_t token = _ms_peek(program);
 
-    if (!match_char(program, '(')) {
-        _ms_program_error(program, peek(program), "Expected '('");
+    if (!_ms_match_char(program, '(')) {
+        _ms_program_error(program, _ms_peek(program), "Expected '('");
         goto cleanup;
     }
 
@@ -1664,8 +1642,8 @@ static _ms_stmt_t *_ms_parse_if_stmt(mscript_program_t *program) {
         _ms_expr_t *cond = _ms_parse_expr(program);
         if (program->error) goto cleanup;
 
-        if (!match_char(program, ')')) {
-            _ms_program_error(program, peek(program), "Expected ')'");
+        if (!_ms_match_char(program, ')')) {
+            _ms_program_error(program, _ms_peek(program), "Expected ')'");
             goto cleanup;
         }
 
@@ -1677,17 +1655,17 @@ static _ms_stmt_t *_ms_parse_if_stmt(mscript_program_t *program) {
     }
 
     while (true) {
-        if (match_symbol_n(program, 2, "else", "if")) {
-            if (!match_char(program, '(')) {
-                _ms_program_error(program, peek(program), "Expected '('");
+        if (_ms_match_symbol_n(program, 2, "else", "if")) {
+            if (!_ms_match_char(program, '(')) {
+                _ms_program_error(program, _ms_peek(program), "Expected '('");
                 goto cleanup;
             }
 
             _ms_expr_t *cond = _ms_parse_expr(program);
             if (program->error) goto cleanup;
 
-            if (!match_char(program, ')')) {
-                _ms_program_error(program, peek(program), "Expected ')'");
+            if (!_ms_match_char(program, ')')) {
+                _ms_program_error(program, _ms_peek(program), "Expected ')'");
                 goto cleanup;
             }
 
@@ -1697,7 +1675,7 @@ static _ms_stmt_t *_ms_parse_if_stmt(mscript_program_t *program) {
             vec_push(&conds, cond);
             vec_push(&stmts, stmt);
         }
-        else if (match_symbol(program, "else")) {
+        else if (_ms_match_symbol(program, "else")) {
             else_stmt = _ms_parse_stmt(program);
             if (program->error) goto cleanup;
             break;
@@ -1707,7 +1685,7 @@ static _ms_stmt_t *_ms_parse_if_stmt(mscript_program_t *program) {
         }
     }
 
-    stmt = _ms_stmt_if_new(&program->parser.mem, token, conds, stmts, else_stmt);
+    stmt = _ms_stmt_if_new(&program->compiler_mem, token, conds, stmts, else_stmt);
 
 cleanup:
     vec_deinit(&conds);
@@ -1720,10 +1698,10 @@ static _ms_stmt_t *_ms_parse_block_stmt(mscript_program_t *program) {
     vec_init(&stmts);
 
     _ms_stmt_t *stmt = NULL;
-    _ms_token_t token = peek(program);
+    _ms_token_t token = _ms_peek(program);
     
     while (true) {
-        if (match_char(program, '}')) {
+        if (_ms_match_char(program, '}')) {
             break;
         }
 
@@ -1732,7 +1710,7 @@ static _ms_stmt_t *_ms_parse_block_stmt(mscript_program_t *program) {
         vec_push(&stmts, stmt);
     }
 
-    stmt = _ms_stmt_block_new(&program->parser.mem, token, stmts);
+    stmt = _ms_stmt_block_new(&program->compiler_mem, token, stmts);
 
 cleanup:
     vec_deinit(&stmts);
@@ -1740,93 +1718,93 @@ cleanup:
 }
 
 static _ms_stmt_t *_ms_parse_for_stmt(mscript_program_t *program) {
-    _ms_token_t token = peek(program);
+    _ms_token_t token = _ms_peek(program);
     _ms_stmt_t *stmt = NULL;
 
-    if (!match_char(program, '(')) {
-        _ms_program_error(program, peek(program), "Expected '('");
+    if (!_ms_match_char(program, '(')) {
+        _ms_program_error(program, _ms_peek(program), "Expected '('");
         goto cleanup;
     }
 
     _ms_expr_t *init = _ms_parse_expr(program);
     if (program->error) goto cleanup;
-    if (!match_char(program, ';')) {
-        _ms_program_error(program, peek(program), "Expected ';'");
+    if (!_ms_match_char(program, ';')) {
+        _ms_program_error(program, _ms_peek(program), "Expected ';'");
         goto cleanup;
     }
 
     _ms_expr_t *cond = _ms_parse_expr(program);
     if (program->error) goto cleanup;
-    if (!match_char(program, ';')) {
-        _ms_program_error(program, peek(program), "Expected ';'");
+    if (!_ms_match_char(program, ';')) {
+        _ms_program_error(program, _ms_peek(program), "Expected ';'");
         goto cleanup;
     }
 
     _ms_expr_t *inc = _ms_parse_expr(program);
     if (program->error) goto cleanup;
-    if (!match_char(program, ')')) {
-        _ms_program_error(program, peek(program), "Expected ')'");
+    if (!_ms_match_char(program, ')')) {
+        _ms_program_error(program, _ms_peek(program), "Expected ')'");
         goto cleanup;
     }
 
     _ms_stmt_t *body = _ms_parse_stmt(program);
     if (program->error) goto cleanup;
 
-    stmt = _ms_stmt_for_new(&program->parser.mem, token, init, cond, inc, body);
+    stmt = _ms_stmt_for_new(&program->compiler_mem, token, init, cond, inc, body);
 
 cleanup:
     return stmt;
 }
 
 static _ms_stmt_t *_ms_parse_return_stmt(mscript_program_t *program) {
-    _ms_token_t token = peek(program);
+    _ms_token_t token = _ms_peek(program);
     _ms_stmt_t *stmt = NULL;
     _ms_expr_t *expr = NULL;
 
-    if (!match_char(program, ';')) {
+    if (!_ms_match_char(program, ';')) {
         expr = _ms_parse_expr(program);
         if (program->error) goto cleanup;
-        if (!match_char(program, ';')) {
-            _ms_program_error(program, peek(program), "Expected ';'");
+        if (!_ms_match_char(program, ';')) {
+            _ms_program_error(program, _ms_peek(program), "Expected ';'");
             goto cleanup;
         }
     }
 
-    stmt = _ms_stmt_return_new(&program->parser.mem, token, expr);
+    stmt = _ms_stmt_return_new(&program->compiler_mem, token, expr);
 
 cleanup:
     return stmt;
 }
 
 static _ms_stmt_t *_ms_parse_variable_declaration_stmt(mscript_program_t *program) {
-    _ms_token_t token = peek(program);
+    _ms_token_t token = _ms_peek(program);
     _ms_stmt_t *stmt = NULL;
 
     _ms_parsed_type_t type = _ms_parse_type(program);
     if (program->error) goto cleanup;
 
-    _ms_token_t name = peek(program);
-    if (name.type != TOKEN_SYMBOL) {
+    _ms_token_t name = _ms_peek(program);
+    if (name.type != _MS_TOKEN_SYMBOL) {
         _ms_program_error(program, name, "Expected symbol");
         goto cleanup;
     }
-    eat(program);
+    _ms_eat(program);
 
     _ms_expr_t *assignment_expr = NULL;
-    if (match_char(program, '=')) {
-        _ms_expr_t *left = _ms_expr_symbol_new(&program->parser.mem, token, name.symbol);
+    if (_ms_match_char(program, '=')) {
+        _ms_expr_t *left = _ms_expr_symbol_new(&program->compiler_mem, token, name.symbol);
         _ms_expr_t *right = _ms_parse_expr(program);
         if (program->error) goto cleanup;
 
-        assignment_expr = _ms_expr_assignment_new(&program->parser.mem, token, left, right);
+        assignment_expr = _ms_expr_assignment_new(&program->compiler_mem, token, left, right);
     }
 
-    if (!match_char(program, ';')) {
-        _ms_program_error(program, peek(program), "Expected ';'");
+    if (!_ms_match_char(program, ';')) {
+        _ms_program_error(program, _ms_peek(program), "Expected ';'");
         goto cleanup;
     }
 
-    stmt = _ms_stmt_variable_declaration_new(&program->parser.mem, token, type, name.symbol, assignment_expr);
+    stmt = _ms_stmt_variable_declaration_new(&program->compiler_mem, token, type, name.symbol, assignment_expr);
 
 cleanup:
     return stmt;
@@ -1834,42 +1812,42 @@ cleanup:
 
 static _ms_stmt_t *_ms_parse_function_declaration_stmt(mscript_program_t *program, _ms_parsed_type_t return_type) {
     _vec_ms_parsed_type_t arg_types;
-    struct array_char_ptr arg_names;
+    vec_char_ptr_t arg_names;
     vec_init(&arg_types);
-    array_init(&arg_names);
+    vec_init(&arg_names);
 
     _ms_stmt_t *stmt = NULL;
 
-    _ms_token_t name = peek(program);
-    if (name.type != TOKEN_SYMBOL) {
+    _ms_token_t name = _ms_peek(program);
+    if (name.type != _MS_TOKEN_SYMBOL) {
         _ms_program_error(program, name, "Expected symbol");
         goto cleanup;
     }
-    eat(program);
+    _ms_eat(program);
 
-    if (!match_char(program, '(')) {
-        _ms_program_error(program, peek(program), "Expected '('");
+    if (!_ms_match_char(program, '(')) {
+        _ms_program_error(program, _ms_peek(program), "Expected '('");
         goto cleanup;
     }
 
-    if (!match_char(program, ')')) {
+    if (!_ms_match_char(program, ')')) {
         while (true) {
             _ms_parsed_type_t arg_type = _ms_parse_type(program);
             if (program->error) goto cleanup;
 
-            _ms_token_t arg_name = peek(program);
-            if (arg_name.type != TOKEN_SYMBOL) {
+            _ms_token_t arg_name = _ms_peek(program);
+            if (arg_name.type != _MS_TOKEN_SYMBOL) {
                 _ms_program_error(program, arg_name, "Expected symbol");
                 goto cleanup;
             }
-            eat(program);
+            _ms_eat(program);
 
             vec_push(&arg_types, arg_type);
-            array_push(&arg_names, arg_name.symbol);
+            vec_push(&arg_names, arg_name.symbol);
 
-            if (!match_char(program, ',')) {
-                if (!match_char(program, ')')) {
-                    _ms_program_error(program, peek(program), "Expected ')'");
+            if (!_ms_match_char(program, ',')) {
+                if (!_ms_match_char(program, ')')) {
+                    _ms_program_error(program, _ms_peek(program), "Expected ')'");
                     goto cleanup;
                 }
                 break;
@@ -1877,73 +1855,73 @@ static _ms_stmt_t *_ms_parse_function_declaration_stmt(mscript_program_t *progra
         }
     }
 
-    if (!match_char(program, '{')) {
-        _ms_program_error(program, peek(program), "Expected '{'");
+    if (!_ms_match_char(program, '{')) {
+        _ms_program_error(program, _ms_peek(program), "Expected '{'");
         goto cleanup;
     }
 
     _ms_stmt_t *body_stmt = _ms_parse_block_stmt(program);
     if (program->error) goto cleanup;
 
-    stmt = _ms_stmt_function_declaration_new(&program->parser.mem, name, return_type, name.symbol, arg_types, arg_names, body_stmt);
+    stmt = _ms_stmt_function_declaration_new(&program->compiler_mem, name, return_type, name.symbol, arg_types, arg_names, body_stmt);
 
 cleanup:
-    array_deinit(&arg_types);
-    array_deinit(&arg_names);
+    vec_deinit(&arg_types);
+    vec_deinit(&arg_names);
     return stmt;
 }
 
 static _ms_stmt_t *_ms_parse_global_declaration_stmt(mscript_program_t *program, _ms_parsed_type_t type) {
     _ms_stmt_t *stmt = NULL;
 
-    _ms_token_t name = peek(program);
-    if (name.type != TOKEN_SYMBOL) {
+    _ms_token_t name = _ms_peek(program);
+    if (name.type != _MS_TOKEN_SYMBOL) {
         _ms_program_error(program, name, "Expected symbol.");
         goto cleanup;
     }
-    eat(program);
+    _ms_eat(program);
 
-    if (!match_char(program, '=')) {
-        _ms_program_error(program, peek(program), "Expected '='.");
+    if (!_ms_match_char(program, '=')) {
+        _ms_program_error(program, _ms_peek(program), "Expected '='.");
         goto cleanup;
     }
 
     _ms_expr_t *init_expr = _ms_parse_expr(program);
 
-    if (!match_char(program, ';')) {
-        _ms_program_error(program, peek(program), "Expected ';'.");
+    if (!_ms_match_char(program, ';')) {
+        _ms_program_error(program, _ms_peek(program), "Expected ';'.");
         goto cleanup;
     }
 
-    stmt = _ms_stmt_global_declaration_new(&program->parser.mem, name, type, name.symbol, init_expr);
+    stmt = _ms_stmt_global_declaration_new(&program->compiler_mem, name, type, name.symbol, init_expr);
 
 cleanup:
     return stmt;
 }
 
 static _ms_stmt_t *_ms_parse_struct_declaration_stmt(mscript_program_t *program) {
-    _ms_token_t token = peek(program);
+    _ms_token_t token = _ms_peek(program);
     _vec_ms_parsed_type_t member_types;
-    struct array_char_ptr member_names;
+    vec_char_ptr_t member_names;
     vec_init(&member_types);
-    array_init(&member_names);
+    vec_init(&member_names);
 
     _ms_stmt_t *stmt = NULL;
 
-    _ms_token_t name = peek(program);
-    if (name.type != TOKEN_SYMBOL) {
+    _ms_token_t name = _ms_peek(program);
+    if (name.type != _MS_TOKEN_SYMBOL) {
         _ms_program_error(program, name, "Expected symbol");
         goto cleanup;
     }
-    eat(program);
+    _ms_eat(program);
 
-    if (!match_char(program, '{')) {
-        _ms_program_error(program, peek(program), "Expected '{'");
+    if (!_ms_match_char(program, '{')) {
+        _ms_program_error(program, _ms_peek(program), "Expected '{'");
         goto cleanup;
     }
 
     while (true) {
-        if (match_char(program, '}')) {
+        if (_ms_match_char(program, '}')) {
             break;
         }
 
@@ -1951,67 +1929,67 @@ static _ms_stmt_t *_ms_parse_struct_declaration_stmt(mscript_program_t *program)
         if (program->error) goto cleanup;
 
         while (true) {
-            _ms_token_t member_name = peek(program);
-            if (member_name.type != TOKEN_SYMBOL) {
+            _ms_token_t member_name = _ms_peek(program);
+            if (member_name.type != _MS_TOKEN_SYMBOL) {
                 _ms_program_error(program, member_name, "Expected symbol");
                 goto cleanup;
             }
-            eat(program);
+            _ms_eat(program);
 
             vec_push(&member_types, member_type);
-            array_push(&member_names, member_name.symbol);
+            vec_push(&member_names, member_name.symbol);
 
-            if (!match_char(program, ',')) {
+            if (!_ms_match_char(program, ',')) {
                 break;
             }
         }
 
-        if (!match_char(program, ';')) {
-            _ms_program_error(program, peek(program), "Expected ';'");
+        if (!_ms_match_char(program, ';')) {
+            _ms_program_error(program, _ms_peek(program), "Expected ';'");
             goto cleanup;
         }
     }
 
-    stmt = _ms_stmt_struct_declaration_new(&program->parser.mem, token, name.symbol, member_types, member_names);
+    stmt = _ms_stmt_struct_declaration_new(&program->compiler_mem, token, name.symbol, member_types, member_names);
 
 cleanup:
-    array_deinit(&member_types);
-    array_deinit(&member_names);
+    vec_deinit(&member_types);
+    vec_deinit(&member_names);
     return stmt;
 }
 
 static _ms_stmt_t *_ms_parse_enum_declaration_stmt(mscript_program_t *program) {
-    _ms_token_t token = peek(program);
-    struct array_char_ptr value_names;
-    array_init(&value_names);
+    _ms_token_t token = _ms_peek(program);
+    vec_char_ptr_t value_names;
+    vec_init(&value_names);
 
     _ms_stmt_t *stmt = NULL;
 
-    _ms_token_t name = peek(program);
-    if (name.type != TOKEN_SYMBOL) {
+    _ms_token_t name = _ms_peek(program);
+    if (name.type != _MS_TOKEN_SYMBOL) {
         _ms_program_error(program, name, "Expected symbol");
         goto cleanup;
     }
-    eat(program);
+    _ms_eat(program);
 
-    if (!match_char(program, '{')) {
-        _ms_program_error(program, peek(program), "Expected '{'");
+    if (!_ms_match_char(program, '{')) {
+        _ms_program_error(program, _ms_peek(program), "Expected '{'");
         goto cleanup;
     }
 
-    if (!match_char(program, '}')) {
+    if (!_ms_match_char(program, '}')) {
         while (true) {
-            _ms_token_t value_name = peek(program);
-            if (value_name.type != TOKEN_SYMBOL) {
+            _ms_token_t value_name = _ms_peek(program);
+            if (value_name.type != _MS_TOKEN_SYMBOL) {
                 _ms_program_error(program, value_name, "Expected symbol.");
                 goto cleanup;
             }
-            eat(program);
-            array_push(&value_names, value_name.symbol);
+            _ms_eat(program);
+            vec_push(&value_names, value_name.symbol);
 
-            if (!match_char(program, ',')) {
-                if (!match_char(program, '}')) {
-                    _ms_program_error(program, peek(program), "Expected '}'.");
+            if (!_ms_match_char(program, ',')) {
+                if (!_ms_match_char(program, '}')) {
+                    _ms_program_error(program, _ms_peek(program), "Expected '}'.");
                     goto cleanup;
                 }
                 break;
@@ -2019,30 +1997,30 @@ static _ms_stmt_t *_ms_parse_enum_declaration_stmt(mscript_program_t *program) {
         }
     }
 
-    stmt = _ms_stmt_enum_declaration_new(&program->parser.mem, token, name.symbol, value_names);
+    stmt = _ms_stmt_enum_declaration_new(&program->compiler_mem, token, name.symbol, value_names);
 
 cleanup:
-    array_deinit(&value_names);
+    vec_deinit(&value_names);
     return stmt;
 }
 
 static _ms_stmt_t *_ms_parse_import_stmt(mscript_program_t *program) {
-    _ms_token_t token = peek(program);
+    _ms_token_t token = _ms_peek(program);
     _ms_stmt_t *stmt = NULL;
 
-    _ms_token_t program_name = peek(program);
-    if (program_name.type != TOKEN_STRING) {
+    _ms_token_t program_name = _ms_peek(program);
+    if (program_name.type != _MS_TOKEN_STRING) {
         _ms_program_error(program, program_name, "Expected string");
         goto cleanup;
     }
-    eat(program);
+    _ms_eat(program);
 
-    if (!match_char(program, ';')) {
-        _ms_program_error(program, peek(program), "Expected ';'");
+    if (!_ms_match_char(program, ';')) {
+        _ms_program_error(program, _ms_peek(program), "Expected ';'");
         goto cleanup;
     }
 
-    stmt = _ms_stmt_import_new(&program->parser.mem, token, program_name.symbol);
+    stmt = _ms_stmt_import_new(&program->compiler_mem, token, program_name.symbol);
 
 cleanup:
     return stmt;
@@ -2052,21 +2030,21 @@ static _ms_stmt_t *_ms_parse_import_function_stmt(mscript_program_t *program) {
     _ms_stmt_t *stmt = NULL;
 
     _vec_ms_parsed_type_t arg_types;
-    struct array_char_ptr arg_names;
+    vec_char_ptr_t arg_names;
     vec_init(&arg_types);
-    array_init(&arg_names);
+    vec_init(&arg_names);
 
     _ms_parsed_type_t return_type = _ms_parse_type(program);
     if (program->error) goto cleanup;
 
-    _ms_token_t name = peek(program);
-    if (name.type != TOKEN_SYMBOL) {
+    _ms_token_t name = _ms_peek(program);
+    if (name.type != _MS_TOKEN_SYMBOL) {
         _ms_program_error(program, name, "Expected a symbol.");
         goto cleanup;
     }
-    eat(program);
+    _ms_eat(program);
 
-    if (!match_char(program, '(')) {
+    if (!_ms_match_char(program, '(')) {
         _ms_program_error(program, name, "Expected '('.");
         goto cleanup;
     }
@@ -2075,18 +2053,18 @@ static _ms_stmt_t *_ms_parse_import_function_stmt(mscript_program_t *program) {
         _ms_parsed_type_t arg_type = _ms_parse_type(program);
         if (program->error) goto cleanup;
 
-        _ms_token_t arg_name = peek(program);
-        if (arg_name.type != TOKEN_SYMBOL) {
+        _ms_token_t arg_name = _ms_peek(program);
+        if (arg_name.type != _MS_TOKEN_SYMBOL) {
             _ms_program_error(program, name, "Expected a symbol.");
             goto cleanup;
         }
-        eat(program);
+        _ms_eat(program);
 
         vec_push(&arg_types, arg_type);
-        array_push(&arg_names, arg_name.symbol);
+        vec_push(&arg_names, arg_name.symbol);
 
-        if (!match_char(program, ',')) {
-            if (!match_char(program, ')')) {
+        if (!_ms_match_char(program, ',')) {
+            if (!_ms_match_char(program, ')')) {
                 _ms_program_error(program, arg_name, "Expected ')'.");
                 goto cleanup;
             }
@@ -2094,14 +2072,16 @@ static _ms_stmt_t *_ms_parse_import_function_stmt(mscript_program_t *program) {
         }
     }
 
-    if (!match_char(program, ';')) {
+    if (!_ms_match_char(program, ';')) {
         _ms_program_error(program, name, "Expected ';'.");
         goto cleanup;
     }
 
-    stmt = _ms_stmt_import_function_new(&program->parser.mem, name, return_type, name.symbol, arg_types, arg_names); 
+    stmt = _ms_stmt_import_function_new(&program->compiler_mem, name, return_type, name.symbol, arg_types, arg_names); 
 
 cleanup:
+    vec_deinit(&arg_types);
+    vec_deinit(&arg_names);
     return stmt;
 }
 
@@ -2272,24 +2252,24 @@ static _ms_const_val_t _ms_const_val_object(int num_args, _ms_const_val_t *args)
     return val;
 }
 
-static bool is_char_digit(char c) {
+static bool _ms_is_char_digit(char c) {
     return (c >= '0' && c <= '9');
 }
 
-static bool is_char_start_of_symbol(char c) {
+static bool _ms_is_char_start_of_symbol(char c) {
     return (c >= 'a' && c <= 'z') ||
         (c >= 'A' && c <= 'Z') ||
         (c == '_');
 }
 
-static bool is_char_part_of_symbol(char c) {
+static bool _ms_is_char_part_of_symbol(char c) {
     return (c >= 'a' && c <= 'z') ||
         (c >= 'A' && c <= 'Z') ||
         (c >= '0' && c <= '9') ||
         (c == '_');
 }
 
-static bool is_char(char c) {
+static bool _ms_is_char(char c) {
     return (c == '(') ||
         (c == ')') ||
         (c == '{') ||
@@ -2323,7 +2303,7 @@ static _ms_token_t _ms_token_number(const char *text, int *len, int line, int co
     bool found_decimal = false;
     float decimal_position = 10.0f;
     while (true) {
-        if (is_char_digit(text[*len])) {
+        if (_ms_is_char_digit(text[*len])) {
             if (found_decimal) {
                 float_part += (text[*len] - '0') / decimal_position;
                 decimal_position *= 10.0f;
@@ -2343,7 +2323,7 @@ static _ms_token_t _ms_token_number(const char *text, int *len, int line, int co
 
     if (found_decimal) {
         _ms_token_t token;
-        token.type = TOKEN_FLOAT;
+        token.type = _MS_TOKEN_FLOAT;
         token.float_val = (float)int_part + float_part;
         if (is_negative) token.float_val = -token.float_val;
         token.line = line;
@@ -2352,7 +2332,7 @@ static _ms_token_t _ms_token_number(const char *text, int *len, int line, int co
     }
     else {
         _ms_token_t token;
-        token.type = TOKEN_INT;
+        token.type = _MS_TOKEN_INT;
         token.int_val = int_part;
         if (is_negative) token.int_val = -token.int_val;
         token.line = line;
@@ -2363,7 +2343,7 @@ static _ms_token_t _ms_token_number(const char *text, int *len, int line, int co
 
 static _ms_token_t _ms_token_char(char c, int line, int col) {
     _ms_token_t token;
-    token.type = TOKEN_CHAR;
+    token.type = _MS_TOKEN_CHAR;
     token.char_val = c;
     token.line = line;
     token.col = col;
@@ -2389,7 +2369,7 @@ static _ms_token_t _ms_token_string(mscript_program_t *program, const char *text
             }
             else {
                 _ms_token_t token;
-                token.type = TOKEN_CHAR;
+                token.type = _MS_TOKEN_CHAR;
                 token.char_val = text[i + 1];
                 token.line = line;
                 token.col = col;
@@ -2409,7 +2389,7 @@ static _ms_token_t _ms_token_string(mscript_program_t *program, const char *text
     string[actual_len] = 0;
 
     _ms_token_t token;
-    token.type = TOKEN_STRING;
+    token.type = _MS_TOKEN_STRING;
     token.string = string;
     token.line = line;
     token.col = col;
@@ -2418,7 +2398,7 @@ static _ms_token_t _ms_token_string(mscript_program_t *program, const char *text
 
 static _ms_token_t _ms_token_symbol(const char *text, int *len, int line, int col) {
     *len = 0;
-    while (is_char_part_of_symbol(text[*len])) {
+    while (_ms_is_char_part_of_symbol(text[*len])) {
         (*len)++;
     }
 
@@ -2429,7 +2409,7 @@ static _ms_token_t _ms_token_symbol(const char *text, int *len, int line, int co
     symbol[*len] = 0;
 
     _ms_token_t token;
-    token.type = TOKEN_SYMBOL;
+    token.type = _MS_TOKEN_SYMBOL;
     token.symbol = symbol;
     token.line = line;
     token.col = col;
@@ -2438,70 +2418,10 @@ static _ms_token_t _ms_token_symbol(const char *text, int *len, int line, int co
 
 static _ms_token_t _ms_token_eof(int line, int col) {
     _ms_token_t token;
-    token.type = TOKEN_EOF;
+    token.type = _MS_TOKEN_EOF;
     token.line = line;
     token.col = col;
     return token;
-}
-
-static void _ms_tokenize(mscript_program_t *program) {
-    struct parser *parser = &program->parser;
-    const char *prog = parser->prog_text;
-    int line = 1;
-    int col = 1;
-    int i = 0;
-
-    while (true) {
-        if (prog[i] == ' ' || prog[i] == '\t' || prog[i] == '\r') {
-            col++;
-            i++;
-        }
-        else if (prog[i] == '\n') {
-            col = 1;
-            line++;
-            i++;
-        }
-        else if (prog[i] == 0) {
-            vec_push(&parser->tokens, _ms_token_eof(line, col));
-            break;
-        }
-        else if ((prog[i] == '/') && (prog[i + 1] == '/')) {
-            while (prog[i] && (prog[i] != '\n')) {
-                i++;
-            }
-        }
-        else if (prog[i] == '"') {
-            i++;
-            col++;
-            int len = 0;
-            vec_push(&parser->tokens, _ms_token_string(program, prog + i, &len, line, col));
-            if (program->error) return;
-            i += (len + 1);
-            col += (len + 1);
-        }
-        else if (is_char_start_of_symbol(prog[i])) {
-            int len = 0;
-            vec_push(&parser->tokens, _ms_token_symbol(prog + i, &len, line, col));
-            i += len;
-            col += len;
-        }
-        else if (is_char_digit(prog[i])) {
-            int len = 0;
-            vec_push(&parser->tokens, _ms_token_number(prog + i, &len, line, col));
-            i += len;
-            col += len;
-        }
-        else if (is_char(prog[i])) {
-            vec_push(&parser->tokens, _ms_token_char(prog[i], line, col));
-            i++;
-            col++;
-        }
-        else {
-            _ms_token_t tok = _ms_token_char(prog[i], line, col);
-            _ms_program_error(program, tok, "Unknown character: %c", prog[i]);
-            return;
-        }
-    }
 }
 
 static _ms_parsed_type_t _ms_parsed_type(const char *name, bool is_array) {
@@ -2515,63 +2435,58 @@ static _ms_parsed_type_t _ms_parsed_type(const char *name, bool is_array) {
 }
 
 static void _ms_mem_init(_ms_mem_t *mem) {
-    mem->bytes_allocated = 0;
-    vec_init(&mem->ptrs);
+    mem->pool_size = 65536;
+    mem->cur_pool_offset = 0;
+    vec_init(&mem->pools);
+    vec_push(&mem->pools, malloc(mem->pool_size));
 }
 
 static void _ms_mem_deinit(_ms_mem_t *mem) {
-    vec_deinit(&mem->ptrs);
 }
 
 static void *_ms_mem_alloc(_ms_mem_t *mem, size_t size) {
-    mem->bytes_allocated += size;
-    void *ptr = malloc(size);
-    vec_push(&mem->ptrs, ptr);
-    return ptr;
+    assert(size <= mem->pool_size);
+
+    if (size == 0) {
+        return NULL;
+    }
+
+    if (mem->cur_pool_offset + size > mem->pool_size) {
+        vec_push(&mem->pools, malloc(mem->pool_size));
+        mem->cur_pool_offset = 0;
+    }
+
+    char *ptr = mem->pools.data[mem->pools.length - 1] + mem->cur_pool_offset;
+    mem->cur_pool_offset += size;
+    return (void*) ptr;
 }
 
-static void parser_init(struct parser *parser, const char *prog_text) {
-    parser->prog_text = prog_text;
-    _ms_mem_init(&parser->mem);
-    parser->token_idx = 0;
-    vec_init(&parser->tokens);
-    parser->error = NULL;
-}
-
-static void parser_deinit(struct parser *parser) {
-}
-
-static _ms_token_t peek(mscript_program_t *program) {
-    struct parser *parser = &program->parser;
-
-    if (parser->token_idx >= parser->tokens.length) {
+static _ms_token_t _ms_peek(mscript_program_t *program) {
+    if (program->token_idx >= program->tokens.length) {
         // Return EOF
-        return parser->tokens.data[parser->tokens.length - 1];
+        return program->tokens.data[program->tokens.length - 1];
     }
     else {
-        return parser->tokens.data[parser->token_idx];
+        return program->tokens.data[program->token_idx];
     }
 }
 
-static _ms_token_t peek_n(mscript_program_t *program, int n) {
-    struct parser *parser = &program->parser;
-
-    if (parser->token_idx + n >= parser->tokens.length) {
+static _ms_token_t _ms_peek_n(mscript_program_t *program, int n) {
+    if (program->token_idx + n >= program->tokens.length) {
         // Return EOF
-        return parser->tokens.data[parser->tokens.length - 1];
+        return program->tokens.data[program->tokens.length - 1];
     }
     else {
-        return parser->tokens.data[parser->token_idx + n];
+        return program->tokens.data[program->token_idx + n];
     }
 }
 
-static void eat(mscript_program_t *program) {
-    struct parser *parser = &program->parser;
-    parser->token_idx++;
+static void _ms_eat(mscript_program_t *program) {
+    program->token_idx++;
 }
 
-static bool is_char_token(_ms_token_t tok, char c) {
-    if (tok.type == TOKEN_CHAR && tok.char_val == c) {
+static bool _ms_is_char_token(_ms_token_t tok, char c) {
+    if (tok.type == _MS_TOKEN_CHAR && tok.char_val == c) {
         return true;
     }
     else {
@@ -2579,10 +2494,10 @@ static bool is_char_token(_ms_token_t tok, char c) {
     }
 }
 
-static bool match_char(mscript_program_t *program, char c) {
-    _ms_token_t tok = peek(program);
-    if (tok.type == TOKEN_CHAR && tok.char_val == c) {
-        eat(program);
+static bool _ms_match_char(mscript_program_t *program, char c) {
+    _ms_token_t tok = _ms_peek(program);
+    if (tok.type == _MS_TOKEN_CHAR && tok.char_val == c) {
+        _ms_eat(program);
         return true;
     }
     else {
@@ -2590,15 +2505,15 @@ static bool match_char(mscript_program_t *program, char c) {
     }
 }
 
-static bool match_char_n(mscript_program_t *program, int n, ...) {
+static bool _ms_match_char_n(mscript_program_t *program, int n, ...) {
     bool match = true;
 
     va_list ap;
     va_start(ap, n);
     for (int i = 0; i < n; i++) {
         char c = va_arg(ap, int);
-        _ms_token_t tok = peek_n(program, i);
-        if (tok.type != TOKEN_CHAR || tok.char_val != c) {
+        _ms_token_t tok = _ms_peek_n(program, i);
+        if (tok.type != _MS_TOKEN_CHAR || tok.char_val != c) {
             match = false;
         }
     }
@@ -2606,17 +2521,17 @@ static bool match_char_n(mscript_program_t *program, int n, ...) {
 
     if (match) {
         for (int i = 0; i < n; i++) {
-            eat(program);
+            _ms_eat(program);
         }
     }
 
     return match;
 }
 
-static bool match_symbol(mscript_program_t *program, const char *symbol) {
-    _ms_token_t tok = peek(program);
-    if (tok.type == TOKEN_SYMBOL && (strcmp(symbol, tok.symbol) == 0)) {
-        eat(program);
+static bool _ms_match_symbol(mscript_program_t *program, const char *symbol) {
+    _ms_token_t tok = _ms_peek(program);
+    if (tok.type == _MS_TOKEN_SYMBOL && (strcmp(symbol, tok.symbol) == 0)) {
+        _ms_eat(program);
         return true;
     }
     else {
@@ -2624,15 +2539,15 @@ static bool match_symbol(mscript_program_t *program, const char *symbol) {
     }
 }
 
-static bool match_symbol_n(mscript_program_t *program, int n, ...) {
+static bool _ms_match_symbol_n(mscript_program_t *program, int n, ...) {
     bool match = true;
 
     va_list ap;
     va_start(ap, n);
     for (int i = 0; i < n; i++) {
         const char *symbol = va_arg(ap, const char *);
-        _ms_token_t tok = peek_n(program, i);
-        if (tok.type != TOKEN_SYMBOL || (strcmp(symbol, tok.symbol) != 0)) {
+        _ms_token_t tok = _ms_peek_n(program, i);
+        if (tok.type != _MS_TOKEN_SYMBOL || (strcmp(symbol, tok.symbol) != 0)) {
             match = false;
         }
     }
@@ -2640,32 +2555,32 @@ static bool match_symbol_n(mscript_program_t *program, int n, ...) {
 
     if (match) {
         for (int i = 0; i < n; i++) {
-            eat(program);
+            _ms_eat(program);
         }
     }
 
     return match;
 }
 
-static bool match_eof(mscript_program_t *program) {
-    _ms_token_t tok = peek(program);
-    return tok.type == TOKEN_EOF;
+static bool _ms_match_eof(mscript_program_t *program) {
+    _ms_token_t tok = _ms_peek(program);
+    return tok.type == _MS_TOKEN_EOF;
 }
 
-static bool check_type(mscript_program_t *program) {
+static bool _ms_check_type(mscript_program_t *program) {
     // Type's begin with 2 symbols or 1 symbol followed by [] for an array.
     // Or void*
-    _ms_token_t tok0 = peek_n(program, 0);
-    _ms_token_t tok1 = peek_n(program, 1);
-    _ms_token_t tok2 = peek_n(program, 2);
-    return ((tok0.type == TOKEN_SYMBOL) && (tok1.type == TOKEN_SYMBOL)) ||
-            ((tok0.type == TOKEN_SYMBOL) &&
-             (tok1.type == TOKEN_CHAR) &&
+    _ms_token_t tok0 = _ms_peek_n(program, 0);
+    _ms_token_t tok1 = _ms_peek_n(program, 1);
+    _ms_token_t tok2 = _ms_peek_n(program, 2);
+    return ((tok0.type == _MS_TOKEN_SYMBOL) && (tok1.type == _MS_TOKEN_SYMBOL)) ||
+            ((tok0.type == _MS_TOKEN_SYMBOL) &&
+             (tok1.type == _MS_TOKEN_CHAR) &&
              (tok1.char_val == '[') &&
-             (tok2.type == TOKEN_CHAR) &&
+             (tok2.type == _MS_TOKEN_CHAR) &&
              (tok2.char_val == ']')) ||
-            ((tok0.type == TOKEN_SYMBOL) && (strcmp(tok0.symbol, "void") == 0) &&
-             (tok1.type == TOKEN_CHAR) && (tok1.char_val == '*'));
+            ((tok0.type == _MS_TOKEN_SYMBOL) && (strcmp(tok0.symbol, "void") == 0) &&
+             (tok1.type == _MS_TOKEN_CHAR) && (tok1.char_val == '*'));
 }
 
 static _ms_const_decl_t _ms_const_decl(const char *name, mscript_type_t *type, _ms_const_val_t value) {
@@ -2902,7 +2817,7 @@ static void _ms_verify_return_stmt(mscript_program_t *program, _ms_stmt_t *stmt,
     assert(stmt->type == _MS_STMT_RETURN);
     *all_paths_return = true;
 
-    mscript_type_t *return_type = program->verify_function_decl->return_type;
+    mscript_type_t *return_type = program->cur_function_decl->return_type;
     assert(return_type);
 
     if (return_type->type == MSCRIPT_TYPE_VOID) {
@@ -3018,7 +2933,7 @@ static void _ms_verify_function_declaration_stmt(mscript_program_t *program, _ms
         _ms_symbol_table_add_local_var(&program->symbol_table, arg_name, arg_type);
     }
 
-    program->verify_function_decl = decl;
+    program->cur_function_decl = decl;
     bool all_paths_return = false;
     _ms_verify_stmt(program, stmt->function_declaration.body, &all_paths_return);
     if (program->error) goto cleanup;
@@ -3047,7 +2962,7 @@ static void _ms_verify_expr_with_cast(mscript_program_t *program, _ms_expr_t **e
     if (type->type == MSCRIPT_TYPE_INT) {
         if (result_type_type == MSCRIPT_TYPE_FLOAT) {
             _ms_parsed_type_t parsed_type = _ms_parsed_type("int", false);
-            *expr = _ms_expr_cast_new(&program->parser.mem, (*expr)->token, parsed_type, *expr);
+            *expr = _ms_expr_cast_new(&program->compiler_mem, (*expr)->token, parsed_type, *expr);
             (*expr)->result_type = _ms_symbol_table_get_type(&program->symbol_table, parsed_type.string);
 
             bool is_const = (*expr)->cast.arg->is_const;
@@ -3064,7 +2979,7 @@ static void _ms_verify_expr_with_cast(mscript_program_t *program, _ms_expr_t **e
     else if (type->type == MSCRIPT_TYPE_FLOAT) {
         if (result_type_type == MSCRIPT_TYPE_INT) {
             _ms_parsed_type_t parsed_type = _ms_parsed_type("float", false);
-            *expr = _ms_expr_cast_new(&program->parser.mem, (*expr)->token, parsed_type, *expr);
+            *expr = _ms_expr_cast_new(&program->compiler_mem, (*expr)->token, parsed_type, *expr);
             (*expr)->result_type = _ms_symbol_table_get_type(&program->symbol_table, parsed_type.string);
 
             bool is_const = (*expr)->cast.arg->is_const;
@@ -3081,7 +2996,7 @@ static void _ms_verify_expr_with_cast(mscript_program_t *program, _ms_expr_t **e
     else if (type->type == MSCRIPT_TYPE_BOOL) {
         if (result_type_type == MSCRIPT_TYPE_ARRAY) {
             _ms_parsed_type_t parsed_type = _ms_parsed_type("bool", false);
-            *expr = _ms_expr_cast_new(&program->parser.mem, (*expr)->token, parsed_type, *expr);
+            *expr = _ms_expr_cast_new(&program->compiler_mem, (*expr)->token, parsed_type, *expr);
             (*expr)->result_type = _ms_symbol_table_get_type(&program->symbol_table, parsed_type.string);
             (*expr)->is_const = false;
         }
@@ -3294,13 +3209,13 @@ static void _ms_verify_binary_op_expr(mscript_program_t *program, _ms_expr_t *ex
                 else if (left_result_type->type == MSCRIPT_TYPE_FLOAT && right_result_type->type == MSCRIPT_TYPE_INT) {
                     _ms_parsed_type_t parsed_type = _ms_parsed_type("float", false);
                     expr->result_type = _ms_symbol_table_get_type(&program->symbol_table, "float");
-                    expr->binary_op.right = _ms_expr_cast_new(&program->parser.mem, expr->token, parsed_type, expr->binary_op.right);
+                    expr->binary_op.right = _ms_expr_cast_new(&program->compiler_mem, expr->token, parsed_type, expr->binary_op.right);
                     expr->binary_op.right->result_type = _ms_symbol_table_get_type(&program->symbol_table, parsed_type.string);
                 }
                 else if (left_result_type->type == MSCRIPT_TYPE_INT && right_result_type->type == MSCRIPT_TYPE_FLOAT) {
                     _ms_parsed_type_t parsed_type = _ms_parsed_type("float", false);
                     expr->result_type = _ms_symbol_table_get_type(&program->symbol_table, "float");
-                    expr->binary_op.left = _ms_expr_cast_new(&program->parser.mem, expr->token, parsed_type, expr->binary_op.left);
+                    expr->binary_op.left = _ms_expr_cast_new(&program->compiler_mem, expr->token, parsed_type, expr->binary_op.left);
                     expr->binary_op.left->result_type = _ms_symbol_table_get_type(&program->symbol_table, parsed_type.string);
                 }
                 else {
@@ -3325,12 +3240,12 @@ static void _ms_verify_binary_op_expr(mscript_program_t *program, _ms_expr_t *ex
                 }
                 else if (left_result_type->type == MSCRIPT_TYPE_FLOAT && right_result_type->type == MSCRIPT_TYPE_INT) {
                     _ms_parsed_type_t parsed_type = _ms_parsed_type("float", false);
-                    expr->binary_op.right = _ms_expr_cast_new(&program->parser.mem, expr->token, parsed_type, expr->binary_op.right);
+                    expr->binary_op.right = _ms_expr_cast_new(&program->compiler_mem, expr->token, parsed_type, expr->binary_op.right);
                     expr->binary_op.right->result_type = _ms_symbol_table_get_type(&program->symbol_table, parsed_type.string);
                 }
                 else if (left_result_type->type == MSCRIPT_TYPE_INT && right_result_type->type == MSCRIPT_TYPE_FLOAT) {
                     _ms_parsed_type_t parsed_type = _ms_parsed_type("float", false);
-                    expr->binary_op.left = _ms_expr_cast_new(&program->parser.mem, expr->token, parsed_type, expr->binary_op.left);
+                    expr->binary_op.left = _ms_expr_cast_new(&program->compiler_mem, expr->token, parsed_type, expr->binary_op.left);
                     expr->binary_op.left->result_type = _ms_symbol_table_get_type(&program->symbol_table, parsed_type.string);
                 }
                 else if (left_result_type->type == MSCRIPT_TYPE_ENUM && right_result_type->type == MSCRIPT_TYPE_ENUM && 
@@ -3357,12 +3272,12 @@ static void _ms_verify_binary_op_expr(mscript_program_t *program, _ms_expr_t *ex
                 }
                 else if (left_result_type->type == MSCRIPT_TYPE_FLOAT && right_result_type->type == MSCRIPT_TYPE_INT) {
                     _ms_parsed_type_t parsed_type = _ms_parsed_type("float", false);
-                    expr->binary_op.right = _ms_expr_cast_new(&program->parser.mem, expr->token, parsed_type, expr->binary_op.right);
+                    expr->binary_op.right = _ms_expr_cast_new(&program->compiler_mem, expr->token, parsed_type, expr->binary_op.right);
                     expr->binary_op.right->result_type = _ms_symbol_table_get_type(&program->symbol_table, parsed_type.string);
                 }
                 else if (left_result_type->type == MSCRIPT_TYPE_INT && right_result_type->type == MSCRIPT_TYPE_FLOAT) {
                     _ms_parsed_type_t parsed_type = _ms_parsed_type("float", false);
-                    expr->binary_op.left = _ms_expr_cast_new(&program->parser.mem, expr->token, parsed_type, expr->binary_op.left);
+                    expr->binary_op.left = _ms_expr_cast_new(&program->compiler_mem, expr->token, parsed_type, expr->binary_op.left);
                     expr->binary_op.left->result_type = _ms_symbol_table_get_type(&program->symbol_table, parsed_type.string);
                 }
                 else if (left_result_type->type == MSCRIPT_TYPE_ENUM && right_result_type->type == MSCRIPT_TYPE_ENUM && 
@@ -3686,401 +3601,382 @@ static void _ms_verify_cast_expr(mscript_program_t *program, _ms_expr_t *expr, m
     assert(false);
 }
 
-static void opcode_iadd(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_IADD;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_iadd(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_IADD;
+    return op;
 }
 
-static void opcode_fadd(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_FADD;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_fadd(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_FADD;
+    return op;
 }
 
-static void opcode_isub(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_ISUB;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_isub(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_ISUB;
+    return op;
 }
 
-static void opcode_fsub(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_FSUB;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_fsub(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_FSUB;
+    return op;
 }
 
-static void opcode_imul(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_IMUL;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_imul(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_IMUL;
+    return op;
 }
 
-static void opcode_fmul(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_FMUL;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_fmul(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_FMUL;
+    return op;
 }
 
-static void opcode_idiv(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_IDIV;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_idiv(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_IDIV;
+    return op;
 }
 
-static void opcode_fdiv(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_FDIV;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_fdiv(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_FDIV;
+    return op;
 }
 
-static void opcode_ilte(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_ILTE;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_ilte(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_ILTE;
+    return op;
 }
 
-static void opcode_flte(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_FLTE;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_flte(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_FLTE;
+    return op;
 }
 
-static void opcode_ilt(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_ILT;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_ilt(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_ILT;
+    return op;
 }
 
-static void opcode_flt(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_FLT;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_flt(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_FLT;
+    return op;
 }
 
-static void opcode_igte(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_IGTE;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_igte(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_IGTE;
+    return op;
 }
 
-static void opcode_fgte(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_FGTE;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_fgte(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_FGTE;
+    return op;
 }
 
-static void opcode_igt(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_IGT;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_igt(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_IGT;
+    return op;
 }
 
-static void opcode_fgt(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_FGT;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_fgt(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_FGT;
+    return op;
 }
 
-static void opcode_ieq(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_IEQ;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_ieq(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_IEQ;
+    return op;
 }
 
-static void opcode_feq(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_FEQ;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_feq(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_FEQ;
+    return op;
 }
 
-static void opcode_ineq(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_INEQ;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_ineq(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_INEQ;
+    return op;
 }
 
-static void opcode_fneq(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_FNEQ;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_fneq(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_FNEQ;
+    return op;
 }
 
-static void opcode_iinc(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_IINC;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_iinc(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_IINC;
+    return op;
 }
 
-static void opcode_finc(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_FINC;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_finc(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_FINC;
+    return op;
 }
 
-static void opcode_not(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_NOT;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_not(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_NOT;
+    return op;
 }
 
-static void opcode_f2i(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_F2I;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_f2i(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_F2I;
+    return op;
 }
 
-static void opcode_i2f(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_I2F;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_i2f(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_I2F;
+    return op;
 }
 
-static void opcode_copy(mscript_program_t *program, int offset, int size) {
+static _ms_opcode_t _ms_opcode_copy(int offset, int size) {
     assert(offset >= 0 && size >= 0);
 
-    struct opcode op;
-    op.type = OPCODE_COPY;
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_COPY;
     op.load_store.offset = offset;
     op.load_store.size = size;
-    compiler_push_opcode(program, op);
+    return op;
 }
 
-static void opcode_int(mscript_program_t *program, int val) {
-    struct opcode op;
-    op.type = OPCODE_INT;
+static _ms_opcode_t _ms_opcode_int(int val) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_INT;
     op.int_val = val;
-    compiler_push_opcode(program, op);
+    return op;
 }
 
-static void opcode_float(mscript_program_t *program, float val) {
-    struct opcode op;
-    op.type = OPCODE_FLOAT;
+static _ms_opcode_t _ms_opcode_float(float val) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_FLOAT;
     op.float_val = val;
-    compiler_push_opcode(program, op);
+    return op;
 }
 
-static void opcode_local_store(mscript_program_t *program, int offset, int size) {
+static _ms_opcode_t _ms_opcode_local_store(int offset, int size) {
     assert(size >= 0);
 
-    struct opcode op;
-    op.type = OPCODE_LOCAL_STORE;
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_LOCAL_STORE;
     op.load_store.offset = offset;
     op.load_store.size = size;
-    compiler_push_opcode(program, op);
+    return op;
 }
 
-static void opcode_local_load(mscript_program_t *program, int offset, int size) {
+static _ms_opcode_t _ms_opcode_local_load(int offset, int size) {
     assert(size >= 0);
 
-    struct opcode op;
-    op.type = OPCODE_LOCAL_LOAD;
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_LOCAL_LOAD;
     op.load_store.offset = offset;
     op.load_store.size = size;
-    compiler_push_opcode(program, op);
+    return op;
 }
 
-static void opcode_jf(mscript_program_t *program, int label) {
-    struct opcode op;
-    op.type = OPCODE_JF;
+static _ms_opcode_t _ms_opcode_jf(int label) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_JF;
     op.label = label;
-    compiler_push_opcode(program, op);
+    return op;
 }
 
-static void opcode_jmp(mscript_program_t *program, int label) {
-    struct opcode op;
-    op.type = OPCODE_JMP;
+static _ms_opcode_t _ms_opcode_jmp(int label) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_JMP;
     op.label = label;
-    compiler_push_opcode(program, op);
+    return op;
 }
 
-static void opcode_call(mscript_program_t *program, char *str) {
+static _ms_opcode_t _ms_opcode_call(char *str) {
     assert(false);
-    struct opcode op;
-    op.type = OPCODE_CALL;
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_CALL;
     strncpy(op.string, str, MSCRIPT_MAX_SYMBOL_LEN);
     op.string[MSCRIPT_MAX_SYMBOL_LEN] = 0;
-    compiler_push_opcode(program, op);
+    return op;
 }
 
-static void opcode_return(mscript_program_t *program, int size) {
-    struct opcode op;
-    op.type = OPCODE_RETURN;
+static _ms_opcode_t _ms_opcode_return(int size) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_RETURN;
     op.size = size;
-    compiler_push_opcode(program, op);
+    return op;
 }
 
-static void opcode_push(mscript_program_t *program, int size) {
+static _ms_opcode_t _ms_opcode_push(int size) {
     assert(size >= 0);
 
-    struct opcode op;
-    op.type = OPCODE_PUSH;
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_PUSH;
     op.size = size;
-    compiler_push_opcode(program, op);
+    return op;
 }
 
-static void opcode_pop(mscript_program_t *program, int size) {
+static _ms_opcode_t _ms_opcode_pop(int size) {
     assert(size >= 0);
 
-    struct opcode op;
-    op.type = OPCODE_POP;
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_POP;
     op.size = size;
-    compiler_push_opcode(program, op);
+    return op;
 }
 
-static void opcode_array_create(mscript_program_t *program, int size) {
+static _ms_opcode_t _ms_opcode_array_create(int size) {
     assert(size >= 0);
 
-    struct opcode op;
-    op.type = OPCODE_ARRAY_CREATE;
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_ARRAY_CREATE;
     op.size = size;
-    compiler_push_opcode(program, op);
+    return op;
 }
 
-static void opcode_array_store(mscript_program_t *program, int size) {
+static _ms_opcode_t _ms_opcode_array_store(int size) {
     assert(size >= 0);
 
-    struct opcode op;
-    op.type = OPCODE_ARRAY_STORE;
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_ARRAY_STORE;
     op.size = size;
-    compiler_push_opcode(program, op);
+    return op;
 }
 
-static void opcode_array_load(mscript_program_t *program, int size) {
+static _ms_opcode_t _ms_opcode_array_load(int size) {
     assert(size >= 0);
 
-    struct opcode op;
-    op.type = OPCODE_ARRAY_LOAD;
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_ARRAY_LOAD;
     op.size = size;
-    compiler_push_opcode(program, op);
+    return op;
 }
 
-static void opcode_array_length(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_ARRAY_LENGTH;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_array_length(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_ARRAY_LENGTH;
+    return op;
 }
 
-static void opcode_debug_print_int(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_DEBUG_PRINT_INT;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_debug_print_int(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_DEBUG_PRINT_INT;
+    return op;
 }
 
-static void opcode_debug_print_float(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_DEBUG_PRINT_FLOAT;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_debug_print_float(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_DEBUG_PRINT_FLOAT;
+    return op;
 }
 
-static void opcode_debug_print_bool(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_DEBUG_PRINT_BOOL;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_debug_print_bool(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_DEBUG_PRINT_BOOL;
+    return op;
 }
 
-static void opcode_debug_print_string(mscript_program_t *program) {
-    struct opcode op;
-    op.type = OPCODE_DEBUG_PRINT_STRING;
-    compiler_push_opcode(program, op);
+static _ms_opcode_t _ms_opcode_debug_print_string(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_DEBUG_PRINT_STRING;
+    return op;
 }
 
-static void opcode_debug_print_string_const(mscript_program_t *program, char *string) {
-    struct opcode op;
-    op.type = OPCODE_DEBUG_PRINT_STRING_CONST;
+static _ms_opcode_t _ms_opcode_debug_print_string_const(char *string) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_DEBUG_PRINT_STRING_CONST;
     strncpy(op.string, string, MSCRIPT_MAX_SYMBOL_LEN);
     op.string[MSCRIPT_MAX_SYMBOL_LEN] = 0;
-    compiler_push_opcode(program, op);
+    return op;
 }
 
-static void opcode_intermediate_label(mscript_program_t *program, int label) {
-    struct opcode op;
-    op.type = OPCODE_INTERMEDIATE_LABEL;
+static _ms_opcode_t _ms_opcode_intermediate_label(int label) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_INTERMEDIATE_LABEL;
     op.label = label;
-    compiler_push_opcode(program, op);
+    return op;
 }
 
-static void opcode_intermediate_func(mscript_program_t *program, char *str) {
-    struct opcode op;
-    op.type = OPCODE_INTERMEDIATE_FUNC;
+static _ms_opcode_t _ms_opcode_intermediate_func(char *str) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_INTERMEDIATE_FUNC;
     strncpy(op.string, str, MSCRIPT_MAX_SYMBOL_LEN);
     op.string[MSCRIPT_MAX_SYMBOL_LEN] = 0;
-    compiler_push_opcode(program, op);
+    return op;
 }
 
-static void opcode_intermediate_call(mscript_program_t *program, char *str) {
-    struct opcode op;
-    op.type = OPCODE_INTERMEDIATE_CALL;
+static _ms_opcode_t _ms_opcode_intermediate_call(char *str) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_INTERMEDIATE_CALL;
     strncpy(op.string, str, MSCRIPT_MAX_SYMBOL_LEN);
     op.string[MSCRIPT_MAX_SYMBOL_LEN] = 0;
-    compiler_push_opcode(program, op);
+    return op;
 }
 
-static void opcode_intermediate_jmp(mscript_program_t *program, int label) {
-    struct opcode op;
-    op.type = OPCODE_INTERMEDIATE_JMP;
+static _ms_opcode_t _ms_opcode_intermediate_jmp(int label) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_INTERMEDIATE_JMP;
     op.label = label;
-    compiler_push_opcode(program, op);
+    return op;
 }
 
-static void opcode_intermediate_jf(mscript_program_t *program, int label) {
-    struct opcode op;
-    op.type = OPCODE_INTERMEDIATE_JF;
+static _ms_opcode_t _ms_opcode_intermediate_jf(int label) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_INTERMEDIATE_JF;
     op.label = label;
-    compiler_push_opcode(program, op);
+    return op;
 }
 
-static void opcode_intermediate_string(mscript_program_t *program, char *string) {
-    struct opcode op;
-    op.type = OPCODE_INTERMEDIATE_STRING;
+static _ms_opcode_t _ms_opcode_intermediate_string(char *string) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_INTERMEDIATE_STRING;
     op.intermediate_string = string;
-    compiler_push_opcode(program, op);
+    return op;
 }
 
-static void compiler_init(mscript_program_t *program) {
-    struct compiler *compiler = &program->compiler;
-    compiler->cur_label = 0;
-    compiler->cur_function_decl = NULL;
-}
-
-static void compiler_deinit(mscript_program_t *program) {
-}
-
-static void compiler_push_opcode(mscript_program_t *program, struct opcode op) {
-    //struct array_opcode *opcodes = &(program->compiler.cur_function_decl->opcodes);
-    //array_push(opcodes, op);
-}
-
-static int compiler_new_label(mscript_program_t *program) {
-    struct compiler *compiler = &program->compiler;
-    return compiler->cur_label++;
-}
-
-static void compile_stmt(mscript_program_t *program, _ms_stmt_t *stmt) {
+static void _ms_compile_stmt(mscript_program_t *program, _ms_stmt_t *stmt) {
     switch (stmt->type) {
         case _MS_STMT_IF:
-            compile_if_stmt(program, stmt);
+            _ms_compile_if_stmt(program, stmt);
             break;
         case _MS_STMT_RETURN:
-            compile_return_stmt(program, stmt);
+            _ms_compile_return_stmt(program, stmt);
             break;
         case _MS_STMT_BLOCK:
-            compile_block_stmt(program, stmt);
+            _ms_compile_block_stmt(program, stmt);
             break;
         case _MS_STMT_GLOBAL_DECLARATION:
             assert(false);
             break;
         case _MS_STMT_FUNCTION_DECLARATION:
-            compile_function_declaration_stmt(program, stmt);
+            _ms_compile_function_declaration_stmt(program, stmt);
             break;
         case _MS_STMT_VARIABLE_DECLARATION:
-            compile_variable_declaration_stmt(program, stmt);
+            _ms_compile_variable_declaration_stmt(program, stmt);
             break;
         case _MS_STMT_EXPR:
-            compile_expr_stmt(program, stmt);
+            _ms_compile_expr_stmt(program, stmt);
             break;
         case _MS_STMT_FOR:
-            compile_for_stmt(program, stmt);
+            _ms_compile_for_stmt(program, stmt);
             break;
         case _MS_STMT_STRUCT_DECLARATION:
         case _MS_STMT_ENUM_DECLARATION:
@@ -4091,7 +3987,7 @@ static void compile_stmt(mscript_program_t *program, _ms_stmt_t *stmt) {
     }
 }
 
-static void compile_if_stmt(mscript_program_t *program, _ms_stmt_t *stmt) {
+static void _ms_compile_if_stmt(mscript_program_t *program, _ms_stmt_t *stmt) {
     assert(stmt->type == _MS_STMT_IF);
 
     int num_stmts = stmt->if_stmt.num_stmts;
@@ -4100,25 +3996,25 @@ static void compile_if_stmt(mscript_program_t *program, _ms_stmt_t *stmt) {
     _ms_stmt_t *else_stmt = stmt->if_stmt.else_stmt;
 
     int else_if_label = -1;
-    int final_label = compiler_new_label(program);
+    int final_label = program->cur_label++;
 
     for (int i = 0; i < num_stmts; i++) {
-        compile_expr(program, conds[i]);
-        else_if_label = compiler_new_label(program);
-        opcode_intermediate_jf(program, else_if_label);
-        compile_stmt(program, stmts[i]);
-        opcode_intermediate_jmp(program, final_label);
-        opcode_intermediate_label(program, else_if_label);
+        _ms_compile_expr(program, conds[i]);
+        else_if_label = program->cur_label++;
+        vec_push(program->cur_opcodes, _ms_opcode_intermediate_jf(else_if_label));
+        _ms_compile_stmt(program, stmts[i]);
+        vec_push(program->cur_opcodes, _ms_opcode_intermediate_jmp(final_label));
+        vec_push(program->cur_opcodes, _ms_opcode_intermediate_label(else_if_label));
     }
 
     if (else_stmt) {
-        compile_stmt(program, else_stmt);
+        _ms_compile_stmt(program, else_stmt);
     }
 
-    opcode_intermediate_label(program, final_label);
+    vec_push(program->cur_opcodes, _ms_opcode_intermediate_label(final_label));
 }
 
-static void compile_for_stmt(mscript_program_t *program, _ms_stmt_t *stmt) {
+static void _ms_compile_for_stmt(mscript_program_t *program, _ms_stmt_t *stmt) {
     assert(stmt->type == _MS_STMT_FOR);
 
     _ms_expr_t *init = stmt->for_stmt.init;
@@ -4126,77 +4022,77 @@ static void compile_for_stmt(mscript_program_t *program, _ms_stmt_t *stmt) {
     _ms_expr_t *inc = stmt->for_stmt.inc;
     _ms_stmt_t *body = stmt->for_stmt.body;
 
-    int cond_label = compiler_new_label(program);
-    int end_label = compiler_new_label(program);
+    int cond_label = program->cur_label++;
+    int end_label = program->cur_label++;
 
-    compile_expr(program, init);
-    opcode_pop(program, init->result_type->size);
-    opcode_intermediate_label(program, cond_label);
-    compile_expr(program, cond);
-    opcode_intermediate_jf(program, end_label);
-    compile_stmt(program, body);
-    compile_expr(program, inc);
-    opcode_pop(program, inc->result_type->size);
-    opcode_intermediate_jmp(program, cond_label);
-    opcode_intermediate_label(program, end_label);
+    _ms_compile_expr(program, init);
+    vec_push(program->cur_opcodes, _ms_opcode_pop(init->result_type->size));
+    vec_push(program->cur_opcodes, _ms_opcode_intermediate_label(cond_label));
+    _ms_compile_expr(program, cond);
+    vec_push(program->cur_opcodes, _ms_opcode_intermediate_jf(end_label));
+    _ms_compile_stmt(program, body);
+    _ms_compile_expr(program, inc);
+    vec_push(program->cur_opcodes, _ms_opcode_pop(inc->result_type->size));
+    vec_push(program->cur_opcodes, _ms_opcode_intermediate_jmp(cond_label));
+    vec_push(program->cur_opcodes, _ms_opcode_intermediate_label(end_label));
 }
 
-static void compile_return_stmt(mscript_program_t *program, _ms_stmt_t *stmt) {
+static void _ms_compile_return_stmt(mscript_program_t *program, _ms_stmt_t *stmt) {
     assert(stmt->type == _MS_STMT_RETURN);
 
-    //_ms_function_decl_t *decl = program->compiler.cur_function_decl;
-    _ms_function_decl_t *decl = NULL;
+    _ms_function_decl_t *decl = program->cur_function_decl;
     assert(decl);
 
     _ms_expr_t *expr = stmt->return_stmt.expr;
     if (expr) {
-        compile_expr(program, stmt->return_stmt.expr);
-        opcode_return(program, decl->return_type->size);
+        _ms_compile_expr(program, stmt->return_stmt.expr);
+        vec_push(program->cur_opcodes, _ms_opcode_return(decl->return_type->size));
     }
     else {
-        //opcode_pop(program, program->compiler.cur_function_decl->block_size);
-        opcode_return(program, 0);
+        vec_push(program->cur_opcodes, _ms_opcode_pop(program->cur_function_decl->block_size));
+        vec_push(program->cur_opcodes, _ms_opcode_return(0));
     }
 }
 
-static void compile_block_stmt(mscript_program_t *program, _ms_stmt_t *stmt) {
+static void _ms_compile_block_stmt(mscript_program_t *program, _ms_stmt_t *stmt) {
     assert(stmt->type == _MS_STMT_BLOCK);
 
     int num_stmts = stmt->block.num_stmts;
     _ms_stmt_t **stmts = stmt->block.stmts;
     for (int i = 0; i < num_stmts; i++) {
-        compile_stmt(program, stmts[i]);
+        _ms_compile_stmt(program, stmts[i]);
     }
 }
 
-static void compile_expr_stmt(mscript_program_t *program, _ms_stmt_t *stmt) {
+static void _ms_compile_expr_stmt(mscript_program_t *program, _ms_stmt_t *stmt) {
     assert(stmt->type == _MS_STMT_EXPR);
 
     _ms_expr_t *expr = stmt->expr;
-    compile_expr(program, expr);
-    opcode_pop(program, expr->result_type->size);
+    _ms_compile_expr(program, expr);
+    vec_push(program->cur_opcodes, _ms_opcode_pop(expr->result_type->size));
 }
 
-static void compile_function_declaration_stmt(mscript_program_t *program, _ms_stmt_t *stmt) {
+static void _ms_compile_function_declaration_stmt(mscript_program_t *program, _ms_stmt_t *stmt) {
     assert(stmt->type == _MS_STMT_FUNCTION_DECLARATION);
 
     _ms_function_decl_t *decl = _ms_symbol_table_get_function_decl(&program->symbol_table, stmt->function_declaration.name);
     assert(decl);
 
-    program->compiler.cur_function_decl = decl;
-    program->compiler.cur_label = 0;
+    program->cur_function_decl = decl;
+    program->cur_label = 0;
+    program->cur_opcodes = &decl->opcodes;
 
-    opcode_intermediate_func(program, decl->name);
-
-    opcode_push(program, decl->block_size);
-    compile_stmt(program, stmt->function_declaration.body); 
+    vec_push(program->cur_opcodes, _ms_opcode_intermediate_func(decl->name));
+    vec_push(program->cur_opcodes, _ms_opcode_push(decl->block_size));
+    _ms_compile_stmt(program, stmt->function_declaration.body); 
     if (decl->return_type->type == MSCRIPT_TYPE_VOID) {
-        opcode_return(program, 0);
+        vec_push(program->cur_opcodes, _ms_opcode_return(0));
     }
 
-    for (int i = 0; i < decl->opcodes.length; i++) {
-        struct opcode op = decl->opcodes.data[i];
-        if (op.type == OPCODE_INTERMEDIATE_LABEL) {
+    /*
+    for (int i = 0; i < decl->cur_opcodes.length; i++) {
+        _ms__ms_opcode_t op = decl->cur_opcodes.data[i];
+        if (op.type == _MS_OPCODE_INTERMEDIATE_LABEL) {
             array_reserve(&(decl->labels), op.label + 1);
             decl->labels.data[op.label] = i;
             if (decl->labels.length <= op.label) {
@@ -4204,69 +4100,70 @@ static void compile_function_declaration_stmt(mscript_program_t *program, _ms_st
             }
         }
     }
+    */
 }
 
-static void compile_variable_declaration_stmt(mscript_program_t *program, _ms_stmt_t *stmt) {
+static void _ms_compile_variable_declaration_stmt(mscript_program_t *program, _ms_stmt_t *stmt) {
     assert(stmt->type == _MS_STMT_VARIABLE_DECLARATION);
 
     _ms_expr_t *assignment_expr = stmt->variable_declaration.assignment_expr;
     if (assignment_expr) {
-        compile_expr(program, assignment_expr);
-        opcode_pop(program, assignment_expr->result_type->size);
+        _ms_compile_expr(program, assignment_expr);
+        vec_push(program->cur_opcodes, _ms_opcode_pop(assignment_expr->result_type->size));
     }
 }
 
-static void compile_expr(mscript_program_t *program, _ms_expr_t *expr) {
+static void _ms_compile_expr(mscript_program_t *program, _ms_expr_t *expr) {
     switch (expr->type) {
         case _MS_EXPR_UNARY_OP:
-            compile_unary_op_expr(program, expr);
+            _ms_compile_unary_op_expr(program, expr);
             break;
         case _MS_EXPR_BINARY_OP:
-            compile_binary_op_expr(program, expr);
+            _ms_compile_binary_op_expr(program, expr);
             break;
         case _MS_EXPR_CALL:
-            compile_call_expr(program, expr);
+            _ms_compile_call_expr(program, expr);
             break;
         case _MS_EXPR_DEBUG_PRINT:
-            compile_debug_print_expr(program, expr);
+            _ms_compile_debug_print_expr(program, expr);
             break;
         case _MS_EXPR_ARRAY_ACCESS:
-            compile_array_access_expr(program, expr);
+            _ms_compile_array_access_expr(program, expr);
             break;
         case _MS_EXPR_MEMBER_ACCESS:
-            compile_member_access_expr(program, expr);
+            _ms_compile_member_access_expr(program, expr);
             break;
         case _MS_EXPR_ASSIGNMENT:
-            compile_assignment_expr(program, expr);
+            _ms_compile_assignment_expr(program, expr);
             break;
         case _MS_EXPR_INT:
-            compile_int_expr(program, expr);
+            _ms_compile_int_expr(program, expr);
             break;
         case _MS_EXPR_FLOAT:
-            compile_float_expr(program, expr);
+            _ms_compile_float_expr(program, expr);
             break;
         case _MS_EXPR_SYMBOL:
-            compile_symbol_expr(program, expr);
+            _ms_compile_symbol_expr(program, expr);
             break;
         case _MS_EXPR_NULL:
-            compile_null_expr(program, expr);
+            _ms_compile_null_expr(program, expr);
             break;
         case _MS_EXPR_STRING:
-            compile_string_expr(program, expr);
+            _ms_compile_string_expr(program, expr);
             break;
         case _MS_EXPR_ARRAY:
-            compile_array_expr(program, expr);
+            _ms_compile_array_expr(program, expr);
             break;
         case _MS_EXPR_OBJECT:
-            compile_object_expr(program, expr);
+            _ms_compile_object_expr(program, expr);
             break;
         case _MS_EXPR_CAST:
-            compile_cast_expr(program, expr);
+            _ms_compile_cast_expr(program, expr);
             break;
     }
 }
 
-static void compile_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr) {
+static void _ms_compile_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr) {
     switch (expr->type) {
         case _MS_EXPR_UNARY_OP:
         case _MS_EXPR_BINARY_OP:
@@ -4284,10 +4181,10 @@ static void compile_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr) {
             break;
         case _MS_EXPR_ARRAY_ACCESS:
             {
-                compile_expr(program, expr->array_access.left);
-                compile_expr(program, expr->array_access.right);
-                opcode_int(program, expr->result_type->size);
-                opcode_imul(program);
+                _ms_compile_expr(program, expr->array_access.left);
+                _ms_compile_expr(program, expr->array_access.right);
+                vec_push(program->cur_opcodes, _ms_opcode_int(expr->result_type->size));
+                vec_push(program->cur_opcodes, _ms_opcode_imul());
             }
             break;
         case _MS_EXPR_MEMBER_ACCESS:
@@ -4309,15 +4206,15 @@ static void compile_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr) {
                 }
                 assert(found_member);
 
-                compile_lvalue_expr(program, expr->member_access.left);
+                _ms_compile_lvalue_expr(program, expr->member_access.left);
 
                 _ms_lvalue_t left_lvalue = expr->member_access.left->lvalue; 
                 switch (left_lvalue.type) {
                     case LVALUE_LOCAL:
                         break;
                     case LVALUE_ARRAY:
-                        opcode_int(program, offset);
-                        opcode_iadd(program);
+                        vec_push(program->cur_opcodes, _ms_opcode_int(offset));
+                        vec_push(program->cur_opcodes, _ms_opcode_iadd());
                         break;
                     case LVALUE_INVALID:
                         assert(false);
@@ -4330,32 +4227,32 @@ static void compile_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr) {
     }
 }
 
-static void compile_unary_op_expr(mscript_program_t *program, _ms_expr_t *expr) {
+static void _ms_compile_unary_op_expr(mscript_program_t *program, _ms_expr_t *expr) {
     assert(expr->type == _MS_EXPR_UNARY_OP);
 
     _ms_expr_t *operand = expr->unary_op.operand;
-    compile_expr(program, operand);
+    _ms_compile_expr(program, operand);
 
     switch (expr->unary_op.type) {
         case _MS_UNARY_OP_POST_INC:
             {
                 if (operand->result_type->type == MSCRIPT_TYPE_INT) {
-                    opcode_iinc(program);
+                    vec_push(program->cur_opcodes, _ms_opcode_iinc());
                 }
                 else if (operand->result_type->type == MSCRIPT_TYPE_FLOAT) {
-                    opcode_finc(program);
+                    vec_push(program->cur_opcodes, _ms_opcode_finc());
                 }
                 else {
                     assert(false);
                 }
 
-                compile_lvalue_expr(program, operand);
+                _ms_compile_lvalue_expr(program, operand);
                 switch (operand->lvalue.type) {
                     case LVALUE_LOCAL:
-                        opcode_local_store(program, operand->lvalue.offset, expr->result_type->size);
+                        vec_push(program->cur_opcodes, _ms_opcode_local_store(operand->lvalue.offset, expr->result_type->size));
                         break;
                     case LVALUE_ARRAY:
-                        opcode_array_store(program, expr->result_type->size);
+                        vec_push(program->cur_opcodes, _ms_opcode_array_store(expr->result_type->size));
                         break;
                     case LVALUE_INVALID:
                         assert(false);
@@ -4366,87 +4263,87 @@ static void compile_unary_op_expr(mscript_program_t *program, _ms_expr_t *expr) 
         case _MS_UNARY_OP_LOGICAL_NOT:
             {
                 assert(operand->result_type->type == MSCRIPT_TYPE_BOOL);
-                opcode_not(program);
+                vec_push(program->cur_opcodes, _ms_opcode_not());
             }
             break;
     }
 }
 
-static void compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *expr) {
+static void _ms_compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *expr) {
     assert(expr->type == _MS_EXPR_BINARY_OP);
 
     _ms_expr_t *left = expr->binary_op.left;
     _ms_expr_t *right = expr->binary_op.right;
     assert(left->result_type->type == right->result_type->type);
 
-    compile_expr(program, left);
-    compile_expr(program, right);
+    _ms_compile_expr(program, left);
+    _ms_compile_expr(program, right);
 
     if (left->result_type->type == MSCRIPT_TYPE_INT) {
         switch (expr->binary_op.type) {
             case _MS_BINARY_OP_ADD:
-                opcode_iadd(program);
+                vec_push(program->cur_opcodes, _ms_opcode_iadd());
                 break;
             case _MS_BINARY_OP_SUB:
-                opcode_isub(program);
+                vec_push(program->cur_opcodes, _ms_opcode_isub());
                 break;
             case _MS_BINARY_OP_MUL:
-                opcode_imul(program);
+                vec_push(program->cur_opcodes, _ms_opcode_imul());
                 break;
             case _MS_BINARY_OP_DIV:
-                opcode_idiv(program);
+                vec_push(program->cur_opcodes, _ms_opcode_idiv());
                 break;
             case _MS_BINARY_OP_LTE:
-                opcode_ilte(program);
+                vec_push(program->cur_opcodes, _ms_opcode_ilte());
                 break;
             case _MS_BINARY_OP_LT:
-                opcode_ilt(program);
+                vec_push(program->cur_opcodes, _ms_opcode_ilt());
                 break;
             case _MS_BINARY_OP_GTE:
-                opcode_igte(program);
+                vec_push(program->cur_opcodes, _ms_opcode_igte());
                 break;
             case _MS_BINARY_OP_GT:
-                opcode_igt(program);
+                vec_push(program->cur_opcodes, _ms_opcode_igt());
                 break;
             case _MS_BINARY_OP_EQ:
-                opcode_ieq(program);
+                vec_push(program->cur_opcodes, _ms_opcode_ieq());
                 break;
             case _MS_BINARY_OP_NEQ:
-                opcode_ineq(program);
+                vec_push(program->cur_opcodes, _ms_opcode_ineq());
                 break;
         }
     }
     else if (left->result_type->type == MSCRIPT_TYPE_FLOAT) {
         switch (expr->binary_op.type) {
             case _MS_BINARY_OP_ADD:
-                opcode_fadd(program);
+                vec_push(program->cur_opcodes, _ms_opcode_fadd());
                 break;
             case _MS_BINARY_OP_SUB:
-                opcode_fsub(program);
+                vec_push(program->cur_opcodes, _ms_opcode_fsub());
                 break;
             case _MS_BINARY_OP_MUL:
-                opcode_fmul(program);
+                vec_push(program->cur_opcodes, _ms_opcode_fmul());
                 break;
             case _MS_BINARY_OP_DIV:
-                opcode_fdiv(program);
+                vec_push(program->cur_opcodes, _ms_opcode_fdiv());
                 break;
             case _MS_BINARY_OP_LTE:
-                opcode_flte(program);
+                vec_push(program->cur_opcodes, _ms_opcode_flte());
                 break;
             case _MS_BINARY_OP_LT:
-                opcode_flt(program);
+                vec_push(program->cur_opcodes, _ms_opcode_flt());
                 break;
             case _MS_BINARY_OP_GTE:
-                opcode_fgte(program);
+                vec_push(program->cur_opcodes, _ms_opcode_fgte());
                 break;
             case _MS_BINARY_OP_GT:
-                opcode_fgt(program);
+                vec_push(program->cur_opcodes, _ms_opcode_fgt());
                 break;
             case _MS_BINARY_OP_EQ:
-                opcode_feq(program);
+                vec_push(program->cur_opcodes, _ms_opcode_feq());
                 break;
             case _MS_BINARY_OP_NEQ:
-                opcode_fneq(program);
+                vec_push(program->cur_opcodes, _ms_opcode_fneq());
                 break;
         }
     }
@@ -4459,22 +4356,22 @@ static void compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *expr)
                 assert(false);
                 break;
             case _MS_BINARY_OP_LTE:
-                opcode_ilte(program);
+                vec_push(program->cur_opcodes, _ms_opcode_ilte());
                 break;
             case _MS_BINARY_OP_LT:
-                opcode_ilt(program);
+                vec_push(program->cur_opcodes, _ms_opcode_ilt());
                 break;
             case _MS_BINARY_OP_GTE:
-                opcode_igte(program);
+                vec_push(program->cur_opcodes, _ms_opcode_igte());
                 break;
             case _MS_BINARY_OP_GT:
-                opcode_igt(program);
+                vec_push(program->cur_opcodes, _ms_opcode_igt());
                 break;
             case _MS_BINARY_OP_EQ:
-                opcode_ieq(program);
+                vec_push(program->cur_opcodes, _ms_opcode_ieq());
                 break;
             case _MS_BINARY_OP_NEQ:
-                opcode_ineq(program);
+                vec_push(program->cur_opcodes, _ms_opcode_ineq());
                 break;
         }
     }
@@ -4491,10 +4388,10 @@ static void compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *expr)
                 assert(false);
                 break;
             case _MS_BINARY_OP_EQ:
-                opcode_ieq(program);
+                vec_push(program->cur_opcodes, _ms_opcode_ieq());
                 break;
             case _MS_BINARY_OP_NEQ:
-                opcode_ineq(program);
+                vec_push(program->cur_opcodes, _ms_opcode_ineq());
                 break;
         }
     }
@@ -4503,43 +4400,43 @@ static void compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *expr)
     }
 }
 
-static void compile_call_expr(mscript_program_t *program, _ms_expr_t *expr) {
+static void _ms_compile_call_expr(mscript_program_t *program, _ms_expr_t *expr) {
     assert(expr->type == _MS_EXPR_CALL);
 
     for (int i = expr->call.num_args - 1; i >= 0; i--) {
-        compile_expr(program, expr->call.args[i]);
+        _ms_compile_expr(program, expr->call.args[i]);
     }
     assert(expr->call.function->type == _MS_EXPR_SYMBOL);
-    opcode_intermediate_call(program, expr->call.function->symbol);
+    vec_push(program->cur_opcodes, _ms_opcode_intermediate_call(expr->call.function->symbol));
 }
 
-static void compile_debug_print_type(mscript_program_t *program, mscript_type_t *type) {
+static void _ms_compile_debug_print_type(mscript_program_t *program, mscript_type_t *type) {
     switch (type->type) {
         case MSCRIPT_TYPE_VOID:
             {
-                opcode_debug_print_string_const(program, "<void>");
-                opcode_pop(program, type->size);
+                vec_push(program->cur_opcodes, _ms_opcode_debug_print_string_const("<void>"));
+                vec_push(program->cur_opcodes, _ms_opcode_pop(type->size));
             }
             break;
         case MSCRIPT_TYPE_VOID_STAR:
             {
-                opcode_debug_print_string_const(program, "<void*>");
-                opcode_pop(program, type->size);
+                vec_push(program->cur_opcodes, _ms_opcode_debug_print_string_const("<void*>"));
+                vec_push(program->cur_opcodes, _ms_opcode_pop(type->size));
             }
             break;
         case MSCRIPT_TYPE_INT:
             {
-                opcode_debug_print_int(program);
+                vec_push(program->cur_opcodes, _ms_opcode_debug_print_int());
             }
             break;
         case MSCRIPT_TYPE_FLOAT:
             {
-                opcode_debug_print_float(program);
+                vec_push(program->cur_opcodes, _ms_opcode_debug_print_float());
             }
             break;
         case MSCRIPT_TYPE_BOOL:
             {
-                opcode_debug_print_bool(program);
+                vec_push(program->cur_opcodes, _ms_opcode_debug_print_bool());
             }
             break;
         case MSCRIPT_TYPE_STRUCT:
@@ -4547,48 +4444,48 @@ static void compile_debug_print_type(mscript_program_t *program, mscript_type_t 
                 _ms_struct_decl_t *decl = type->struct_decl;
                 assert(decl);
 
-                opcode_debug_print_string_const(program, "{");
+                vec_push(program->cur_opcodes, _ms_opcode_debug_print_string_const("{"));
                 int member_offset = 0;
                 for (int i = 0; i < decl->num_members; i++) {
                     mscript_type_t *member_type = decl->members[i].type;
                     int member_type_size = member_type->size;
                     char *member_name = decl->members[i].name;
 
-                    opcode_debug_print_string_const(program, member_name);
-                    opcode_debug_print_string_const(program, ": ");
-                    opcode_copy(program, type->size - member_offset, member_type_size); 
-                    compile_debug_print_type(program, member_type);
+                    vec_push(program->cur_opcodes, _ms_opcode_debug_print_string_const(member_name));
+                    vec_push(program->cur_opcodes, _ms_opcode_debug_print_string_const(": "));
+                    vec_push(program->cur_opcodes, _ms_opcode_copy(type->size - member_offset, member_type_size));
+                    _ms_compile_debug_print_type(program, member_type);
                     member_offset += member_type_size;
                     
                     if (i != decl->num_members - 1) {
-                        opcode_debug_print_string_const(program, ", ");
+                        vec_push(program->cur_opcodes, _ms_opcode_debug_print_string_const(", "));
                     }
                 }
-                opcode_debug_print_string_const(program, "}");
+                vec_push(program->cur_opcodes, _ms_opcode_debug_print_string_const("}"));
 
-                opcode_pop(program, type->size);
+                vec_push(program->cur_opcodes, _ms_opcode_pop(type->size));
             }
             break;
         case MSCRIPT_TYPE_ARRAY:
             {
-                opcode_debug_print_string_const(program, "<array>");
-                opcode_pop(program, type->size);
+                vec_push(program->cur_opcodes, _ms_opcode_debug_print_string_const("<array>"));
+                vec_push(program->cur_opcodes, _ms_opcode_pop(type->size));
             }
             break;
         case MSCRIPT_TYPE_CHAR_STAR:
             {
-                opcode_debug_print_string(program);
+                vec_push(program->cur_opcodes, _ms_opcode_debug_print_string());
             }
             break;
         case MSCRIPT_TYPE_ENUM:
             {
-                opcode_debug_print_int(program);
+                vec_push(program->cur_opcodes, _ms_opcode_debug_print_int());
             }
             break;
     }
 }
 
-static void compile_debug_print_expr(mscript_program_t *program, _ms_expr_t *expr) {
+static void _ms_compile_debug_print_expr(mscript_program_t *program, _ms_expr_t *expr) {
     assert(expr->type == _MS_EXPR_DEBUG_PRINT);
 
     int num_args = expr->debug_print.num_args;
@@ -4597,12 +4494,12 @@ static void compile_debug_print_expr(mscript_program_t *program, _ms_expr_t *exp
         _ms_expr_t *arg = args[i];
         mscript_type_t *arg_type = arg->result_type;
 
-        compile_expr(program, arg);
-        compile_debug_print_type(program, arg_type);
+        _ms_compile_expr(program, arg);
+        _ms_compile_debug_print_type(program, arg_type);
     }
 }
 
-static void compile_array_access_expr(mscript_program_t *program, _ms_expr_t *expr) {
+static void _ms_compile_array_access_expr(mscript_program_t *program, _ms_expr_t *expr) {
     assert(expr->type == _MS_EXPR_ARRAY_ACCESS);
 
     _ms_expr_t *left = expr->array_access.left;
@@ -4611,41 +4508,41 @@ static void compile_array_access_expr(mscript_program_t *program, _ms_expr_t *ex
     assert(left->result_type->type == MSCRIPT_TYPE_ARRAY);
     assert(right->result_type->type == MSCRIPT_TYPE_INT);
 
-    compile_lvalue_expr(program, left);
+    _ms_compile_lvalue_expr(program, left);
 
     _ms_lvalue_t lvalue = left->lvalue;
     switch (lvalue.type) {
         case LVALUE_LOCAL:
-            opcode_local_load(program, lvalue.offset, left->result_type->size);
+            vec_push(program->cur_opcodes, _ms_opcode_local_load(lvalue.offset, left->result_type->size));
             break;
         case LVALUE_ARRAY:
-            opcode_array_load(program, left->result_type->size);
+            vec_push(program->cur_opcodes, _ms_opcode_array_load(left->result_type->size));
             break;
         case LVALUE_INVALID:
             assert(false);
             break;
     }
 
-    compile_expr(program, right);
-    opcode_int(program, expr->result_type->size);
-    opcode_imul(program);
-    opcode_array_load(program, expr->result_type->size);
+    _ms_compile_expr(program, right);
+    vec_push(program->cur_opcodes, _ms_opcode_int(expr->result_type->size));
+    vec_push(program->cur_opcodes, _ms_opcode_imul());
+    vec_push(program->cur_opcodes, _ms_opcode_array_load(expr->result_type->size));
 }
 
-static void compile_member_access_expr(mscript_program_t *program, _ms_expr_t *expr) {
+static void _ms_compile_member_access_expr(mscript_program_t *program, _ms_expr_t *expr) {
     assert(expr->type == _MS_EXPR_MEMBER_ACCESS);
 
     _ms_expr_t *left = expr->member_access.left;
 
     if (left->result_type->type == MSCRIPT_TYPE_STRUCT) {
-        compile_lvalue_expr(program, expr);
+        _ms_compile_lvalue_expr(program, expr);
         _ms_lvalue_t lvalue = expr->lvalue;
         switch (lvalue.type) {
             case LVALUE_LOCAL:
-                opcode_local_load(program, lvalue.offset, expr->result_type->size);
+                vec_push(program->cur_opcodes, _ms_opcode_local_load(lvalue.offset, expr->result_type->size));
                 break;
             case LVALUE_ARRAY:
-                opcode_array_load(program, expr->result_type->size);
+                vec_push(program->cur_opcodes, _ms_opcode_array_load(expr->result_type->size));
                 break;
             case LVALUE_INVALID:
                 assert(false);
@@ -4653,27 +4550,27 @@ static void compile_member_access_expr(mscript_program_t *program, _ms_expr_t *e
         }
     }
     else if (left->result_type->type == MSCRIPT_TYPE_ARRAY) {
-        compile_lvalue_expr(program, left);
+        _ms_compile_lvalue_expr(program, left);
         _ms_lvalue_t lvalue = left->lvalue;
         switch (lvalue.type) {
             case LVALUE_LOCAL:
-                opcode_local_load(program, lvalue.offset, left->result_type->size);
+                vec_push(program->cur_opcodes, _ms_opcode_local_load(lvalue.offset, left->result_type->size));
                 break;
             case LVALUE_ARRAY:
-                opcode_array_load(program, left->result_type->size);
+                vec_push(program->cur_opcodes, _ms_opcode_array_load(left->result_type->size));
                 break;
             case LVALUE_INVALID:
                 assert(false);
                 break;
         }
-        opcode_array_length(program);
+        vec_push(program->cur_opcodes, _ms_opcode_array_length());
     }
     else {
         assert(false);
     }
 }
 
-static void compile_assignment_expr(mscript_program_t *program, _ms_expr_t *expr) {
+static void _ms_compile_assignment_expr(mscript_program_t *program, _ms_expr_t *expr) {
     assert(expr->type == _MS_EXPR_ASSIGNMENT);
     assert(expr->result_type == expr->assignment.right->result_type);
 
@@ -4681,15 +4578,15 @@ static void compile_assignment_expr(mscript_program_t *program, _ms_expr_t *expr
     _ms_expr_t *right = expr->assignment.right;
     _ms_lvalue_t lvalue = left->lvalue;
 
-    compile_expr(program, right);
-    compile_lvalue_expr(program, left);
+    _ms_compile_expr(program, right);
+    _ms_compile_lvalue_expr(program, left);
 
     switch (lvalue.type) {
         case LVALUE_LOCAL:
-            opcode_local_store(program, lvalue.offset, expr->result_type->size);
+            vec_push(program->cur_opcodes, _ms_opcode_local_store(lvalue.offset, expr->result_type->size));
             break;
         case LVALUE_ARRAY:
-            opcode_array_store(program, expr->result_type->size);
+            vec_push(program->cur_opcodes, _ms_opcode_array_store(expr->result_type->size));
             break;
         case LVALUE_INVALID:
             assert(false);
@@ -4697,23 +4594,23 @@ static void compile_assignment_expr(mscript_program_t *program, _ms_expr_t *expr
     }
 }
 
-static void compile_int_expr(mscript_program_t *program, _ms_expr_t *expr) {
+static void _ms_compile_int_expr(mscript_program_t *program, _ms_expr_t *expr) {
     assert(expr->type == _MS_EXPR_INT);
-    opcode_int(program, expr->int_val);
+    vec_push(program->cur_opcodes, _ms_opcode_int(expr->int_val));
 }
 
-static void compile_float_expr(mscript_program_t *program, _ms_expr_t *expr) {
+static void _ms_compile_float_expr(mscript_program_t *program, _ms_expr_t *expr) {
     assert(expr->type == _MS_EXPR_FLOAT);
-    opcode_float(program, expr->float_val);
+    vec_push(program->cur_opcodes, _ms_opcode_float(expr->float_val));
 }
 
-static void compile_symbol_expr(mscript_program_t *program, _ms_expr_t *expr) {
+static void _ms_compile_symbol_expr(mscript_program_t *program, _ms_expr_t *expr) {
     assert(expr->type == _MS_EXPR_SYMBOL);
 
     /*
     struct enum_value *enum_value = map_get(&program->enum_map, expr->symbol);
     if (enum_value) {
-        opcode_int(program, enum_value->val);
+        vec_push(program->cur_opcodes, _ms_opcode_int(program, enum_value->val));
     }
     else {
         _ms_lvalue_t lvalue = expr->lvalue;
@@ -4723,68 +4620,68 @@ static void compile_symbol_expr(mscript_program_t *program, _ms_expr_t *expr) {
                 assert(false);
                 break;
             case LVALUE_LOCAL:
-                opcode_local_load(program, lvalue.offset, expr->result_type->size);
+                vec_push(program->cur_opcodes, _ms_opcode_local_load(program, lvalue.offset, expr->result_type->size));
                 break;
         }
     }
     */
 }
 
-static void compile_null_expr(mscript_program_t *program, _ms_expr_t *expr) {
+static void _ms_compile_null_expr(mscript_program_t *program, _ms_expr_t *expr) {
     assert(expr->type == _MS_EXPR_NULL);
 
     assert(expr->result_type->type == MSCRIPT_TYPE_ARRAY);
-    opcode_int(program, 0);
+    vec_push(program->cur_opcodes, _ms_opcode_int(0));
 }
 
-static void compile_string_expr(mscript_program_t *program, _ms_expr_t *expr) {
+static void _ms_compile_string_expr(mscript_program_t *program, _ms_expr_t *expr) {
     assert(expr->type == _MS_EXPR_STRING);
 
-    opcode_intermediate_string(program, expr->string);
+    vec_push(program->cur_opcodes, _ms_opcode_intermediate_string(expr->string));
 }
 
-static void compile_array_expr(mscript_program_t *program, _ms_expr_t *expr) {
+static void _ms_compile_array_expr(mscript_program_t *program, _ms_expr_t *expr) {
     assert(expr->type == _MS_EXPR_ARRAY);
 
     assert(expr->result_type->type == MSCRIPT_TYPE_ARRAY);
     mscript_type_t *arg_type = expr->result_type->array_member_type;
 
     int size = arg_type->size;
-    opcode_array_create(program, size);
+    vec_push(program->cur_opcodes, _ms_opcode_array_create(size));
 
     int num_args = expr->array.num_args;
     if (num_args > 0) {
         for (int i = 0; i < expr->array.num_args; i++) {
             _ms_expr_t *arg = expr->array.args[i];
-            compile_expr(program, arg);
+            _ms_compile_expr(program, arg);
         }
 
         int result_type_size = expr->result_type->size;
-        opcode_copy(program, num_args * size + result_type_size, result_type_size);
-        opcode_int(program, 0);
-        opcode_array_store(program, num_args * size);
-        opcode_pop(program, num_args * size);
+        vec_push(program->cur_opcodes, _ms_opcode_copy(num_args * size + result_type_size, result_type_size));
+        vec_push(program->cur_opcodes, _ms_opcode_int(0));
+        vec_push(program->cur_opcodes, _ms_opcode_array_store(num_args * size));
+        vec_push(program->cur_opcodes, _ms_opcode_pop(num_args * size));
     }
 }
 
-static void compile_object_expr(mscript_program_t *program, _ms_expr_t *expr) {
+static void _ms_compile_object_expr(mscript_program_t *program, _ms_expr_t *expr) {
     assert(expr->type == _MS_EXPR_OBJECT);
 
     int num_args = expr->object.num_args;
     for (int i = 0; i < num_args; i++) {
         _ms_expr_t *arg = expr->object.args[i];
-        compile_expr(program, arg);
+        _ms_compile_expr(program, arg);
     }
 }
 
-static void compile_cast_expr(mscript_program_t *program, _ms_expr_t *expr) {
+static void _ms_compile_cast_expr(mscript_program_t *program, _ms_expr_t *expr) {
     assert(expr->type == _MS_EXPR_CAST);
 
     mscript_type_t *cast_type = expr->result_type;
     mscript_type_t *arg_type = expr->cast.arg->result_type;
     _ms_expr_t *arg = expr->cast.arg;
 
-    compile_expr(program, arg);
+    _ms_compile_expr(program, arg);
 
     if (cast_type->type == MSCRIPT_TYPE_INT && arg_type->type == MSCRIPT_TYPE_INT) {
     }
@@ -4795,10 +4692,10 @@ static void compile_cast_expr(mscript_program_t *program, _ms_expr_t *expr) {
     else if (cast_type->type == MSCRIPT_TYPE_BOOL && arg_type->type == MSCRIPT_TYPE_ARRAY) {
     }
     else if (cast_type->type == MSCRIPT_TYPE_FLOAT && arg_type->type == MSCRIPT_TYPE_INT) {
-        opcode_i2f(program);
+        vec_push(program->cur_opcodes, _ms_opcode_i2f());
     }
     else if (cast_type->type == MSCRIPT_TYPE_INT && arg_type->type == MSCRIPT_TYPE_FLOAT) {
-        opcode_f2i(program);
+        vec_push(program->cur_opcodes, _ms_opcode_f2i());
     }
     else {
         assert(false);
@@ -4807,9 +4704,9 @@ static void compile_cast_expr(mscript_program_t *program, _ms_expr_t *expr) {
 
 static void vm_init(mscript_program_t *program) {
     struct vm *vm = &program->vm;
-    array_init(&vm->stack);
-    array_init(&vm->arrays);
-    array_init(&vm->strings);
+    vec_init(&vm->stack);
+    vec_init(&vm->arrays);
+    vec_init(&vm->strings);
 }
 
 #define VM_BINARY_OP(op, arg_type, result_type)\
@@ -4821,9 +4718,8 @@ static void vm_init(mscript_program_t *program) {
     sp -= 4;
 
 static void vm_run(mscript_program_t *program) {
-    struct compiler *compiler = &program->compiler;
     struct vm *vm = &program->vm;
-    struct opcode *opcodes = program->opcodes.data;
+    _ms_opcode_t *opcodes = program->opcodes.data;
 
     char *stack = malloc(sizeof(char)*8096);
     int fp = 0;
@@ -4849,144 +4745,144 @@ static void vm_run(mscript_program_t *program) {
             break;
         }
 
-        struct opcode op = opcodes[ip];
+        _ms_opcode_t op = opcodes[ip];
         switch (op.type) {
-            case OPCODE_IADD:
+            case _MS_OPCODE_IADD:
                 {
                     VM_BINARY_OP(+, int, int);
                 }
                 break;
-            case OPCODE_FADD:
+            case _MS_OPCODE_FADD:
                 {
                     VM_BINARY_OP(+, float, float);
                 }
                 break;
-            case OPCODE_ISUB:
+            case _MS_OPCODE_ISUB:
                 {
                     VM_BINARY_OP(-, int, int);
                 }
                 break;
-            case OPCODE_FSUB:
+            case _MS_OPCODE_FSUB:
                 {
                     VM_BINARY_OP(-, float, float);
                 }
                 break;
-            case OPCODE_IMUL:
+            case _MS_OPCODE_IMUL:
                 {
                     VM_BINARY_OP(*, int, int);
                 }
                 break;
-            case OPCODE_FMUL:
+            case _MS_OPCODE_FMUL:
                 {
                     VM_BINARY_OP(*, float, float);
                 }
                 break;
-            case OPCODE_IDIV:
+            case _MS_OPCODE_IDIV:
                 {
                     VM_BINARY_OP(/, int, int);
                 }
                 break;
-            case OPCODE_FDIV:
+            case _MS_OPCODE_FDIV:
                 {
                     VM_BINARY_OP(/, float, float);
                 }
                 break;
-            case OPCODE_ILTE:
+            case _MS_OPCODE_ILTE:
                 {
                     VM_BINARY_OP(<=, int, int);
                 }
                 break;
-            case OPCODE_FLTE:
+            case _MS_OPCODE_FLTE:
                 {
                     VM_BINARY_OP(<=, float, int);
                 }
                 break;
-            case OPCODE_ILT:
+            case _MS_OPCODE_ILT:
                 {
                     VM_BINARY_OP(<, int, int);
                 }
                 break;
-            case OPCODE_FLT:
+            case _MS_OPCODE_FLT:
                 {
                     VM_BINARY_OP(<, float, int);
                 }
                 break;
-            case OPCODE_IGTE:
+            case _MS_OPCODE_IGTE:
                 {
                     VM_BINARY_OP(>=, int, int);
                 }
                 break;
-            case OPCODE_FGTE:
+            case _MS_OPCODE_FGTE:
                 {
                     VM_BINARY_OP(>=, float, int);
                 }
                 break;
-            case OPCODE_IGT:
+            case _MS_OPCODE_IGT:
                 {
                     VM_BINARY_OP(>, int, int);
                 }
                 break;
-            case OPCODE_FGT:
+            case _MS_OPCODE_FGT:
                 {
                     VM_BINARY_OP(>, float, int);
                 }
                 break;
-            case OPCODE_IEQ:
+            case _MS_OPCODE_IEQ:
                 {
                     VM_BINARY_OP(==, int, int);
                 }
                 break;
-            case OPCODE_FEQ:
+            case _MS_OPCODE_FEQ:
                 {
                     VM_BINARY_OP(==, float, int);
                 }
                 break;
-            case OPCODE_INEQ:
+            case _MS_OPCODE_INEQ:
                 {
                     VM_BINARY_OP(!=, int, int);
                 }
                 break;
-            case OPCODE_FNEQ:
+            case _MS_OPCODE_FNEQ:
                 {
                     VM_BINARY_OP(!=, float, int);
                 }
                 break;
-            case OPCODE_IINC:
+            case _MS_OPCODE_IINC:
                 {
                     int v = *((int*) (stack + sp - 4));
                     v = v + 1;
                     memcpy(stack + sp - 4, &v, 4);
                 }
                 break;
-            case OPCODE_FINC:
+            case _MS_OPCODE_FINC:
                 {
                     float v = *((float*) (stack + sp - 4));
                     v = v + 1.0f;
                     memcpy(stack + sp - 4, &v, 4);
                 }
                 break;
-            case OPCODE_NOT:
+            case _MS_OPCODE_NOT:
                 {
                     int v = *((int*) (stack + sp - 4));
                     v = !v;
                     memcpy(stack + sp - 4, &v, 4);
                 }
                 break;
-            case OPCODE_F2I:
+            case _MS_OPCODE_F2I:
                 {
                     float vf = *((float*) (stack + sp - 4));
                     int vi = (int) vf;
                     memcpy(stack + sp - 4, &vi, 4);
                 }
                 break;
-            case OPCODE_I2F:
+            case _MS_OPCODE_I2F:
                 {
                     int vi = *((int*) (stack + sp - 4));
                     float vf = (float) vi;
                     memcpy(stack + sp - 4, &vf, 4);
                 }
                 break;
-            case OPCODE_COPY:
+            case _MS_OPCODE_COPY:
                 {
                     int offset = op.load_store.offset;
                     int size = op.load_store.size;
@@ -4999,19 +4895,19 @@ static void vm_run(mscript_program_t *program) {
                     sp += size;
                 }
                 break;
-            case OPCODE_INT:
+            case _MS_OPCODE_INT:
                 {
                     *((int*) (stack + sp)) = op.int_val;
                     sp += 4;
                 }
                 break;
-            case OPCODE_FLOAT:
+            case _MS_OPCODE_FLOAT:
                 {
                     *((float*) (stack + sp)) = op.float_val;
                     sp += 4;
                 }
                 break;
-            case OPCODE_LOCAL_STORE:
+            case _MS_OPCODE_LOCAL_STORE:
                 {
                     int offset = op.load_store.offset;
                     int size = op.load_store.size;
@@ -5022,7 +4918,7 @@ static void vm_run(mscript_program_t *program) {
                     memmove(dest, src, size);
                 }
                 break;
-            case OPCODE_LOCAL_LOAD:
+            case _MS_OPCODE_LOCAL_LOAD:
                 {
                     int offset = op.load_store.offset;
                     int size = op.load_store.size;
@@ -5034,7 +4930,7 @@ static void vm_run(mscript_program_t *program) {
                     sp += size;
                 }
                 break;
-            case OPCODE_JF:
+            case _MS_OPCODE_JF:
                 {
                     assert(sp >= 4);
 
@@ -5046,13 +4942,13 @@ static void vm_run(mscript_program_t *program) {
                     }
                 }
                 break;
-            case OPCODE_JMP:
+            case _MS_OPCODE_JMP:
                 {
                     ip = op.label - 1;
                     assert(ip >= 0);
                 }
                 break;
-            case OPCODE_CALL:
+            case _MS_OPCODE_CALL:
                 {
                     int ret_sp = sp - op.call.args_size;
 
@@ -5065,7 +4961,7 @@ static void vm_run(mscript_program_t *program) {
                     fp = sp;
                 }
                 break;
-            case OPCODE_RETURN:
+            case _MS_OPCODE_RETURN:
                 {
                     assert(sp >= op.size);
 
@@ -5078,32 +4974,32 @@ static void vm_run(mscript_program_t *program) {
                     sp += op.size;
                 }
                 break;
-            case OPCODE_PUSH:
+            case _MS_OPCODE_PUSH:
                 {
                     memset(stack + sp, 0, op.size);
                     sp += op.size;
                 }
                 break;
-            case OPCODE_POP:
+            case _MS_OPCODE_POP:
                 {
                     sp -= op.size;
                 }
                 break;
-            case OPCODE_ARRAY_CREATE:
+            case _MS_OPCODE_ARRAY_CREATE:
                 {
                     int size = op.size;
                     int array_idx = vm->arrays.length + 1;
 
                     struct vm_array new_array;
                     new_array.member_size = size;
-                    array_init(&new_array.array);
-                    array_push(&vm->arrays, new_array);
+                    vec_init(&new_array.array);
+                    vec_push(&vm->arrays, new_array);
 
                     memcpy(stack + sp, &array_idx, 4);
                     sp += 4;
                 }
                 break;
-            case OPCODE_ARRAY_STORE:
+            case _MS_OPCODE_ARRAY_STORE:
                 {
                     int size = op.size;
 
@@ -5119,7 +5015,7 @@ static void vm_run(mscript_program_t *program) {
                         reserve_size = array->member_size * ((int) (reserve_size / array->member_size) + 1);
                     }
 
-                    array_reserve(&array->array, reserve_size);
+                    vec_reserve(&array->array, reserve_size);
                     if (array->array.length < reserve_size) {
                         array->array.length = reserve_size;
                     }
@@ -5127,7 +5023,7 @@ static void vm_run(mscript_program_t *program) {
                     memmove(array->array.data + offset, data, size);
                 }
                 break;
-            case OPCODE_ARRAY_LOAD:
+            case _MS_OPCODE_ARRAY_LOAD:
                 {
                     int size = op.size;
 
@@ -5142,7 +5038,7 @@ static void vm_run(mscript_program_t *program) {
                     sp += size;
                 }
                 break;
-            case OPCODE_ARRAY_LENGTH:
+            case _MS_OPCODE_ARRAY_LENGTH:
                 {
                     int array_idx = (*((int*) (stack + sp - 4))) - 1;
                     struct vm_array *array = vm->arrays.data + array_idx;
@@ -5151,21 +5047,21 @@ static void vm_run(mscript_program_t *program) {
                     memcpy(stack + sp - 4, &len, 4);
                 }
                 break;
-            case OPCODE_DEBUG_PRINT_INT:
+            case _MS_OPCODE_DEBUG_PRINT_INT:
                 {
                     int v = *((int*) (stack + sp - 4));
                     sp -= 4;
                     m_logf("%d", v);
                 }
                 break;
-            case OPCODE_DEBUG_PRINT_FLOAT:
+            case _MS_OPCODE_DEBUG_PRINT_FLOAT:
                 {
                     float v = *((float*) (stack + sp - 4));
                     sp -= 4;
                     m_logf("%f", v);
                 }
                 break;
-            case OPCODE_DEBUG_PRINT_BOOL:
+            case _MS_OPCODE_DEBUG_PRINT_BOOL:
                 {
                     int v = *((int*) (stack + sp - 4));
                     sp -= 4;
@@ -5178,7 +5074,7 @@ static void vm_run(mscript_program_t *program) {
                     }
                 }
                 break;
-            case OPCODE_DEBUG_PRINT_STRING:
+            case _MS_OPCODE_DEBUG_PRINT_STRING:
                 {
                     int str_pos = *((int*) (stack + sp - 4));
                     sp -= 4;
@@ -5186,17 +5082,17 @@ static void vm_run(mscript_program_t *program) {
                     m_logf("%s", str);
                 }
                 break;
-            case OPCODE_DEBUG_PRINT_STRING_CONST:
+            case _MS_OPCODE_DEBUG_PRINT_STRING_CONST:
                 {
                     m_logf(op.string);
                 }
                 break;
-            case OPCODE_INTERMEDIATE_LABEL:
-            case OPCODE_INTERMEDIATE_FUNC:
-            case OPCODE_INTERMEDIATE_CALL:
-            case OPCODE_INTERMEDIATE_JF:
-            case OPCODE_INTERMEDIATE_JMP:
-            case OPCODE_INTERMEDIATE_STRING:
+            case _MS_OPCODE_INTERMEDIATE_LABEL:
+            case _MS_OPCODE_INTERMEDIATE_FUNC:
+            case _MS_OPCODE_INTERMEDIATE_CALL:
+            case _MS_OPCODE_INTERMEDIATE_JF:
+            case _MS_OPCODE_INTERMEDIATE_JMP:
+            case _MS_OPCODE_INTERMEDIATE_STRING:
                 assert(false);
                 break;
         }
@@ -5223,16 +5119,81 @@ static void _ms_program_init(mscript_program_t *prog, mscript_t *mscript, struct
     vec_init(&prog->exported_const_decls);
 
     vec_init(&prog->imported_programs);
-    array_init(&prog->global_stmts);
+    vec_init(&prog->global_stmts);
     vec_init(&prog->opcodes);
-    array_init(&prog->strings);
+    vec_init(&prog->strings);
 
-    parser_init(&prog->parser, file.data);
-    compiler_init(prog);
+    _ms_mem_init(&prog->compiler_mem);
+    prog->token_idx = 0;
+    vec_init(&prog->tokens);
+    prog->cur_label = 0;
+    prog->cur_function_decl = NULL;
+    prog->cur_opcodes = NULL;
+
     vm_init(prog);
 
     map_init(&prog->func_label_map);
 }
+
+static void _ms_program_tokenize(mscript_program_t *program) {
+    const char *text = program->file.data;
+    int line = 1;
+    int col = 1;
+    int i = 0;
+
+    while (true) {
+        if (text[i] == ' ' || text[i] == '\t' || text[i] == '\r') {
+            col++;
+            i++;
+        }
+        else if (text[i] == '\n') {
+            col = 1;
+            line++;
+            i++;
+        }
+        else if (text[i] == 0) {
+            vec_push(&program->tokens, _ms_token_eof(line, col));
+            break;
+        }
+        else if ((text[i] == '/') && (text[i + 1] == '/')) {
+            while (text[i] && (text[i] != '\n')) {
+                i++;
+            }
+        }
+        else if (text[i] == '"') {
+            i++;
+            col++;
+            int len = 0;
+            vec_push(&program->tokens, _ms_token_string(program, text + i, &len, line, col));
+            if (program->error) return;
+            i += (len + 1);
+            col += (len + 1);
+        }
+        else if (_ms_is_char_start_of_symbol(text[i])) {
+            int len = 0;
+            vec_push(&program->tokens, _ms_token_symbol(text + i, &len, line, col));
+            i += len;
+            col += len;
+        }
+        else if (_ms_is_char_digit(text[i])) {
+            int len = 0;
+            vec_push(&program->tokens, _ms_token_number(text + i, &len, line, col));
+            i += len;
+            col += len;
+        }
+        else if (_ms_is_char(text[i])) {
+            vec_push(&program->tokens, _ms_token_char(text[i], line, col));
+            i++;
+            col++;
+        }
+        else {
+            _ms_token_t tok = _ms_token_char(text[i], line, col);
+            _ms_program_error(program, tok, "Unknown character: %c", text[i]);
+            return;
+        }
+    }
+}
+
 
 static void _ms_program_error(mscript_program_t *program, _ms_token_t token, char *fmt, ...) {
     char *buffer = malloc(sizeof(char) * 256);
@@ -5484,7 +5445,7 @@ static void _ms_program_add_function_decl_stub(mscript_program_t *program, _ms_s
     decl->return_type = NULL;
     decl->num_args = 0;
     vec_init(&decl->opcodes);
-    array_init(&decl->labels);
+    vec_init(&decl->labels);
     vec_push(&program->exported_function_decls, decl);
 
     _ms_symbol_table_add_function_decl(&program->symbol_table, decl);
@@ -5526,28 +5487,28 @@ cleanup:
 
 static int program_add_string(mscript_program_t *program, char *string) {
     int len = (int) strlen(string);
-    array_pusharr(&program->strings, string, len + 1);
+    vec_pusharr(&program->strings, string, len + 1);
     return program->strings.length - len - 1;
 }
 
 static void debug_log_token(_ms_token_t token) {
     switch (token.type) {
-        case TOKEN_INT:
+        case _MS_TOKEN_INT:
             m_logf("[INT: %d]\n", token.int_val);
             break;
-        case TOKEN_FLOAT:
+        case _MS_TOKEN_FLOAT:
             m_logf("[FLOAT: %d]\n", token.float_val);
             break;
-        case TOKEN_STRING:
+        case _MS_TOKEN_STRING:
             m_logf("[STRING: %s]\n", token.string);
             break;
-        case TOKEN_SYMBOL:
+        case _MS_TOKEN_SYMBOL:
             m_logf("[SYMBOL: %s]\n", token.symbol);
             break;
-        case TOKEN_CHAR:
+        case _MS_TOKEN_CHAR:
             m_logf("[CHAR: %c]\n", token.char_val);
             break;
-        case TOKEN_EOF:
+        case _MS_TOKEN_EOF:
             m_logf("[EOF]\n");
             return;
             break;
@@ -5555,7 +5516,7 @@ static void debug_log_token(_ms_token_t token) {
 }
 
 static void debug_log_tokens(_ms_token_t *tokens) {
-    while (tokens->type != TOKEN_EOF) {
+    while (tokens->type != _MS_TOKEN_EOF) {
         debug_log_token(*tokens);
         tokens++;
     }
@@ -5801,162 +5762,162 @@ static void debug_log_expr(_ms_expr_t *expr) {
     }
 }
 
-static void debug_log_opcodes(struct opcode *opcodes, int num_opcodes) {
+static void debug_log_opcodes(_ms_opcode_t *opcodes, int num_opcodes) {
     for (int i = 0; i < num_opcodes; i++) {
         m_logf("%d: ", i);
-        struct opcode op = opcodes[i];
+        _ms_opcode_t op = opcodes[i];
         switch (op.type) {
-            case OPCODE_IADD:
+            case _MS_OPCODE_IADD:
                 m_logf("IADD");
                 break;
-            case OPCODE_FADD:
+            case _MS_OPCODE_FADD:
                 m_logf("FADD");
                 break;
-            case OPCODE_ISUB:
+            case _MS_OPCODE_ISUB:
                 m_logf("ISUB");
                 break;
-            case OPCODE_FSUB:
+            case _MS_OPCODE_FSUB:
                 m_logf("FSUB");
                 break;
-            case OPCODE_IMUL:
+            case _MS_OPCODE_IMUL:
                 m_logf("IMUL");
                 break;
-            case OPCODE_FMUL:
+            case _MS_OPCODE_FMUL:
                 m_logf("FMUL");
                 break;
-            case OPCODE_IDIV:
+            case _MS_OPCODE_IDIV:
                 m_logf("IDIV");
                 break;
-            case OPCODE_FDIV:
+            case _MS_OPCODE_FDIV:
                 m_logf("FDIV");
                 break;
-            case OPCODE_ILTE:
+            case _MS_OPCODE_ILTE:
                 m_logf("ILTE");
                 break;
-            case OPCODE_FLTE:
+            case _MS_OPCODE_FLTE:
                 m_logf("FLTE");
                 break;
-            case OPCODE_ILT:
+            case _MS_OPCODE_ILT:
                 m_logf("ILT");
                 break;
-            case OPCODE_FLT:
+            case _MS_OPCODE_FLT:
                 m_logf("FLT");
                 break;
-            case OPCODE_IGTE:
+            case _MS_OPCODE_IGTE:
                 m_logf("IGTE");
                 break;
-            case OPCODE_FGTE:
+            case _MS_OPCODE_FGTE:
                 m_logf("FGTE");
                 break;
-            case OPCODE_IGT:
+            case _MS_OPCODE_IGT:
                 m_logf("IGT");
                 break;
-            case OPCODE_FGT:
+            case _MS_OPCODE_FGT:
                 m_logf("FGT");
                 break;
-            case OPCODE_IEQ:
+            case _MS_OPCODE_IEQ:
                 m_logf("IEQ");
                 break;
-            case OPCODE_FEQ:
+            case _MS_OPCODE_FEQ:
                 m_logf("FEQ");
                 break;
-            case OPCODE_INEQ:
+            case _MS_OPCODE_INEQ:
                 m_logf("INEQ");
                 break;
-            case OPCODE_FNEQ:
+            case _MS_OPCODE_FNEQ:
                 m_logf("FNEQ");
                 break;
-            case OPCODE_IINC:
+            case _MS_OPCODE_IINC:
                 m_logf("IINC");
                 break;
-            case OPCODE_FINC:
+            case _MS_OPCODE_FINC:
                 m_logf("FINC");
                 break;
-            case OPCODE_NOT:
+            case _MS_OPCODE_NOT:
                 m_logf("NOT");
                 break;
-            case OPCODE_F2I:
+            case _MS_OPCODE_F2I:
                 m_logf("F2I");
                 break;
-            case OPCODE_I2F:
+            case _MS_OPCODE_I2F:
                 m_logf("I2F");
                 break;
-            case OPCODE_COPY:
+            case _MS_OPCODE_COPY:
                 m_logf("COPY %d %d", op.load_store.offset, op.load_store.size);
                 break;
-            case OPCODE_INT:
+            case _MS_OPCODE_INT:
                 m_logf("INT %d", op.int_val);
                 break;
-            case OPCODE_FLOAT:
+            case _MS_OPCODE_FLOAT:
                 m_logf("CONST_FLOAT %f", op.float_val);
                 break;
-            case OPCODE_LOCAL_STORE:
+            case _MS_OPCODE_LOCAL_STORE:
                 m_logf("LOCAL_STORE %d %d", op.load_store.offset, op.load_store.size);
                 break;
-            case OPCODE_LOCAL_LOAD:
+            case _MS_OPCODE_LOCAL_LOAD:
                 m_logf("LOCAL_LOAD %d %d", op.load_store.offset, op.load_store.size);
                 break;
-            case OPCODE_JF:
+            case _MS_OPCODE_JF:
                 m_logf("JF %d", op.label);
                 break;
-            case OPCODE_JMP:
+            case _MS_OPCODE_JMP:
                 m_logf("JMP %d", op.label);
                 break;
-            case OPCODE_CALL:
+            case _MS_OPCODE_CALL:
                 m_logf("CALL %d %d", op.call.label, op.call.args_size);
                 break;
-            case OPCODE_RETURN:
+            case _MS_OPCODE_RETURN:
                 m_logf("RETURN");
                 break;
-            case OPCODE_PUSH:
+            case _MS_OPCODE_PUSH:
                 m_logf("PUSH %d", op.size);
                 break;
-            case OPCODE_POP:
+            case _MS_OPCODE_POP:
                 m_logf("POP %d", op.size);
                 break;
-            case OPCODE_ARRAY_CREATE:
+            case _MS_OPCODE_ARRAY_CREATE:
                 m_logf("ARRAY_CREATE %d", op.size);
                 break;
-            case OPCODE_ARRAY_STORE:
+            case _MS_OPCODE_ARRAY_STORE:
                 m_logf("ARRAY_STORE %d", op.size);
                 break;
-            case OPCODE_ARRAY_LOAD:
+            case _MS_OPCODE_ARRAY_LOAD:
                 m_logf("ARRAY_LOAD %d", op.size);
                 break;
-            case OPCODE_ARRAY_LENGTH:
+            case _MS_OPCODE_ARRAY_LENGTH:
                 m_logf("ARRAY_LENGTH");
                 break;
-            case OPCODE_DEBUG_PRINT_INT:
+            case _MS_OPCODE_DEBUG_PRINT_INT:
                 m_logf("DEBUG_PRINT_INT");
                 break;
-            case OPCODE_DEBUG_PRINT_FLOAT:
+            case _MS_OPCODE_DEBUG_PRINT_FLOAT:
                 m_logf("DEBUG_PRINT_FLOAT");
                 break;
-            case OPCODE_DEBUG_PRINT_BOOL:
+            case _MS_OPCODE_DEBUG_PRINT_BOOL:
                 m_logf("DEBUG_PRINT_BOOL");
                 break;
-            case OPCODE_DEBUG_PRINT_STRING:
+            case _MS_OPCODE_DEBUG_PRINT_STRING:
                 m_logf("DEBUG_PRINT_STRING");
                 break;
-            case OPCODE_DEBUG_PRINT_STRING_CONST:
+            case _MS_OPCODE_DEBUG_PRINT_STRING_CONST:
                 m_logf("DEBUG_PRINT_SHORT_STRING: %s", op.string);
                 break;
-            case OPCODE_INTERMEDIATE_LABEL:
+            case _MS_OPCODE_INTERMEDIATE_LABEL:
                 m_logf("INTERMEDIATE_LABEL %d", op.label);
                 break;
-            case OPCODE_INTERMEDIATE_FUNC:
+            case _MS_OPCODE_INTERMEDIATE_FUNC:
                 m_logf("INTERMEDIATE_FUNC %s", op.string);
                 break;
-            case OPCODE_INTERMEDIATE_CALL:
+            case _MS_OPCODE_INTERMEDIATE_CALL:
                 m_logf("INTERMEDIATE_CALL %s", op.string);
                 break;
-            case OPCODE_INTERMEDIATE_JF:
+            case _MS_OPCODE_INTERMEDIATE_JF:
                 m_logf("INTERMEDIATE_JF %d", op.label);
                 break;
-            case OPCODE_INTERMEDIATE_JMP:
+            case _MS_OPCODE_INTERMEDIATE_JMP:
                 m_logf("INTERMEDIATE_JMP %d", op.label);
                 break;
-            case OPCODE_INTERMEDIATE_STRING:
+            case _MS_OPCODE_INTERMEDIATE_STRING:
                 m_logf("INTERMEDIATE_STRING %s", op.intermediate_string);
                 break;
         }
@@ -5986,71 +5947,55 @@ static void _ms_program_load_stage_1(mscript_t *mscript, struct file file) {
     _ms_symbol_table_add_type(&program->symbol_table, &mscript->bool_array_type);
     _ms_symbol_table_add_type(&program->symbol_table, &mscript->char_star_type);
 
-    {
-        _ms_const_val_t const_val = _ms_const_val_bool(false);
-        _ms_const_decl_t const_decl = _ms_const_decl("false", &mscript->bool_type, const_val);
-        _ms_symbol_table_add_const_decl(&program->symbol_table, const_decl);
-    }
+    _ms_symbol_table_add_const_decl(&program->symbol_table, _ms_const_decl("false", &mscript->bool_type, _ms_const_val_bool(false)));
+    _ms_symbol_table_add_const_decl(&program->symbol_table, _ms_const_decl("true", &mscript->bool_type, _ms_const_val_bool(true)));
+    _ms_symbol_table_add_const_decl(&program->symbol_table, _ms_const_decl("PI", &mscript->float_type, _ms_const_val_float(3.1415f)));
 
-    {
-        _ms_const_val_t const_val = _ms_const_val_bool(true);
-        _ms_const_decl_t const_decl = _ms_const_decl("true", &mscript->bool_type, const_val);
-        _ms_symbol_table_add_const_decl(&program->symbol_table, const_decl);
-    }
+    _ms_program_tokenize(program);
+    if (program->error) goto cleanup;
 
-    {
-        _ms_const_val_t const_val = _ms_const_val_float(3.1415f);
-        _ms_const_decl_t const_decl = _ms_const_decl("PI", &mscript->float_type, const_val);
-        _ms_symbol_table_add_const_decl(&program->symbol_table, const_decl);
-    }
+    while (true) {
+        if (_ms_match_eof(program)) {
+            break;
+        }
 
-    {
-        _ms_tokenize(program);
-        if (program->error) goto cleanup;
+        _ms_stmt_t *stmt;
+        if (_ms_match_symbol(program, "import")) {
+            stmt = _ms_parse_import_stmt(program);
+            if (program->error) goto cleanup;
+        }
+        else if (_ms_match_symbol(program, "import_function")) {
+            stmt = _ms_parse_import_function_stmt(program);
+            if (program->error) goto cleanup;
+        }
+        else if (_ms_match_symbol(program, "struct")) {
+            stmt = _ms_parse_struct_declaration_stmt(program);
+            if (program->error) goto cleanup;
+        }
+        else if (_ms_match_symbol(program, "enum")) {
+            stmt = _ms_parse_enum_declaration_stmt(program);
+            if (program->error) goto cleanup;
+        }
+        else if (_ms_check_type(program)) {
+            _ms_parsed_type_t type = _ms_parse_type(program);
+            if (program->error) goto cleanup;
 
-        while (true) {
-            if (match_eof(program)) {
-                break;
-            }
-
-            _ms_stmt_t *stmt;
-            if (match_symbol(program, "import")) {
-                stmt = _ms_parse_import_stmt(program);
+            _ms_token_t peek1 = _ms_peek_n(program, 1);
+            if (_ms_is_char_token(peek1, '(')) {
+                stmt = _ms_parse_function_declaration_stmt(program, type);
                 if (program->error) goto cleanup;
-            }
-            else if (match_symbol(program, "import_function")) {
-                stmt = _ms_parse_import_function_stmt(program);
-                if (program->error) goto cleanup;
-            }
-            else if (match_symbol(program, "struct")) {
-                stmt = _ms_parse_struct_declaration_stmt(program);
-                if (program->error) goto cleanup;
-            }
-            else if (match_symbol(program, "enum")) {
-                stmt = _ms_parse_enum_declaration_stmt(program);
-                if (program->error) goto cleanup;
-            }
-            else if (check_type(program)) {
-                _ms_parsed_type_t type = _ms_parse_type(program);
-                if (program->error) goto cleanup;
-
-                _ms_token_t peek1 = peek_n(program, 1);
-                if (is_char_token(peek1, '(')) {
-                    stmt = _ms_parse_function_declaration_stmt(program, type);
-                    if (program->error) goto cleanup;
-                }
-                else {
-                    stmt = _ms_parse_global_declaration_stmt(program, type);
-                    if (program->error) goto cleanup;
-                }
             }
             else {
-                _ms_program_error(program, peek(program), "Unknown token.");
-                goto cleanup;
+                stmt = _ms_parse_global_declaration_stmt(program, type);
+                if (program->error) goto cleanup;
             }
-
-            vec_push(&program->global_stmts, stmt);
         }
+        else {
+            _ms_program_error(program, _ms_peek(program), "Unknown token.");
+            goto cleanup;
+        }
+
+        vec_push(&program->global_stmts, stmt);
     }
 
     for (int i = 0; i < program->global_stmts.length; i++) {
@@ -6107,8 +6052,6 @@ cleanup:
         m_logf("ERROR: %s. Line %d. Col %d.\n", program->file.path, line, col); 
         m_logf("%s\n", program->error);
     }
-
-    file_delete_data(&file);
 }
 
 static void _ms_program_load_stage_2(mscript_t *mscript, mscript_program_t *program) {
@@ -6353,7 +6296,7 @@ static void program_load_stage_7(mscript_t *mscript, mscript_program_t *program)
                 break;
             case _MS_STMT_FUNCTION_DECLARATION:
                 {
-                    compile_stmt(program, stmt);
+                    _ms_compile_stmt(program, stmt);
                     if (program->error) goto cleanup;
                 }
                 break;
@@ -6382,8 +6325,8 @@ cleanup:
 static void program_load_stage_8(mscript_t *mscript, mscript_program_t *program) {
     if (program->error) return;
 
-    _vec_opcode_t intermediate_opcodes;
-    array_init(&intermediate_opcodes);
+    _vec_ms_opcode_t intermediate_opcodes;
+    vec_init(&intermediate_opcodes);
 
     /*
     {
@@ -6398,63 +6341,63 @@ static void program_load_stage_8(mscript_t *mscript, mscript_program_t *program)
     }
     */
 
-    struct array_int labels;
-    array_init(&labels);
+    vec_int_t labels;
+    vec_init(&labels);
 
     for (int i = 0; i < intermediate_opcodes.length; i++) {
-        struct opcode op = intermediate_opcodes.data[i];
+        _ms_opcode_t op = intermediate_opcodes.data[i];
         switch (op.type) {
-            case OPCODE_IADD:
-            case OPCODE_FADD:
-            case OPCODE_ISUB:
-            case OPCODE_FSUB:
-            case OPCODE_IMUL:
-            case OPCODE_FMUL:
-            case OPCODE_IDIV:
-            case OPCODE_FDIV:
-            case OPCODE_ILTE:
-            case OPCODE_FLTE:
-            case OPCODE_ILT:
-            case OPCODE_FLT:
-            case OPCODE_IGTE:
-            case OPCODE_FGTE:
-            case OPCODE_IGT:
-            case OPCODE_FGT:
-            case OPCODE_IEQ:
-            case OPCODE_FEQ:
-            case OPCODE_INEQ:
-            case OPCODE_FNEQ:
-            case OPCODE_IINC:
-            case OPCODE_FINC:
-            case OPCODE_NOT:
-            case OPCODE_F2I:
-            case OPCODE_I2F:
-            case OPCODE_COPY:
-            case OPCODE_INT:
-            case OPCODE_FLOAT:
-            case OPCODE_LOCAL_STORE:
-            case OPCODE_LOCAL_LOAD:
-            case OPCODE_RETURN:
-            case OPCODE_PUSH:
-            case OPCODE_POP:
-            case OPCODE_ARRAY_CREATE:
-            case OPCODE_ARRAY_STORE:
-            case OPCODE_ARRAY_LOAD:
-            case OPCODE_ARRAY_LENGTH:
-            case OPCODE_DEBUG_PRINT_INT:
-            case OPCODE_DEBUG_PRINT_FLOAT:
-            case OPCODE_DEBUG_PRINT_BOOL:
-            case OPCODE_DEBUG_PRINT_STRING:
-            case OPCODE_DEBUG_PRINT_STRING_CONST:
+            case _MS_OPCODE_IADD:
+            case _MS_OPCODE_FADD:
+            case _MS_OPCODE_ISUB:
+            case _MS_OPCODE_FSUB:
+            case _MS_OPCODE_IMUL:
+            case _MS_OPCODE_FMUL:
+            case _MS_OPCODE_IDIV:
+            case _MS_OPCODE_FDIV:
+            case _MS_OPCODE_ILTE:
+            case _MS_OPCODE_FLTE:
+            case _MS_OPCODE_ILT:
+            case _MS_OPCODE_FLT:
+            case _MS_OPCODE_IGTE:
+            case _MS_OPCODE_FGTE:
+            case _MS_OPCODE_IGT:
+            case _MS_OPCODE_FGT:
+            case _MS_OPCODE_IEQ:
+            case _MS_OPCODE_FEQ:
+            case _MS_OPCODE_INEQ:
+            case _MS_OPCODE_FNEQ:
+            case _MS_OPCODE_IINC:
+            case _MS_OPCODE_FINC:
+            case _MS_OPCODE_NOT:
+            case _MS_OPCODE_F2I:
+            case _MS_OPCODE_I2F:
+            case _MS_OPCODE_COPY:
+            case _MS_OPCODE_INT:
+            case _MS_OPCODE_FLOAT:
+            case _MS_OPCODE_LOCAL_STORE:
+            case _MS_OPCODE_LOCAL_LOAD:
+            case _MS_OPCODE_RETURN:
+            case _MS_OPCODE_PUSH:
+            case _MS_OPCODE_POP:
+            case _MS_OPCODE_ARRAY_CREATE:
+            case _MS_OPCODE_ARRAY_STORE:
+            case _MS_OPCODE_ARRAY_LOAD:
+            case _MS_OPCODE_ARRAY_LENGTH:
+            case _MS_OPCODE_DEBUG_PRINT_INT:
+            case _MS_OPCODE_DEBUG_PRINT_FLOAT:
+            case _MS_OPCODE_DEBUG_PRINT_BOOL:
+            case _MS_OPCODE_DEBUG_PRINT_STRING:
+            case _MS_OPCODE_DEBUG_PRINT_STRING_CONST:
                 {
                     vec_push(&program->opcodes, op);
                 }
                 break;
-            case OPCODE_INTERMEDIATE_LABEL:
+            case _MS_OPCODE_INTERMEDIATE_LABEL:
                 {
                 }
                 break;
-            case OPCODE_INTERMEDIATE_FUNC:
+            case _MS_OPCODE_INTERMEDIATE_FUNC:
                 {
                     map_set(&program->func_label_map, op.string, program->opcodes.length);
                     labels.length = 0;
@@ -6462,15 +6405,15 @@ static void program_load_stage_8(mscript_t *mscript, mscript_program_t *program)
                     int j = i + 1;
                     int line_num = program->opcodes.length;
                     while (j < intermediate_opcodes.length) {
-                        struct opcode op2 = intermediate_opcodes.data[j];
+                        _ms_opcode_t op2 = intermediate_opcodes.data[j];
 
-                        if (op2.type == OPCODE_INTERMEDIATE_LABEL) {
+                        if (op2.type == _MS_OPCODE_INTERMEDIATE_LABEL) {
                             while (op2.label >= labels.length) {
-                                array_push(&labels, -1);
+                                vec_push(&labels, -1);
                             }
                             labels.data[op2.label] = line_num;
                         }
-                        else if (op2.type == OPCODE_INTERMEDIATE_FUNC) {
+                        else if (op2.type == _MS_OPCODE_INTERMEDIATE_FUNC) {
                             break;
                         }
                         else {
@@ -6481,59 +6424,47 @@ static void program_load_stage_8(mscript_t *mscript, mscript_program_t *program)
                     }
                 }
                 break;
-            case OPCODE_INTERMEDIATE_CALL:
+            case _MS_OPCODE_INTERMEDIATE_CALL:
                 {
                     vec_push(&program->opcodes, op);
                 }
                 break;
-            case OPCODE_INTERMEDIATE_JMP:
+            case _MS_OPCODE_INTERMEDIATE_JMP:
                 {
                     assert(op.label < labels.length);
-
-                    struct opcode op2;
-                    op2.type = OPCODE_JMP;
-                    op2.label = labels.data[op.label];
-                    vec_push(&program->opcodes, op2);
+                    vec_push(&program->opcodes, _ms_opcode_jmp(labels.data[op.label]));
                 }
                 break;
-            case OPCODE_INTERMEDIATE_JF:
+            case _MS_OPCODE_INTERMEDIATE_JF:
                 {
                     assert(op.label < labels.length);
-
-                    struct opcode op2;
-                    op2.type = OPCODE_JF;
-                    op2.label = labels.data[op.label];
-                    vec_push(&program->opcodes, op2);
+                    vec_push(&program->opcodes, _ms_opcode_jf(labels.data[op.label]));
                 }
                 break;
-            case OPCODE_INTERMEDIATE_STRING:
+            case _MS_OPCODE_INTERMEDIATE_STRING:
                 {
                     int pos = program_add_string(program, op.intermediate_string);
-
-                    struct opcode op2;
-                    op2.type = OPCODE_INT;
-                    op2.int_val = pos;
-                    vec_push(&program->opcodes, op2);
+                    vec_push(&program->opcodes, _ms_opcode_int(pos));
                 }
                 break;
-            case OPCODE_JF:
-            case OPCODE_JMP:
-            case OPCODE_CALL:
+            case _MS_OPCODE_JF:
+            case _MS_OPCODE_JMP:
+            case _MS_OPCODE_CALL:
                 assert(false);
                 break;
         }
     }
 
     for (int i = 0; i < program->opcodes.length; i++) {
-        struct opcode *op = &(program->opcodes.data[i]);
-        if (op->type == OPCODE_INTERMEDIATE_CALL) {
+        _ms_opcode_t *op = &(program->opcodes.data[i]);
+        if (op->type == _MS_OPCODE_INTERMEDIATE_CALL) {
             int *label = map_get(&program->func_label_map, op->string);
             assert(label);
 
             _ms_function_decl_t *decl = _ms_symbol_table_get_function_decl(&program->symbol_table, op->string);
             assert(decl);
 
-            op->type = OPCODE_CALL;
+            op->type = _MS_OPCODE_CALL;
             op->call.label = *label;
             op->call.args_size = decl->args_size;
         }
