@@ -18,6 +18,85 @@ struct pre_compiler;
 struct compiler;
 struct vm;
 
+enum opcode_type {
+    OPCODE_IADD,
+    OPCODE_FADD,
+    OPCODE_ISUB,
+    OPCODE_FSUB,
+    OPCODE_IMUL,
+    OPCODE_FMUL,
+    OPCODE_IDIV,
+    OPCODE_FDIV,
+    OPCODE_ILTE,
+    OPCODE_FLTE,
+    OPCODE_ILT,
+    OPCODE_FLT,
+    OPCODE_IGTE,
+    OPCODE_FGTE,
+    OPCODE_IGT,
+    OPCODE_FGT,
+    OPCODE_IEQ,
+    OPCODE_FEQ,
+    OPCODE_INEQ,
+    OPCODE_FNEQ,
+    OPCODE_IINC,
+    OPCODE_FINC,
+    OPCODE_NOT,
+    OPCODE_F2I,
+    OPCODE_I2F,
+    OPCODE_COPY,
+    OPCODE_INT,
+    OPCODE_FLOAT,
+    OPCODE_LOCAL_STORE,
+    OPCODE_LOCAL_LOAD,
+    OPCODE_JF,
+    OPCODE_JMP,
+    OPCODE_CALL,
+    OPCODE_RETURN,
+    OPCODE_PUSH,
+    OPCODE_POP,
+    OPCODE_ARRAY_CREATE,
+    OPCODE_ARRAY_STORE,
+    OPCODE_ARRAY_LOAD,
+    OPCODE_ARRAY_LENGTH,
+    OPCODE_DEBUG_PRINT_INT,
+    OPCODE_DEBUG_PRINT_FLOAT,
+    OPCODE_DEBUG_PRINT_BOOL,
+    OPCODE_DEBUG_PRINT_STRING,
+    OPCODE_DEBUG_PRINT_STRING_CONST,
+
+    // Intermediate opcodes
+    OPCODE_INTERMEDIATE_LABEL,
+    OPCODE_INTERMEDIATE_FUNC,
+    OPCODE_INTERMEDIATE_CALL,
+    OPCODE_INTERMEDIATE_JMP,
+    OPCODE_INTERMEDIATE_JF,
+    OPCODE_INTERMEDIATE_STRING,
+};
+
+struct opcode {
+    enum opcode_type type;
+
+    union {
+        int label;
+        int int_val;
+        float float_val;
+        int size;
+        char string[MSCRIPT_MAX_SYMBOL_LEN + 1];
+
+        struct {
+            int offset, size;
+        } load_store;
+
+        struct {
+            int label, args_size;
+        } call;
+
+        char *intermediate_string;
+    };
+};
+array_t(struct opcode, array_opcode)
+
 enum mscript_const_value_type {
     MSCRIPT_CONST_VALUE_INT,
     MSCRIPT_CONST_VALUE_FLOAT,
@@ -25,7 +104,7 @@ enum mscript_const_value_type {
     MSCRIPT_CONST_VALUE_OBJECT,
 };
 
-struct mscript_const_value {
+typedef struct _ms_const_value {
     enum mscript_const_value_type type;
     union {
         float float_val;
@@ -34,13 +113,15 @@ struct mscript_const_value {
 
         struct {
             int num_args;
-            struct mscript_const_value *args;
+            struct _ms_const_value *args;
         } object;
     };
-};
-array_t(struct mscript_const_value, array_mscript_const_value)
-
-static struct mscript_const_value eval_const_value_expr(struct mscript_program *program, struct expr *expr);
+} _ms_const_value_t;
+static _ms_const_value_t eval_const_value_expr(struct mscript_program *program, struct expr *expr);
+static _ms_const_value_t _ms_const_value_float(float float_val);
+static _ms_const_value_t _ms_const_value_int(int int_val);
+static _ms_const_value_t _ms_const_value_bool(bool bool_val);
+static _ms_const_value_t _ms_const_value_object(int num_args, _ms_const_value_t *args);
 
 enum lvalue_type {
     LVALUE_INVALID,
@@ -136,26 +217,56 @@ enum _ms_symbol_type {
     _MS_SYMBOL_LOCAL_VAR,
     _MS_SYMBOL_GLOBAL_VAR,
     _MS_SYMBOL_CONST,
+    _MS_SYMBOL_FUNCTION,
+    _MS_SYMBOL_TYPE,
 };
+
+typedef struct _ms_function_decl_arg {
+    mscript_type_t *type;
+    char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
+} _ms_function_decl_arg_t;
+
+typedef struct _ms_function_decl {
+    char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
+    mscript_type_t *return_type;
+    int num_args;
+   _ms_function_decl_arg_t args[MSCRIPT_MAX_FUNCTION_ARGS];
+    struct array_opcode opcodes; 
+} _ms_function_decl_t;
+array_t(_ms_function_decl_t*, _array_ms_function_decl_ptr)
+
+typedef struct _ms_global_decl {
+    char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
+    mscript_type_t *type;
+    _ms_const_value_t value;
+} _ms_global_decl_t;
+array_t(_ms_global_decl_t*, _array_ms_global_decl_ptr)
+
+typedef struct _ms_const_decl {
+    char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
+    mscript_type_t *type;
+    _ms_const_value_t value;
+} _ms_const_decl_t;
+array_t(_ms_const_decl_t, _array_ms_const_decl)
+static _ms_const_decl_t _ms_const_decl(const char *name, mscript_type_t *type, _ms_const_value_t value);
 
 typedef struct _ms_symbol {
     enum _ms_symbol_type type;
 
     union {
         struct {
-            struct mscript_type *type;
+            mscript_type_t *type;
             int offset;
         } local_var;
 
         struct {
-            struct mscript_type *type;
+            _ms_global_decl_t *decl;
             int offset;
         } global_var;
-        
-        struct {
-            struct mscript_type *type;
-            struct mscript_const_value value;
-        } const_symbol;
+
+        _ms_const_decl_t const_decl;
+        _ms_function_decl_t *function_decl;
+        mscript_type_t *type_val;
     };
 } _ms_symbol_t;
 typedef map_t(_ms_symbol_t) _map_ms_symbol_t;
@@ -175,9 +286,11 @@ typedef struct _ms_symbol_table {
 static void _ms_symbol_table_init(_ms_symbol_table_t *table);
 static void _ms_symbol_table_push_block(_ms_symbol_table_t *table);
 static void _ms_symbol_table_pop_block(_ms_symbol_table_t *table);
-static void _ms_symbol_table_add_local_var(_ms_symbol_table_t *table, const char *name, struct mscript_type *type);
-static void _ms_symbol_table_add_global_var(_ms_symbol_table_t *table, const char *name, struct mscript_type *type);
-static void _ms_symbol_table_add_const(_ms_symbol_table_t *table, const char *name, struct mscript_type *type, struct mscript_const_value value);
+static void _ms_symbol_table_add_local_var(_ms_symbol_table_t *table, const char *name, mscript_type_t *type);
+static void _ms_symbol_table_add_global_decl(_ms_symbol_table_t *table, _ms_global_decl_t *decl);
+static void _ms_symbol_table_add_const_decl(_ms_symbol_table_t *table, _ms_const_decl_t decl);
+static void _ms_symbol_table_add_function_decl(_ms_symbol_table_t *table, _ms_function_decl_t *decl);
+static void _ms_symbol_table_add_type(_ms_symbol_table_t *table, mscript_type_t *type);
 static bool _ms_symbol_table_get(_ms_symbol_table_t *table, const char *name, _ms_symbol_t *out_symbol);
 
 struct pre_compiler {
@@ -199,107 +312,28 @@ static void pre_compiler_function_declaration_2(struct mscript_program *program,
 static void pre_compiler_global_declaration(struct mscript_program *program, struct stmt *stmt);
 static void pre_compiler_struct_declaration_recur(struct mscript_program *program, struct stmt *cur);
 static void pre_compiler_struct_declaration_1(struct mscript_program *program, struct stmt *stmt);
-static void pre_compiler_struct_declaration_2_recur(struct mscript_program *program, struct stmt *stmt, struct mscript_type *type);
+static void pre_compiler_struct_declaration_2_recur(struct mscript_program *program, struct stmt *stmt, mscript_type_t *type);
 static void pre_compiler_struct_declaration_2(struct mscript_program *program, struct stmt *stmt);
 
-static void pre_compiler_expr_with_cast(struct mscript_program *program, struct expr **expr, struct mscript_type *type);
+static void pre_compiler_expr_with_cast(struct mscript_program *program, struct expr **expr, mscript_type_t *type);
 static void pre_compiler_expr_lvalue(struct mscript_program *program, struct expr *expr);
-static void pre_compiler_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
-static void pre_compiler_unary_op_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
-static void pre_compiler_binary_op_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
-static void pre_compiler_call_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
-static void pre_compiler_debug_print_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
-static void pre_compiler_member_access_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
-static void pre_compiler_assignment_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
-static void pre_compiler_int_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
-static void pre_compiler_float_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
-static void pre_compiler_symbol_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
-static void pre_compiler_null_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
-static void pre_compiler_bool_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
-static void pre_compiler_string_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
-static void pre_compiler_array_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
-static void pre_compiler_array_access_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
-static void pre_compiler_object_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
-static void pre_compiler_cast_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type);
-
-enum opcode_type {
-    OPCODE_IADD,
-    OPCODE_FADD,
-    OPCODE_ISUB,
-    OPCODE_FSUB,
-    OPCODE_IMUL,
-    OPCODE_FMUL,
-    OPCODE_IDIV,
-    OPCODE_FDIV,
-    OPCODE_ILTE,
-    OPCODE_FLTE,
-    OPCODE_ILT,
-    OPCODE_FLT,
-    OPCODE_IGTE,
-    OPCODE_FGTE,
-    OPCODE_IGT,
-    OPCODE_FGT,
-    OPCODE_IEQ,
-    OPCODE_FEQ,
-    OPCODE_INEQ,
-    OPCODE_FNEQ,
-    OPCODE_IINC,
-    OPCODE_FINC,
-    OPCODE_NOT,
-    OPCODE_F2I,
-    OPCODE_I2F,
-    OPCODE_COPY,
-    OPCODE_INT,
-    OPCODE_FLOAT,
-    OPCODE_LOCAL_STORE,
-    OPCODE_LOCAL_LOAD,
-    OPCODE_JF,
-    OPCODE_JMP,
-    OPCODE_CALL,
-    OPCODE_RETURN,
-    OPCODE_PUSH,
-    OPCODE_POP,
-    OPCODE_ARRAY_CREATE,
-    OPCODE_ARRAY_STORE,
-    OPCODE_ARRAY_LOAD,
-    OPCODE_ARRAY_LENGTH,
-    OPCODE_DEBUG_PRINT_INT,
-    OPCODE_DEBUG_PRINT_FLOAT,
-    OPCODE_DEBUG_PRINT_BOOL,
-    OPCODE_DEBUG_PRINT_STRING,
-    OPCODE_DEBUG_PRINT_STRING_CONST,
-
-    // Intermediate opcodes
-    OPCODE_INTERMEDIATE_LABEL,
-    OPCODE_INTERMEDIATE_FUNC,
-    OPCODE_INTERMEDIATE_CALL,
-    OPCODE_INTERMEDIATE_JMP,
-    OPCODE_INTERMEDIATE_JF,
-    OPCODE_INTERMEDIATE_STRING,
-};
-
-struct opcode {
-    enum opcode_type type;
-
-    union {
-        int label;
-        int int_val;
-        float float_val;
-        int size;
-        char string[MSCRIPT_MAX_SYMBOL_LEN + 1];
-
-        struct {
-            int offset, size;
-        } load_store;
-
-        struct {
-            int label, args_size;
-        } call;
-
-        char *intermediate_string;
-    };
-};
-array_t(struct opcode, array_opcode)
+static void pre_compiler_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type);
+static void pre_compiler_unary_op_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type);
+static void pre_compiler_binary_op_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type);
+static void pre_compiler_call_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type);
+static void pre_compiler_debug_print_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type);
+static void pre_compiler_member_access_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type);
+static void pre_compiler_assignment_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type);
+static void pre_compiler_int_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type);
+static void pre_compiler_float_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type);
+static void pre_compiler_symbol_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type);
+static void pre_compiler_null_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type);
+static void pre_compiler_bool_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type);
+static void pre_compiler_string_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type);
+static void pre_compiler_array_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type);
+static void pre_compiler_array_access_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type);
+static void pre_compiler_object_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type);
+static void pre_compiler_cast_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type);
 
 static void opcode_iadd(struct mscript_program *program);
 static void opcode_fadd(struct mscript_program *program);
@@ -377,7 +411,7 @@ static void compile_lvalue_expr(struct mscript_program *program, struct expr *ex
 static void compile_unary_op_expr(struct mscript_program *program, struct expr *expr);
 static void compile_binary_op_expr(struct mscript_program *program, struct expr *expr);
 static void compile_call_expr(struct mscript_program *program, struct expr *expr);
-static void compile_debug_print_type(struct mscript_program *program, struct mscript_type *type);
+static void compile_debug_print_type(struct mscript_program *program, mscript_type_t *type);
 static void compile_debug_print_expr(struct mscript_program *program, struct expr *expr);
 static void compile_array_access_expr(struct mscript_program *program, struct expr *expr);
 static void compile_member_access_expr(struct mscript_program *program, struct expr *expr);
@@ -517,7 +551,7 @@ struct expr {
 
     // set by precompiler
     bool is_const;
-    struct mscript_type *result_type;
+    mscript_type_t *result_type;
     struct lvalue lvalue;
 };
 array_t(struct expr *, array_expr_ptr)
@@ -678,22 +712,22 @@ static struct stmt *parse_enum_declaration_stmt(struct mscript_program *program)
 static struct stmt *parse_import_stmt(struct mscript_program *program);
 static struct stmt *parse_import_function_stmt(struct mscript_program *program);
 
-struct struct_decl_arg {
+typedef struct _ms_struct_decl_arg {
     char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
-    struct mscript_type *type;
+    mscript_type_t *type;
     int offset;
-};
+} _ms_struct_decl_arg_t;
 
-struct struct_decl {
+typedef struct _ms_struct_decl {
     char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
     int num_members;
-    struct struct_decl_arg members[MSCRIPT_MAX_STRUCT_MEMBERS];
-};
+    _ms_struct_decl_arg_t members[MSCRIPT_MAX_STRUCT_MEMBERS];
+} _ms_struct_decl_t;
 
-static struct mscript_type *struct_decl_get_member(struct struct_decl *decl, const char *member, int *offset);
+static mscript_type_t *struct_decl_get_member(_ms_struct_decl_t *decl, const char *member, int *offset);
 
 struct function_decl_arg {
-    struct mscript_type *type;
+    mscript_type_t *type;
     char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
 };
 
@@ -701,7 +735,7 @@ struct function_decl {
     struct array_int labels; 
     struct array_opcode opcodes;
     int block_size;
-    struct mscript_type *return_type;
+    mscript_type_t *return_type;
     char name[MSCRIPT_MAX_SYMBOL_LEN + 1]; 
     int num_args;
     struct function_decl_arg args[MSCRIPT_MAX_FUNCTION_ARGS];
@@ -711,9 +745,9 @@ array_t(struct function_decl*, array_function_decl_ptr)
 typedef map_t(struct function_decl *) map_function_decl_ptr_t;
 
 struct global_decl {
-    struct mscript_type *type;
+    mscript_type_t *type;
     char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
-    struct mscript_const_value const_value;
+    _ms_const_value_t const_value;
 };
 array_t(struct global_decl*, array_global_decl_ptr)
 typedef map_t(struct global_decl *) map_global_decl_ptr_t;
@@ -722,26 +756,27 @@ struct mscript_type {
     int recur_state;
     char name[MSCRIPT_MAX_SYMBOL_LEN + 3];
     enum mscript_type_type type;
-    struct mscript_type *array_member_type;
-    struct struct_decl *struct_decl;
+    mscript_type_t *array_member_type;
+    _ms_struct_decl_t *struct_decl;
     int size;
 };
-array_t(struct mscript_type*, array_mscript_type_ptr)
-typedef map_t(struct mscript_type*) map_mscript_type_ptr_t;
+array_t(mscript_type_t*, _array_mscript_type_ptr)
+array_t(mscript_type_t*, array_mscript_type_ptr)
+typedef map_t(mscript_type_t*) map_mscript_type_ptr_t;
 
-static void mscript_type_init(struct mscript_type *type, const char *name, enum mscript_type_type type_type,
-        struct mscript_type *array_member_type, struct struct_decl *struct_decl, int size);
+static void _mscript_type_init(mscript_type_t *type, const char *name, enum mscript_type_type type_type,
+        mscript_type_t *array_member_type, _ms_struct_decl_t *struct_decl, int size);
 
 array_t(struct mscript_program *, array_program_ptr)
 
 struct enum_value {
-    struct mscript_type *type;
+    mscript_type_t *type;
     int val;
 };
 array_t(struct enum_value, array_enum_value)
 typedef map_t(struct enum_value) map_enum_value_t;
 
-static struct enum_value enum_value_create(struct mscript_type *type, int val);
+static struct enum_value enum_value_create(mscript_type_t *type, int val);
 
 struct mscript_program {
     struct file file;
@@ -749,6 +784,11 @@ struct mscript_program {
     struct mscript *mscript;
 
     _ms_symbol_table_t symbol_table;
+    struct _array_mscript_type_ptr exported_types;
+    struct _array_ms_function_decl_ptr exported_function_decls;
+    struct _array_ms_global_decl_ptr exported_global_decls;
+    struct _array_ms_const_decl exported_const_decls;
+
     map_function_decl_ptr_t function_decl_map;
     map_global_decl_ptr_t global_decl_map;
     map_mscript_type_ptr_t type_map;
@@ -772,7 +812,7 @@ array_t(struct mscript_program *, array_mscript_program_ptr)
 typedef map_t(struct mscript_program *) map_mscript_program_ptr_t;
 
 struct mscript {
-    struct mscript_type int_type, int_array_type,
+    mscript_type_t int_type, int_array_type,
                         float_type, float_array_type,
                         bool_type, bool_array_type,
                         void_type, void_star_type, void_star_array_type,
@@ -784,15 +824,17 @@ struct mscript {
 
 static void program_init(struct mscript_program *program, struct mscript *mscript, struct file file);
 static void program_error(struct mscript_program *program, struct token token, char *fmt, ...);
-static void program_import_recur(struct mscript_program *program, struct mscript_program *import);
-static void program_import(struct mscript_program *program, struct mscript_program *import, struct mscript *mscript);
+static void program_error_no_token(struct mscript_program *program, char *fmt, ...);
+static void program_import(struct mscript_program *program, struct mscript_program *import);
 static void program_add_function_decl(struct mscript_program *program, const char *name, struct function_decl *decl);
 static struct function_decl *program_get_function_decl(struct mscript_program *program, const char *name);
 static void program_add_global_decl(struct mscript_program *program, const char *name, struct global_decl *decl);
 static struct global_decl *program_get_global_decl(struct mscript_program *program, const char *name);
-static void program_add_type(struct mscript_program *program, char *name, struct mscript_type *type);
-static struct mscript_type *program_get_type(struct mscript_program *program, const char *name);
+static void program_add_type(struct mscript_program *program, char *name, mscript_type_t *type);
+static mscript_type_t *program_get_type(struct mscript_program *program, const char *name);
 static void program_add_enum_value(struct mscript_program *program, char *name, struct enum_value value);
+static void program_add_function_decl_stub(struct mscript_program *program, struct stmt *stmt);
+static void program_add_struct_decl_stub(struct mscript_program *program, struct stmt *stmt);
 static int program_add_string(struct mscript_program *program, char *string);
 static void program_load_stage_1(struct mscript *mscript, struct file file);
 static void program_load_stage_2(struct mscript *mscript, struct mscript_program *program);
@@ -813,7 +855,7 @@ static void debug_log_opcodes(struct opcode *opcodes, int num_opcodes);
 // DEFINITIONS
 //
 
-static struct mscript_type *struct_decl_get_member(struct struct_decl *decl, const char *member, int *offset) {
+static mscript_type_t *struct_decl_get_member(_ms_struct_decl_t *decl, const char *member, int *offset) {
     for (int i = 0; i < decl->num_members; i++) {
         if (strcmp(decl->members[i].name, member) == 0) {
             *offset = decl->members[i].offset;
@@ -823,8 +865,8 @@ static struct mscript_type *struct_decl_get_member(struct struct_decl *decl, con
     return NULL;
 }
 
-static void mscript_type_init(struct mscript_type *type, const char *name, enum mscript_type_type type_type, 
-        struct mscript_type *array_member_type, struct struct_decl *struct_decl, int size) {
+static void _mscript_type_init(mscript_type_t *type, const char *name, enum mscript_type_type type_type, 
+        mscript_type_t *array_member_type, _ms_struct_decl_t *struct_decl, int size) {
     type->type = type_type;
     strncpy(type->name, name, MSCRIPT_MAX_SYMBOL_LEN + 2);
     type->name[MSCRIPT_MAX_SYMBOL_LEN + 2] = 0;
@@ -833,7 +875,7 @@ static void mscript_type_init(struct mscript_type *type, const char *name, enum 
     type->size = size;
 }
 
-static struct enum_value enum_value_create(struct mscript_type *type, int val) {
+static struct enum_value enum_value_create(mscript_type_t *type, int val) {
     struct enum_value value;
     value.type = type;
     value.val = val;
@@ -2142,7 +2184,7 @@ cleanup:
     return stmt;
 }
 
-static struct mscript_const_value eval_const_value_expr(struct mscript_program *program, struct expr *expr) {
+static _ms_const_value_t eval_const_value_expr(struct mscript_program *program, struct expr *expr) {
     assert(expr->is_const);
 
     switch (expr->type) {
@@ -2150,7 +2192,7 @@ static struct mscript_const_value eval_const_value_expr(struct mscript_program *
             break;
         case EXPR_BINARY_OP:
             {
-                struct mscript_const_value val, left, right;
+                _ms_const_value_t val, left, right;
 
                 left = eval_const_value_expr(program, expr->binary_op.left); 
                 right = eval_const_value_expr(program, expr->binary_op.right);
@@ -2171,7 +2213,7 @@ static struct mscript_const_value eval_const_value_expr(struct mscript_program *
             break;
         case EXPR_INT:
             {
-                struct mscript_const_value val;
+                _ms_const_value_t val;
                 val.type = MSCRIPT_CONST_VALUE_INT;
                 val.int_val = expr->int_value;
                 return val;
@@ -2179,57 +2221,42 @@ static struct mscript_const_value eval_const_value_expr(struct mscript_program *
             break;
         case EXPR_FLOAT:
             {
-                struct mscript_const_value val;
-                val.type = MSCRIPT_CONST_VALUE_FLOAT;
-                val.float_val = expr->float_value;
-                return val;
+                return _ms_const_value_float(expr->float_value);
             }
             break;
         case EXPR_NULL:
             {
-                struct mscript_const_value val;
-                val.type = MSCRIPT_CONST_VALUE_INT;
-                val.int_val = 0;
-                return val;
+                return _ms_const_value_int(0);
             }
             break;
         case EXPR_BOOL:
             {
-                struct mscript_const_value val;
-                val.type = MSCRIPT_CONST_VALUE_INT;
-                val.int_val = expr->bool_value;
-                return val;
+                return _ms_const_value_bool(expr->bool_value);
             }
             break;
         case EXPR_OBJECT:
             {
                 int num_args = expr->object.num_args;
                 struct expr **args = expr->object.args;
-                struct mscript_const_value *arg_values = malloc(sizeof(struct mscript_const_value) * num_args);
+                _ms_const_value_t *arg_values = malloc(sizeof(_ms_const_value_t) * num_args);
 
                 for (int i = 0; i < num_args; i++) {
                     arg_values[i] = eval_const_value_expr(program, args[i]);
                 }
                 
-                struct mscript_const_value val;
-                val.type = MSCRIPT_CONST_VALUE_OBJECT;
-                val.object.num_args = num_args;
-                val.object.args = arg_values;
-                return val;
+                return _ms_const_value_object(num_args, arg_values);
             }
             break;
         case EXPR_CAST:
             {
-                struct mscript_const_value val;
+                _ms_const_value_t val;
                 const char *to_type_name = expr->result_type->name;
                 const char *from_type_name = expr->cast.arg->result_type->name;
                 if ((strcmp(to_type_name, "int") == 0) && (strcmp(from_type_name, "float") == 0)) {
-                    val.type = MSCRIPT_CONST_VALUE_INT;
-                    val.int_val = (int) expr->cast.arg->float_value;
+                    val = _ms_const_value_int((int) expr->cast.arg->float_value);
                 }
                 else if ((strcmp(to_type_name, "float") == 0) && (strcmp(from_type_name, "int") == 0)) {
-                    val.type = MSCRIPT_CONST_VALUE_FLOAT;
-                    val.float_val = (int) expr->cast.arg->int_value;
+                    val = _ms_const_value_float((float) expr->cast.arg->int_value);
                 }
                 else {
                     assert(false);
@@ -2253,11 +2280,39 @@ static struct mscript_const_value eval_const_value_expr(struct mscript_program *
     }
 
     assert(false);
-    struct mscript_const_value val;
+    _ms_const_value_t val;
     val.type = MSCRIPT_TYPE_INT;
     return val;
 }
 
+static _ms_const_value_t _ms_const_value_float(float float_val) {
+    _ms_const_value_t val;
+    val.type = MSCRIPT_CONST_VALUE_FLOAT;
+    val.float_val = float_val;
+    return val;
+}
+
+static _ms_const_value_t _ms_const_value_int(int int_val) {
+    _ms_const_value_t val;
+    val.type = MSCRIPT_CONST_VALUE_INT;
+    val.int_val = int_val;
+    return val;
+}
+
+static _ms_const_value_t _ms_const_value_bool(bool bool_val) {
+    _ms_const_value_t val;
+    val.type = MSCRIPT_CONST_VALUE_BOOL;
+    val.bool_val = bool_val;
+    return val;
+}
+
+static _ms_const_value_t _ms_const_value_object(int num_args, _ms_const_value_t *args) {
+    _ms_const_value_t val;
+    val.type = MSCRIPT_CONST_VALUE_OBJECT;
+    val.object.num_args = num_args;
+    val.object.args = args;
+    return val;
+}
 
 static bool is_char_digit(char c) {
     return (c >= '0' && c <= '9');
@@ -2655,6 +2710,15 @@ static bool check_type(struct mscript_program *program) {
              (tok1.type == TOKEN_CHAR) && (tok1.char_value == '*'));
 }
 
+static _ms_const_decl_t _ms_const_decl(const char *name, mscript_type_t *type, _ms_const_value_t value) {
+    _ms_const_decl_t decl;
+    strncpy(decl.name, name, MSCRIPT_MAX_SYMBOL_LEN);
+    decl.name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+    decl.type = type;
+    decl.value = value;
+    return decl;
+}
+
 static void _ms_symbol_table_init(_ms_symbol_table_t *table) {
     array_init(&table->symbol_blocks);
     map_init(&table->global_symbol_map);
@@ -2698,7 +2762,7 @@ static void _ms_symbol_table_pop_block(_ms_symbol_table_t *table) {
     array_pop(&table->symbol_blocks);
 }
 
-static void _ms_symbol_table_add_local_var(_ms_symbol_table_t *table, const char *name, struct mscript_type *type) {
+static void _ms_symbol_table_add_local_var(_ms_symbol_table_t *table, const char *name, mscript_type_t *type) {
     int l = table->symbol_blocks.length;
     assert(l > 0);
     _ms_symbol_block_t *block = table->symbol_blocks.data + l - 1;
@@ -2720,22 +2784,32 @@ static void _ms_symbol_table_add_local_var(_ms_symbol_table_t *table, const char
     block->size += type->size;
 }
 
-static void _ms_symbol_table_add_global_var(_ms_symbol_table_t *table, const char *name, struct mscript_type *type) {
+static void _ms_symbol_table_add_global_decl(_ms_symbol_table_t *table, _ms_global_decl_t *decl) {
     _ms_symbol_t symbol;
     symbol.type = _MS_SYMBOL_GLOBAL_VAR;
-    symbol.global_var.type = type;
-    symbol.global_var.offset = table->globals_size;
-    map_set(&table->global_symbol_map, name, symbol);
-
-    table->globals_size += type->size;
+    symbol.global_var.decl = decl;
+    map_set(&table->global_symbol_map, decl->name, symbol);
 }
 
-static void _ms_symbol_table_add_const(_ms_symbol_table_t *table, const char *name, struct mscript_type *type, struct mscript_const_value value) {
+static void _ms_symbol_table_add_const_decl(_ms_symbol_table_t *table, _ms_const_decl_t decl) {
     _ms_symbol_t symbol;
     symbol.type = _MS_SYMBOL_CONST;
-    symbol.const_symbol.type = type;
-    symbol.const_symbol.value = value;
-    map_set(&table->global_symbol_map, name, symbol);
+    symbol.const_decl = decl;
+    map_set(&table->global_symbol_map, decl.name, symbol);
+}
+
+static void _ms_symbol_table_add_function_decl(_ms_symbol_table_t *table, _ms_function_decl_t *decl) {
+    _ms_symbol_t symbol;
+    symbol.type = _MS_SYMBOL_FUNCTION;
+    symbol.function_decl = decl;
+    map_set(&table->global_symbol_map, decl->name, symbol);
+}
+
+static void _ms_symbol_table_add_type(_ms_symbol_table_t *table, mscript_type_t *type) {
+    _ms_symbol_t symbol;
+    symbol.type = _MS_SYMBOL_TYPE;
+    symbol.type_val = type;
+    map_set(&table->global_symbol_map, type->name, symbol);
 }
 
 static bool _ms_symbol_table_get(_ms_symbol_table_t *table, const char *name, _ms_symbol_t *out_symbol) {
@@ -2858,7 +2932,7 @@ static void pre_compiler_return_stmt(struct mscript_program *program, struct stm
     assert(stmt->type == STMT_RETURN);
     *all_paths_return = true;
 
-    struct mscript_type *return_type = program->pre_compiler.cur_function_decl->return_type;
+    mscript_type_t *return_type = program->pre_compiler.cur_function_decl->return_type;
     assert(return_type);
 
     if (return_type->type == MSCRIPT_TYPE_VOID) {
@@ -2910,7 +2984,7 @@ static void pre_compiler_variable_declaration_stmt(struct mscript_program *progr
     assert(stmt->type == STMT_VARIABLE_DECLARATION);
 
     char *name = stmt->variable_declaration.name;
-    struct mscript_type *type = program_get_type(program, stmt->variable_declaration.type.string);
+    mscript_type_t *type = program_get_type(program, stmt->variable_declaration.type.string);
 
     _ms_symbol_t symbol;
     if (_ms_symbol_table_get(&program->symbol_table, name, &symbol)) {
@@ -2928,9 +3002,9 @@ static void pre_compiler_variable_declaration_stmt(struct mscript_program *progr
 static void pre_compiler_struct_declaration_1(struct mscript_program *program, struct stmt *stmt) {
     assert(stmt->type == STMT_STRUCT_DECLARATION);
 
-    struct mscript_type *type = program_get_type(program, stmt->struct_declaration.name);
-    for (int i = 0; i < type->struct_decl->num_members; i++) {
-        struct mscript_type *member_type = program_get_type(program, stmt->struct_declaration.member_types[i].string);
+    mscript_type_t *type = program_get_type(program, stmt->struct_declaration.name);
+    for (int i = 0; i < stmt->struct_declaration.num_members; i++) {
+        mscript_type_t *member_type = program_get_type(program, stmt->struct_declaration.member_types[i].string);
         if (!member_type) {
             program_error(program, stmt->token, "Undefined type %s.", stmt->struct_declaration.member_types[i].string);
             goto cleanup;
@@ -2942,7 +3016,7 @@ cleanup:
     return;
 }
 
-static void pre_compiler_struct_declaration_2_recur(struct mscript_program *program, struct stmt *stmt, struct mscript_type *type) {
+static void pre_compiler_struct_declaration_2_recur(struct mscript_program *program, struct stmt *stmt, mscript_type_t *type) {
     assert(stmt->type == STMT_STRUCT_DECLARATION);
     assert(type->type == MSCRIPT_TYPE_STRUCT);
 
@@ -2952,7 +3026,7 @@ static void pre_compiler_struct_declaration_2_recur(struct mscript_program *prog
     for (int i = 0; i < type->struct_decl->num_members; i++) {
         type->struct_decl->members[i].offset = type->size;
 
-        struct mscript_type *member_type = type->struct_decl->members[i].type;
+        mscript_type_t *member_type = type->struct_decl->members[i].type;
         assert(member_type);
 
         if (member_type->type == MSCRIPT_TYPE_STRUCT) {
@@ -2983,12 +3057,12 @@ static void pre_compiler_struct_declaration_2(struct mscript_program *program, s
         map_iter_t iter = map_iter(&program->type_map);
 
         while ((key = map_next(&program->type_map, &iter))) {
-            struct mscript_type **type = map_get(&program->type_map, key);
+            mscript_type_t **type = map_get(&program->type_map, key);
             (*type)->recur_state = 0;
         }
     }
 
-    struct mscript_type *type = program_get_type(program, stmt->struct_declaration.name);
+    mscript_type_t *type = program_get_type(program, stmt->struct_declaration.name);
     pre_compiler_struct_declaration_2_recur(program, stmt, type);
     if (program->error) goto cleanup;
 
@@ -3072,7 +3146,7 @@ static void pre_compiler_function_declaration_2(struct mscript_program *program,
 
     decl->args_size = 0;
     for (int i = 0; i < decl->num_args; i++) {
-        struct mscript_type *arg_type = decl->args[i].type;
+        mscript_type_t *arg_type = decl->args[i].type;
         assert(arg_type);
 
         const char *name = decl->args[i].name;
@@ -3122,7 +3196,7 @@ cleanup:
     return;
 }
 
-static void pre_compiler_expr_with_cast(struct mscript_program *program, struct expr **expr, struct mscript_type *type) {
+static void pre_compiler_expr_with_cast(struct mscript_program *program, struct expr **expr, mscript_type_t *type) {
     pre_compiler_expr(program, *expr, type);
     if (program->error) return;
 
@@ -3195,7 +3269,7 @@ static void pre_compiler_expr_lvalue(struct mscript_program *program, struct exp
                 pre_compiler_expr(program, expr->array_access.left, NULL);
                 if (program->error) return;
 
-                struct mscript_type *left_type = expr->array_access.left->result_type;
+                mscript_type_t *left_type = expr->array_access.left->result_type;
                 if (left_type->type != MSCRIPT_TYPE_ARRAY) {
                     program_error(program, expr->array_access.left->token, "Cannot perform array access on type %s.", left_type->name);
                     return;
@@ -3213,14 +3287,14 @@ static void pre_compiler_expr_lvalue(struct mscript_program *program, struct exp
                 pre_compiler_expr(program, expr->member_access.left, NULL);
                 if (program->error) return;
 
-                struct mscript_type *left_type = expr->member_access.left->result_type;
+                mscript_type_t *left_type = expr->member_access.left->result_type;
                 if (left_type->type != MSCRIPT_TYPE_STRUCT) {
                     program_error(program, expr->member_access.left->token, "Cannot perform member access on type %s.", left_type->name);
                     return;
                 }
 
                 int member_offset;
-                struct mscript_type *member_type = struct_decl_get_member(left_type->struct_decl, expr->member_access.member_name, &member_offset);
+                mscript_type_t *member_type = struct_decl_get_member(left_type->struct_decl, expr->member_access.member_name, &member_offset);
                 if (!member_type) {
                     program_error(program, expr->token, "Invalid member %s on type %s.", expr->member_access.member_name, left_type->name);
                     return;
@@ -3253,7 +3327,7 @@ static void pre_compiler_expr_lvalue(struct mscript_program *program, struct exp
     }
 }
 
-static void pre_compiler_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
+static void pre_compiler_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type) {
     switch (expr->type) {
         case EXPR_UNARY_OP:
             pre_compiler_unary_op_expr(program, expr, expected_type);
@@ -3306,7 +3380,7 @@ static void pre_compiler_expr(struct mscript_program *program, struct expr *expr
     }
 }
 
-static void pre_compiler_unary_op_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
+static void pre_compiler_unary_op_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type) {
     assert(expr->type == EXPR_UNARY_OP);
 
     switch (expr->unary_op.type) {
@@ -3317,7 +3391,7 @@ static void pre_compiler_unary_op_expr(struct mscript_program *program, struct e
 
                 expr->is_const = false;
 
-                struct mscript_type *operand_type = expr->unary_op.operand->result_type;
+                mscript_type_t *operand_type = expr->unary_op.operand->result_type;
                 if (operand_type->type == MSCRIPT_TYPE_INT) {
                     expr->result_type = program_get_type(program, "int");
                 }
@@ -3344,7 +3418,7 @@ static void pre_compiler_unary_op_expr(struct mscript_program *program, struct e
     expr->lvalue = lvalue_invalid();
 }
 
-static void pre_compiler_binary_op_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
+static void pre_compiler_binary_op_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type) {
     assert(expr->type == EXPR_BINARY_OP);
 
     pre_compiler_expr(program, expr->binary_op.left, expected_type);
@@ -3352,8 +3426,8 @@ static void pre_compiler_binary_op_expr(struct mscript_program *program, struct 
     pre_compiler_expr(program, expr->binary_op.right, expected_type);
     if (program->error) return;
 
-    struct mscript_type *left_result_type = expr->binary_op.left->result_type;
-    struct mscript_type *right_result_type = expr->binary_op.right->result_type;
+    mscript_type_t *left_result_type = expr->binary_op.left->result_type;
+    mscript_type_t *right_result_type = expr->binary_op.right->result_type;
 
     switch (expr->binary_op.type) {
         case BINARY_OP_ADD:
@@ -3461,7 +3535,7 @@ static void pre_compiler_binary_op_expr(struct mscript_program *program, struct 
     expr->lvalue = lvalue_invalid();
 }
 
-static void pre_compiler_call_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
+static void pre_compiler_call_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type) {
     assert(expr->type == EXPR_CALL);
 
     struct expr *fn = expr->call.function;
@@ -3491,7 +3565,7 @@ static void pre_compiler_call_expr(struct mscript_program *program, struct expr 
     expr->lvalue = lvalue_invalid();
 }
 
-static void pre_compiler_debug_print_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
+static void pre_compiler_debug_print_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type) {
     assert(expr->type == EXPR_DEBUG_PRINT);
 
     for (int i = 0; i < expr->debug_print.num_args; i++) {
@@ -3504,18 +3578,18 @@ static void pre_compiler_debug_print_expr(struct mscript_program *program, struc
     expr->lvalue = lvalue_invalid();
 }
 
-static void pre_compiler_member_access_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
+static void pre_compiler_member_access_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type) {
     assert(expr->type == EXPR_MEMBER_ACCESS);
 
     pre_compiler_expr(program, expr->member_access.left, NULL);
     if (program->error) return;
 
-    struct mscript_type *left_type = expr->member_access.left->result_type;
+    mscript_type_t *left_type = expr->member_access.left->result_type;
     if (left_type->type == MSCRIPT_TYPE_STRUCT) {
-        struct struct_decl *decl = left_type->struct_decl;
+        _ms_struct_decl_t *decl = left_type->struct_decl;
 
         int member_offset;
-        struct mscript_type *member_type = struct_decl_get_member(decl, expr->member_access.member_name, &member_offset);
+        mscript_type_t *member_type = struct_decl_get_member(decl, expr->member_access.member_name, &member_offset);
         if (!member_type) {
             program_error(program, expr->token, "Invalid member %s on struct.", expr->member_access.member_name);
             return;
@@ -3557,13 +3631,13 @@ static void pre_compiler_member_access_expr(struct mscript_program *program, str
     expr->is_const = false;
 }
 
-static void pre_compiler_assignment_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
+static void pre_compiler_assignment_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type) {
     assert(expr->type == EXPR_ASSIGNMENT);
 
     pre_compiler_expr_lvalue(program, expr->assignment.left);
     if (program->error) return;
 
-    struct mscript_type *left_type = expr->assignment.left->result_type;
+    mscript_type_t *left_type = expr->assignment.left->result_type;
 
     pre_compiler_expr_with_cast(program, &(expr->assignment.right), left_type);
     if (program->error) return;
@@ -3573,21 +3647,21 @@ static void pre_compiler_assignment_expr(struct mscript_program *program, struct
     expr->lvalue = lvalue_invalid();
 }
 
-static void pre_compiler_int_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
+static void pre_compiler_int_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type) {
     assert(expr->type == EXPR_INT);
     expr->is_const = true;
     expr->result_type = program_get_type(program, "int");
     expr->lvalue = lvalue_invalid();
 }
 
-static void pre_compiler_float_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
+static void pre_compiler_float_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type) {
     assert(expr->type == EXPR_FLOAT);
     expr->is_const = true;
     expr->result_type = program_get_type(program, "float");
     expr->lvalue = lvalue_invalid();
 }
 
-static void pre_compiler_symbol_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
+static void pre_compiler_symbol_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type) {
     assert(expr->type == EXPR_SYMBOL);
 
     _ms_symbol_t symbol;
@@ -3612,8 +3686,18 @@ static void pre_compiler_symbol_expr(struct mscript_program *program, struct exp
         case _MS_SYMBOL_CONST:
             {
                 expr->is_const = true;
-                expr->result_type = symbol.const_symbol.type;
+                expr->result_type = symbol.const_decl.type;
                 expr->lvalue = lvalue_invalid();
+            }
+            break;
+        case _MS_SYMBOL_FUNCTION:
+            {
+                assert(false);
+            }
+            break;
+        case _MS_SYMBOL_TYPE:
+            {
+                assert(false);
             }
             break;
     }
@@ -3622,7 +3706,7 @@ cleanup:
     return;
 }
 
-static void pre_compiler_null_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
+static void pre_compiler_null_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type) {
     assert(expr->type == EXPR_NULL);
 
     if (!expected_type) {
@@ -3640,21 +3724,21 @@ static void pre_compiler_null_expr(struct mscript_program *program, struct expr 
     expr->lvalue = lvalue_invalid();
 }
 
-static void pre_compiler_bool_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
+static void pre_compiler_bool_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type) {
     assert(expr->type == EXPR_BOOL);
     expr->is_const = true;
     expr->result_type = program_get_type(program, "bool"); 
     expr->lvalue = lvalue_invalid();
 }
 
-static void pre_compiler_string_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
+static void pre_compiler_string_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type) {
     assert(expr->type == EXPR_STRING);
     expr->is_const = true;
     expr->result_type = program_get_type(program, "char*");
     expr->lvalue = lvalue_invalid();
 }
 
-static void pre_compiler_array_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
+static void pre_compiler_array_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type) {
     assert(expr->type == EXPR_ARRAY);
 
     if (!expected_type) {
@@ -3667,7 +3751,7 @@ static void pre_compiler_array_expr(struct mscript_program *program, struct expr
         return;
     }
 
-    struct mscript_type *arg_type = expected_type->array_member_type;
+    mscript_type_t *arg_type = expected_type->array_member_type;
     for (int i = 0; i < expr->array.num_args; i++) {
         pre_compiler_expr_with_cast(program, &(expr->array.args[i]), arg_type);
         if (program->error) return;
@@ -3678,13 +3762,13 @@ static void pre_compiler_array_expr(struct mscript_program *program, struct expr
     expr->lvalue = lvalue_invalid();
 }
 
-static void pre_compiler_array_access_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
+static void pre_compiler_array_access_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type) {
     assert(expr->type == EXPR_ARRAY_ACCESS);
 
     pre_compiler_expr(program, expr->array_access.left, expected_type);
     if (program->error) return;
 
-    struct mscript_type *left_type = expr->array_access.left->result_type;
+    mscript_type_t *left_type = expr->array_access.left->result_type;
     if (left_type->type != MSCRIPT_TYPE_ARRAY) {
         program_error(program, expr->array_access.left->token, "Expected array.");
         return;
@@ -3698,7 +3782,7 @@ static void pre_compiler_array_access_expr(struct mscript_program *program, stru
     expr->lvalue = lvalue_array();
 }
 
-static void pre_compiler_object_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
+static void pre_compiler_object_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type) {
     assert(expr->type == EXPR_OBJECT);
     
     if (!expected_type) {
@@ -3711,7 +3795,7 @@ static void pre_compiler_object_expr(struct mscript_program *program, struct exp
         return;
     }
 
-    struct struct_decl *decl = expected_type->struct_decl;
+    _ms_struct_decl_t *decl = expected_type->struct_decl;
     assert(decl);
 
     if (expr->object.num_args != decl->num_members) {
@@ -3726,7 +3810,7 @@ static void pre_compiler_object_expr(struct mscript_program *program, struct exp
             return;
         }
 
-        struct mscript_type *member_type = decl->members[i].type;
+        mscript_type_t *member_type = decl->members[i].type;
         pre_compiler_expr_with_cast(program, &(expr->object.args[i]), member_type);
         if (program->error) return;
 
@@ -3740,7 +3824,7 @@ static void pre_compiler_object_expr(struct mscript_program *program, struct exp
     expr->lvalue = lvalue_invalid();
 }
 
-static void pre_compiler_cast_expr(struct mscript_program *program, struct expr *expr, struct mscript_type *expected_type) {
+static void pre_compiler_cast_expr(struct mscript_program *program, struct expr *expr, mscript_type_t *expected_type) {
     assert(false);
 }
 
@@ -4353,10 +4437,10 @@ static void compile_lvalue_expr(struct mscript_program *program, struct expr *ex
             break;
         case EXPR_MEMBER_ACCESS:
             {
-                struct mscript_type *struct_type = expr->member_access.left->result_type;
+                mscript_type_t *struct_type = expr->member_access.left->result_type;
                 assert(struct_type->type == MSCRIPT_TYPE_STRUCT);
 
-                struct struct_decl *decl = struct_type->struct_decl;
+                _ms_struct_decl_t *decl = struct_type->struct_decl;
                 assert(decl);
 
                 bool found_member = false;
@@ -4574,7 +4658,7 @@ static void compile_call_expr(struct mscript_program *program, struct expr *expr
     opcode_intermediate_call(program, expr->call.function->symbol);
 }
 
-static void compile_debug_print_type(struct mscript_program *program, struct mscript_type *type) {
+static void compile_debug_print_type(struct mscript_program *program, mscript_type_t *type) {
     switch (type->type) {
         case MSCRIPT_TYPE_VOID:
             {
@@ -4610,13 +4694,13 @@ static void compile_debug_print_type(struct mscript_program *program, struct msc
             break;
         case MSCRIPT_TYPE_STRUCT:
             {
-                struct struct_decl *decl = type->struct_decl;
+                _ms_struct_decl_t *decl = type->struct_decl;
                 assert(decl);
 
                 opcode_debug_print_string_const(program, "{");
                 int member_offset = 0;
                 for (int i = 0; i < decl->num_members; i++) {
-                    struct mscript_type *member_type = decl->members[i].type;
+                    mscript_type_t *member_type = decl->members[i].type;
                     int member_type_size = member_type->size;
                     char *member_name = decl->members[i].name;
 
@@ -4661,7 +4745,7 @@ static void compile_debug_print_expr(struct mscript_program *program, struct exp
     struct expr **args = expr->debug_print.args;
     for (int i = 0; i < num_args; i++) {
         struct expr *arg = args[i];
-        struct mscript_type *arg_type = arg->result_type;
+        mscript_type_t *arg_type = arg->result_type;
 
         compile_expr(program, arg);
         compile_debug_print_type(program, arg_type);
@@ -4818,7 +4902,7 @@ static void compile_array_expr(struct mscript_program *program, struct expr *exp
     assert(expr->type == EXPR_ARRAY);
 
     assert(expr->result_type->type == MSCRIPT_TYPE_ARRAY);
-    struct mscript_type *arg_type = expr->result_type->array_member_type;
+    mscript_type_t *arg_type = expr->result_type->array_member_type;
 
     int size = arg_type->size;
     opcode_array_create(program, size);
@@ -4851,8 +4935,8 @@ static void compile_object_expr(struct mscript_program *program, struct expr *ex
 static void compile_cast_expr(struct mscript_program *program, struct expr *expr) {
     assert(expr->type == EXPR_CAST);
 
-    struct mscript_type *cast_type = expr->result_type;
-    struct mscript_type *arg_type = expr->cast.arg->result_type;
+    mscript_type_t *cast_type = expr->result_type;
+    mscript_type_t *arg_type = expr->cast.arg->result_type;
     struct expr *arg = expr->cast.arg;
 
     compile_expr(program, arg);
@@ -5297,6 +5381,11 @@ static void program_init(struct mscript_program *prog, struct mscript *mscript, 
     prog->mscript = mscript;
 
     _ms_symbol_table_init(&prog->symbol_table);
+    array_init(&prog->exported_types);
+    array_init(&prog->exported_function_decls);
+    array_init(&prog->exported_global_decls);
+    array_init(&prog->exported_const_decls);
+
     map_init(&prog->function_decl_map);
     map_init(&prog->global_decl_map);
     map_init(&prog->type_map);
@@ -5339,64 +5428,80 @@ static void program_error(struct mscript_program *program, struct token token, c
     program->error_token = token;
 }
 
-static void program_import_recur(struct mscript_program *program, struct mscript_program *import) {
+static void program_error_no_token(struct mscript_program *program, char *fmt, ...) {
+    char *buffer = malloc(sizeof(char) * 256);
+    buffer[255] = 0;
+
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buffer, 255, fmt, args);
+    va_end(args);
+
+    program->error = buffer;
+    program->error_token.line = -1;
+    program->error_token.col = -1;
+}
+
+static void program_import(struct mscript_program *program, struct mscript_program *import) {
     if (import->visited) {
         return;
     }
     import->visited = true;
 
-    {
-        const char *key;
-        map_iter_t iter = map_iter(&import->type_map);
-        while ((key = map_next(&import->type_map, &iter))) {
-            struct mscript_type **type = map_get(&import->type_map, key);
-            map_set(&program->type_map, key, *type);
+    for (int i = 0; i < import->exported_types.length; i++) {
+        mscript_type_t *type = import->exported_types.data[i];
+
+        _ms_symbol_t symbol;
+        if (_ms_symbol_table_get(&program->symbol_table, type->name, &symbol)) {
+            program_error_no_token(program, "Redeclaration of symbol %s.", type->name);
+            goto cleanup;
         }
+
+        _ms_symbol_table_add_type(&program->symbol_table, type);
     }
 
-    {
-        const char *key;
-        map_iter_t iter = map_iter(&import->function_decl_map);
-        while ((key = map_next(&import->function_decl_map, &iter))) {
-            struct function_decl **decl = map_get(&import->function_decl_map, key);
-            map_set(&program->function_decl_map, key, *decl);
+    for (int i = 0; i < import->exported_function_decls.length; i++) {
+        _ms_function_decl_t *decl = import->exported_function_decls.data[i];
+
+        _ms_symbol_t symbol;
+        if (_ms_symbol_table_get(&program->symbol_table, decl->name, &symbol)) {
+            program_error_no_token(program, "Redeclaration of symbol %s.", decl->name);
+            goto cleanup;
         }
+
+        _ms_symbol_table_add_function_decl(&program->symbol_table, decl);
     }
 
-    {
-        const char *key;
-        map_iter_t iter = map_iter(&import->global_decl_map);
-        while ((key = map_next(&import->global_decl_map, &iter))) {
-            struct global_decl **decl = map_get(&import->global_decl_map, key);
-            map_set(&program->global_decl_map, key, *decl);
+    for (int i = 0; i < import->exported_global_decls.length; i++) {
+        _ms_global_decl_t *decl = import->exported_global_decls.data[i];
+
+        _ms_symbol_t symbol;
+        if (_ms_symbol_table_get(&program->symbol_table, decl->name, &symbol)) {
+            program_error_no_token(program, "Redeclaration of symbol %s.", decl->name);
+            goto cleanup;
         }
+
+        _ms_symbol_table_add_global_decl(&program->symbol_table, decl);
     }
 
-    {
-        const char *key;
-        map_iter_t iter = map_iter(&import->enum_map);
-        while ((key = map_next(&import->enum_map, &iter))) {
-            struct enum_value *enum_value = map_get(&import->enum_map, key);
-            map_set(&program->enum_map, key, *enum_value);
+    for (int i = 0; i < import->exported_const_decls.length; i++) {
+        _ms_const_decl_t decl = import->exported_const_decls.data[i];
+
+        _ms_symbol_t symbol;
+        if (_ms_symbol_table_get(&program->symbol_table, decl.name, &symbol)) {
+            program_error_no_token(program, "Redeclaration of symbol %s.", decl.name);
+            goto cleanup;
         }
+
+        _ms_symbol_table_add_const_decl(&program->symbol_table, decl);
     }
 
     for (int i = 0; i < import->imported_programs.length; i++) {
-        program_import_recur(program, program->imported_programs.data[i]);
-    }
-}
-
-static void program_import(struct mscript_program *program, struct mscript_program *import, struct mscript *mscript) {
-    const char *key;
-    map_iter_t iter = map_iter(&mscript->map);
-
-    while ((key = map_next(&mscript->programs_map, &iter))) {
-        struct mscript_program **p = map_get(&mscript->programs_map, key);
-        (*p)->visited = false;
+        program_import(program, import->imported_programs.data[i]);
     }
 
-    program->visited = true;
-    program_import_recur(program, import);
+cleanup:
+    return;
 }
 
 static void program_add_function_decl(struct mscript_program *program, const char *name, struct function_decl *decl) {
@@ -5423,12 +5528,12 @@ static struct global_decl *program_get_global_decl(struct mscript_program *progr
     return NULL;
 }
 
-static void program_add_type(struct mscript_program *program, char *name, struct mscript_type *type) {
+static void program_add_type(struct mscript_program *program, char *name, mscript_type_t *type) {
     map_set(&program->type_map, name, type);
 }
 
-static struct mscript_type *program_get_type(struct mscript_program *program, const char *name) {
-    struct mscript_type **type = map_get(&program->type_map, name);
+static mscript_type_t *program_get_type(struct mscript_program *program, const char *name) {
+    mscript_type_t **type = map_get(&program->type_map, name);
     if (type) {
         return *type;
     }
@@ -5438,6 +5543,68 @@ static struct mscript_type *program_get_type(struct mscript_program *program, co
 
 static void program_add_enum_value(struct mscript_program *program, char *name, struct enum_value value) {
     map_set(&program->enum_map, name, value);
+}
+
+static void program_add_enum_decl(struct mscript_program *program, struct stmt *stmt) {
+    assert(stmt->type == STMT_ENUM_DECLARATION);
+
+    mscript_type_t *type = malloc(sizeof(mscript_type_t));
+    _mscript_type_init(type, stmt->enum_declaration.name, MSCRIPT_TYPE_ENUM, NULL, NULL, 4);
+    _ms_symbol_table_add_type(&program->symbol_table, type);
+    array_push(&program->exported_types, type);
+
+    int num_values = stmt->enum_declaration.num_values;
+    for (int i = 0; i < num_values; i++) {
+        _ms_const_value_t const_val = _ms_const_value_int(i);
+        _ms_const_decl_t const_decl = _ms_const_decl(stmt->enum_declaration.value_names[i], type, const_val);
+        _ms_symbol_table_add_const_decl(&program->symbol_table, const_decl);
+        array_push(&program->exported_const_decls, const_decl);
+    }
+}
+
+static void program_add_function_decl_stub(struct mscript_program *program, struct stmt *stmt) {
+    assert(stmt->type == STMT_FUNCTION_DECLARATION);
+
+    _ms_function_decl_t *decl = malloc(sizeof(_ms_function_decl_t)); 
+    strncpy(decl->name, stmt->function_declaration.name, MSCRIPT_MAX_SYMBOL_LEN);
+    decl->name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+    decl->return_type = NULL;
+    decl->num_args = 0;
+    array_init(&decl->opcodes);
+    array_push(&program->exported_function_decls, decl);
+}
+
+static void program_add_struct_decl_stub(struct mscript_program *program, struct stmt *stmt) {
+    assert(stmt->type == STMT_STRUCT_DECLARATION);
+
+    _ms_struct_decl_t *decl = malloc(sizeof(_ms_struct_decl_t));
+    strncpy(decl->name, stmt->struct_declaration.name, MSCRIPT_MAX_SYMBOL_LEN);
+    decl->name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+
+    mscript_type_t *type = malloc(sizeof(mscript_type_t));
+    _mscript_type_init(type, decl->name, MSCRIPT_TYPE_STRUCT, NULL, decl, 0);
+    array_push(&program->exported_types, type);
+
+    char array_type_name[MSCRIPT_MAX_SYMBOL_LEN + 3];
+    strncpy(array_type_name, type->name, MSCRIPT_MAX_SYMBOL_LEN);
+    array_type_name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+    strcat(array_type_name, "[]");
+
+    mscript_type_t *array_type = malloc(sizeof(mscript_type_t));
+    _mscript_type_init(array_type, array_type_name, MSCRIPT_TYPE_ARRAY, type, NULL, 4);
+    array_push(&program->exported_types, array_type);
+
+    _ms_symbol_table_add_type(&program->symbol_table, type);
+    _ms_symbol_table_add_type(&program->symbol_table, array_type);
+}
+
+static void program_add_global_decl_stub(struct mscript_program *program, struct stmt *stmt) {
+    assert(stmt->type == STMT_GLOBAL_DECLARATION);
+
+    _ms_global_decl_t *decl = malloc(sizeof(_ms_global_decl_t));
+    strncpy(decl->name, stmt->global_declaration.name, MSCRIPT_MAX_SYMBOL_LEN);
+    decl->name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+    array_push(&program->exported_global_decls, decl);
 }
 
 static int program_add_string(struct mscript_program *program, char *string) {
@@ -5953,67 +6120,33 @@ static void program_load_stage_1(struct mscript *mscript, struct file file) {
         switch (stmt->type) {
             case STMT_IMPORT:
                 break;
-            case STMT_STRUCT_DECLARATION:
-                {
-                    struct struct_decl *decl = malloc(sizeof(struct struct_decl));
-                    strncpy(decl->name, stmt->struct_declaration.name, MSCRIPT_MAX_SYMBOL_LEN);
-                    decl->name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
-                    decl->num_members = stmt->struct_declaration.num_members;
-                    for (int i = 0; i < decl->num_members; i++) {
-                        strncpy(decl->members[i].name, stmt->struct_declaration.member_names[i], MSCRIPT_MAX_SYMBOL_LEN);
-                        decl->members[i].name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
-                        decl->members[i].type = NULL;
-                        decl->members[i].offset = -1;
-                    }
-
-                    struct mscript_type *struct_type = malloc(sizeof(struct mscript_type));
-                    mscript_type_init(struct_type, decl->name, MSCRIPT_TYPE_STRUCT, NULL, decl, -1);
-                    program_add_type(program, decl->name, struct_type);
-
-                    char struct_array_type_string[MSCRIPT_MAX_SYMBOL_LEN + 3];
-                    strncpy(struct_array_type_string, stmt->struct_declaration.name, MSCRIPT_MAX_SYMBOL_LEN);
-                    struct_array_type_string[MSCRIPT_MAX_SYMBOL_LEN] = 0;
-                    strcat(struct_array_type_string, "[]");
-
-                    struct mscript_type *struct_array_type = malloc(sizeof(struct mscript_type));
-                    mscript_type_init(struct_array_type, struct_array_type_string, MSCRIPT_TYPE_ARRAY, struct_type, NULL, 4);
-                    program_add_type(program, struct_array_type_string, struct_array_type);
-                }
-                break;
             case STMT_ENUM_DECLARATION:
                 {
-                    struct mscript_type *enum_type = malloc(sizeof(struct mscript_type));
-                    mscript_type_init(enum_type, stmt->enum_declaration.name, MSCRIPT_TYPE_ENUM, NULL, NULL, 4);
-                    program_add_type(program, stmt->enum_declaration.name, enum_type);
-
-                    for (int i = 0; i < stmt->enum_declaration.num_values; i++) {
-                        struct enum_value value = enum_value_create(enum_type, i);
-                        program_add_enum_value(program, stmt->enum_declaration.value_names[i], value);
-                    }
-                }
-                break;
-            case STMT_FUNCTION_DECLARATION:
-                {
-                    struct function_decl *decl = malloc(sizeof(struct function_decl));
-                    strncpy(decl->name, stmt->function_declaration.name, MSCRIPT_MAX_SYMBOL_LEN);
-                    decl->name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
-                    program_add_function_decl(program, decl->name, decl);
+                    program_add_enum_decl(program, stmt);
+                    if (program->error) goto cleanup;
                 }
                 break;
             case STMT_GLOBAL_DECLARATION:
                 {
-                    struct global_decl *decl = malloc(sizeof(struct global_decl));
-                    strncpy(decl->name, stmt->global_declaration.name, MSCRIPT_MAX_SYMBOL_LEN);
-                    decl->name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
-                    program_add_global_decl(program, decl->name, decl);
+                    program_add_global_decl_stub(program, stmt);
+                    if (program->error) goto cleanup;
+                }
+                break;
+            case STMT_STRUCT_DECLARATION:
+                {
+                    program_add_struct_decl_stub(program, stmt);
+                    if (program->error) goto cleanup;
+                }
+                break;
+            case STMT_FUNCTION_DECLARATION:
+                {
+                    program_add_function_decl_stub(program, stmt);
+                    if (program->error) goto cleanup;
                 }
                 break;
             case STMT_IMPORT_FUNCTION:
                 {
-                    struct function_decl *decl = malloc(sizeof(struct function_decl));
-                    strncpy(decl->name, stmt->import_function.name, MSCRIPT_MAX_SYMBOL_LEN);
-                    decl->name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
-                    program_add_function_decl(program, decl->name, decl);
+                    assert(false);
                 }
                 break;
             case STMT_IF:
@@ -6092,9 +6225,20 @@ cleanup:
 static void program_load_stage_3(struct mscript *mscript, struct mscript_program *program) {
     if (program->error) return;
 
-    for (int i = 0; i < program->imported_programs.length; i++) {
-        program_import(program, program->imported_programs.data[i], mscript);
-        if (program->error) goto cleanup;
+    {
+        const char *key;
+        map_iter_t iter = map_iter(&mscript->map);
+
+        while ((key = map_next(&mscript->programs_map, &iter))) {
+            struct mscript_program **p = map_get(&mscript->programs_map, key);
+            (*p)->visited = false;
+        }
+
+        program->visited = true;
+        for (int i = 0; i < program->imported_programs.length; i++) {
+            program_import(program, program->imported_programs.data[i]);
+            if (program->error) goto cleanup;
+        }
     }
 
     for (int i = 0; i < program->global_stmts.length; i++) {
@@ -6106,18 +6250,18 @@ static void program_load_stage_3(struct mscript *mscript, struct mscript_program
                 break;
             case STMT_STRUCT_DECLARATION:
                 {
-                    pre_compiler_struct_declaration_1(program, stmt);
+                    //pre_compiler_struct_declaration_1(program, stmt);
                     if (program->error) goto cleanup;
                 }
                 break;
             case STMT_FUNCTION_DECLARATION:
                 {
-                    pre_compiler_function_declaration_1(program, stmt);
+                    //pre_compiler_function_declaration_1(program, stmt);
                 }
                 break;
             case STMT_IMPORT_FUNCTION:
                 {
-                    pre_compiler_import_function(program, stmt);
+                    //pre_compiler_import_function(program, stmt);
                 }
                 break;
             case STMT_IF:
@@ -6230,39 +6374,15 @@ static void program_load_stage_6(struct mscript *mscript, struct mscript_program
     //
 
     {
-        struct mscript_const_value value;
-        value.type = MSCRIPT_CONST_VALUE_BOOL;
-        value.bool_val = false;
-        _ms_symbol_table_add_const(&program->symbol_table, "false", &mscript->bool_type, value);
+        _ms_const_value_t const_val = _ms_const_value_bool(false);
+        _ms_const_decl_t const_decl = _ms_const_decl("false", &mscript->bool_type, const_val);
+        _ms_symbol_table_add_const_decl(&program->symbol_table, const_decl);
     }
 
     {
-        struct mscript_const_value value;
-        value.type = MSCRIPT_CONST_VALUE_BOOL;
-        value.bool_val = true;
-        _ms_symbol_table_add_const(&program->symbol_table, "true", &mscript->bool_type, value);
-    }
-
-    {
-        const char *key;
-        map_iter_t iter = map_iter(&program->enum_map);
-        while ((key = map_next(&program->enum_map, &iter))) {
-            struct enum_value *enum_value = map_get(&program->enum_map, key);
-
-            struct mscript_const_value const_value;
-            const_value.type = MSCRIPT_CONST_VALUE_INT;
-            const_value.int_val = enum_value->val;
-            _ms_symbol_table_add_const(&program->symbol_table, key, enum_value->type, const_value);
-        }
-    }
-
-    {
-        const char *key;
-        map_iter_t iter = map_iter(&program->global_decl_map);
-        while ((key = map_next(&program->global_decl_map, &iter))) {
-            struct global_decl *global_decl = program_get_global_decl(program, key);
-            _ms_symbol_table_add_global_var(&program->symbol_table, key, global_decl->type);
-        }
+        _ms_const_value_t const_val = _ms_const_value_bool(true);
+        _ms_const_decl_t const_decl = _ms_const_decl("true", &mscript->bool_type, const_val);
+        _ms_symbol_table_add_const_decl(&program->symbol_table, const_decl);
     }
 
     for (int i = 0; i < program->global_stmts.length; i++) {
@@ -6519,16 +6639,16 @@ struct mscript *mscript_create(void) {
     map_init(&mscript->programs_map);
     array_init(&mscript->programs_array);
 
-    mscript_type_init(&mscript->void_type, "void", MSCRIPT_TYPE_VOID, NULL, NULL, 0);
-    mscript_type_init(&mscript->void_star_type, "void*", MSCRIPT_TYPE_VOID_STAR, NULL, NULL, 4);
-    mscript_type_init(&mscript->void_star_array_type, "void*[]", MSCRIPT_TYPE_ARRAY, &mscript->void_star_type, NULL, 4);
-    mscript_type_init(&mscript->int_type, "int", MSCRIPT_TYPE_INT, NULL, NULL, 4);
-    mscript_type_init(&mscript->int_array_type, "int[]", MSCRIPT_TYPE_ARRAY, &mscript->int_type, NULL, 4);
-    mscript_type_init(&mscript->float_type, "float", MSCRIPT_TYPE_FLOAT, NULL, NULL, 4);
-    mscript_type_init(&mscript->float_array_type, "float[]", MSCRIPT_TYPE_ARRAY, &mscript->float_type, NULL, 4);
-    mscript_type_init(&mscript->bool_type, "bool", MSCRIPT_TYPE_BOOL, NULL, NULL, 4);
-    mscript_type_init(&mscript->bool_array_type, "bool[]", MSCRIPT_TYPE_ARRAY, &mscript->bool_type, NULL, 4);
-    mscript_type_init(&mscript->char_star_type, "char*", MSCRIPT_TYPE_CHAR_STAR, NULL, NULL, 4);
+    _mscript_type_init(&mscript->void_type, "void", MSCRIPT_TYPE_VOID, NULL, NULL, 0);
+    _mscript_type_init(&mscript->void_star_type, "void*", MSCRIPT_TYPE_VOID_STAR, NULL, NULL, 4);
+    _mscript_type_init(&mscript->void_star_array_type, "void*[]", MSCRIPT_TYPE_ARRAY, &mscript->void_star_type, NULL, 4);
+    _mscript_type_init(&mscript->int_type, "int", MSCRIPT_TYPE_INT, NULL, NULL, 4);
+    _mscript_type_init(&mscript->int_array_type, "int[]", MSCRIPT_TYPE_ARRAY, &mscript->int_type, NULL, 4);
+    _mscript_type_init(&mscript->float_type, "float", MSCRIPT_TYPE_FLOAT, NULL, NULL, 4);
+    _mscript_type_init(&mscript->float_array_type, "float[]", MSCRIPT_TYPE_ARRAY, &mscript->float_type, NULL, 4);
+    _mscript_type_init(&mscript->bool_type, "bool", MSCRIPT_TYPE_BOOL, NULL, NULL, 4);
+    _mscript_type_init(&mscript->bool_array_type, "bool[]", MSCRIPT_TYPE_ARRAY, &mscript->bool_type, NULL, 4);
+    _mscript_type_init(&mscript->char_star_type, "char*", MSCRIPT_TYPE_CHAR_STAR, NULL, NULL, 4);
 
     struct directory dir;
     directory_init(&dir, "scripts");
@@ -6544,19 +6664,19 @@ struct mscript *mscript_create(void) {
         program_load_stage_2(mscript, mscript->programs_array.data[i]);
     for (int i = 0; i < mscript->programs_array.length; i++)
         program_load_stage_3(mscript, mscript->programs_array.data[i]);
-    for (int i = 0; i < mscript->programs_array.length; i++)
-        program_load_stage_4(mscript, mscript->programs_array.data[i]);
-    for (int i = 0; i < mscript->programs_array.length; i++)
-        program_load_stage_5(mscript, mscript->programs_array.data[i]);
-    for (int i = 0; i < mscript->programs_array.length; i++)
-        program_load_stage_6(mscript, mscript->programs_array.data[i]);
-    for (int i = 0; i < mscript->programs_array.length; i++)
-        program_load_stage_7(mscript, mscript->programs_array.data[i]);
-    for (int i = 0; i < mscript->programs_array.length; i++)
-        program_load_stage_8(mscript, mscript->programs_array.data[i]);
+    //for (int i = 0; i < mscript->programs_array.length; i++)
+        //program_load_stage_4(mscript, mscript->programs_array.data[i]);
+    //for (int i = 0; i < mscript->programs_array.length; i++)
+        //program_load_stage_5(mscript, mscript->programs_array.data[i]);
+    //for (int i = 0; i < mscript->programs_array.length; i++)
+        //program_load_stage_6(mscript, mscript->programs_array.data[i]);
+    //for (int i = 0; i < mscript->programs_array.length; i++)
+        //program_load_stage_7(mscript, mscript->programs_array.data[i]);
+    //for (int i = 0; i < mscript->programs_array.length; i++)
+        //program_load_stage_8(mscript, mscript->programs_array.data[i]);
 
-    struct mscript_program *program = *(map_get(&mscript->programs_map, "testing.mscript"));
-    vm_run(program);
+    //struct mscript_program *program = *(map_get(&mscript->programs_map, "testing.mscript"));
+    //vm_run(program);
 
     return mscript;
 }

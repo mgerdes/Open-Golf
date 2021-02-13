@@ -21,10 +21,15 @@ enum mscript_type_type {
 };
 
 struct mscript;
-struct mscript_program;
-struct mscript_type;
+typedef struct mscript mscript_t;
 
-struct mscript *mscript_create(void);
-struct mscript_program *mscript_load_program(struct mscript *mscript, const char *name);
+struct mscript_program;
+typedef struct mscript_program mscript_program_t;
+
+struct mscript_type;
+typedef struct mscript_type mscript_type_t;
+
+mscript_t *mscript_create(void);
+mscript_program_t *mscript_load_program(mscript_t *mscript, const char *name);
 
 #endif
