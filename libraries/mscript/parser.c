@@ -4615,7 +4615,7 @@ static void _ms_compile_float_expr(mscript_program_t *program, _ms_expr_t *expr)
     vec_push(program->cur_opcodes, _ms_opcode_float(expr->float_val));
 }
 
-static void _ms_compile_const(mscript_program_t *program, mscript_val_t val) {
+static void _ms_compile_val(mscript_program_t *program, mscript_val_t val) {
     switch (val.type) {
         case MSCRIPT_VAL_INT:
             vec_push(program->cur_opcodes, _ms_opcode_int(val.int_val));
@@ -4636,7 +4636,7 @@ static void _ms_compile_const(mscript_program_t *program, mscript_val_t val) {
         case MSCRIPT_VAL_OBJECT:
             {
                 for (int i = 0; i < val.object.num_args; i++) {
-                    _ms_compile_const(program, val.object.args[i]);
+                    _ms_compile_val(program, val.object.args[i]);
                 }
             }
             break;
@@ -4647,7 +4647,7 @@ static void _ms_compile_symbol_expr(mscript_program_t *program, _ms_expr_t *expr
     assert(expr->type == _MS_EXPR_SYMBOL);
 
     if (expr->is_const) {
-        _ms_compile_const(program, expr->const_val);
+        _ms_compile_val(program, expr->const_val);
     }
     else {
         _ms_lvalue_t lvalue = expr->lvalue;
