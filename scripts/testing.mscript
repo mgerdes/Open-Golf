@@ -88,12 +88,16 @@ void print_array(vec3[] array) {
 }
 
 int stuff = 10;
+vec3 things = { x = 1, y = 2, z = 3 };
 
 int run(int n0, int n1) {
     int n = n0 + n1; 
 
     print("stuff = ", stuff, "\n");
     stuff = stuff + 100;
+
+    print("things = ", things, "\n");
+    things = vec3_add(things, { x = 1, y = 2, z = 3 });
 
     //print("n0 = ", n0, ", n1 = ", n1, ", n = ", n, "\n");
     //print("PI = ", PI, "\n");

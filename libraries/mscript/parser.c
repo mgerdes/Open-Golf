@@ -279,8 +279,8 @@ typedef struct _ms_global_decl {
     char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
     mscript_type_t *type;
 
-    bool has_initial_value;
-    mscript_val_t inital_value;
+    bool has_initial_val;
+    mscript_val_t initial_val;
 } _ms_global_decl_t;
 typedef vec_t(_ms_global_decl_t*) _vec_ms_global_decl_ptr_t;
 
@@ -329,7 +329,6 @@ typedef struct _ms_symbol_block {
 typedef vec_t(_ms_symbol_block_t) _vec_ms_symbol_block_t;
 
 typedef struct _ms_symbol_table {
-    int globals_size;
     _map_ms_symbol_t global_symbol_map;
     _vec_ms_symbol_block_t blocks;
 } _ms_symbol_table_t;
@@ -696,6 +695,7 @@ struct mscript_program {
     _vec_ms_stmt_ptr_t global_stmts;
     _vec_ms_opcode_t opcodes;
     vec_char_t strings;
+    vec_char_t initial_global_memory;
 
     // compiler data
     _ms_mem_t compiler_mem;
@@ -2561,7 +2561,6 @@ static _ms_const_decl_t _ms_const_decl(const char *name, mscript_type_t *type, m
 }
 
 static void _ms_symbol_table_init(_ms_symbol_table_t *table) {
-    table->globals_size = 0;
     vec_init(&table->blocks);
     map_init(&table->global_symbol_map);
 }
@@ -4616,32 +4615,39 @@ static void _ms_compile_float_expr(mscript_program_t *program, _ms_expr_t *expr)
     vec_push(program->cur_opcodes, _ms_opcode_float(expr->float_val));
 }
 
+static void _ms_compile_const(mscript_program_t *program, mscript_val_t val) {
+    switch (val.type) {
+        case MSCRIPT_VAL_INT:
+            vec_push(program->cur_opcodes, _ms_opcode_int(val.int_val));
+            break;
+        case MSCRIPT_VAL_FLOAT:
+            vec_push(program->cur_opcodes, _ms_opcode_float(val.float_val));
+            break;
+        case MSCRIPT_VAL_BOOL:
+            {
+                if (val.bool_val) {
+                    vec_push(program->cur_opcodes, _ms_opcode_int(1));
+                }
+                else {
+                    vec_push(program->cur_opcodes, _ms_opcode_int(0));
+                }
+            }
+            break;
+        case MSCRIPT_VAL_OBJECT:
+            {
+                for (int i = 0; i < val.object.num_args; i++) {
+                    _ms_compile_const(program, val.object.args[i]);
+                }
+            }
+            break;
+    }
+}
+
 static void _ms_compile_symbol_expr(mscript_program_t *program, _ms_expr_t *expr) {
     assert(expr->type == _MS_EXPR_SYMBOL);
 
     if (expr->is_const) {
-        mscript_val_t const_val = expr->const_val;
-        switch (const_val.type) {
-            case MSCRIPT_VAL_INT:
-                vec_push(program->cur_opcodes, _ms_opcode_int(const_val.int_val));
-                break;
-            case MSCRIPT_VAL_FLOAT:
-                vec_push(program->cur_opcodes, _ms_opcode_float(const_val.float_val));
-                break;
-            case MSCRIPT_VAL_BOOL:
-                {
-                    if (const_val.bool_val) {
-                        vec_push(program->cur_opcodes, _ms_opcode_int(1));
-                    }
-                    else {
-                        vec_push(program->cur_opcodes, _ms_opcode_int(0));
-                    }
-                }
-                break;
-            case MSCRIPT_VAL_OBJECT:
-                assert(false);
-                break;
-        }
+        _ms_compile_const(program, expr->const_val);
     }
     else {
         _ms_lvalue_t lvalue = expr->lvalue;
@@ -5155,6 +5161,7 @@ static void _ms_program_init(mscript_program_t *prog, mscript_t *mscript, struct
     vec_init(&prog->global_stmts);
     vec_init(&prog->opcodes);
     vec_init(&prog->strings);
+    vec_init(&prog->initial_global_memory);
 
     _ms_mem_init(&prog->compiler_mem);
     prog->token_idx = 0;
@@ -5430,7 +5437,7 @@ static void _ms_program_add_global_decl_stub(mscript_program_t *program, _ms_stm
     strncpy(decl->name, stmt->global_declaration.name, MSCRIPT_MAX_SYMBOL_LEN);
     decl->name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
     decl->type = NULL;
-    decl->has_initial_value = false;
+    decl->has_initial_val = false;
     vec_push(&program->exported_global_decls, decl);
 
     _ms_symbol_table_add_global_decl(&program->symbol_table, decl);
@@ -5452,18 +5459,18 @@ static void _ms_program_patch_global_decl(mscript_program_t *program, _ms_stmt_t
     }
 
     if (stmt->global_declaration.init_expr) {
-        decl->has_initial_value = true;
+        decl->has_initial_val = true;
         _ms_verify_expr_with_cast(program, &(stmt->global_declaration.init_expr), decl->type);
         if (program->error) goto cleanup;
         if (!stmt->global_declaration.init_expr->is_const) {
             _ms_program_error(program, stmt->token, "Global variables initial value must be const.");
             goto cleanup;
         }
-        decl->inital_value = stmt->global_declaration.init_expr->const_val;
+        decl->initial_val = stmt->global_declaration.init_expr->const_val;
     }
 
-    symbol->global_var.offset = program->symbol_table.globals_size;
-    program->symbol_table.globals_size += decl->type->size;
+    //symbol->global_var.offset = program->symbol_table.globals_size;
+    //program->symbol_table.globals_size += decl->type->size;
 
 cleanup:
     return;
@@ -6242,8 +6249,67 @@ cleanup:
     }
 }
 
+static int _ms_val_push(vec_char_t *data, mscript_val_t val) {
+    switch (val.type) {
+        case MSCRIPT_VAL_INT:
+            {
+                int32_t v = (int32_t) val.int_val;
+                vec_pusharr(data, (char*) &v, 4);
+                return 4;
+            }
+            break;
+        case MSCRIPT_VAL_FLOAT:
+            {
+                float v = (float) val.float_val;
+                vec_pusharr(data, (char*) &v, 4);
+                return 4;
+            }
+            break;
+        case MSCRIPT_VAL_BOOL:
+            {
+                int32_t v;
+                if (val.bool_val) {
+                    v = (int32_t) 1;
+                }
+                else {
+                    v = (int32_t) 0;
+                }
+                vec_pusharr(data, (char*) &v, 4);
+            }
+            break;
+        case MSCRIPT_VAL_OBJECT:
+            {
+                int size = 0;
+                for (int i = 0; i < val.object.num_args; i++) {
+                    size += _ms_val_push(data, val.object.args[i]);
+                }
+                return size;
+            }
+            break;
+    }
+
+    assert(false);
+    return 0;
+}
+
 static void _ms_program_load_stage_5(mscript_t *mscript, mscript_program_t *program) {
     if (program->error) return;
+
+    _map_ms_symbol_t *globals_map = &program->symbol_table.global_symbol_map;
+    const char *key;
+    map_iter_t iter = map_iter(globals_map);
+    while ((key = map_next(globals_map, &iter))) {
+        _ms_symbol_t *symbol = map_get(globals_map, key); 
+        if (symbol->type == _MS_SYMBOL_GLOBAL_VAR) {
+            _ms_global_decl_t *decl = symbol->global_var.decl;
+            symbol->global_var.offset = program->initial_global_memory.length;
+
+            if (decl->has_initial_val) {
+                int size = _ms_val_push(&program->initial_global_memory, decl->initial_val);
+                assert(size == decl->type->size);
+            }
+        }
+    }
 
     for (int i = 0; i < program->global_stmts.length; i++) {
         _ms_stmt_t *stmt = program->global_stmts.data[i];
@@ -6549,13 +6615,15 @@ mscript_t *mscript_create(void) {
 
     mscript_program_t *program = *(map_get(&mscript->programs_map, "testing.mscript"));
 
-    mscript_vm_t *vm = mscript_vm_create(program);
-    mscript_val_t args[2];
-    args[0] = mscript_val_int(20);
-    args[1] = mscript_val_int(25);
+    if (!program->error) {
+        mscript_vm_t *vm = mscript_vm_create(program);
+        mscript_val_t args[2];
+        args[0] = mscript_val_int(20);
+        args[1] = mscript_val_int(25);
 
-    for (int i = 0; i < 10; i++) {
-        mscript_vm_run(vm, "run", 2, args);
+        for (int i = 0; i < 10; i++) {
+            mscript_vm_run(vm, "run", 2, args);
+        }
     }
 
     return mscript;
@@ -6565,9 +6633,9 @@ mscript_vm_t *mscript_vm_create(mscript_program_t *program) {
     mscript_vm_t *vm = malloc(sizeof(mscript_vm_t)); 
     vm->program = program;
     vec_init(&vm->arrays);
-    vm->memory_size = program->symbol_table.globals_size;
+    vm->memory_size = program->initial_global_memory.length;
     vm->memory = malloc(vm->memory_size);
-    memset(vm->memory, 0, vm->memory_size);
+    memcpy(vm->memory, program->initial_global_memory.data, vm->memory_size);
     return vm;
 }
 
