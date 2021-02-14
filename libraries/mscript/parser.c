@@ -130,7 +130,7 @@ static _ms_opcode_t _ms_opcode_local_store(int offset, int size);
 static _ms_opcode_t _ms_opcode_local_load(int offset, int size);
 static _ms_opcode_t _ms_opcode_jf(int label);
 static _ms_opcode_t _ms_opcode_jmp(int label);
-static _ms_opcode_t _ms_opcode_call(char *str);
+static _ms_opcode_t _ms_opcode_call(int label, int args_size);
 static _ms_opcode_t _ms_opcode_return(int size);
 static _ms_opcode_t _ms_opcode_push(int size);
 static _ms_opcode_t _ms_opcode_pop(int size);
@@ -286,7 +286,6 @@ typedef struct _ms_function_decl_arg {
 } _ms_function_decl_arg_t;
 
 typedef struct _ms_function_decl {
-    vec_int_t labels; 
     _vec_ms_opcode_t opcodes;
     int block_size, args_size;
     mscript_type_t *return_type;
@@ -765,8 +764,8 @@ static void _ms_program_load_stage_2(mscript_t *mscript, mscript_program_t *prog
 static void _ms_program_load_stage_3(mscript_t *mscript, mscript_program_t *program);
 static void _ms_program_load_stage_4(mscript_t *mscript, mscript_program_t *program);
 static void _ms_program_load_stage_5(mscript_t *mscript, mscript_program_t *program);
-static void program_load_stage_6(mscript_t *mscript, mscript_program_t *program);
-static void program_load_stage_7(mscript_t *mscript, mscript_program_t *program);
+static void _ms_program_load_stage_6(mscript_t *mscript, mscript_program_t *program);
+static void _ms_program_load_stage_7(mscript_t *mscript, mscript_program_t *program);
 static void program_load_stage_8(mscript_t *mscript, mscript_program_t *program);
 
 static void debug_log_token(_ms_token_t token);
@@ -3809,12 +3808,11 @@ static _ms_opcode_t _ms_opcode_jmp(int label) {
     return op;
 }
 
-static _ms_opcode_t _ms_opcode_call(char *str) {
-    assert(false);
+static _ms_opcode_t _ms_opcode_call(int label, int args_size) {
     _ms_opcode_t op;
     op.type = _MS_OPCODE_CALL;
-    strncpy(op.string, str, MSCRIPT_MAX_SYMBOL_LEN);
-    op.string[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+    op.call.label = label;
+    op.call.args_size = args_size;
     return op;
 }
 
@@ -4090,10 +4088,10 @@ static void _ms_compile_function_declaration_stmt(mscript_program_t *program, _m
     }
 
     /*
-    for (int i = 0; i < decl->cur_opcodes.length; i++) {
-        _ms__ms_opcode_t op = decl->cur_opcodes.data[i];
+    for (int i = 0; i < program->cur_opcodes->length; i++) {
+        _ms_opcode_t op = program->cur_opcodes->data[i];
         if (op.type == _MS_OPCODE_INTERMEDIATE_LABEL) {
-            array_reserve(&(decl->labels), op.label + 1);
+            vec_reserve(&(decl->labels), op.label + 1);
             decl->labels.data[op.label] = i;
             if (decl->labels.length <= op.label) {
                 decl->labels.length = op.label + 1;
@@ -4606,6 +4604,43 @@ static void _ms_compile_float_expr(mscript_program_t *program, _ms_expr_t *expr)
 
 static void _ms_compile_symbol_expr(mscript_program_t *program, _ms_expr_t *expr) {
     assert(expr->type == _MS_EXPR_SYMBOL);
+
+    if (expr->is_const) {
+        _ms_const_val_t const_val = expr->const_val;
+        switch (const_val.type) {
+            case _MS_CONST_VAL_INT:
+                vec_push(program->cur_opcodes, _ms_opcode_int(const_val.int_val));
+                break;
+            case _MS_CONST_VAL_FLOAT:
+                vec_push(program->cur_opcodes, _ms_opcode_float(const_val.float_val));
+                break;
+            case _MS_CONST_VAL_BOOL:
+                {
+                    if (const_val.bool_val) {
+                        vec_push(program->cur_opcodes, _ms_opcode_int(1));
+                    }
+                    else {
+                        vec_push(program->cur_opcodes, _ms_opcode_int(0));
+                    }
+                }
+                break;
+            case _MS_CONST_VAL_OBJECT:
+                assert(false);
+                break;
+        }
+    }
+    else {
+        _ms_lvalue_t lvalue = expr->lvalue;
+        switch (lvalue.type) {
+            case LVALUE_INVALID:
+            case LVALUE_ARRAY:
+                assert(false);
+                break;
+            case LVALUE_LOCAL:
+                vec_push(program->cur_opcodes, _ms_opcode_local_load(lvalue.offset, expr->result_type->size));
+                break;
+        }
+    }
 
     /*
     struct enum_value *enum_value = map_get(&program->enum_map, expr->symbol);
@@ -5445,7 +5480,6 @@ static void _ms_program_add_function_decl_stub(mscript_program_t *program, _ms_s
     decl->return_type = NULL;
     decl->num_args = 0;
     vec_init(&decl->opcodes);
-    vec_init(&decl->labels);
     vec_push(&program->exported_function_decls, decl);
 
     _ms_symbol_table_add_function_decl(&program->symbol_table, decl);
@@ -6244,7 +6278,7 @@ cleanup:
     }
 }
 
-static void program_load_stage_6(mscript_t *mscript, mscript_program_t *program) {
+static void _ms_program_load_stage_6(mscript_t *mscript, mscript_program_t *program) {
     if (program->error) return;
 
     for (int i = 0; i < program->global_stmts.length; i++) {
@@ -6258,45 +6292,7 @@ static void program_load_stage_6(mscript_t *mscript, mscript_program_t *program)
                 break;
             case _MS_STMT_FUNCTION_DECLARATION:
                 {
-                }
-                break;
-            case _MS_STMT_IF:
-            case _MS_STMT_RETURN:
-            case _MS_STMT_BLOCK:
-            case _MS_STMT_EXPR:
-            case _MS_STMT_FOR:
-            case _MS_STMT_VARIABLE_DECLARATION:
-                assert(false);
-                break;
-        }
-    }
-
-cleanup:
-    if (program->error) {
-        _ms_token_t tok = program->error_token;
-        int line = tok.line;
-        int col = tok.col;
-
-        m_logf("ERROR: %s. Line %d. Col %d.\n", program->file.path, line, col); 
-        m_logf("%s\n", program->error);
-    }
-}
-
-static void program_load_stage_7(mscript_t *mscript, mscript_program_t *program) {
-    if (program->error) return;
-
-    for (int i = 0; i < program->global_stmts.length; i++) {
-        _ms_stmt_t *stmt = program->global_stmts.data[i];
-        switch (stmt->type) {
-            case _MS_STMT_IMPORT:
-            case _MS_STMT_STRUCT_DECLARATION:
-            case _MS_STMT_ENUM_DECLARATION:
-            case _MS_STMT_IMPORT_FUNCTION:
-            case _MS_STMT_GLOBAL_DECLARATION:
-                break;
-            case _MS_STMT_FUNCTION_DECLARATION:
-                {
-                    _ms_compile_stmt(program, stmt);
+                    _ms_compile_function_declaration_stmt(program, stmt);
                     if (program->error) goto cleanup;
                 }
                 break;
@@ -6322,24 +6318,22 @@ cleanup:
     }
 }
 
-static void program_load_stage_8(mscript_t *mscript, mscript_program_t *program) {
+static void _ms_program_load_stage_7(mscript_t *mscript, mscript_program_t *program) {
     if (program->error) return;
 
     _vec_ms_opcode_t intermediate_opcodes;
     vec_init(&intermediate_opcodes);
 
-    /*
-    {
-        const char *key;
-        map_iter_t iter = map_iter(&program->function_decl_map);
-        while ((key = map_next(&program->function_decl_map, &iter))) {
-            struct function_decl *decl = _ms_symbol_table_get_function_decl(&program->symbol_table, key);
-            assert(decl);
-
-            array_pusharr(&intermediate_opcodes, decl->opcodes.data, decl->opcodes.length);
+    _map_ms_symbol_t *globals_map = &program->symbol_table.global_symbol_map;
+    const char *key;
+    map_iter_t iter = map_iter(globals_map);
+    while ((key = map_next(globals_map, &iter))) {
+        _ms_symbol_t *symbol = map_get(globals_map, key); 
+        if (symbol->type == _MS_SYMBOL_FUNCTION) {
+            _ms_function_decl_t *decl = symbol->function_decl;
+            vec_pusharr(&intermediate_opcodes, decl->opcodes.data, decl->opcodes.length);
         }
     }
-    */
 
     vec_int_t labels;
     vec_init(&labels);
@@ -6464,14 +6458,9 @@ static void program_load_stage_8(mscript_t *mscript, mscript_program_t *program)
             _ms_function_decl_t *decl = _ms_symbol_table_get_function_decl(&program->symbol_table, op->string);
             assert(decl);
 
-            op->type = _MS_OPCODE_CALL;
-            op->call.label = *label;
-            op->call.args_size = decl->args_size;
+            *op = _ms_opcode_call(*label, decl->args_size);
         }
     }
-
-    //m_logf("%s\n", program->file.path);
-    //debug_log_opcodes(program->opcodes.data, program->opcodes.length);
 
 //cleanup:
     if (program->error) {
@@ -6519,14 +6508,15 @@ mscript_t *mscript_create(void) {
     for (int i = 0; i < mscript->programs_array.length; i++)
         _ms_program_load_stage_5(mscript, mscript->programs_array.data[i]);
     for (int i = 0; i < mscript->programs_array.length; i++)
-        program_load_stage_6(mscript, mscript->programs_array.data[i]);
-    //for (int i = 0; i < mscript->programs_array.length; i++)
-        //program_load_stage_7(mscript, mscript->programs_array.data[i]);
+        _ms_program_load_stage_6(mscript, mscript->programs_array.data[i]);
+    for (int i = 0; i < mscript->programs_array.length; i++)
+        _ms_program_load_stage_7(mscript, mscript->programs_array.data[i]);
+
     //for (int i = 0; i < mscript->programs_array.length; i++)
         //program_load_stage_8(mscript, mscript->programs_array.data[i]);
 
-    //mscript_program_t *program = *(map_get(&mscript->programs_map, "testing.mscript"));
-    //vm_run(program);
+    mscript_program_t *program = *(map_get(&mscript->programs_map, "testing.mscript"));
+    vm_run(program);
 
     return mscript;
 }
