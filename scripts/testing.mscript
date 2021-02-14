@@ -87,50 +87,58 @@ void print_array(vec3[] array) {
     print("]\n");
 }
 
-float PI2 = 2.0*PI;
+int stuff = 10;
 
-int run(int n) {
+int run(int n0, int n1) {
+    int n = n0 + n1; 
+
+    print("stuff = ", stuff, "\n");
+    stuff = stuff + 100;
+
+    //print("n0 = ", n0, ", n1 = ", n1, ", n = ", n, "\n");
+    //print("PI = ", PI, "\n");
+
     float x = 5;
-    print("x = ", x, "\n");
+    //print("x = ", x, "\n");
 
     x += 5;
-    print("x = ", x, "\n");
+    //print("x = ", x, "\n");
 
     x += 10;
-    print("x = ", x, "\n");
+    //print("x = ", x, "\n");
     
     x /= 3;
-    print("x = ", x, "\n");
+    //print("x = ", x, "\n");
 
     x *= 3;
-    print("x = ", x, "\n");
+    //print("x = ", x, "\n");
 
-    print("fib(10) = ", fib(10), "\n");
+    //print("fib(10) = ", fib(10), "\n");
 
     {
         ui_state state = UI_STATE_MAIN;
-        print_ui_state(state);
-        print("\n");
+        //print_ui_state(state);
+        //print("\n");
         if (state == UI_STATE_MAIN) {
             state = UI_STATE_SETTINGS;
         }
-        print_ui_state(state);
-        print("\n");
+        //print_ui_state(state);
+        //print("\n");
         if (state == UI_STATE_SETTINGS) {
             state = UI_STATE_MAIN;
         }
-        print_ui_state(state);
-        print("\n");
+        //print_ui_state(state);
+        //print("\n");
     }
 
     {
         int[] testing = NULL;
 
         if (!testing) {
-            print("YES NULL\n");
+            //print("YES NULL\n");
         }
         else {
-            print("NO NULL\n");
+            //print("NO NULL\n");
         }
 
         vec2 p0 = { x = 0.00, y = 0.00 };
@@ -139,38 +147,33 @@ int run(int n) {
         vec2 p3 = { x = 1.00, y = 1.00 };
         float t = 1.0;
         vec2 p = vec2_bezier(p0, p1, p2, p3, t);
-        print("p: ", p, "\n");
+        //print("p: ", p, "\n");
     }
 
     {
         vec3 v = { x = 1, y = 2, z = 3 };
         float f = vec3_length_sqrd(v);
-        print("length_sqrd: ", f, "\n");
+        //print("length_sqrd: ", f, "\n");
     }
 
     float pipi = 2.0*PI;
+    //print("pipi = ", pipi, "\n");
 
     int i = 10;
-    bool b;
-    if (i == 10) {
-        b = true;
-    }
-    else {
-        b = false;
-    }
-    print("b: ", b, "\n");
+    bool b = i == 10;
+    //print("b: ", b, "\n");
 
     bool b0 = true;
     bool b1 = false;
     if (b0 == b1) {
-        print("nonononono\n");
+        //print("nonononono\n");
     }
     if (b0 != b1) {
-        print("yesyeysyesy\n");
+        //print("yesyeysyesy\n");
     }
 
     vec3[] a = create_array(n);
-    print_array(a);
+    //print_array(a);
     double_array(a);
     vec3 sum = sum_array(a);
     return sum.x + sum.y + sum.z;

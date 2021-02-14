@@ -28,7 +28,39 @@ typedef struct mscript_program mscript_program_t;
 struct mscript_type;
 typedef struct mscript_type mscript_type_t;
 
+typedef enum mscript_val_type {
+    MSCRIPT_VAL_INT,
+    MSCRIPT_VAL_FLOAT,
+    MSCRIPT_VAL_BOOL,
+    MSCRIPT_VAL_OBJECT,
+} mscript_val_type_t;
+
+typedef struct mscript_val {
+    mscript_val_type_t type;
+    union {
+        float float_val;
+        int int_val;
+        bool bool_val;
+
+        struct {
+            int num_args;
+            struct mscript_val *args;
+        } object;
+    };
+} mscript_val_t;
+
+mscript_val_t mscript_val_float(float float_val);
+mscript_val_t mscript_val_int(int int_val);
+mscript_val_t mscript_val_bool(bool bool_val);
+mscript_val_t mscript_val_object(int num_args, mscript_val_t *args);
+
 mscript_t *mscript_create(void);
 mscript_program_t *mscript_load_program(mscript_t *mscript, const char *name);
+
+struct mscript_vm;
+typedef struct mscript_vm mscript_vm_t;
+
+mscript_vm_t *mscript_vm_create(mscript_program_t *program);
+void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, mscript_val_t *args);
 
 #endif

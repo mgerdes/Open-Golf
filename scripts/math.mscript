@@ -78,6 +78,5 @@ float vec3_dot(vec3 a, vec3 b) {
 }
 
 float vec3_length_sqrd(vec3 v) {
-    print("vec3_length_sqrd\n");
     return vec3_dot(v, v);
 }
