@@ -33,6 +33,7 @@ typedef enum mscript_val_type {
     MSCRIPT_VAL_FLOAT,
     MSCRIPT_VAL_BOOL,
     MSCRIPT_VAL_OBJECT,
+    MSCRIPT_VAL_ARRAY,
 } mscript_val_type_t;
 
 typedef struct mscript_val {
@@ -46,6 +47,11 @@ typedef struct mscript_val {
             int num_args;
             struct mscript_val *args;
         } object;
+
+        struct {
+            int num_args;
+            struct mscript_val *args;
+        } array;
     };
 } mscript_val_t;
 
@@ -53,6 +59,7 @@ mscript_val_t mscript_val_float(float float_val);
 mscript_val_t mscript_val_int(int int_val);
 mscript_val_t mscript_val_bool(bool bool_val);
 mscript_val_t mscript_val_object(int num_args, mscript_val_t *args);
+mscript_val_t mscript_val_array(int num_args, mscript_val_t *args);
 
 mscript_t *mscript_create(void);
 mscript_program_t *mscript_load_program(mscript_t *mscript, const char *name);

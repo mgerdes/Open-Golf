@@ -89,8 +89,10 @@ void print_array(vec3[] array) {
 
 int stuff = 10;
 vec3 things = { x = 1, y = 2, z = 3 };
+int[] stuffs = [0, 5, 10, 15, 20, 25, 30];
 
 int run(int n0, int n1) {
+    int i;
     int n = n0 + n1; 
 
     print("stuff = ", stuff, "\n");
@@ -99,86 +101,19 @@ int run(int n0, int n1) {
     print("things = ", things, "\n");
     things = vec3_add(things, { x = 1, y = 2, z = 3 });
 
-    //print("n0 = ", n0, ", n1 = ", n1, ", n = ", n, "\n");
-    //print("PI = ", PI, "\n");
-
-    float x = 5;
-    //print("x = ", x, "\n");
-
-    x += 5;
-    //print("x = ", x, "\n");
-
-    x += 10;
-    //print("x = ", x, "\n");
-    
-    x /= 3;
-    //print("x = ", x, "\n");
-
-    x *= 3;
-    //print("x = ", x, "\n");
-
-    //print("fib(10) = ", fib(10), "\n");
-
-    {
-        ui_state state = UI_STATE_MAIN;
-        //print_ui_state(state);
-        //print("\n");
-        if (state == UI_STATE_MAIN) {
-            state = UI_STATE_SETTINGS;
-        }
-        //print_ui_state(state);
-        //print("\n");
-        if (state == UI_STATE_SETTINGS) {
-            state = UI_STATE_MAIN;
-        }
-        //print_ui_state(state);
-        //print("\n");
-    }
-
-    {
-        int[] testing = NULL;
-
-        if (!testing) {
-            //print("YES NULL\n");
-        }
-        else {
-            //print("NO NULL\n");
-        }
-
-        vec2 p0 = { x = 0.00, y = 0.00 };
-        vec2 p1 = { x = 0.33, y = 0.10 };
-        vec2 p2 = { x = 0.66, y = 0.50 };
-        vec2 p3 = { x = 1.00, y = 1.00 };
-        float t = 1.0;
-        vec2 p = vec2_bezier(p0, p1, p2, p3, t);
-        //print("p: ", p, "\n");
-    }
-
-    {
-        vec3 v = { x = 1, y = 2, z = 3 };
-        float f = vec3_length_sqrd(v);
-        //print("length_sqrd: ", f, "\n");
-    }
-
-    float pipi = 2.0*PI;
-    //print("pipi = ", pipi, "\n");
-
-    int i = 10;
-    bool b = i == 10;
-    //print("b: ", b, "\n");
-
-    bool b0 = true;
-    bool b1 = false;
-    if (b0 == b1) {
-        //print("nonononono\n");
-    }
-    if (b0 != b1) {
-        //print("yesyeysyesy\n");
-    }
+    print("fib(10) = ", fib(10), "\n");
 
     vec3[] a = create_array(n);
+    print("a.length = ", a.length, "\n");
     //print_array(a);
     double_array(a);
     vec3 sum = sum_array(a);
+    delete_array(a);
+    
+    for (i = 0; i < stuffs.length; i++) {
+        print(i, ": ", stuffs[i], "\n");
+        stuffs[i] += 5;
+    }
+
     return sum.x + sum.y + sum.z;
 }
