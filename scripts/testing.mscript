@@ -26,7 +26,7 @@ int fib2(int n) {
     }
 }
 
-int fib(int n) {
+int fib(int n, int x) {
     if (n <= zero()) {
         return zero();
     }
@@ -87,13 +87,26 @@ void print_array(vec3[] array) {
     print("]\n");
 }
 
+bool inited = false;
 int stuff = 10;
 vec3 things = { x = 1, y = 2, z = 3 };
-int[] stuffs = [0, 5, 10, 15, 20, 25, 30];
+int[] stuffs = NULL;
 
 int run(int n0, int n1) {
     int i;
+    if (!inited) {
+        stuffs = [];
+        for (i = 0; i <= 100; i++) {
+            stuffs[stuffs.length] = 5 * i;
+        }
+        inited = true;
+    }
+
     int n = n0 + n1; 
+
+    float ss = 16.0;
+    ss = c_sqrt(ss);
+    print("ss = ", ss, "\n");
 
     print("stuff = ", stuff, "\n");
     stuff = stuff + 100;
@@ -101,7 +114,7 @@ int run(int n0, int n1) {
     print("things = ", things, "\n");
     things = vec3_add(things, { x = 1, y = 2, z = 3 });
 
-    print("fib(10) = ", fib(10), "\n");
+    print("fib(10) = ", fib(10, 1), "\n");
 
     vec3[] a = create_array(n);
     print("a.length = ", a.length, "\n");

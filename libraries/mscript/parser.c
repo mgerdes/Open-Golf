@@ -53,6 +53,7 @@ typedef enum _ms_opcode_type {
     _MS_OPCODE_JF,
     _MS_OPCODE_JMP,
     _MS_OPCODE_CALL,
+    _MS_OPCODE_C_CALL,
     _MS_OPCODE_RETURN,
     _MS_OPCODE_PUSH,
     _MS_OPCODE_POP,
@@ -94,6 +95,11 @@ typedef struct ms_opcode {
             int label, args_size;
         } call;
 
+        struct {
+            char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
+            int args_size;
+        } c_call;
+
         char *intermediate_string;
     };
 } _ms_opcode_t;
@@ -134,6 +140,7 @@ static _ms_opcode_t _ms_opcode_global_load(int offset, int size);
 static _ms_opcode_t _ms_opcode_jf(int label);
 static _ms_opcode_t _ms_opcode_jmp(int label);
 static _ms_opcode_t _ms_opcode_call(int label, int args_size);
+static _ms_opcode_t _ms_opcode_c_call(char *str, int args_size);
 static _ms_opcode_t _ms_opcode_return(int size);
 static _ms_opcode_t _ms_opcode_push(int size);
 static _ms_opcode_t _ms_opcode_pop(int size);
@@ -275,6 +282,16 @@ typedef struct _ms_function_decl {
 } _ms_function_decl_t;
 typedef vec_t(_ms_function_decl_t*) _vec_ms_function_decl_ptr_t;
 
+typedef struct _ms_c_function_decl {
+    char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
+    mscript_type_t *return_type;
+    int num_args;
+    mscript_type_t *arg_types[MSCRIPT_MAX_FUNCTION_ARGS];
+    void (*fn)(int num_args, mscript_val_t *args);
+} _ms_c_function_decl_t;
+
+static _ms_c_function_decl_t _ms_c_function_decl(const char *name, mscript_type_t *return_type, int num_args, mscript_type_t **arg_types, void (*fn)(int num_args, mscript_val_t *args));
+
 typedef struct _ms_global_decl {
     char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
     mscript_type_t *type;
@@ -298,6 +315,7 @@ typedef enum _ms_symbol_type {
     _MS_SYMBOL_GLOBAL_VAR,
     _MS_SYMBOL_CONST,
     _MS_SYMBOL_FUNCTION,
+    _MS_SYMBOL_C_FUNCTION,
     _MS_SYMBOL_TYPE,
 } _ms_symbol_type_t;
 
@@ -317,6 +335,7 @@ typedef struct _ms_symbol {
 
         _ms_const_decl_t const_decl;
         _ms_function_decl_t *function_decl;
+        _ms_c_function_decl_t c_function_decl;
         mscript_type_t *type_val;
     };
 } _ms_symbol_t;
@@ -340,6 +359,7 @@ static void _ms_symbol_table_add_local_var(_ms_symbol_table_t *table, const char
 static void _ms_symbol_table_add_global_decl(_ms_symbol_table_t *table, _ms_global_decl_t *decl);
 static void _ms_symbol_table_add_const_decl(_ms_symbol_table_t *table, _ms_const_decl_t decl);
 static void _ms_symbol_table_add_function_decl(_ms_symbol_table_t *table, _ms_function_decl_t *decl);
+static void _ms_symbol_table_add_c_function_decl(_ms_symbol_table_t *table, _ms_c_function_decl_t decl);
 static void _ms_symbol_table_add_type(_ms_symbol_table_t *table, mscript_type_t *type);
 static mscript_type_t *_ms_symbol_table_get_type(_ms_symbol_table_t *table, const char *name);
 static _ms_function_decl_t *_ms_symbol_table_get_function_decl(_ms_symbol_table_t *table, const char *name);
@@ -721,6 +741,7 @@ static void _ms_program_patch_struct_decl(mscript_program_t *program, _ms_stmt_t
 static void _ms_program_patch_struct_decl_recur(mscript_program_t *program, mscript_type_t *type);
 static void _ms_program_add_function_decl_stub(mscript_program_t *program, _ms_stmt_t *stmt);
 static void _ms_program_patch_function_decl(mscript_program_t *program, _ms_stmt_t *stmt);
+static void _ms_program_add_c_function_decl(mscript_program_t *program, const char *name, const char *return_type_str, int num_args, const char **arg_types_str, void (*fn)(int num_args, mscript_val_t *args));
 static int _ms_program_add_string(mscript_program_t *program, char *string);
 static void _ms_program_load_stage_1(mscript_t *mscript, struct file file);
 static void _ms_program_load_stage_2(mscript_t *mscript, mscript_program_t *program);
@@ -2536,6 +2557,19 @@ static bool _ms_check_type(mscript_program_t *program) {
              (tok1.type == _MS_TOKEN_CHAR) && (tok1.char_val == '*'));
 }
 
+static _ms_c_function_decl_t _ms_c_function_decl(const char *name, mscript_type_t *return_type, int num_args, mscript_type_t **arg_types, void (*fn)(int num_args, mscript_val_t *args)) {
+    _ms_c_function_decl_t decl;
+    strncpy(decl.name, name, MSCRIPT_MAX_SYMBOL_LEN);
+    decl.name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+    decl.return_type = return_type;
+    decl.num_args = num_args;
+    for (int i = 0; i < num_args; i++) {
+        decl.arg_types[i] = arg_types[i];
+    }
+    decl.fn = fn;
+    return decl;
+}
+
 static _ms_const_decl_t _ms_const_decl(const char *name, mscript_type_t *type, mscript_val_t value) {
     _ms_const_decl_t decl;
     strncpy(decl.name, name, MSCRIPT_MAX_SYMBOL_LEN);
@@ -2629,6 +2663,13 @@ static void _ms_symbol_table_add_function_decl(_ms_symbol_table_t *table, _ms_fu
     symbol.type = _MS_SYMBOL_FUNCTION;
     symbol.function_decl = decl;
     map_set(&table->global_symbol_map, decl->name, symbol);
+}
+
+static void _ms_symbol_table_add_c_function_decl(_ms_symbol_table_t *table, _ms_c_function_decl_t decl) {
+    _ms_symbol_t symbol;
+    symbol.type = _MS_SYMBOL_C_FUNCTION;
+    symbol.c_function_decl = decl;
+    map_set(&table->global_symbol_map, decl.name, symbol);
 }
 
 static void _ms_symbol_table_add_type(_ms_symbol_table_t *table, mscript_type_t *type) {
@@ -3288,25 +3329,50 @@ static void _ms_verify_call_expr(mscript_program_t *program, _ms_expr_t *expr, m
         }
     }
     else {
-        _ms_function_decl_t *decl = _ms_symbol_table_get_function_decl(&program->symbol_table, fn->symbol);
-        if (!decl) {
+        _ms_symbol_t *symbol = _ms_symbol_table_get(&program->symbol_table, fn->symbol);
+        if (!symbol) {
             _ms_program_error(program, fn->token, "Undefined function %s.", fn->symbol);
             return;
         }
 
-        if (decl->num_args != expr->call.num_args) {
-            _ms_program_error(program, expr->token, "Invalid number of arguments to function %s. Expected %d but got %d.", fn->symbol, decl->num_args, expr->call.num_args);
+        if (symbol->type == _MS_SYMBOL_FUNCTION) {
+            _ms_function_decl_t *decl = symbol->function_decl;
+
+            if (decl->num_args != expr->call.num_args) {
+                _ms_program_error(program, expr->token, "Invalid number of arguments to function %s. Expected %d but got %d.", fn->symbol, decl->num_args, expr->call.num_args);
+                return;
+            }
+
+            for (int i = 0; i < expr->call.num_args; i++) {
+                _ms_verify_expr_with_cast(program, &(expr->call.args[i]), decl->args[i].type);
+                if (program->error) return;
+            }
+
+            expr->is_const = false;
+            expr->result_type = decl->return_type;
+            expr->lvalue = _ms_lvalue_invalid();
+        }
+        else if (symbol->type == _MS_SYMBOL_C_FUNCTION) {
+            _ms_c_function_decl_t decl = symbol->c_function_decl;
+
+            if (decl.num_args != expr->call.num_args) {
+                _ms_program_error(program, expr->token, "Invalid number of arguments to function %s. Expected %d but got %d.", fn->symbol, decl.num_args, expr->call.num_args);
+                return;
+            }
+
+            for (int i = 0; i < expr->call.num_args; i++) {
+                _ms_verify_expr_with_cast(program, &(expr->call.args[i]), decl.arg_types[i]);
+                if (program->error) return;
+            }
+
+            expr->is_const = false;
+            expr->result_type = decl.return_type;
+            expr->lvalue = _ms_lvalue_invalid();
+        }
+        else {
+            _ms_program_error(program, fn->token, "Invalid function symbol %s.", fn->symbol);
             return;
         }
-
-        for (int i = 0; i < expr->call.num_args; i++) {
-            _ms_verify_expr_with_cast(program, &(expr->call.args[i]), decl->args[i].type);
-            if (program->error) return;
-        }
-
-        expr->is_const = false;
-        expr->result_type = decl->return_type;
-        expr->lvalue = _ms_lvalue_invalid();
     }
 }
 
@@ -3444,6 +3510,7 @@ static void _ms_verify_symbol_expr(mscript_program_t *program, _ms_expr_t *expr,
             }
             break;
         case _MS_SYMBOL_FUNCTION:
+        case _MS_SYMBOL_C_FUNCTION:
             {
                 assert(false);
             }
@@ -3829,6 +3896,15 @@ static _ms_opcode_t _ms_opcode_call(int label, int args_size) {
     op.type = _MS_OPCODE_CALL;
     op.call.label = label;
     op.call.args_size = args_size;
+    return op;
+}
+
+static _ms_opcode_t _ms_opcode_c_call(char *str, int args_size) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_C_CALL;
+    strncpy(op.c_call.name, str, MSCRIPT_MAX_SYMBOL_LEN);
+    op.c_call.name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+    op.c_call.args_size = args_size;
     return op;
 }
 
@@ -4456,10 +4532,24 @@ static void _ms_compile_call_expr(mscript_program_t *program, _ms_expr_t *expr) 
         vec_push(program->cur_opcodes, _ms_opcode_pop(4));
     }
     else {
+        int args_size = 0;
         for (int i = expr->call.num_args - 1; i >= 0; i--) {
             _ms_compile_expr(program, expr->call.args[i]);
+            args_size += expr->call.args[i]->result_type->size;
         }
-        vec_push(program->cur_opcodes, _ms_opcode_intermediate_call(fn->symbol));
+
+        _ms_symbol_t *symbol = _ms_symbol_table_get(&program->symbol_table, fn->symbol);
+        assert(symbol);
+
+        if (symbol->type == _MS_SYMBOL_FUNCTION) {
+            vec_push(program->cur_opcodes, _ms_opcode_intermediate_call(fn->symbol));
+        }
+        else if (symbol->type == _MS_SYMBOL_C_FUNCTION) {
+            vec_push(program->cur_opcodes, _ms_opcode_c_call(fn->symbol, args_size));
+        }
+        else {
+            assert(false);
+        }
     }
 }
 
@@ -5177,6 +5267,21 @@ cleanup:
     return;
 }
 
+static void _ms_program_add_c_function_decl(mscript_program_t *program, const char *name, const char *return_type_str, int num_args, const char **arg_types_str, void (*fn)(int num_args, mscript_val_t *args)) {
+
+    mscript_type_t *return_type = _ms_symbol_table_get_type(&program->symbol_table, return_type_str);
+    assert(return_type);
+
+    mscript_type_t *arg_types[MSCRIPT_MAX_FUNCTION_ARGS];
+    for (int i = 0; i < num_args; i++) {
+        arg_types[i] = _ms_symbol_table_get_type(&program->symbol_table, arg_types_str[i]);
+        assert(arg_types[i]);
+    }
+
+    _ms_c_function_decl_t decl = _ms_c_function_decl(name, return_type, num_args, arg_types, fn);
+    _ms_symbol_table_add_c_function_decl(&program->symbol_table, decl);
+}
+
 static int _ms_program_add_string(mscript_program_t *program, char *string) {
     int len = (int) strlen(string);
     vec_pusharr(&program->strings, string, len + 1);
@@ -5561,6 +5666,9 @@ static void debug_log_opcodes(_ms_opcode_t *opcodes, int num_opcodes) {
             case _MS_OPCODE_JMP:
                 m_logf("JMP %d", op.label);
                 break;
+            case _MS_OPCODE_C_CALL:
+                m_logf("C_CALL %s", op.string);
+                break;
             case _MS_OPCODE_CALL:
                 m_logf("CALL %d %d", op.call.label, op.call.args_size);
                 break;
@@ -5804,6 +5912,10 @@ cleanup:
     }
 }
 
+static void _ms_c_sqrt(int num_args, mscript_val_t *args) {
+    assert(num_args == 1);
+}
+
 static void _ms_program_load_stage_3(mscript_t *mscript, mscript_program_t *program) {
     if (program->error) return;
 
@@ -5821,6 +5933,14 @@ static void _ms_program_load_stage_3(mscript_t *mscript, mscript_program_t *prog
             _ms_program_import_program(program, program->imported_programs.data[i]);
             if (program->error) goto cleanup;
         }
+    }
+
+    {
+        const char *name = "c_sqrt";
+        const char *return_type = "float";
+        int num_args = 1;
+        const char *arg_types[1] = { "float" };
+        _ms_program_add_c_function_decl(program, name, return_type, num_args, arg_types, _ms_c_sqrt);
     }
 
     for (int i = 0; i < program->global_stmts.length; i++) {
@@ -6065,6 +6185,7 @@ static void _ms_program_load_stage_7(mscript_t *mscript, mscript_program_t *prog
             case _MS_OPCODE_DEBUG_PRINT_BOOL:
             case _MS_OPCODE_DEBUG_PRINT_STRING:
             case _MS_OPCODE_DEBUG_PRINT_STRING_CONST:
+            case _MS_OPCODE_C_CALL:
                 {
                     vec_push(&program->opcodes, op);
                 }
@@ -6694,6 +6815,11 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
                     sp += 12;
                     ip = op.call.label - 1;
                     fp = sp;
+                }
+                break;
+            case _MS_OPCODE_C_CALL:
+                {
+                    *((float*) (stack + sp - 4)) = 4.0f;
                 }
                 break;
             case _MS_OPCODE_RETURN:

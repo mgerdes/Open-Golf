@@ -35,8 +35,8 @@ float vec2_dot(vec2 a, vec2 b) {
 vec2 vec2_bezier(vec2 p0, vec2 p1, vec2 p2, vec2 p3, float t) {
     float t1 = 1.0 - t;
     return {
-        x = p0.x * t1 * t1 * t1 + 3 * p1.x * t * t1 * t1 + p2.x * 3 * t * t * t1 + p3.x * t * t * t,
-        y = p0.y * t1 * t1 * t1 + 3 * p1.y * t * t1 * t1 + p2.y * 3 * t * t * t1 + p3.y * t * t * t
+        x = p0.x * t1 * t1 * t1 + 3.0 * p1.x * t * t1 * t1 + p2.x * 3.0 * t * t * t1 + p3.x * t * t * t,
+        y = p0.y * t1 * t1 * t1 + 3.0 * p1.y * t * t1 * t1 + p2.y * 3.0 * t * t * t1 + p3.y * t * t * t
     };
 }
 
