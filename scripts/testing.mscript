@@ -52,7 +52,6 @@ int two() {
 
 bool inited = false;
 int stuff = 10;
-vec3 things = { x = 1, y = 2, z = 3 };
 int[] stuffs = NULL;
 vec3[] vecs = [];
 
@@ -62,14 +61,14 @@ int run(int n0, int n1) {
         stuffs = [];
         for (i = 0; i <= 100; i++) {
             stuffs[stuffs.length] = 5 * i;
-            vecs[vecs.length] = { x = 3 * i, y = 3 * i + 1, z = 3 * i + 2 };
+            vecs[vecs.length] = V3(1, 2, 3);
         }
         inited = true;
     }
 
     int n = n0 + n1; 
 
-    vec3 all = { x = 0, y = 0, z = 0 };
+    vec3 all = V3(4, 5, 6) + V3(1, 2, 3);
     for (i = 0; i < 100; i++) {
         all = all + vecs[i];
     }
@@ -81,9 +80,6 @@ int run(int n0, int n1) {
 
     print("stuff = ", stuff, "\n");
     stuff = stuff + 100;
-
-    print("things = ", things, "\n");
-    things = things + { x = 10, y = 10, z = 10 };
 
     print("fib(10) = ", fib(10, 1), "\n");
 

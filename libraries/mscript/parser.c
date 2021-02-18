@@ -392,6 +392,7 @@ typedef enum _ms_expr_type {
     _MS_EXPR_STRING,
     _MS_EXPR_ARRAY,
     _MS_EXPR_OBJECT,
+    _MS_EXPR_VEC,
     _MS_EXPR_CAST,
 } _ms_expr_type_t;
 
@@ -462,6 +463,11 @@ struct _ms_expr {
             char **names;
             _ms_expr_t **args;
         } object;
+
+        struct {
+            int num_args;
+            _ms_expr_t **args;
+        } vec;
 
         struct {
             _ms_parsed_type_t type;
@@ -585,6 +591,7 @@ static _ms_expr_t *_ms_expr_call_new(_ms_mem_t *mem, _ms_token_t token, _ms_expr
 static _ms_expr_t *_ms_expr_debug_print_new(_ms_mem_t *mem, _ms_token_t token, _vec_expr_ptr_t args);
 static _ms_expr_t *_ms_expr_array_new(_ms_mem_t *mem, _ms_token_t token, _vec_expr_ptr_t args);
 static _ms_expr_t *_ms_expr_object_new(_ms_mem_t *mem, _ms_token_t token, vec_char_ptr_t names, _vec_expr_ptr_t args);
+static _ms_expr_t *_ms_expr_vec_new(_ms_mem_t *mem, _ms_token_t token, _vec_expr_ptr_t args);
 static _ms_expr_t *_ms_expr_cast_new(_ms_mem_t *mem, _ms_token_t token, _ms_parsed_type_t type, _ms_expr_t *expr);
 static _ms_expr_t *_ms_expr_int_new(_ms_mem_t *mem, _ms_token_t token, int int_val);
 static _ms_expr_t *_ms_expr_float_new(_ms_mem_t *mem, _ms_token_t token, float float_val);
@@ -661,6 +668,7 @@ static void _ms_verify_string_expr(mscript_program_t *program, _ms_expr_t *expr,
 static void _ms_verify_array_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
 static void _ms_verify_array_access_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
 static void _ms_verify_object_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
+static void _ms_verify_vec_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
 static void _ms_verify_cast_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
 
 static void _ms_compile_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
@@ -689,6 +697,7 @@ static void _ms_compile_null_expr(mscript_program_t *program, _ms_expr_t *expr);
 static void _ms_compile_string_expr(mscript_program_t *program, _ms_expr_t *expr);
 static void _ms_compile_array_expr(mscript_program_t *program, _ms_expr_t *expr);
 static void _ms_compile_object_expr(mscript_program_t *program, _ms_expr_t *expr);
+static void _ms_compile_vec_expr(mscript_program_t *program, _ms_expr_t *expr);
 static void _ms_compile_cast_expr(mscript_program_t *program, _ms_expr_t *expr);
 
 typedef vec_t(mscript_program_t *) _vec_program_ptr;
@@ -984,6 +993,23 @@ static _ms_expr_t *_ms_expr_object_new(_ms_mem_t *mem, _ms_token_t token, vec_ch
     memcpy(expr->object.names, names.data, num_args * sizeof(char *));
     expr->object.args = _ms_mem_alloc(mem, num_args * sizeof(_ms_expr_t *));
     memcpy(expr->object.args, args.data, num_args * sizeof(_ms_expr_t *));
+
+    expr->is_const = false;
+    expr->result_type = NULL;
+    expr->lvalue = _ms_lvalue_invalid();
+    return expr;
+}
+
+static _ms_expr_t *_ms_expr_vec_new(_ms_mem_t *mem, _ms_token_t token, _vec_expr_ptr_t args) {
+    int num_args = args.length;
+    assert(num_args == 3);
+
+    _ms_expr_t *expr = _ms_mem_alloc(mem, sizeof(_ms_expr_t));
+    expr->type = _MS_EXPR_VEC;
+    expr->token = token;
+    expr->vec.num_args = args.length;
+    expr->vec.args = _ms_mem_alloc(mem, num_args * sizeof(_ms_expr_t *));
+    memcpy(expr->vec.args, args.data, num_args * sizeof(_ms_expr_t *));
 
     expr->is_const = false;
     expr->result_type = NULL;
@@ -1404,6 +1430,13 @@ static _ms_expr_t *_ms_parse_call_expr(mscript_program_t *program) {
 
         if (expr->type == _MS_EXPR_SYMBOL && (strcmp(expr->symbol, "print") == 0)) {
             expr = _ms_expr_debug_print_new(&program->compiler_mem, token, args);
+        }
+        else if (expr->type == _MS_EXPR_SYMBOL && (strcmp(expr->symbol, "V3") == 0)) {
+            if (args.length != 3) {
+                _ms_program_error(program, _ms_peek(program), "Expect 3 arguments to V3.");
+                goto cleanup;
+            }
+            expr = _ms_expr_vec_new(&program->compiler_mem, token, args);
         }
         else {
             expr = _ms_expr_call_new(&program->compiler_mem, token, expr, args);
@@ -3051,6 +3084,7 @@ static void _ms_verify_expr_lvalue(mscript_program_t *program, _ms_expr_t *expr)
         case _MS_EXPR_FLOAT:
         case _MS_EXPR_ARRAY:
         case _MS_EXPR_OBJECT:
+        case _MS_EXPR_VEC:
         case _MS_EXPR_CAST:
         case _MS_EXPR_NULL:
         case _MS_EXPR_STRING:
@@ -3167,6 +3201,9 @@ static void _ms_verify_expr(mscript_program_t *program, _ms_expr_t *expr, mscrip
             break;
         case _MS_EXPR_OBJECT:
             _ms_verify_object_expr(program, expr, expected_type);
+            break;
+        case _MS_EXPR_VEC:
+            _ms_verify_vec_expr(program, expr, expected_type);
             break;
         case _MS_EXPR_CAST:
             _ms_verify_cast_expr(program, expr, expected_type);
@@ -3701,7 +3738,7 @@ static void _ms_verify_object_expr(mscript_program_t *program, _ms_expr_t *expr,
         return;
     }
 
-    if (expected_type->type != MSCRIPT_TYPE_STRUCT && expected_type->type != MSCRIPT_TYPE_VEC3) {
+    if (expected_type->type != MSCRIPT_TYPE_STRUCT) {
         _ms_program_error(program, expr->token, "Not expected struct.");
         return;
     }
@@ -3739,6 +3776,27 @@ static void _ms_verify_object_expr(mscript_program_t *program, _ms_expr_t *expr,
         }
         expr->const_val = mscript_val_object(num_args, args);
     }
+    expr->result_type = expected_type;
+    expr->lvalue = _ms_lvalue_invalid();
+}
+
+static void _ms_verify_vec_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type) {
+    assert(expr->type == _MS_EXPR_VEC);
+
+    assert(expr->vec.num_args == 3);
+
+    //bool is_const = true;
+    for (int i = 0; i < expr->vec.num_args; i++) {
+        mscript_type_t *member_type = _ms_symbol_table_get_type(&program->symbol_table, "float");
+        _ms_verify_expr_with_cast(program, &(expr->vec.args[i]), member_type);
+        if (program->error) return;
+
+        if (!expr->vec.args[i]->is_const) {
+            //is_const = false;
+        }
+    }
+
+    expr->is_const = false;
     expr->result_type = expected_type;
     expr->lvalue = _ms_lvalue_invalid();
 }
@@ -4367,6 +4425,9 @@ static void _ms_compile_expr(mscript_program_t *program, _ms_expr_t *expr) {
         case _MS_EXPR_OBJECT:
             _ms_compile_object_expr(program, expr);
             break;
+        case _MS_EXPR_VEC:
+            _ms_compile_vec_expr(program, expr);
+            break;
         case _MS_EXPR_CAST:
             _ms_compile_cast_expr(program, expr);
             break;
@@ -4385,6 +4446,7 @@ static void _ms_compile_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr
         case _MS_EXPR_STRING:
         case _MS_EXPR_ARRAY:
         case _MS_EXPR_OBJECT:
+        case _MS_EXPR_VEC:
         case _MS_EXPR_CAST:
         case _MS_EXPR_NULL:
             assert(false);
@@ -5001,6 +5063,17 @@ static void _ms_compile_object_expr(mscript_program_t *program, _ms_expr_t *expr
     int num_args = expr->object.num_args;
     for (int i = 0; i < num_args; i++) {
         _ms_expr_t *arg = expr->object.args[i];
+        _ms_compile_expr(program, arg);
+    }
+}
+
+static void _ms_compile_vec_expr(mscript_program_t *program, _ms_expr_t *expr) {
+    assert(expr->type == _MS_EXPR_VEC);
+    assert(expr->vec.num_args == 3);
+
+    int num_args = expr->vec.num_args;
+    for (int i = 0; i < num_args; i++) {
+        _ms_expr_t *arg = expr->vec.args[i];
         _ms_compile_expr(program, arg);
     }
 }
@@ -5677,6 +5750,16 @@ static void debug_log_expr(_ms_expr_t *expr) {
                 }
             }
             m_logf("}");
+            break;
+        case _MS_EXPR_VEC:
+            m_logf("<");
+            for (int i = 0; i < expr->vec.num_args; i++) {
+                debug_log_expr(expr->vec.args[i]);
+                if (i != expr->vec.num_args - 1) {
+                    m_logf(", ");
+                }
+            }
+            m_logf(">");
             break;
         case _MS_EXPR_CALL:
             debug_log_expr(expr->call.function);
