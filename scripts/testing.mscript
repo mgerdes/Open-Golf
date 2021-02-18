@@ -50,47 +50,11 @@ int two() {
     return 2;
 }
 
-vec3[] create_array(int n) {
-    vec3[] a = [];
-    int i;
-    for (i = 0; i < n; i++) {
-        a[i] = { x = 3.0 * i + 0.0, y = 3.0 * i + 1.0, z = 3.0 * i + 2.0 };
-    }
-    return a;
-}
-
-vec3 sum_array(vec3[] array) {
-    vec3 sum = { x = 0, y = 0, z = 0 };
-    int i;
-    for (i = 0; i < array.length; i++) {
-        sum = vec3_add(sum, array[i]);
-    }
-    return sum;
-}
-
-void double_array(vec3[] array) {
-    int i;
-    for (i = 0; i < array.length; i++) {
-        array[i] = vec3_scale(array[i], 2.0);
-    }
-}
-
-void print_array(vec3[] array) {
-    print("[");
-    int i;
-    for (i = 0; i < array.length; i++) {
-        print(array[i]);
-        if (i != array.length - 1) {
-            print(", ");
-        }
-    }
-    print("]\n");
-}
-
 bool inited = false;
 int stuff = 10;
 vec3 things = { x = 1, y = 2, z = 3 };
 int[] stuffs = NULL;
+vec3[] vecs = [];
 
 int run(int n0, int n1) {
     int i;
@@ -98,11 +62,18 @@ int run(int n0, int n1) {
         stuffs = [];
         for (i = 0; i <= 100; i++) {
             stuffs[stuffs.length] = 5 * i;
+            vecs[vecs.length] = { x = 3 * i, y = 3 * i + 1, z = 3 * i + 2 };
         }
         inited = true;
     }
 
     int n = n0 + n1; 
+
+    vec3 all = { x = 0, y = 0, z = 0 };
+    for (i = 0; i < 100; i++) {
+        all = all + vecs[i];
+    }
+    print("all = ", all, "\n");
 
     float ss = 16.0;
     ss = c_sqrt(ss);
@@ -112,21 +83,14 @@ int run(int n0, int n1) {
     stuff = stuff + 100;
 
     print("things = ", things, "\n");
-    things = vec3_add(things, { x = 1, y = 2, z = 3 });
+    things = things + { x = 10, y = 10, z = 10 };
 
     print("fib(10) = ", fib(10, 1), "\n");
 
-    vec3[] a = create_array(n);
-    print("a.length = ", a.length, "\n");
-    //print_array(a);
-    double_array(a);
-    vec3 sum = sum_array(a);
-    delete_array(a);
-    
-    for (i = 0; i < stuffs.length; i++) {
-        print(i, ": ", stuffs[i], "\n");
-        stuffs[i] += 5;
-    }
+    //for (i = 0; i < stuffs.length; i++) {
+        //print(i, ": ", stuffs[i], "\n");
+        //stuffs[i] += 5;
+    //}
 
-    return sum.x + sum.y + sum.z;
+    return 100;
 }

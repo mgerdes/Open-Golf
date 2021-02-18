@@ -3,7 +3,6 @@ import "math.mscript";
 struct terrain_model_face {
     int mat_idx, smooth_normal;
     int x, y, z, w;
-    vec2 tc0, tc1, tc2, tc3;
     float tex_coord_scale;
     float cor, friction, vel_scale;
     int auto_texture;
