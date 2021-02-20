@@ -33,6 +33,7 @@ typedef struct mscript_type mscript_type_t;
 typedef enum mscript_val_type {
     MSCRIPT_VAL_INT,
     MSCRIPT_VAL_FLOAT,
+    MSCRIPT_VAL_VEC3,
     MSCRIPT_VAL_BOOL,
     MSCRIPT_VAL_OBJECT,
     MSCRIPT_VAL_ARRAY,
@@ -44,6 +45,10 @@ typedef struct mscript_val {
         float float_val;
         int int_val;
         bool bool_val;
+
+        struct {
+            float x, y, z;
+        } vec3_val;
 
         struct {
             int num_args;
@@ -58,6 +63,7 @@ typedef struct mscript_val {
 } mscript_val_t;
 
 mscript_val_t mscript_val_float(float float_val);
+mscript_val_t mscript_val_vec3(float x, float y, float z);
 mscript_val_t mscript_val_int(int int_val);
 mscript_val_t mscript_val_bool(bool bool_val);
 mscript_val_t mscript_val_object(int num_args, mscript_val_t *args);

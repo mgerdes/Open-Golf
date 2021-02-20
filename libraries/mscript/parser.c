@@ -27,9 +27,10 @@ typedef enum _ms_opcode_type {
     _MS_OPCODE_V3SUB,
     _MS_OPCODE_IMUL,
     _MS_OPCODE_FMUL,
-    _MS_OPCODE_V3SCALE,
+    _MS_OPCODE_V3MUL,
     _MS_OPCODE_IDIV,
     _MS_OPCODE_FDIV,
+    _MS_OPCODE_V3DIV,
     _MS_OPCODE_ILTE,
     _MS_OPCODE_FLTE,
     _MS_OPCODE_ILT,
@@ -79,6 +80,7 @@ typedef enum _ms_opcode_type {
     _MS_OPCODE_INTERMEDIATE_LABEL,
     _MS_OPCODE_INTERMEDIATE_FUNC,
     _MS_OPCODE_INTERMEDIATE_CALL,
+    _MS_OPCODE_INTERMEDIATE_C_CALL,
     _MS_OPCODE_INTERMEDIATE_JMP,
     _MS_OPCODE_INTERMEDIATE_JF,
     _MS_OPCODE_INTERMEDIATE_STRING,
@@ -103,8 +105,8 @@ typedef struct ms_opcode {
         } call;
 
         struct {
-            char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
-            int args_size;
+            void (*fn)(char *args, int args_size);
+            int args_size, return_size;
         } c_call;
 
         char *intermediate_string;
@@ -123,6 +125,7 @@ static _ms_opcode_t _ms_opcode_fmul(void);
 static _ms_opcode_t _ms_opcode_v3mul(void);
 static _ms_opcode_t _ms_opcode_idiv(void);
 static _ms_opcode_t _ms_opcode_fdiv(void);
+static _ms_opcode_t _ms_opcode_v3div(void);
 static _ms_opcode_t _ms_opcode_ilte(void);
 static _ms_opcode_t _ms_opcode_flte(void);
 static _ms_opcode_t _ms_opcode_ilt(void);
@@ -152,7 +155,7 @@ static _ms_opcode_t _ms_opcode_global_load(int offset, int size);
 static _ms_opcode_t _ms_opcode_jf(int label);
 static _ms_opcode_t _ms_opcode_jmp(int label);
 static _ms_opcode_t _ms_opcode_call(int label, int args_size);
-static _ms_opcode_t _ms_opcode_c_call(char *str, int args_size);
+static _ms_opcode_t _ms_opcode_c_call(void (*fn)(char *args, int args_size), int args_size, int return_size);
 static _ms_opcode_t _ms_opcode_return(int size);
 static _ms_opcode_t _ms_opcode_push(int size);
 static _ms_opcode_t _ms_opcode_pop(int size);
@@ -169,6 +172,7 @@ static _ms_opcode_t _ms_opcode_debug_print_string_const(char *str);
 static _ms_opcode_t _ms_opcode_intermediate_label(int label);
 static _ms_opcode_t _ms_opcode_intermediate_func(char *str);
 static _ms_opcode_t _ms_opcode_intermediate_call(char *str);
+static _ms_opcode_t _ms_opcode_intermediate_c_call(char *str);
 static _ms_opcode_t _ms_opcode_intermediate_jmp(int label);
 static _ms_opcode_t _ms_opcode_intermediate_jf(int label);
 static _ms_opcode_t _ms_opcode_intermediate_string(char *string);
@@ -300,12 +304,12 @@ typedef vec_t(_ms_function_decl_t*) _vec_ms_function_decl_ptr_t;
 typedef struct _ms_c_function_decl {
     char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
     mscript_type_t *return_type;
-    int num_args;
+    int num_args, args_size;
     mscript_type_t *arg_types[MSCRIPT_MAX_FUNCTION_ARGS];
-    void (*fn)(int num_args, mscript_val_t *args);
+    void (*fn)(char *args, int args_size);
 } _ms_c_function_decl_t;
 
-static _ms_c_function_decl_t _ms_c_function_decl(const char *name, mscript_type_t *return_type, int num_args, mscript_type_t **arg_types, void (*fn)(int num_args, mscript_val_t *args));
+static _ms_c_function_decl_t _ms_c_function_decl(const char *name, mscript_type_t *return_type, int num_args, mscript_type_t **arg_types, int args_size, void (*fn)(char *args, int args_size));
 
 typedef struct _ms_global_decl {
     char name[MSCRIPT_MAX_SYMBOL_LEN + 1];
@@ -656,7 +660,7 @@ static void _ms_verify_import_function_stmt(mscript_program_t *program, _ms_stmt
 static void _ms_verify_function_declaration_stmt(mscript_program_t *program, _ms_stmt_t *stmt);
 
 static void _ms_verify_expr_with_cast(mscript_program_t *program, _ms_expr_t **expr, mscript_type_t *type);
-static void _ms_verify_expr_lvalue(mscript_program_t *program, _ms_expr_t *expr);
+static void _ms_verify_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr);
 static void _ms_verify_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
 static void _ms_verify_unary_op_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
 static void _ms_verify_binary_op_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type);
@@ -768,7 +772,7 @@ static void _ms_program_patch_struct_decl(mscript_program_t *program, _ms_stmt_t
 static void _ms_program_patch_struct_decl_recur(mscript_program_t *program, mscript_type_t *type);
 static void _ms_program_add_function_decl_stub(mscript_program_t *program, _ms_stmt_t *stmt);
 static void _ms_program_patch_function_decl(mscript_program_t *program, _ms_stmt_t *stmt);
-static void _ms_program_add_c_function_decl(mscript_program_t *program, const char *name, const char *return_type_str, int num_args, const char **arg_types_str, void (*fn)(int num_args, mscript_val_t *args));
+static void _ms_program_add_c_function_decl(mscript_program_t *program, const char *name, const char *return_type_str, int num_args, const char **arg_types_str, void (*fn)(char *args, int args_size));
 static int _ms_program_add_string(mscript_program_t *program, char *string);
 static void _ms_program_load_stage_1(mscript_t *mscript, struct file file);
 static void _ms_program_load_stage_2(mscript_t *mscript, mscript_program_t *program);
@@ -2171,6 +2175,12 @@ static mscript_val_t _ms_const_val_binary_op(_ms_binary_op_type_t type, mscript_
                 else if (left.type == MSCRIPT_VAL_FLOAT && right.type == MSCRIPT_VAL_FLOAT) {
                     return mscript_val_float(left.float_val + right.float_val);
                 }
+                else if (left.type == MSCRIPT_VAL_VEC3 && right.type == MSCRIPT_VAL_VEC3) {
+                    float x = left.vec3_val.x + right.vec3_val.x;
+                    float y = left.vec3_val.y + right.vec3_val.y;
+                    float z = left.vec3_val.z + right.vec3_val.z;
+                    return mscript_val_vec3(x, y, z);
+                }
                 else {
                     assert(false);
                 }
@@ -2183,6 +2193,12 @@ static mscript_val_t _ms_const_val_binary_op(_ms_binary_op_type_t type, mscript_
                 }
                 else if (left.type == MSCRIPT_VAL_FLOAT && right.type == MSCRIPT_VAL_FLOAT) {
                     return mscript_val_float(left.float_val - right.float_val);
+                }
+                else if (left.type == MSCRIPT_VAL_VEC3 && right.type == MSCRIPT_VAL_VEC3) {
+                    float x = left.vec3_val.x - right.vec3_val.x;
+                    float y = left.vec3_val.y - right.vec3_val.y;
+                    float z = left.vec3_val.z - right.vec3_val.z;
+                    return mscript_val_vec3(x, y, z);
                 }
                 else {
                     assert(false);
@@ -2197,6 +2213,18 @@ static mscript_val_t _ms_const_val_binary_op(_ms_binary_op_type_t type, mscript_
                 else if (left.type == MSCRIPT_VAL_FLOAT && right.type == MSCRIPT_VAL_FLOAT) {
                     return mscript_val_float(left.float_val * right.float_val);
                 }
+                else if (left.type == MSCRIPT_VAL_VEC3 && right.type == MSCRIPT_VAL_FLOAT) {
+                    float x = left.vec3_val.x * right.float_val;
+                    float y = left.vec3_val.y * right.float_val;
+                    float z = left.vec3_val.z * right.float_val;
+                    return mscript_val_vec3(x, y, z);
+                }
+                else if (left.type == MSCRIPT_VAL_FLOAT && right.type == MSCRIPT_VAL_VEC3) {
+                    float x = right.vec3_val.x * left.float_val;
+                    float y = right.vec3_val.y * left.float_val;
+                    float z = right.vec3_val.z * left.float_val;
+                    return mscript_val_vec3(x, y, z);
+                }
                 else {
                     assert(false);
                 }
@@ -2209,6 +2237,12 @@ static mscript_val_t _ms_const_val_binary_op(_ms_binary_op_type_t type, mscript_
                 }
                 else if (left.type == MSCRIPT_VAL_FLOAT && right.type == MSCRIPT_VAL_FLOAT) {
                     return mscript_val_float(left.float_val / right.float_val);
+                }
+                else if (left.type == MSCRIPT_VAL_VEC3 && right.type == MSCRIPT_VAL_FLOAT) {
+                    float x = left.vec3_val.x / right.vec3_val.x;
+                    float y = left.vec3_val.y / right.vec3_val.y;
+                    float z = left.vec3_val.z / right.vec3_val.z;
+                    return mscript_val_vec3(x, y, z);
                 }
                 else {
                     assert(false);
@@ -2633,7 +2667,7 @@ static bool _ms_check_type(mscript_program_t *program) {
              (tok1.type == _MS_TOKEN_CHAR) && (tok1.char_val == '*'));
 }
 
-static _ms_c_function_decl_t _ms_c_function_decl(const char *name, mscript_type_t *return_type, int num_args, mscript_type_t **arg_types, void (*fn)(int num_args, mscript_val_t *args)) {
+static _ms_c_function_decl_t _ms_c_function_decl(const char *name, mscript_type_t *return_type, int num_args, mscript_type_t **arg_types, int args_size, void (*fn)(char *args, int args_size)) {
     _ms_c_function_decl_t decl;
     strncpy(decl.name, name, MSCRIPT_MAX_SYMBOL_LEN);
     decl.name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
@@ -2642,6 +2676,7 @@ static _ms_c_function_decl_t _ms_c_function_decl(const char *name, mscript_type_
     for (int i = 0; i < num_args; i++) {
         decl.arg_types[i] = arg_types[i];
     }
+    decl.args_size = args_size;
     decl.fn = fn;
     return decl;
 }
@@ -3080,7 +3115,7 @@ static void _ms_verify_expr_with_cast(mscript_program_t *program, _ms_expr_t **e
     }
 }
 
-static void _ms_verify_expr_lvalue(mscript_program_t *program, _ms_expr_t *expr) {
+static void _ms_verify_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr) {
     switch (expr->type) {
         case _MS_EXPR_UNARY_OP:
         case _MS_EXPR_BINARY_OP:
@@ -3111,6 +3146,7 @@ static void _ms_verify_expr_lvalue(mscript_program_t *program, _ms_expr_t *expr)
                 }
 
                 _ms_verify_expr_with_cast(program, &(expr->array_access.right), _ms_symbol_table_get_type(&program->symbol_table, "int"));
+                if (program->error) return;
 
                 expr->result_type = left_type->array_member_type;
                 expr->lvalue = _ms_lvalue_array();
@@ -3224,7 +3260,7 @@ static void _ms_verify_unary_op_expr(mscript_program_t *program, _ms_expr_t *exp
     switch (expr->unary_op.type) {
         case _MS_UNARY_OP_POST_INC:
             {
-                _ms_verify_expr_lvalue(program, expr->unary_op.operand);
+                _ms_verify_lvalue_expr(program, expr->unary_op.operand);
                 if (program->error) return;
 
                 expr->is_const = false;
@@ -3431,13 +3467,15 @@ static void _ms_verify_binary_op_expr(mscript_program_t *program, _ms_expr_t *ex
     if (left_result_type != wanted_left_type) {
         expr->binary_op.left = _ms_expr_cast_new(&program->compiler_mem, expr->token,
                 _ms_parsed_type(wanted_left_type->name, false), expr->binary_op.left);
-        expr->binary_op.left->result_type = wanted_left_type;
+        _ms_verify_expr(program, expr->binary_op.left, NULL);
+        assert(!program->error);
     }
 
     if (right_result_type != wanted_right_type) {
         expr->binary_op.right = _ms_expr_cast_new(&program->compiler_mem,
                 expr->token, _ms_parsed_type(wanted_right_type->name, false), expr->binary_op.right);
-        expr->binary_op.right->result_type = wanted_right_type;
+        _ms_verify_expr(program, expr->binary_op.right, NULL);
+        assert(!program->error);
     }
 
     expr->result_type = _ms_symbol_table_get_type(&program->symbol_table, result_type_name);
@@ -3635,7 +3673,7 @@ static void _ms_verify_member_access_expr(mscript_program_t *program, _ms_expr_t
 static void _ms_verify_assignment_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type) {
     assert(expr->type == _MS_EXPR_ASSIGNMENT);
 
-    _ms_verify_expr_lvalue(program, expr->assignment.left);
+    _ms_verify_lvalue_expr(program, expr->assignment.left);
     if (program->error) return;
 
     mscript_type_t *left_type = expr->assignment.left->result_type;
@@ -3850,24 +3888,77 @@ static void _ms_verify_vec_expr(mscript_program_t *program, _ms_expr_t *expr, ms
     assert(expr->type == _MS_EXPR_VEC);
     assert(expr->vec.num_args == 3);
 
-    //bool is_const = true;
+    bool is_const = true;
     for (int i = 0; i < expr->vec.num_args; i++) {
         mscript_type_t *member_type = _ms_symbol_table_get_type(&program->symbol_table, "float");
         _ms_verify_expr_with_cast(program, &(expr->vec.args[i]), member_type);
         if (program->error) return;
 
         if (!expr->vec.args[i]->is_const) {
-            //is_const = false;
+            is_const = false;
         }
     }
 
-    expr->is_const = false;
+    if (is_const) {
+        float x = expr->vec.args[0]->const_val.float_val;
+        float y = expr->vec.args[1]->const_val.float_val;
+        float z = expr->vec.args[2]->const_val.float_val;
+        expr->const_val = mscript_val_vec3(x, y, z);
+    }
+
+    expr->is_const = is_const;
     expr->result_type = _ms_symbol_table_get_type(&program->symbol_table, "vec3");
     expr->lvalue = _ms_lvalue_invalid();
 }
 
 static void _ms_verify_cast_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type) {
-    assert(false);
+    _ms_verify_expr(program, expr->cast.arg, expected_type);
+
+    expr->result_type = _ms_symbol_table_get_type(&program->symbol_table, expr->cast.type.string);
+    if (!expr->result_type) {
+        _ms_program_error(program, expr->token, "Invalid cast to type %s.", expr->cast.type.string);
+        return;
+    }
+    expr->is_const = expr->cast.arg->is_const;
+
+    mscript_type_t *cast_type = expr->result_type;
+    mscript_type_t *arg_type = expr->cast.arg->result_type;
+
+    if (cast_type->type == MSCRIPT_TYPE_INT && arg_type->type == MSCRIPT_TYPE_INT) {
+        if (expr->is_const) {
+            expr->const_val = expr->cast.arg->const_val;
+        }
+    }
+    else if (cast_type->type == MSCRIPT_TYPE_FLOAT && arg_type->type == MSCRIPT_TYPE_FLOAT) {
+        if (expr->is_const) {
+            expr->const_val = expr->cast.arg->const_val;
+        }
+    }
+    else if (cast_type->type == MSCRIPT_TYPE_BOOL && arg_type->type == MSCRIPT_TYPE_BOOL) {
+        if (expr->is_const) {
+            expr->const_val = expr->cast.arg->const_val;
+        }
+    }
+    else if (cast_type->type == MSCRIPT_TYPE_BOOL && arg_type->type == MSCRIPT_TYPE_ARRAY) {
+        if (expr->is_const) {
+            expr->const_val = expr->cast.arg->const_val;
+        }
+    }
+    else if (cast_type->type == MSCRIPT_TYPE_FLOAT && arg_type->type == MSCRIPT_TYPE_INT) {
+        if (expr->is_const) {
+            expr->const_val = mscript_val_float((float)expr->cast.arg->const_val.int_val);
+        }
+    }
+    else if (cast_type->type == MSCRIPT_TYPE_INT && arg_type->type == MSCRIPT_TYPE_FLOAT) {
+        if (expr->is_const) {
+            expr->const_val = mscript_val_int((int)expr->cast.arg->const_val.float_val);
+        }
+    }
+    else {
+        _ms_program_error(program, expr->token, "Invalid cast to type %s.", expr->cast.type.string);
+        return;
+    }
+    expr->lvalue = _ms_lvalue_invalid();
 }
 
 static _ms_opcode_t _ms_opcode_iadd(void) {
@@ -3920,7 +4011,7 @@ static _ms_opcode_t _ms_opcode_fmul(void) {
 
 static _ms_opcode_t _ms_opcode_v3mul(void) {
     _ms_opcode_t op;
-    op.type = _MS_OPCODE_V3SCALE;
+    op.type = _MS_OPCODE_V3MUL;
     return op;
 }
 
@@ -3933,6 +4024,12 @@ static _ms_opcode_t _ms_opcode_idiv(void) {
 static _ms_opcode_t _ms_opcode_fdiv(void) {
     _ms_opcode_t op;
     op.type = _MS_OPCODE_FDIV;
+    return op;
+}
+
+static _ms_opcode_t _ms_opcode_v3div(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_V3DIV;
     return op;
 }
 
@@ -4136,12 +4233,12 @@ static _ms_opcode_t _ms_opcode_call(int label, int args_size) {
     return op;
 }
 
-static _ms_opcode_t _ms_opcode_c_call(char *str, int args_size) {
+static _ms_opcode_t _ms_opcode_c_call(void (*fn)(char *args, int args_size), int args_size, int return_size) {
     _ms_opcode_t op;
     op.type = _MS_OPCODE_C_CALL;
-    strncpy(op.c_call.name, str, MSCRIPT_MAX_SYMBOL_LEN);
-    op.c_call.name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+    op.c_call.fn = fn;
     op.c_call.args_size = args_size;
+    op.c_call.return_size = return_size;
     return op;
 }
 
@@ -4265,6 +4362,14 @@ static _ms_opcode_t _ms_opcode_intermediate_func(char *str) {
 static _ms_opcode_t _ms_opcode_intermediate_call(char *str) {
     _ms_opcode_t op;
     op.type = _MS_OPCODE_INTERMEDIATE_CALL;
+    strncpy(op.string, str, MSCRIPT_MAX_SYMBOL_LEN);
+    op.string[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+    return op;
+}
+
+static _ms_opcode_t _ms_opcode_intermediate_c_call(char *str) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_INTERMEDIATE_C_CALL;
     strncpy(op.string, str, MSCRIPT_MAX_SYMBOL_LEN);
     op.string[MSCRIPT_MAX_SYMBOL_LEN] = 0;
     return op;
@@ -4535,12 +4640,12 @@ static void _ms_compile_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr
                 mscript_type_t *struct_type = expr->member_access.left->result_type;
                 assert(struct_type->type == MSCRIPT_TYPE_STRUCT || struct_type->type == MSCRIPT_TYPE_VEC3);
 
-                _ms_struct_decl_t *decl = struct_type->struct_decl;
-                assert(decl);
-
                 int offset = 0;
 
                 if (struct_type->type == MSCRIPT_TYPE_STRUCT) {
+                    _ms_struct_decl_t *decl = struct_type->struct_decl;
+                    assert(decl);
+
                     bool found_member = false;
                     int offset = 0;
                     for (int i = 0; i < decl->num_members; i++) {
@@ -4666,10 +4771,10 @@ static void _ms_compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *e
             },
             [MSCRIPT_TYPE_FLOAT] = {
                 [MSCRIPT_TYPE_FLOAT] = { _MS_OPCODE_FMUL, 0 },
-                [MSCRIPT_TYPE_VEC3] = { _MS_OPCODE_V3SCALE, 1 },
+                [MSCRIPT_TYPE_VEC3] = { _MS_OPCODE_V3MUL, 1 },
             },
             [MSCRIPT_TYPE_VEC3] = {
-                [MSCRIPT_TYPE_FLOAT] = { _MS_OPCODE_V3SCALE, 0 },
+                [MSCRIPT_TYPE_FLOAT] = { _MS_OPCODE_V3MUL, 0 },
             },
         },
         [_MS_BINARY_OP_DIV] = {
@@ -4680,7 +4785,7 @@ static void _ms_compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *e
                 [MSCRIPT_TYPE_FLOAT] = { _MS_OPCODE_FDIV, 0 },
             },
             [MSCRIPT_TYPE_VEC3] = {
-                //[MSCRIPT_TYPE_FLOAT] = { _MS_OPCODE_V3DIV, 0 },
+                [MSCRIPT_TYPE_FLOAT] = { _MS_OPCODE_V3DIV, 0 },
             },
         },
         [_MS_BINARY_OP_LTE] = {
@@ -4785,7 +4890,7 @@ static void _ms_compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *e
         case _MS_OPCODE_FMUL:
             vec_push(program->cur_opcodes, _ms_opcode_fmul());
             break;
-        case _MS_OPCODE_V3SCALE:
+        case _MS_OPCODE_V3MUL:
             vec_push(program->cur_opcodes, _ms_opcode_v3mul());
             break;
         case _MS_OPCODE_IDIV:
@@ -4793,6 +4898,9 @@ static void _ms_compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *e
             break;
         case _MS_OPCODE_FDIV:
             vec_push(program->cur_opcodes, _ms_opcode_fdiv());
+            break;
+        case _MS_OPCODE_V3DIV:
+            vec_push(program->cur_opcodes, _ms_opcode_v3div());
             break;
         case _MS_OPCODE_ILTE:
             vec_push(program->cur_opcodes, _ms_opcode_ilte());
@@ -4871,6 +4979,7 @@ static void _ms_compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *e
         case _MS_OPCODE_INTERMEDIATE_LABEL:
         case _MS_OPCODE_INTERMEDIATE_FUNC:
         case _MS_OPCODE_INTERMEDIATE_CALL:
+        case _MS_OPCODE_INTERMEDIATE_C_CALL:
         case _MS_OPCODE_INTERMEDIATE_JMP:
         case _MS_OPCODE_INTERMEDIATE_JF:
         case _MS_OPCODE_INTERMEDIATE_STRING:
@@ -4923,7 +5032,7 @@ static void _ms_compile_call_expr(mscript_program_t *program, _ms_expr_t *expr) 
             vec_push(program->cur_opcodes, _ms_opcode_intermediate_call(fn->symbol));
         }
         else if (symbol->type == _MS_SYMBOL_C_FUNCTION) {
-            vec_push(program->cur_opcodes, _ms_opcode_c_call(fn->symbol, args_size));
+            vec_push(program->cur_opcodes, _ms_opcode_intermediate_c_call(fn->symbol));
         }
         else {
             assert(false);
@@ -5151,6 +5260,11 @@ static void _ms_compile_val(mscript_program_t *program, mscript_val_t val) {
             break;
         case MSCRIPT_VAL_FLOAT:
             vec_push(program->cur_opcodes, _ms_opcode_float(val.float_val));
+            break;
+        case MSCRIPT_VAL_VEC3:
+            vec_push(program->cur_opcodes, _ms_opcode_float(val.vec3_val.x));
+            vec_push(program->cur_opcodes, _ms_opcode_float(val.vec3_val.y));
+            vec_push(program->cur_opcodes, _ms_opcode_float(val.vec3_val.z));
             break;
         case MSCRIPT_VAL_BOOL:
             {
@@ -5666,18 +5780,20 @@ cleanup:
     return;
 }
 
-static void _ms_program_add_c_function_decl(mscript_program_t *program, const char *name, const char *return_type_str, int num_args, const char **arg_types_str, void (*fn)(int num_args, mscript_val_t *args)) {
+static void _ms_program_add_c_function_decl(mscript_program_t *program, const char *name, const char *return_type_str, int num_args, const char **arg_types_str, void (*fn)(char *args, int args_size)) {
 
     mscript_type_t *return_type = _ms_symbol_table_get_type(&program->symbol_table, return_type_str);
     assert(return_type);
 
+    int args_size = 0;
     mscript_type_t *arg_types[MSCRIPT_MAX_FUNCTION_ARGS];
     for (int i = 0; i < num_args; i++) {
         arg_types[i] = _ms_symbol_table_get_type(&program->symbol_table, arg_types_str[i]);
         assert(arg_types[i]);
+        args_size += arg_types[i]->size;
     }
 
-    _ms_c_function_decl_t decl = _ms_c_function_decl(name, return_type, num_args, arg_types, fn);
+    _ms_c_function_decl_t decl = _ms_c_function_decl(name, return_type, num_args, arg_types, args_size, fn);
     _ms_symbol_table_add_c_function_decl(&program->symbol_table, decl);
 }
 
@@ -6000,7 +6116,7 @@ static void debug_log_opcodes(_ms_opcode_t *opcodes, int num_opcodes) {
             case _MS_OPCODE_FMUL:
                 m_logf("FMUL");
                 break;
-            case _MS_OPCODE_V3SCALE:
+            case _MS_OPCODE_V3MUL:
                 m_logf("V3MUL");
                 break;
             case _MS_OPCODE_IDIV:
@@ -6008,6 +6124,9 @@ static void debug_log_opcodes(_ms_opcode_t *opcodes, int num_opcodes) {
                 break;
             case _MS_OPCODE_FDIV:
                 m_logf("FDIV");
+                break;
+            case _MS_OPCODE_V3DIV:
+                m_logf("V3DIV");
                 break;
             case _MS_OPCODE_ILTE:
                 m_logf("ILTE");
@@ -6150,6 +6269,9 @@ static void debug_log_opcodes(_ms_opcode_t *opcodes, int num_opcodes) {
             case _MS_OPCODE_INTERMEDIATE_CALL:
                 m_logf("INTERMEDIATE_CALL %s", op.string);
                 break;
+            case _MS_OPCODE_INTERMEDIATE_C_CALL:
+                m_logf("INTERMEDIATE_C_CALL %s", op.string);
+                break;
             case _MS_OPCODE_INTERMEDIATE_JF:
                 m_logf("INTERMEDIATE_JF %d", op.label);
                 break;
@@ -6193,7 +6315,7 @@ static void _ms_program_load_stage_1(mscript_t *mscript, struct file file) {
 
     _ms_symbol_table_add_const_decl(&program->symbol_table, _ms_const_decl("false", &mscript->bool_type, mscript_val_bool(false)));
     _ms_symbol_table_add_const_decl(&program->symbol_table, _ms_const_decl("true", &mscript->bool_type, mscript_val_bool(true)));
-    _ms_symbol_table_add_const_decl(&program->symbol_table, _ms_const_decl("PI", &mscript->float_type, mscript_val_float(3.14159f)));
+    _ms_symbol_table_add_const_decl(&program->symbol_table, _ms_const_decl("PI", &mscript->float_type, mscript_val_float(3.14159265358979323846f)));
 
     _ms_program_tokenize(program);
     if (program->error) goto cleanup;
@@ -6347,10 +6469,6 @@ cleanup:
     }
 }
 
-static void _ms_c_sqrt(int num_args, mscript_val_t *args) {
-    assert(num_args == 1);
-}
-
 static void _ms_program_load_stage_3(mscript_t *mscript, mscript_program_t *program) {
     if (program->error) return;
 
@@ -6368,14 +6486,6 @@ static void _ms_program_load_stage_3(mscript_t *mscript, mscript_program_t *prog
             _ms_program_import_program(program, program->imported_programs.data[i]);
             if (program->error) goto cleanup;
         }
-    }
-
-    {
-        const char *name = "c_sqrt";
-        const char *return_type = "float";
-        int num_args = 1;
-        const char *arg_types[1] = { "float" };
-        _ms_program_add_c_function_decl(program, name, return_type, num_args, arg_types, _ms_c_sqrt);
     }
 
     for (int i = 0; i < program->global_stmts.length; i++) {
@@ -6415,8 +6525,53 @@ cleanup:
     }
 }
 
+static void _ms_c_function_sqrt(char *args, int args_size) {
+    assert(args_size == 4);
+    float v = *((float*) (args - 4));
+    v = sqrtf(v);
+    memcpy(args - 4, &v, 4);
+}
+
+static void _ms_c_function_sin(char *args, int args_size) {
+    assert(args_size == 4);
+    float v = *((float*) (args - 4));
+    v = sinf(v);
+    memcpy(args - 4, &v, 4);
+}
+
+static void _ms_c_function_cos(char *args, int args_size) {
+    assert(args_size == 4);
+    float v = *((float*) (args - 4));
+    v = cosf(v);
+    memcpy(args - 4, &v, 4);
+}
+
 static void _ms_program_load_stage_4(mscript_t *mscript, mscript_program_t *program) {
     if (program->error) return;
+
+    {
+        const char *name = "c_sqrt";
+        const char *return_type = "float";
+        int num_args = 1;
+        const char *arg_types[1] = { "float" };
+        _ms_program_add_c_function_decl(program, name, return_type, num_args, arg_types, _ms_c_function_sqrt);
+    }
+
+    {
+        const char *name = "c_sin";
+        const char *return_type = "float";
+        int num_args = 1;
+        const char *arg_types[1] = { "float" };
+        _ms_program_add_c_function_decl(program, name, return_type, num_args, arg_types, _ms_c_function_sin);
+    }
+
+    {
+        const char *name = "c_cos";
+        const char *return_type = "float";
+        int num_args = 1;
+        const char *arg_types[1] = { "float" };
+        _ms_program_add_c_function_decl(program, name, return_type, num_args, arg_types, _ms_c_function_cos);
+    }
 
     for (int i = 0; i < program->global_stmts.length; i++) {
         _ms_stmt_t *stmt = program->global_stmts.data[i];
@@ -6583,9 +6738,10 @@ static void _ms_program_load_stage_7(mscript_t *mscript, mscript_program_t *prog
             case _MS_OPCODE_V3SUB:
             case _MS_OPCODE_IMUL:
             case _MS_OPCODE_FMUL:
-            case _MS_OPCODE_V3SCALE:
+            case _MS_OPCODE_V3MUL:
             case _MS_OPCODE_IDIV:
             case _MS_OPCODE_FDIV:
+            case _MS_OPCODE_V3DIV:
             case _MS_OPCODE_ILTE:
             case _MS_OPCODE_FLTE:
             case _MS_OPCODE_ILT:
@@ -6663,6 +6819,7 @@ static void _ms_program_load_stage_7(mscript_t *mscript, mscript_program_t *prog
                 }
                 break;
             case _MS_OPCODE_INTERMEDIATE_CALL:
+            case _MS_OPCODE_INTERMEDIATE_C_CALL:
                 {
                     vec_push(&program->opcodes, op);
                 }
@@ -6705,6 +6862,13 @@ static void _ms_program_load_stage_7(mscript_t *mscript, mscript_program_t *prog
 
             *op = _ms_opcode_call(*label, decl->args_size);
         }
+        else if (op->type == _MS_OPCODE_INTERMEDIATE_C_CALL) {
+            _ms_symbol_t *symbol = _ms_symbol_table_get(&program->symbol_table, op->string);
+            assert(symbol && symbol->type == _MS_SYMBOL_C_FUNCTION);
+            _ms_c_function_decl_t decl = symbol->c_function_decl;
+            *op = _ms_opcode_c_call(decl.fn, decl.args_size, decl.return_type->size);
+
+        }
     }
 
 //cleanup:
@@ -6722,6 +6886,15 @@ mscript_val_t mscript_val_float(float float_val) {
     mscript_val_t val;
     val.type = MSCRIPT_VAL_FLOAT;
     val.float_val = float_val;
+    return val;
+}
+
+mscript_val_t mscript_val_vec3(float x, float y, float z) {
+    mscript_val_t val;
+    val.type = MSCRIPT_VAL_VEC3;
+    val.vec3_val.x = x;
+    val.vec3_val.y = y;
+    val.vec3_val.z = z;
     return val;
 }
 
@@ -6768,16 +6941,8 @@ mscript_t *mscript_create(void) {
     _mscript_type_init(&mscript->float_type, "float", MSCRIPT_TYPE_FLOAT, NULL, NULL, 4);
     _mscript_type_init(&mscript->float_array_type, "float[]", MSCRIPT_TYPE_ARRAY, &mscript->float_type, NULL, 4);
 
-    {
-        _ms_struct_decl_arg_t vec3_members[3] = {
-            _ms_struct_decl_arg("x", &mscript->float_type, 0),
-            _ms_struct_decl_arg("y", &mscript->float_type, 4),
-            _ms_struct_decl_arg("z", &mscript->float_type, 8)
-        };
-        mscript->vec3_decl = _ms_struct_decl(NULL, "vec3", 3, vec3_members);
-        _mscript_type_init(&mscript->vec3_type, "vec3", MSCRIPT_TYPE_VEC3, NULL, &mscript->vec3_decl, 12);
-        _mscript_type_init(&mscript->vec3_array_type, "vec3[]", MSCRIPT_TYPE_ARRAY, &mscript->vec3_type, NULL, 4);
-    }
+    _mscript_type_init(&mscript->vec3_type, "vec3", MSCRIPT_TYPE_VEC3, NULL, NULL, 12);
+    _mscript_type_init(&mscript->vec3_array_type, "vec3[]", MSCRIPT_TYPE_ARRAY, &mscript->vec3_type, NULL, 4);
 
     _mscript_type_init(&mscript->bool_type, "bool", MSCRIPT_TYPE_BOOL, NULL, NULL, 4);
     _mscript_type_init(&mscript->bool_array_type, "bool[]", MSCRIPT_TYPE_ARRAY, &mscript->bool_type, NULL, 4);
@@ -6838,6 +7003,16 @@ static int _ms_copy_val(char *data, mscript_val_t val) {
                 return 4;
             }
             break;
+        case MSCRIPT_VAL_VEC3:
+            {
+                float v[3];
+                v[0] = (float) val.vec3_val.x;
+                v[1] = (float) val.vec3_val.y;
+                v[2] = (float) val.vec3_val.z;
+                memcpy(data, (char*) v, 12);
+                return 12;
+            }
+            break;
         case MSCRIPT_VAL_BOOL:
             {
                 int32_t v;
@@ -6886,6 +7061,7 @@ static void _ms_vm_init_global(mscript_vm_t *vm, _ms_symbol_t *symbol) {
     switch (val.type) {
         case MSCRIPT_VAL_INT:
         case MSCRIPT_VAL_FLOAT:
+        case MSCRIPT_VAL_VEC3:
         case MSCRIPT_VAL_BOOL:
         case MSCRIPT_VAL_OBJECT:
             {
@@ -6982,6 +7158,15 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
                 }
                 break;
             case MSCRIPT_VAL_FLOAT:
+                {
+                    assert(decl->args[i].type->type == MSCRIPT_TYPE_VEC3);
+                    *((float*) (stack + sp + 0)) = (float)arg.vec3_val.x;
+                    *((float*) (stack + sp + 4)) = (float)arg.vec3_val.y;
+                    *((float*) (stack + sp + 8)) = (float)arg.vec3_val.z;
+                    sp += 12;
+                }
+                break;
+            case MSCRIPT_VAL_VEC3:
                 {
                     assert(decl->args[i].type->type == MSCRIPT_TYPE_FLOAT);
                     *((float*) (stack + sp)) = (float)arg.float_val;
@@ -7090,7 +7275,7 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
                     VM_BINARY_OP(*, float, float);
                 }
                 break;
-            case _MS_OPCODE_V3SCALE:
+            case _MS_OPCODE_V3MUL:
                 {
                     float *v1 = (float*) (stack + sp - 4);
                     float *v0 = (float*) (stack + sp - 16);
@@ -7111,6 +7296,19 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
             case _MS_OPCODE_FDIV:
                 {
                     VM_BINARY_OP(/, float, float);
+                }
+                break;
+            case _MS_OPCODE_V3DIV:
+                {
+                    float *v1 = (float*) (stack + sp - 4);
+                    float *v0 = (float*) (stack + sp - 16);
+                    float v[3] = { 
+                        v0[0] / (*v1),
+                        v0[1] / (*v1),
+                        v0[2] / (*v1)  
+                    };
+                    memcpy(stack + sp - 16, v, 12);
+                    sp -= 4;
                 }
                 break;
             case _MS_OPCODE_ILTE:
@@ -7334,7 +7532,8 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
                 break;
             case _MS_OPCODE_C_CALL:
                 {
-                    *((float*) (stack + sp - 4)) = 4.0f;
+                    op.c_call.fn(stack + sp, op.c_call.args_size);
+                    sp = (sp - op.c_call.args_size + op.c_call.return_size);
                 }
                 break;
             case _MS_OPCODE_RETURN:
@@ -7485,6 +7684,7 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
             case _MS_OPCODE_INTERMEDIATE_LABEL:
             case _MS_OPCODE_INTERMEDIATE_FUNC:
             case _MS_OPCODE_INTERMEDIATE_CALL:
+            case _MS_OPCODE_INTERMEDIATE_C_CALL:
             case _MS_OPCODE_INTERMEDIATE_JF:
             case _MS_OPCODE_INTERMEDIATE_JMP:
             case _MS_OPCODE_INTERMEDIATE_STRING:

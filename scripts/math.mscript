@@ -1,0 +1,17 @@
+float vec3_dot(vec3 a, vec3 b) {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+float vec3_length(vec3 v) {
+    return c_sqrt(vec3_dot(v, v));
+}
+
+vec3 vec3_normalize(vec3 v) {
+    float l = vec3_length(v);
+    if (l == 0.0) {
+        return vec3(0.0, 0.0, 0.0);
+    }
+    else {
+        return v / l;
+    }
+}

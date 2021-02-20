@@ -2,64 +2,16 @@ import "math.mscript";
 import "util.mscript";
 import "terrain_generation_common.mscript";
 
-int fib1(int n) {
-    if (n <= 0) {
-        return 0;
-    }
-    else if (n == 1) {
-        return 1;
-    }
-    else {
-        return fib1(n - 1) + fib2(n - 2);
-    }
-}
-
-int fib2(int n) {
-    if (n <= 0) {
-        return 0;
-    }
-    else if (n == 1) {
-        return 1;
-    }
-    else {
-        return fib2(n - 1) + fib1(n - 2);
-    }
-}
-
-int fib(int n, int x) {
-    if (n <= zero()) {
-        return zero();
-    }
-    else if (n == one()) {
-        return one();
-    }
-    else {
-        return fib1(n - one()) + fib2(n - two());
-    }
-}
-
-int zero() {
-    return 0;
-}
-
-int one() {
-    return 1;
-}
-
-int two() {
-    return 2;
-}
-
 bool inited = false;
 int stuff = 10;
 int[] stuffs = NULL;
 vec3[] vecs = [];
-
-float vec3_dot(vec3 v0, vec3 v1) {
-    return v0.x * v1.x + v0.y * v1.y + v0.z * v1.z;
-}
+vec3 it = 4*vec3(1, 2, 3)*4;
 
 int run(int n0, int n1) {
+    print("------------------------------\n");
+    print("-------------RUN--------------\n");
+    print("------------------------------\n");
     int i;
     if (!inited) {
         stuffs = [];
@@ -70,14 +22,23 @@ int run(int n0, int n1) {
         inited = true;
     }
 
+    it = it + vec3(1.0, 2.0, 3.0);
+    print("it = ", it, "\n");
+
     int n = n0 + n1; 
+
+    vec3 sub_vec = vec3(0.0, 0.0, 0.0) - vec3(1.0, 2.0, 3.0);
+    print("sub_vec = ", sub_vec, "\n");
 
     vec3 test_scale1 = 100*vec3(1, 2, 3);
     print("test_scale1 = ", test_scale1, "\n");
     vec3 test_scale2 = vec3(1, 2, 3)*200 + vec3(1, 2, 3);
     print("test_scale2 = ", test_scale2, "\n");
 
-    vec3 all = vec3(4, 5, 6) + vec3(1, 2, 3) + 4*vec3(5, 5, 5);
+    vec3 all = vec3(1.0, 2.0, 3.0);
+    for (i = 0; i < 2; i++) {
+        all = 2.0 * all;
+    }
     print("all.x = ", all.x, "\n");
     print("all.y = ", all.y, "\n");
     print("all.z = ", all.z, "\n");
@@ -92,7 +53,7 @@ int run(int n0, int n1) {
     print("v1 = ", v1, "\n");
     print("dot = ", vec3_dot(v0, v1), "\n");
 
-    float ss = 16.0;
+    float ss = 25.0;
     ss = c_sqrt(ss);
     print("ss = ", ss, "\n");
 
@@ -100,6 +61,17 @@ int run(int n0, int n1) {
     stuff = stuff + 100;
 
     print("fib(10) = ", fib(10, 1), "\n");
+
+    vec3 v = vec3(100.0, 100.0, 0.0);
+    print("v = ", v, "\n");
+    v = vec3_normalize(v);
+    print("v = ", v, "\n");
+
+    for (i = 0; i < 4; i++) {
+        float theta = i * 0.5 * PI;
+        print("cos(", theta, ") = ", c_cos(theta), "\n");
+        print("sin(", theta, ") = ", c_sin(theta), "\n");
+    }
 
     //for (i = 0; i < stuffs.length; i++) {
         //print(i, ": ", stuffs[i], "\n");
