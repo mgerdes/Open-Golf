@@ -257,6 +257,8 @@ sapp_desc sokol_main(int argc, char *argv[]) {
             .fullscreen = false,
             .high_dpi = false,
             .html5_canvas_resize = false,
+            .win32_console_utf8 = true,
+            .win32_console_create = true,
             .swap_interval = 1,
     };
 }

@@ -3,7 +3,7 @@ float vec3_dot(vec3 a, vec3 b) {
 }
 
 float vec3_length(vec3 v) {
-    return c_sqrt(vec3_dot(v, v));
+    return sqrt(vec3_dot(v, v));
 }
 
 vec3 vec3_normalize(vec3 v) {

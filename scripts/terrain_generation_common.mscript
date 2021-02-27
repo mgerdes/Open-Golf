@@ -7,3 +7,24 @@ struct terrain_model_face {
     float cor, friction, vel_scale;
     int auto_texture;
 }
+
+void generate(int n, float width, float length, float texture_width, float texture_dx, float texture_dy,
+        vec3 bp0, vec3 bp1, vec3 bp2, vec3 bp3) {
+    vec3[] points = [];
+
+    float radius = 0.5 * width;
+    
+    vec3 c = vec3(radius, 0.0, radius);
+    points[points.length] = c;
+
+    int i = 0;
+    int j = 0;
+    for (i = 0; i < N - 1; i++) {
+        float t0 = i / (n - 2);
+        float r = 0.36 + (radius - 0.36) * t0;
+        float y = vec3_bezier(bp0, bp1, bp2, bp3, t0).y;
+        for (j = 0; j < N; j++) {
+            float t1 = j / n;
+        }
+    }
+}

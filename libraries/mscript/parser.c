@@ -792,6 +792,8 @@ typedef vec_t(_ms_vm_array_t) _vec_ms_vm_array_t;
 static void _ms_c_function_sqrt(char *args, int args_size);
 static void _ms_c_function_sin(char *args, int args_size);
 static void _ms_c_function_cos(char *args, int args_size);
+static void _ms_c_function_asin(char *args, int args_size);
+static void _ms_c_function_acos(char *args, int args_size);
 static void _ms_c_function_file_size(char *args, int args_size);
 
 struct mscript_vm {
@@ -6539,7 +6541,7 @@ static void _ms_program_load_stage_4(mscript_t *mscript, mscript_program_t *prog
     if (program->error) return;
 
     {
-        const char *name = "c_sqrt";
+        const char *name = "sqrt";
         const char *return_type = "float";
         int num_args = 1;
         const char *arg_types[1] = { "float" };
@@ -6547,7 +6549,7 @@ static void _ms_program_load_stage_4(mscript_t *mscript, mscript_program_t *prog
     }
 
     {
-        const char *name = "c_sin";
+        const char *name = "sin";
         const char *return_type = "float";
         int num_args = 1;
         const char *arg_types[1] = { "float" };
@@ -6555,11 +6557,27 @@ static void _ms_program_load_stage_4(mscript_t *mscript, mscript_program_t *prog
     }
 
     {
-        const char *name = "c_cos";
+        const char *name = "cos";
         const char *return_type = "float";
         int num_args = 1;
         const char *arg_types[1] = { "float" };
         _ms_program_add_c_function_decl(program, name, return_type, num_args, arg_types, _ms_c_function_cos);
+    }
+
+    {
+        const char *name = "asin";
+        const char *return_type = "float";
+        int num_args = 1;
+        const char *arg_types[1] = { "float" };
+        _ms_program_add_c_function_decl(program, name, return_type, num_args, arg_types, _ms_c_function_asin);
+    }
+
+    {
+        const char *name = "acos";
+        const char *return_type = "float";
+        int num_args = 1;
+        const char *arg_types[1] = { "float" };
+        _ms_program_add_c_function_decl(program, name, return_type, num_args, arg_types, _ms_c_function_acos);
     }
 
     {
@@ -6990,6 +7008,7 @@ mscript_t *mscript_create(void) {
 
         for (int i = 0; i < 10; i++) {
             mscript_vm_run(vm, "run", 3, args);
+            fflush(stdout); 
         }
     }
 
@@ -7161,6 +7180,20 @@ static void _ms_c_function_cos(char *args, int args_size) {
     assert(args_size == 4);
     float v = *((float*) (args - 4));
     v = cosf(v);
+    memcpy(args - 4, &v, 4);
+}
+
+static void _ms_c_function_asin(char *args, int args_size) {
+    assert(args_size == 4);
+    float v = *((float*) (args - 4));
+    v = asinf(v);
+    memcpy(args - 4, &v, 4);
+}
+
+static void _ms_c_function_acos(char *args, int args_size) {
+    assert(args_size == 4);
+    float v = *((float*) (args - 4));
+    v = acosf(v);
     memcpy(args - 4, &v, 4);
 }
 
@@ -7702,6 +7735,7 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
             case _MS_OPCODE_DEBUG_PRINT_VEC3:
                 {
                     float *v = (float*) (stack + sp - 12);
+                    sp -= 12;
                     m_logf("<%f, %f, %f>", v[0], v[1], v[2]);
                 }
                 break;

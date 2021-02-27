@@ -9,7 +9,7 @@ vec3[] vecs = [];
 vec3 it = 4*4*vec3(1, 2, 3)*4;
 vec3 UP = vec3(0.0, 1.0, 0.0);
 
-int run(int n0, int n1, file* file_ptr) {
+int run(int n0, int n1, void* file_ptr) {
     print("------------------------------\n");
     print("-------------RUN--------------\n");
     print("------------------------------\n");
@@ -58,7 +58,7 @@ int run(int n0, int n1, file* file_ptr) {
     print("dot = ", vec3_dot(v0, v1), "\n");
 
     float ss = 25.0;
-    ss = c_sqrt(ss);
+    ss = sqrt(ss);
     print("ss = ", ss, "\n");
 
     print("stuff = ", stuff, "\n");
@@ -73,8 +73,13 @@ int run(int n0, int n1, file* file_ptr) {
 
     for (i = 0; i < 4; i++) {
         float theta = i * 0.5 * PI;
-        print("cos(", theta, ") = ", c_cos(theta), "\n");
-        print("sin(", theta, ") = ", c_sin(theta), "\n");
+        float c = cos(theta);
+        float s = sin(theta);
+        print("cos(", theta, ") = ", c, "\n");
+        print("sin(", theta, ") = ", s, "\n");
+
+        print("acos(", c, ") = ", acos(cos(theta)), "\n");
+        print("asin(", s, ") = ", asin(sin(theta)), "\n");
     }
     print("UP = ", UP, "\n");
 
