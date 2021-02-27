@@ -18,6 +18,7 @@ typedef enum mscript_type_type {
     MSCRIPT_TYPE_STRUCT,
     MSCRIPT_TYPE_ENUM,
     MSCRIPT_TYPE_ARRAY,
+    MSCRIPT_TYPE_FILE_PTR,
     MSCRIPT_NUM_TYPES,
 } mscript_type_type_t;
 
@@ -35,6 +36,7 @@ typedef enum mscript_val_type {
     MSCRIPT_VAL_FLOAT,
     MSCRIPT_VAL_VEC3,
     MSCRIPT_VAL_BOOL,
+    MSCRIPT_VAL_VOID_PTR,
     MSCRIPT_VAL_OBJECT,
     MSCRIPT_VAL_ARRAY,
 } mscript_val_type_t;
@@ -45,6 +47,7 @@ typedef struct mscript_val {
         float float_val;
         int int_val;
         bool bool_val;
+        void *void_ptr_val;
 
         struct {
             float x, y, z;
@@ -66,6 +69,7 @@ mscript_val_t mscript_val_float(float float_val);
 mscript_val_t mscript_val_vec3(float x, float y, float z);
 mscript_val_t mscript_val_int(int int_val);
 mscript_val_t mscript_val_bool(bool bool_val);
+mscript_val_t mscript_val_void_ptr(void *ptr);
 mscript_val_t mscript_val_object(int num_args, mscript_val_t *args);
 mscript_val_t mscript_val_array(int num_args, mscript_val_t *args);
 

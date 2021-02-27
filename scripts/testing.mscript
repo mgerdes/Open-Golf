@@ -6,9 +6,10 @@ bool inited = false;
 int stuff = 10;
 int[] stuffs = NULL;
 vec3[] vecs = [];
-vec3 it = 4*vec3(1, 2, 3)*4;
+vec3 it = 4*4*vec3(1, 2, 3)*4;
+vec3 UP = vec3(0.0, 1.0, 0.0);
 
-int run(int n0, int n1) {
+int run(int n0, int n1, file* file_ptr) {
     print("------------------------------\n");
     print("-------------RUN--------------\n");
     print("------------------------------\n");
@@ -27,6 +28,9 @@ int run(int n0, int n1) {
 
     int n = n0 + n1; 
 
+    int file_size = c_file_size(file_ptr);
+    print("file_size = ", file_size, "\n");
+
     vec3 sub_vec = vec3(0.0, 0.0, 0.0) - vec3(1.0, 2.0, 3.0);
     print("sub_vec = ", sub_vec, "\n");
 
@@ -42,7 +46,7 @@ int run(int n0, int n1) {
     print("all.x = ", all.x, "\n");
     print("all.y = ", all.y, "\n");
     print("all.z = ", all.z, "\n");
-    for (i = 0; i < 100; i++) {
+    for (i = 0; i < 10; i++) {
         all = all + vecs[i];
     }
     print("all = ", all, "\n");
@@ -72,6 +76,7 @@ int run(int n0, int n1) {
         print("cos(", theta, ") = ", c_cos(theta), "\n");
         print("sin(", theta, ") = ", c_sin(theta), "\n");
     }
+    print("UP = ", UP, "\n");
 
     //for (i = 0; i < stuffs.length; i++) {
         //print(i, ": ", stuffs[i], "\n");

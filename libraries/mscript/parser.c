@@ -789,6 +789,11 @@ typedef struct _ms_vm_array {
 } _ms_vm_array_t;
 typedef vec_t(_ms_vm_array_t) _vec_ms_vm_array_t;
 
+static void _ms_c_function_sqrt(char *args, int args_size);
+static void _ms_c_function_sin(char *args, int args_size);
+static void _ms_c_function_cos(char *args, int args_size);
+static void _ms_c_function_file_size(char *args, int args_size);
+
 struct mscript_vm {
     mscript_program_t *program;
     _vec_ms_vm_array_t arrays;
@@ -5276,6 +5281,11 @@ static void _ms_compile_val(mscript_program_t *program, mscript_val_t val) {
                 }
             }
             break;
+        case MSCRIPT_VAL_VOID_PTR:
+            {
+                assert(false);
+            }
+            break;
         case MSCRIPT_VAL_OBJECT:
             {
                 for (int i = 0; i < val.object.num_args; i++) {
@@ -6525,27 +6535,6 @@ cleanup:
     }
 }
 
-static void _ms_c_function_sqrt(char *args, int args_size) {
-    assert(args_size == 4);
-    float v = *((float*) (args - 4));
-    v = sqrtf(v);
-    memcpy(args - 4, &v, 4);
-}
-
-static void _ms_c_function_sin(char *args, int args_size) {
-    assert(args_size == 4);
-    float v = *((float*) (args - 4));
-    v = sinf(v);
-    memcpy(args - 4, &v, 4);
-}
-
-static void _ms_c_function_cos(char *args, int args_size) {
-    assert(args_size == 4);
-    float v = *((float*) (args - 4));
-    v = cosf(v);
-    memcpy(args - 4, &v, 4);
-}
-
 static void _ms_program_load_stage_4(mscript_t *mscript, mscript_program_t *program) {
     if (program->error) return;
 
@@ -6571,6 +6560,14 @@ static void _ms_program_load_stage_4(mscript_t *mscript, mscript_program_t *prog
         int num_args = 1;
         const char *arg_types[1] = { "float" };
         _ms_program_add_c_function_decl(program, name, return_type, num_args, arg_types, _ms_c_function_cos);
+    }
+
+    {
+        const char *name = "c_file_size";
+        const char *return_type = "int";
+        int num_args = 1;
+        const char *arg_types[1] = { "void*" };
+        _ms_program_add_c_function_decl(program, name, return_type, num_args, arg_types, _ms_c_function_file_size);
     }
 
     for (int i = 0; i < program->global_stmts.length; i++) {
@@ -6912,6 +6909,13 @@ mscript_val_t mscript_val_bool(bool bool_val) {
     return val;
 }
 
+mscript_val_t mscript_val_void_ptr(void *void_ptr) {
+    mscript_val_t val;
+    val.type = MSCRIPT_VAL_VOID_PTR;
+    val.void_ptr_val = void_ptr;
+    return val;
+}
+
 mscript_val_t mscript_val_object(int num_args, mscript_val_t *args) {
     mscript_val_t val;
     val.type = MSCRIPT_VAL_OBJECT;
@@ -6934,7 +6938,7 @@ mscript_t *mscript_create(void) {
     vec_init(&mscript->programs_array);
 
     _mscript_type_init(&mscript->void_type, "void", MSCRIPT_TYPE_VOID, NULL, NULL, 0);
-    _mscript_type_init(&mscript->void_star_type, "void*", MSCRIPT_TYPE_VOID_STAR, NULL, NULL, 4);
+    _mscript_type_init(&mscript->void_star_type, "void*", MSCRIPT_TYPE_VOID_STAR, NULL, NULL, sizeof(intptr_t));
     _mscript_type_init(&mscript->void_star_array_type, "void*[]", MSCRIPT_TYPE_ARRAY, &mscript->void_star_type, NULL, 4);
     _mscript_type_init(&mscript->int_type, "int", MSCRIPT_TYPE_INT, NULL, NULL, 4);
     _mscript_type_init(&mscript->int_array_type, "int[]", MSCRIPT_TYPE_ARRAY, &mscript->int_type, NULL, 4);
@@ -6975,12 +6979,17 @@ mscript_t *mscript_create(void) {
 
     if (!program->error) {
         mscript_vm_t *vm = mscript_vm_create(program);
-        mscript_val_t args[2];
+        mscript_val_t args[3];
         args[0] = mscript_val_int(20);
         args[1] = mscript_val_int(25);
 
+        struct file *file = malloc(sizeof(struct file));
+        *file = file_init("scripts/testing.mscript");
+        file_load_data(file);
+        args[2] = mscript_val_void_ptr(file);
+
         for (int i = 0; i < 10; i++) {
-            mscript_vm_run(vm, "run", 2, args);
+            mscript_vm_run(vm, "run", 3, args);
         }
     }
 
@@ -7026,6 +7035,11 @@ static int _ms_copy_val(char *data, mscript_val_t val) {
                 return 4;
             }
             break;
+        case MSCRIPT_VAL_VOID_PTR:
+            {
+                assert(false);
+            }
+            break;
         case MSCRIPT_VAL_OBJECT:
             {
                 int total_size = 0;
@@ -7063,6 +7077,7 @@ static void _ms_vm_init_global(mscript_vm_t *vm, _ms_symbol_t *symbol) {
         case MSCRIPT_VAL_FLOAT:
         case MSCRIPT_VAL_VEC3:
         case MSCRIPT_VAL_BOOL:
+        case MSCRIPT_VAL_VOID_PTR:
         case MSCRIPT_VAL_OBJECT:
             {
                 int size = _ms_copy_val(vm->memory + offset, val);
@@ -7128,6 +7143,35 @@ mscript_vm_t *mscript_vm_create(mscript_program_t *program) {
     memcpy(stack + sp - 8, &v, 4);\
     sp -= 4;
 
+static void _ms_c_function_sqrt(char *args, int args_size) {
+    assert(args_size == 4);
+    float v = *((float*) (args - 4));
+    v = sqrtf(v);
+    memcpy(args - 4, &v, 4);
+}
+
+static void _ms_c_function_sin(char *args, int args_size) {
+    assert(args_size == 4);
+    float v = *((float*) (args - 4));
+    v = sinf(v);
+    memcpy(args - 4, &v, 4);
+}
+
+static void _ms_c_function_cos(char *args, int args_size) {
+    assert(args_size == 4);
+    float v = *((float*) (args - 4));
+    v = cosf(v);
+    memcpy(args - 4, &v, 4);
+}
+
+static void _ms_c_function_file_size(char *args, int args_size) {
+    assert(args_size == sizeof(intptr_t));
+    intptr_t ptr = *((intptr_t*) (args - args_size));
+    struct file *f = (struct file*) ptr;
+    int v = f->data_len;
+    memcpy(args - args_size, &v, 4);
+}
+
 void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, mscript_val_t *args) {
     _ms_opcode_t *opcodes = vm->program->opcodes.data;
     int fp, sp, ip;
@@ -7183,6 +7227,13 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
                         *((int32_t*) (stack + sp)) = (int32_t)0;
                     }
                     sp += 4;
+                }
+                break;
+            case MSCRIPT_VAL_VOID_PTR:
+                {
+                    assert(decl->args[i].type->type == MSCRIPT_TYPE_VOID_STAR);
+                    *((intptr_t*) (stack + sp)) = (intptr_t)arg.void_ptr_val;
+                    sp += sizeof(intptr_t);
                 }
                 break;
             case MSCRIPT_VAL_OBJECT:
