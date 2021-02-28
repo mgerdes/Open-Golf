@@ -21,15 +21,19 @@ typedef enum _ms_opcode_type {
     _MS_OPCODE_INVALID,
     _MS_OPCODE_IADD,
     _MS_OPCODE_FADD,
+    _MS_OPCODE_V2ADD,
     _MS_OPCODE_V3ADD,
     _MS_OPCODE_ISUB,
     _MS_OPCODE_FSUB,
+    _MS_OPCODE_V2SUB,
     _MS_OPCODE_V3SUB,
     _MS_OPCODE_IMUL,
     _MS_OPCODE_FMUL,
+    _MS_OPCODE_V2MUL,
     _MS_OPCODE_V3MUL,
     _MS_OPCODE_IDIV,
     _MS_OPCODE_FDIV,
+    _MS_OPCODE_V2DIV,
     _MS_OPCODE_V3DIV,
     _MS_OPCODE_ILTE,
     _MS_OPCODE_FLTE,
@@ -41,9 +45,11 @@ typedef enum _ms_opcode_type {
     _MS_OPCODE_FGT,
     _MS_OPCODE_IEQ,
     _MS_OPCODE_FEQ,
+    _MS_OPCODE_V2EQ,
     _MS_OPCODE_V3EQ,
     _MS_OPCODE_INEQ,
     _MS_OPCODE_FNEQ,
+    _MS_OPCODE_V2NEQ,
     _MS_OPCODE_V3NEQ,
     _MS_OPCODE_IINC,
     _MS_OPCODE_FINC,
@@ -71,6 +77,7 @@ typedef enum _ms_opcode_type {
     _MS_OPCODE_ARRAY_LENGTH,
     _MS_OPCODE_DEBUG_PRINT_INT,
     _MS_OPCODE_DEBUG_PRINT_FLOAT,
+    _MS_OPCODE_DEBUG_PRINT_VEC2,
     _MS_OPCODE_DEBUG_PRINT_VEC3,
     _MS_OPCODE_DEBUG_PRINT_BOOL,
     _MS_OPCODE_DEBUG_PRINT_STRING,
@@ -116,15 +123,19 @@ typedef vec_t(_ms_opcode_t) _vec_ms_opcode_t;
 
 static _ms_opcode_t _ms_opcode_iadd(void);
 static _ms_opcode_t _ms_opcode_fadd(void);
+static _ms_opcode_t _ms_opcode_v2add(void);
 static _ms_opcode_t _ms_opcode_v3add(void);
 static _ms_opcode_t _ms_opcode_isub(void);
 static _ms_opcode_t _ms_opcode_fsub(void);
+static _ms_opcode_t _ms_opcode_v2sub(void);
 static _ms_opcode_t _ms_opcode_v3sub(void);
 static _ms_opcode_t _ms_opcode_imul(void);
 static _ms_opcode_t _ms_opcode_fmul(void);
+static _ms_opcode_t _ms_opcode_v2mul(void);
 static _ms_opcode_t _ms_opcode_v3mul(void);
 static _ms_opcode_t _ms_opcode_idiv(void);
 static _ms_opcode_t _ms_opcode_fdiv(void);
+static _ms_opcode_t _ms_opcode_v2div(void);
 static _ms_opcode_t _ms_opcode_v3div(void);
 static _ms_opcode_t _ms_opcode_ilte(void);
 static _ms_opcode_t _ms_opcode_flte(void);
@@ -136,9 +147,11 @@ static _ms_opcode_t _ms_opcode_igt(void);
 static _ms_opcode_t _ms_opcode_fgt(void);
 static _ms_opcode_t _ms_opcode_ieq(void);
 static _ms_opcode_t _ms_opcode_feq(void);
+static _ms_opcode_t _ms_opcode_v2eq(void);
 static _ms_opcode_t _ms_opcode_v3eq(void);
 static _ms_opcode_t _ms_opcode_ineq(void);
 static _ms_opcode_t _ms_opcode_fneq(void);
+static _ms_opcode_t _ms_opcode_v2neq(void);
 static _ms_opcode_t _ms_opcode_v3neq(void);
 static _ms_opcode_t _ms_opcode_iinc(void);
 static _ms_opcode_t _ms_opcode_finc(void);
@@ -750,10 +763,10 @@ struct mscript {
     mscript_type_t int_type, int_array_type,
                         float_type, float_array_type,
                         vec3_type, vec3_array_type,
+                        vec2_type, vec2_array_type,
                         bool_type, bool_array_type,
                         void_type, void_star_type, void_star_array_type,
                         char_star_type;
-    _ms_struct_decl_t vec3_decl;
 
     _map_mscript_program_ptr_t programs_map;
     _vec_mscript_program_ptr_t programs_array;
@@ -1017,7 +1030,7 @@ static _ms_expr_t *_ms_expr_object_new(_ms_mem_t *mem, _ms_token_t token, vec_ch
 
 static _ms_expr_t *_ms_expr_vec_new(_ms_mem_t *mem, _ms_token_t token, _vec_expr_ptr_t args) {
     int num_args = args.length;
-    assert(num_args == 3);
+    assert(num_args == 2 || num_args == 3);
 
     _ms_expr_t *expr = _ms_mem_alloc(mem, sizeof(_ms_expr_t));
     expr->type = _MS_EXPR_VEC;
@@ -1445,6 +1458,13 @@ static _ms_expr_t *_ms_parse_call_expr(mscript_program_t *program) {
 
         if (expr->type == _MS_EXPR_SYMBOL && (strcmp(expr->symbol, "print") == 0)) {
             expr = _ms_expr_debug_print_new(&program->compiler_mem, token, args);
+        }
+        else if (expr->type == _MS_EXPR_SYMBOL && (strcmp(expr->symbol, "vec2") == 0)) {
+            if (args.length != 2) {
+                _ms_program_error(program, _ms_peek(program), "Expect 2 arguments to V3.");
+                goto cleanup;
+            }
+            expr = _ms_expr_vec_new(&program->compiler_mem, token, args);
         }
         else if (expr->type == _MS_EXPR_SYMBOL && (strcmp(expr->symbol, "vec3") == 0)) {
             if (args.length != 3) {
@@ -2182,6 +2202,11 @@ static mscript_val_t _ms_const_val_binary_op(_ms_binary_op_type_t type, mscript_
                 else if (left.type == MSCRIPT_VAL_FLOAT && right.type == MSCRIPT_VAL_FLOAT) {
                     return mscript_val_float(left.float_val + right.float_val);
                 }
+                else if (left.type == MSCRIPT_VAL_VEC2 && right.type == MSCRIPT_VAL_VEC2) {
+                    float x = left.vec2_val.x + right.vec2_val.x;
+                    float y = left.vec2_val.y + right.vec2_val.y;
+                    return mscript_val_vec2(x, y);
+                }
                 else if (left.type == MSCRIPT_VAL_VEC3 && right.type == MSCRIPT_VAL_VEC3) {
                     float x = left.vec3_val.x + right.vec3_val.x;
                     float y = left.vec3_val.y + right.vec3_val.y;
@@ -2200,6 +2225,11 @@ static mscript_val_t _ms_const_val_binary_op(_ms_binary_op_type_t type, mscript_
                 }
                 else if (left.type == MSCRIPT_VAL_FLOAT && right.type == MSCRIPT_VAL_FLOAT) {
                     return mscript_val_float(left.float_val - right.float_val);
+                }
+                else if (left.type == MSCRIPT_VAL_VEC2 && right.type == MSCRIPT_VAL_VEC2) {
+                    float x = left.vec2_val.x - right.vec2_val.x;
+                    float y = left.vec2_val.y - right.vec2_val.y;
+                    return mscript_val_vec2(x, y);
                 }
                 else if (left.type == MSCRIPT_VAL_VEC3 && right.type == MSCRIPT_VAL_VEC3) {
                     float x = left.vec3_val.x - right.vec3_val.x;
@@ -2220,11 +2250,21 @@ static mscript_val_t _ms_const_val_binary_op(_ms_binary_op_type_t type, mscript_
                 else if (left.type == MSCRIPT_VAL_FLOAT && right.type == MSCRIPT_VAL_FLOAT) {
                     return mscript_val_float(left.float_val * right.float_val);
                 }
+                else if (left.type == MSCRIPT_VAL_VEC2 && right.type == MSCRIPT_VAL_VEC2) {
+                    float x = left.vec2_val.x * right.float_val;
+                    float y = left.vec2_val.y * right.float_val;
+                    return mscript_val_vec2(x, y);
+                }
                 else if (left.type == MSCRIPT_VAL_VEC3 && right.type == MSCRIPT_VAL_FLOAT) {
                     float x = left.vec3_val.x * right.float_val;
                     float y = left.vec3_val.y * right.float_val;
                     float z = left.vec3_val.z * right.float_val;
                     return mscript_val_vec3(x, y, z);
+                }
+                else if (left.type == MSCRIPT_VAL_FLOAT && right.type == MSCRIPT_VAL_VEC2) {
+                    float x = right.vec2_val.x * left.float_val;
+                    float y = right.vec2_val.y * left.float_val;
+                    return mscript_val_vec2(x, y);
                 }
                 else if (left.type == MSCRIPT_VAL_FLOAT && right.type == MSCRIPT_VAL_VEC3) {
                     float x = right.vec3_val.x * left.float_val;
@@ -2245,10 +2285,15 @@ static mscript_val_t _ms_const_val_binary_op(_ms_binary_op_type_t type, mscript_
                 else if (left.type == MSCRIPT_VAL_FLOAT && right.type == MSCRIPT_VAL_FLOAT) {
                     return mscript_val_float(left.float_val / right.float_val);
                 }
+                else if (left.type == MSCRIPT_VAL_VEC2 && right.type == MSCRIPT_VAL_FLOAT) {
+                    float x = left.vec2_val.x / right.float_val;
+                    float y = left.vec2_val.y / right.float_val;
+                    return mscript_val_vec2(x, y);
+                }
                 else if (left.type == MSCRIPT_VAL_VEC3 && right.type == MSCRIPT_VAL_FLOAT) {
-                    float x = left.vec3_val.x / right.vec3_val.x;
-                    float y = left.vec3_val.y / right.vec3_val.y;
-                    float z = left.vec3_val.z / right.vec3_val.z;
+                    float x = left.vec3_val.x / right.float_val;
+                    float y = left.vec3_val.y / right.float_val;
+                    float z = left.vec3_val.z / right.float_val;
                     return mscript_val_vec3(x, y, z);
                 }
                 else {
@@ -3327,6 +3372,9 @@ static void _ms_verify_binary_op_expr(mscript_program_t *program, _ms_expr_t *ex
                 [MSCRIPT_TYPE_INT] = { "float", "float", "float" },
                 [MSCRIPT_TYPE_FLOAT] = { "float", "float", "float" },
             },
+            [MSCRIPT_TYPE_VEC2] = {
+                [MSCRIPT_TYPE_VEC2] = { "vec2", "vec2", "vec2" },
+            },
             [MSCRIPT_TYPE_VEC3] = {
                 [MSCRIPT_TYPE_VEC3] = { "vec3", "vec3", "vec3" },
             },
@@ -3341,6 +3389,9 @@ static void _ms_verify_binary_op_expr(mscript_program_t *program, _ms_expr_t *ex
                 [MSCRIPT_TYPE_INT] = { "float", "float", "float" },
                 [MSCRIPT_TYPE_FLOAT] = { "float", "float", "float" },
             },
+            [MSCRIPT_TYPE_VEC2] = {
+                [MSCRIPT_TYPE_VEC2] = { "vec2", "vec2", "vec2" },
+            },
             [MSCRIPT_TYPE_VEC3] = {
                 [MSCRIPT_TYPE_VEC3] = { "vec3", "vec3", "vec3" },
             },
@@ -3350,12 +3401,18 @@ static void _ms_verify_binary_op_expr(mscript_program_t *program, _ms_expr_t *ex
             [MSCRIPT_TYPE_INT] = {
                 [MSCRIPT_TYPE_INT] = { "int", "int", "int" },
                 [MSCRIPT_TYPE_FLOAT] = { "float", "float", "float" },
+                [MSCRIPT_TYPE_VEC2] = { "vec2", "float", "vec2" },
                 [MSCRIPT_TYPE_VEC3] = { "vec3", "float", "vec3" },
             },
             [MSCRIPT_TYPE_FLOAT] = {
                 [MSCRIPT_TYPE_INT] = { "float", "float", "float" },
                 [MSCRIPT_TYPE_FLOAT] = { "float", "float", "float" },
+                [MSCRIPT_TYPE_VEC2] = { "vec2", "float", "vec2" },
                 [MSCRIPT_TYPE_VEC3] = { "vec3", "float", "vec3" },
+            },
+            [MSCRIPT_TYPE_VEC2] = {
+                [MSCRIPT_TYPE_INT] = { "vec2", "vec2", "float" },
+                [MSCRIPT_TYPE_FLOAT] = { "vec2", "vec2", "float" },
             },
             [MSCRIPT_TYPE_VEC3] = {
                 [MSCRIPT_TYPE_INT] = { "vec3", "vec3", "float" },
@@ -3370,6 +3427,10 @@ static void _ms_verify_binary_op_expr(mscript_program_t *program, _ms_expr_t *ex
             [MSCRIPT_TYPE_FLOAT] = {
                 [MSCRIPT_TYPE_INT] = { "float", "float", "float" },
                 [MSCRIPT_TYPE_FLOAT] = { "float", "float", "float" },
+            },
+            [MSCRIPT_TYPE_VEC2] = {
+                [MSCRIPT_TYPE_INT] = { "vec2", "vec2", "float" },
+                [MSCRIPT_TYPE_FLOAT] = { "vec2", "vec2", "float" },
             },
             [MSCRIPT_TYPE_VEC3] = {
                 [MSCRIPT_TYPE_INT] = { "vec3", "vec3", "float" },
@@ -3428,6 +3489,9 @@ static void _ms_verify_binary_op_expr(mscript_program_t *program, _ms_expr_t *ex
             [MSCRIPT_TYPE_ENUM] = {
                 [MSCRIPT_TYPE_ENUM] = { "bool", "", "" },
             },
+            [MSCRIPT_TYPE_VEC2] = {
+                [MSCRIPT_TYPE_VEC2] = { "bool", "vec2", "vec2" },
+            },
             [MSCRIPT_TYPE_VEC3] = {
                 [MSCRIPT_TYPE_VEC3] = { "bool", "vec3", "vec3" },
             },
@@ -3443,6 +3507,9 @@ static void _ms_verify_binary_op_expr(mscript_program_t *program, _ms_expr_t *ex
             },
             [MSCRIPT_TYPE_ENUM] = {
                 [MSCRIPT_TYPE_ENUM] = { "bool", "", "" },
+            },
+            [MSCRIPT_TYPE_VEC2] = {
+                [MSCRIPT_TYPE_VEC2] = { "bool", "vec2", "vec2" },
             },
             [MSCRIPT_TYPE_VEC3] = {
                 [MSCRIPT_TYPE_VEC3] = { "bool", "vec3", "vec3" },
@@ -3620,6 +3687,39 @@ static void _ms_verify_member_access_expr(mscript_program_t *program, _ms_expr_t
         }
 
         expr->result_type = member_type;
+        expr->lvalue = lvalue;
+    }
+    else if (left_type->type == MSCRIPT_TYPE_VEC2) {
+        int member_offset = 0;
+        if (strcmp(expr->member_access.member_name, "x") == 0) {
+            member_offset = 0;
+        }
+        else if (strcmp(expr->member_access.member_name, "y") == 0) {
+            member_offset = 4;
+        }
+        else {
+            _ms_program_error(program, expr->token, "Invalid member %s on vec2.", expr->member_access.member_name);
+            return;
+        }
+
+        _ms_lvalue_t lvalue;
+        _ms_lvalue_t left_lvalue = expr->member_access.left->lvalue;
+        switch (left_lvalue.type) {
+            case _MS_LVALUE_INVALID:
+                assert(false);
+                break;
+            case _MS_LVALUE_LOCAL:
+                lvalue = _ms_lvalue_local(left_lvalue.offset + member_offset);
+                break;
+            case _MS_LVALUE_GLOBAL:
+                lvalue = _ms_lvalue_global(left_lvalue.offset + member_offset);
+                break;
+            case _MS_LVALUE_ARRAY:
+                lvalue = _ms_lvalue_array();
+                break;
+        }
+
+        expr->result_type = _ms_symbol_table_get_type(&program->symbol_table, "float");
         expr->lvalue = lvalue;
     }
     else if (left_type->type == MSCRIPT_TYPE_VEC3) {
@@ -3893,7 +3993,7 @@ static void _ms_verify_object_expr(mscript_program_t *program, _ms_expr_t *expr,
 
 static void _ms_verify_vec_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type) {
     assert(expr->type == _MS_EXPR_VEC);
-    assert(expr->vec.num_args == 3);
+    assert(expr->vec.num_args == 2 || expr->vec.num_args == 3);
 
     bool is_const = true;
     for (int i = 0; i < expr->vec.num_args; i++) {
@@ -3907,14 +4007,33 @@ static void _ms_verify_vec_expr(mscript_program_t *program, _ms_expr_t *expr, ms
     }
 
     if (is_const) {
-        float x = expr->vec.args[0]->const_val.float_val;
-        float y = expr->vec.args[1]->const_val.float_val;
-        float z = expr->vec.args[2]->const_val.float_val;
-        expr->const_val = mscript_val_vec3(x, y, z);
+        if (expr->vec.num_args == 2) {
+            float x = expr->vec.args[0]->const_val.float_val;
+            float y = expr->vec.args[1]->const_val.float_val;
+            expr->const_val = mscript_val_vec2(x, y);
+        }
+        else if (expr->vec.num_args == 3) {
+            float x = expr->vec.args[0]->const_val.float_val;
+            float y = expr->vec.args[1]->const_val.float_val;
+            float z = expr->vec.args[2]->const_val.float_val;
+            expr->const_val = mscript_val_vec3(x, y, z);
+        }
+        else {
+            assert(false);
+        }
     }
 
     expr->is_const = is_const;
-    expr->result_type = _ms_symbol_table_get_type(&program->symbol_table, "vec3");
+
+    if (expr->vec.num_args == 2) {
+        expr->result_type = _ms_symbol_table_get_type(&program->symbol_table, "vec2");
+    }
+    else if (expr->vec.num_args == 3) {
+        expr->result_type = _ms_symbol_table_get_type(&program->symbol_table, "vec3");
+    }
+    else {
+        assert(false);
+    }
     expr->lvalue = _ms_lvalue_invalid();
 }
 
@@ -3980,6 +4099,12 @@ static _ms_opcode_t _ms_opcode_fadd(void) {
     return op;
 }
 
+static _ms_opcode_t _ms_opcode_v2add(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_V2ADD;
+    return op;
+}
+
 static _ms_opcode_t _ms_opcode_v3add(void) {
     _ms_opcode_t op;
     op.type = _MS_OPCODE_V3ADD;
@@ -3995,6 +4120,12 @@ static _ms_opcode_t _ms_opcode_isub(void) {
 static _ms_opcode_t _ms_opcode_fsub(void) {
     _ms_opcode_t op;
     op.type = _MS_OPCODE_FSUB;
+    return op;
+}
+
+static _ms_opcode_t _ms_opcode_v2sub(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_V2SUB;
     return op;
 }
 
@@ -4016,6 +4147,12 @@ static _ms_opcode_t _ms_opcode_fmul(void) {
     return op;
 }
 
+static _ms_opcode_t _ms_opcode_v2mul(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_V2MUL;
+    return op;
+}
+
 static _ms_opcode_t _ms_opcode_v3mul(void) {
     _ms_opcode_t op;
     op.type = _MS_OPCODE_V3MUL;
@@ -4031,6 +4168,12 @@ static _ms_opcode_t _ms_opcode_idiv(void) {
 static _ms_opcode_t _ms_opcode_fdiv(void) {
     _ms_opcode_t op;
     op.type = _MS_OPCODE_FDIV;
+    return op;
+}
+
+static _ms_opcode_t _ms_opcode_v2div(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_V2DIV;
     return op;
 }
 
@@ -4100,6 +4243,12 @@ static _ms_opcode_t _ms_opcode_feq(void) {
     return op;
 }
 
+static _ms_opcode_t _ms_opcode_v2eq(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_V2EQ;
+    return op;
+}
+
 static _ms_opcode_t _ms_opcode_v3eq(void) {
     _ms_opcode_t op;
     op.type = _MS_OPCODE_V3EQ;
@@ -4115,6 +4264,12 @@ static _ms_opcode_t _ms_opcode_ineq(void) {
 static _ms_opcode_t _ms_opcode_fneq(void) {
     _ms_opcode_t op;
     op.type = _MS_OPCODE_FNEQ;
+    return op;
+}
+
+static _ms_opcode_t _ms_opcode_v2neq(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_V2NEQ;
     return op;
 }
 
@@ -4322,6 +4477,12 @@ static _ms_opcode_t _ms_opcode_debug_print_int(void) {
 static _ms_opcode_t _ms_opcode_debug_print_float(void) {
     _ms_opcode_t op;
     op.type = _MS_OPCODE_DEBUG_PRINT_FLOAT;
+    return op;
+}
+
+static _ms_opcode_t _ms_opcode_debug_print_vec2(void) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_DEBUG_PRINT_VEC2;
     return op;
 }
 
@@ -4645,7 +4806,7 @@ static void _ms_compile_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr
         case _MS_EXPR_MEMBER_ACCESS:
             {
                 mscript_type_t *struct_type = expr->member_access.left->result_type;
-                assert(struct_type->type == MSCRIPT_TYPE_STRUCT || struct_type->type == MSCRIPT_TYPE_VEC3);
+                assert(struct_type->type == MSCRIPT_TYPE_STRUCT || struct_type->type == MSCRIPT_TYPE_VEC3 || struct_type->type == MSCRIPT_TYPE_VEC2);
 
                 int offset = 0;
 
@@ -4664,6 +4825,17 @@ static void _ms_compile_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr
                     }
                     assert(found_member);
                 }
+                else if (struct_type->type == MSCRIPT_TYPE_VEC2) {
+                    if (strcmp(expr->member_access.member_name, "x") == 0) {
+                        offset = 0;
+                    }
+                    else if (strcmp(expr->member_access.member_name, "y") == 0) {
+                        offset = 4;
+                    }
+                    else {
+                        assert(false);
+                    }
+                }
                 else if (struct_type->type == MSCRIPT_TYPE_VEC3) {
                     if (strcmp(expr->member_access.member_name, "x") == 0) {
                         offset = 0;
@@ -4673,6 +4845,9 @@ static void _ms_compile_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr
                     }
                     else if (strcmp(expr->member_access.member_name, "z") == 0) {
                         offset = 8;
+                    }
+                    else {
+                        assert(false);
                     }
                 }
 
@@ -4755,6 +4930,9 @@ static void _ms_compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *e
             [MSCRIPT_TYPE_FLOAT] = {
                 [MSCRIPT_TYPE_FLOAT] = { _MS_OPCODE_FADD, 0 },
             },
+            [MSCRIPT_TYPE_VEC2] = {
+                [MSCRIPT_TYPE_VEC2] = { _MS_OPCODE_V2ADD, 0 },
+            },
             [MSCRIPT_TYPE_VEC3] = {
                 [MSCRIPT_TYPE_VEC3] = { _MS_OPCODE_V3ADD, 0 },
             },
@@ -4767,6 +4945,9 @@ static void _ms_compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *e
             [MSCRIPT_TYPE_FLOAT] = {
                 [MSCRIPT_TYPE_FLOAT] = { _MS_OPCODE_FSUB, 0 },
             },
+            [MSCRIPT_TYPE_VEC2] = {
+                [MSCRIPT_TYPE_VEC2] = { _MS_OPCODE_V2SUB, 0 },
+            },
             [MSCRIPT_TYPE_VEC3] = {
                 [MSCRIPT_TYPE_VEC3] = { _MS_OPCODE_V3SUB, 0 },
             },
@@ -4778,7 +4959,11 @@ static void _ms_compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *e
             },
             [MSCRIPT_TYPE_FLOAT] = {
                 [MSCRIPT_TYPE_FLOAT] = { _MS_OPCODE_FMUL, 0 },
+                [MSCRIPT_TYPE_VEC2] = { _MS_OPCODE_V2MUL, 1 },
                 [MSCRIPT_TYPE_VEC3] = { _MS_OPCODE_V3MUL, 1 },
+            },
+            [MSCRIPT_TYPE_VEC2] = {
+                [MSCRIPT_TYPE_FLOAT] = { _MS_OPCODE_V2MUL, 0 },
             },
             [MSCRIPT_TYPE_VEC3] = {
                 [MSCRIPT_TYPE_FLOAT] = { _MS_OPCODE_V3MUL, 0 },
@@ -4790,6 +4975,9 @@ static void _ms_compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *e
             },
             [MSCRIPT_TYPE_FLOAT] = {
                 [MSCRIPT_TYPE_FLOAT] = { _MS_OPCODE_FDIV, 0 },
+            },
+            [MSCRIPT_TYPE_VEC2] = {
+                [MSCRIPT_TYPE_FLOAT] = { _MS_OPCODE_V2DIV, 0 },
             },
             [MSCRIPT_TYPE_VEC3] = {
                 [MSCRIPT_TYPE_FLOAT] = { _MS_OPCODE_V3DIV, 0 },
@@ -4837,6 +5025,9 @@ static void _ms_compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *e
             [MSCRIPT_TYPE_ENUM] = {
                 [MSCRIPT_TYPE_ENUM] = { _MS_OPCODE_IEQ, 0 },
             },
+            [MSCRIPT_TYPE_VEC2] = {
+                [MSCRIPT_TYPE_VEC2] = { _MS_OPCODE_V2EQ, 0 },
+            },
             [MSCRIPT_TYPE_VEC3] = {
                 [MSCRIPT_TYPE_VEC3] = { _MS_OPCODE_V3EQ, 0 },
             },
@@ -4850,6 +5041,9 @@ static void _ms_compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *e
             },
             [MSCRIPT_TYPE_ENUM] = {
                 [MSCRIPT_TYPE_ENUM] = { _MS_OPCODE_INEQ, 0 },
+            },
+            [MSCRIPT_TYPE_VEC2] = {
+                [MSCRIPT_TYPE_VEC2] = { _MS_OPCODE_V2NEQ, 0 }
             },
             [MSCRIPT_TYPE_VEC3] = {
                 [MSCRIPT_TYPE_VEC3] = { _MS_OPCODE_V3NEQ, 0 }
@@ -4879,6 +5073,9 @@ static void _ms_compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *e
         case _MS_OPCODE_FADD:
             vec_push(program->cur_opcodes, _ms_opcode_fadd());
             break;
+        case _MS_OPCODE_V2ADD:
+            vec_push(program->cur_opcodes, _ms_opcode_v2add());
+            break;
         case _MS_OPCODE_V3ADD:
             vec_push(program->cur_opcodes, _ms_opcode_v3add());
             break;
@@ -4887,6 +5084,9 @@ static void _ms_compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *e
             break;
         case _MS_OPCODE_FSUB:
             vec_push(program->cur_opcodes, _ms_opcode_fsub());
+            break;
+        case _MS_OPCODE_V2SUB:
+            vec_push(program->cur_opcodes, _ms_opcode_v2sub());
             break;
         case _MS_OPCODE_V3SUB:
             vec_push(program->cur_opcodes, _ms_opcode_v3sub());
@@ -4897,6 +5097,9 @@ static void _ms_compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *e
         case _MS_OPCODE_FMUL:
             vec_push(program->cur_opcodes, _ms_opcode_fmul());
             break;
+        case _MS_OPCODE_V2MUL:
+            vec_push(program->cur_opcodes, _ms_opcode_v2mul());
+            break;
         case _MS_OPCODE_V3MUL:
             vec_push(program->cur_opcodes, _ms_opcode_v3mul());
             break;
@@ -4905,6 +5108,9 @@ static void _ms_compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *e
             break;
         case _MS_OPCODE_FDIV:
             vec_push(program->cur_opcodes, _ms_opcode_fdiv());
+            break;
+        case _MS_OPCODE_V2DIV:
+            vec_push(program->cur_opcodes, _ms_opcode_v2div());
             break;
         case _MS_OPCODE_V3DIV:
             vec_push(program->cur_opcodes, _ms_opcode_v3div());
@@ -4939,6 +5145,9 @@ static void _ms_compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *e
         case _MS_OPCODE_FEQ:
             vec_push(program->cur_opcodes, _ms_opcode_feq());
             break;
+        case _MS_OPCODE_V2EQ:
+            vec_push(program->cur_opcodes, _ms_opcode_v2eq());
+            break;
         case _MS_OPCODE_V3EQ:
             vec_push(program->cur_opcodes, _ms_opcode_v3eq());
             break;
@@ -4947,6 +5156,9 @@ static void _ms_compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *e
             break;
         case _MS_OPCODE_FNEQ:
             vec_push(program->cur_opcodes, _ms_opcode_fneq());
+            break;
+        case _MS_OPCODE_V2NEQ:
+            vec_push(program->cur_opcodes, _ms_opcode_v2neq());
             break;
         case _MS_OPCODE_V3NEQ:
             vec_push(program->cur_opcodes, _ms_opcode_v3neq());
@@ -4979,6 +5191,7 @@ static void _ms_compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *e
         case _MS_OPCODE_ARRAY_LENGTH:
         case _MS_OPCODE_DEBUG_PRINT_INT:
         case _MS_OPCODE_DEBUG_PRINT_FLOAT:
+        case _MS_OPCODE_DEBUG_PRINT_VEC2:
         case _MS_OPCODE_DEBUG_PRINT_VEC3:
         case _MS_OPCODE_DEBUG_PRINT_BOOL:
         case _MS_OPCODE_DEBUG_PRINT_STRING:
@@ -5069,6 +5282,11 @@ static void _ms_compile_debug_print_type(mscript_program_t *program, mscript_typ
         case MSCRIPT_TYPE_FLOAT:
             {
                 vec_push(program->cur_opcodes, _ms_opcode_debug_print_float());
+            }
+            break;
+        case MSCRIPT_TYPE_VEC2:
+            {
+                vec_push(program->cur_opcodes, _ms_opcode_debug_print_vec2());
             }
             break;
         case MSCRIPT_TYPE_VEC3:
@@ -5181,7 +5399,7 @@ static void _ms_compile_member_access_expr(mscript_program_t *program, _ms_expr_
 
     _ms_expr_t *left = expr->member_access.left;
 
-    if (left->result_type->type == MSCRIPT_TYPE_STRUCT || left->result_type->type == MSCRIPT_TYPE_VEC3) {
+    if (left->result_type->type == MSCRIPT_TYPE_STRUCT || left->result_type->type == MSCRIPT_TYPE_VEC3 || left->result_type->type == MSCRIPT_TYPE_VEC2) {
         _ms_compile_lvalue_expr(program, expr);
         _ms_lvalue_t lvalue = expr->lvalue;
         switch (lvalue.type) {
@@ -5267,6 +5485,10 @@ static void _ms_compile_val(mscript_program_t *program, mscript_val_t val) {
             break;
         case MSCRIPT_VAL_FLOAT:
             vec_push(program->cur_opcodes, _ms_opcode_float(val.float_val));
+            break;
+        case MSCRIPT_VAL_VEC2:
+            vec_push(program->cur_opcodes, _ms_opcode_float(val.vec2_val.x));
+            vec_push(program->cur_opcodes, _ms_opcode_float(val.vec2_val.y));
             break;
         case MSCRIPT_VAL_VEC3:
             vec_push(program->cur_opcodes, _ms_opcode_float(val.vec3_val.x));
@@ -5376,7 +5598,7 @@ static void _ms_compile_object_expr(mscript_program_t *program, _ms_expr_t *expr
 
 static void _ms_compile_vec_expr(mscript_program_t *program, _ms_expr_t *expr) {
     assert(expr->type == _MS_EXPR_VEC);
-    assert(expr->vec.num_args == 3);
+    assert(expr->vec.num_args == 2 || expr->vec.num_args == 3);
 
     int num_args = expr->vec.num_args;
     for (int i = 0; i < num_args; i++) {
@@ -6110,14 +6332,20 @@ static void debug_log_opcodes(_ms_opcode_t *opcodes, int num_opcodes) {
             case _MS_OPCODE_FADD:
                 m_logf("FADD");
                 break;
+            case _MS_OPCODE_V2ADD:
+                m_logf("V2ADD");
+                break;
             case _MS_OPCODE_V3ADD:
-                m_logf("FADD");
+                m_logf("V3ADD");
                 break;
             case _MS_OPCODE_ISUB:
                 m_logf("ISUB");
                 break;
             case _MS_OPCODE_FSUB:
                 m_logf("FSUB");
+                break;
+            case _MS_OPCODE_V2SUB:
+                m_logf("V2SUB");
                 break;
             case _MS_OPCODE_V3SUB:
                 m_logf("V3SUB");
@@ -6128,6 +6356,9 @@ static void debug_log_opcodes(_ms_opcode_t *opcodes, int num_opcodes) {
             case _MS_OPCODE_FMUL:
                 m_logf("FMUL");
                 break;
+            case _MS_OPCODE_V2MUL:
+                m_logf("V2MUL");
+                break;
             case _MS_OPCODE_V3MUL:
                 m_logf("V3MUL");
                 break;
@@ -6136,6 +6367,9 @@ static void debug_log_opcodes(_ms_opcode_t *opcodes, int num_opcodes) {
                 break;
             case _MS_OPCODE_FDIV:
                 m_logf("FDIV");
+                break;
+            case _MS_OPCODE_V2DIV:
+                m_logf("V2DIV");
                 break;
             case _MS_OPCODE_V3DIV:
                 m_logf("V3DIV");
@@ -6170,6 +6404,9 @@ static void debug_log_opcodes(_ms_opcode_t *opcodes, int num_opcodes) {
             case _MS_OPCODE_FEQ:
                 m_logf("FEQ");
                 break;
+            case _MS_OPCODE_V2EQ:
+                m_logf("V2EQ");
+                break;
             case _MS_OPCODE_V3EQ:
                 m_logf("V3EQ");
                 break;
@@ -6178,6 +6415,9 @@ static void debug_log_opcodes(_ms_opcode_t *opcodes, int num_opcodes) {
                 break;
             case _MS_OPCODE_FNEQ:
                 m_logf("FNEQ");
+                break;
+            case _MS_OPCODE_V2NEQ:
+                m_logf("V2NEQ");
                 break;
             case _MS_OPCODE_V3NEQ:
                 m_logf("V3NEQ");
@@ -6260,6 +6500,9 @@ static void debug_log_opcodes(_ms_opcode_t *opcodes, int num_opcodes) {
             case _MS_OPCODE_DEBUG_PRINT_FLOAT:
                 m_logf("DEBUG_PRINT_FLOAT");
                 break;
+            case _MS_OPCODE_DEBUG_PRINT_VEC2:
+                m_logf("DEBUG_PRINT_VEC2");
+                break;
             case _MS_OPCODE_DEBUG_PRINT_VEC3:
                 m_logf("DEBUG_PRINT_VEC3");
                 break;
@@ -6319,6 +6562,8 @@ static void _ms_program_load_stage_1(mscript_t *mscript, struct file file) {
     _ms_symbol_table_add_type(&program->symbol_table, &mscript->int_array_type);
     _ms_symbol_table_add_type(&program->symbol_table, &mscript->float_type);
     _ms_symbol_table_add_type(&program->symbol_table, &mscript->float_array_type);
+    _ms_symbol_table_add_type(&program->symbol_table, &mscript->vec2_type);
+    _ms_symbol_table_add_type(&program->symbol_table, &mscript->vec2_array_type);
     _ms_symbol_table_add_type(&program->symbol_table, &mscript->vec3_type);
     _ms_symbol_table_add_type(&program->symbol_table, &mscript->vec3_array_type);
     _ms_symbol_table_add_type(&program->symbol_table, &mscript->bool_type);
@@ -6747,15 +6992,19 @@ static void _ms_program_load_stage_7(mscript_t *mscript, mscript_program_t *prog
         switch (op.type) {
             case _MS_OPCODE_IADD:
             case _MS_OPCODE_FADD:
+            case _MS_OPCODE_V2ADD:
             case _MS_OPCODE_V3ADD:
             case _MS_OPCODE_ISUB:
             case _MS_OPCODE_FSUB:
+            case _MS_OPCODE_V2SUB:
             case _MS_OPCODE_V3SUB:
             case _MS_OPCODE_IMUL:
             case _MS_OPCODE_FMUL:
+            case _MS_OPCODE_V2MUL:
             case _MS_OPCODE_V3MUL:
             case _MS_OPCODE_IDIV:
             case _MS_OPCODE_FDIV:
+            case _MS_OPCODE_V2DIV:
             case _MS_OPCODE_V3DIV:
             case _MS_OPCODE_ILTE:
             case _MS_OPCODE_FLTE:
@@ -6767,9 +7016,11 @@ static void _ms_program_load_stage_7(mscript_t *mscript, mscript_program_t *prog
             case _MS_OPCODE_FGT:
             case _MS_OPCODE_IEQ:
             case _MS_OPCODE_FEQ:
+            case _MS_OPCODE_V2EQ:
             case _MS_OPCODE_V3EQ:
             case _MS_OPCODE_INEQ:
             case _MS_OPCODE_FNEQ:
+            case _MS_OPCODE_V2NEQ:
             case _MS_OPCODE_V3NEQ:
             case _MS_OPCODE_IINC:
             case _MS_OPCODE_FINC:
@@ -6793,6 +7044,7 @@ static void _ms_program_load_stage_7(mscript_t *mscript, mscript_program_t *prog
             case _MS_OPCODE_ARRAY_LENGTH:
             case _MS_OPCODE_DEBUG_PRINT_INT:
             case _MS_OPCODE_DEBUG_PRINT_FLOAT:
+            case _MS_OPCODE_DEBUG_PRINT_VEC2:
             case _MS_OPCODE_DEBUG_PRINT_VEC3:
             case _MS_OPCODE_DEBUG_PRINT_BOOL:
             case _MS_OPCODE_DEBUG_PRINT_STRING:
@@ -6904,6 +7156,14 @@ mscript_val_t mscript_val_float(float float_val) {
     return val;
 }
 
+mscript_val_t mscript_val_vec2(float x, float y) {
+    mscript_val_t val;
+    val.type = MSCRIPT_VAL_VEC2;
+    val.vec2_val.x = x;
+    val.vec2_val.y = y;
+    return val;
+}
+
 mscript_val_t mscript_val_vec3(float x, float y, float z) {
     mscript_val_t val;
     val.type = MSCRIPT_VAL_VEC3;
@@ -6963,6 +7223,8 @@ mscript_t *mscript_create(void) {
     _mscript_type_init(&mscript->float_type, "float", MSCRIPT_TYPE_FLOAT, NULL, NULL, 4);
     _mscript_type_init(&mscript->float_array_type, "float[]", MSCRIPT_TYPE_ARRAY, &mscript->float_type, NULL, 4);
 
+    _mscript_type_init(&mscript->vec2_type, "vec2", MSCRIPT_TYPE_VEC2, NULL, NULL, 8);
+    _mscript_type_init(&mscript->vec2_array_type, "vec2[]", MSCRIPT_TYPE_ARRAY, &mscript->vec2_type, NULL, 4);
     _mscript_type_init(&mscript->vec3_type, "vec3", MSCRIPT_TYPE_VEC3, NULL, NULL, 12);
     _mscript_type_init(&mscript->vec3_array_type, "vec3[]", MSCRIPT_TYPE_ARRAY, &mscript->vec3_type, NULL, 4);
 
@@ -7031,6 +7293,15 @@ static int _ms_copy_val(char *data, mscript_val_t val) {
                 return 4;
             }
             break;
+        case MSCRIPT_VAL_VEC2:
+            {
+                float v[2];
+                v[0] = (float) val.vec2_val.x;
+                v[1] = (float) val.vec2_val.y;
+                memcpy(data, (char*) v, 8);
+                return 8;
+            }
+            break;
         case MSCRIPT_VAL_VEC3:
             {
                 float v[3];
@@ -7094,6 +7365,7 @@ static void _ms_vm_init_global(mscript_vm_t *vm, _ms_symbol_t *symbol) {
     switch (val.type) {
         case MSCRIPT_VAL_INT:
         case MSCRIPT_VAL_FLOAT:
+        case MSCRIPT_VAL_VEC2:
         case MSCRIPT_VAL_VEC3:
         case MSCRIPT_VAL_BOOL:
         case MSCRIPT_VAL_VOID_PTR:
@@ -7236,18 +7508,26 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
                 break;
             case MSCRIPT_VAL_FLOAT:
                 {
+                    assert(decl->args[i].type->type == MSCRIPT_TYPE_FLOAT);
+                    *((float*) (stack + sp)) = (float)arg.float_val;
+                    sp += 4;
+                }
+                break;
+            case MSCRIPT_VAL_VEC2:
+                {
+                    assert(decl->args[i].type->type == MSCRIPT_TYPE_VEC2);
+                    *((float*) (stack + sp + 0)) = (float)arg.vec2_val.x;
+                    *((float*) (stack + sp + 4)) = (float)arg.vec2_val.y;
+                    sp += 8;
+                }
+                break;
+            case MSCRIPT_VAL_VEC3:
+                {
                     assert(decl->args[i].type->type == MSCRIPT_TYPE_VEC3);
                     *((float*) (stack + sp + 0)) = (float)arg.vec3_val.x;
                     *((float*) (stack + sp + 4)) = (float)arg.vec3_val.y;
                     *((float*) (stack + sp + 8)) = (float)arg.vec3_val.z;
                     sp += 12;
-                }
-                break;
-            case MSCRIPT_VAL_VEC3:
-                {
-                    assert(decl->args[i].type->type == MSCRIPT_TYPE_FLOAT);
-                    *((float*) (stack + sp)) = (float)arg.float_val;
-                    sp += 4;
                 }
                 break;
             case MSCRIPT_VAL_BOOL:
@@ -7313,6 +7593,18 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
                     VM_BINARY_OP(+, float, float);
                 }
                 break;
+            case _MS_OPCODE_V2ADD:
+                {
+                    float *v1 = (float*) (stack + sp - 8);
+                    float *v0 = (float*) (stack + sp - 16);
+                    float v[2] = { 
+                        v0[0] + v1[0],
+                        v0[1] + v1[1],
+                    };
+                    memcpy(stack + sp - 16, v, 8);
+                    sp -= 8;
+                }
+                break;
             case _MS_OPCODE_V3ADD:
                 {
                     float *v1 = (float*) (stack + sp - 12);
@@ -7334,6 +7626,18 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
             case _MS_OPCODE_FSUB:
                 {
                     VM_BINARY_OP(-, float, float);
+                }
+                break;
+            case _MS_OPCODE_V2SUB:
+                {
+                    float *v1 = (float*) (stack + sp - 8);
+                    float *v0 = (float*) (stack + sp - 16);
+                    float v[2] = { 
+                        v0[0] - v1[0],
+                        v0[1] - v1[1],
+                    };
+                    memcpy(stack + sp - 16, v, 8);
+                    sp -= 8;
                 }
                 break;
             case _MS_OPCODE_V3SUB:
@@ -7359,6 +7663,18 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
                     VM_BINARY_OP(*, float, float);
                 }
                 break;
+            case _MS_OPCODE_V2MUL:
+                {
+                    float *v1 = (float*) (stack + sp - 4);
+                    float *v0 = (float*) (stack + sp - 12);
+                    float v[2] = { 
+                        (*v1) * v0[0],
+                        (*v1) * v0[1],
+                    };
+                    memcpy(stack + sp - 12, v, 8);
+                    sp -= 4;
+                }
+                break;
             case _MS_OPCODE_V3MUL:
                 {
                     float *v1 = (float*) (stack + sp - 4);
@@ -7380,6 +7696,18 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
             case _MS_OPCODE_FDIV:
                 {
                     VM_BINARY_OP(/, float, float);
+                }
+                break;
+            case _MS_OPCODE_V2DIV:
+                {
+                    float *v1 = (float*) (stack + sp - 4);
+                    float *v0 = (float*) (stack + sp - 12);
+                    float v[2] = { 
+                        v0[0] / (*v1),
+                        v0[1] / (*v1),
+                    };
+                    memcpy(stack + sp - 12, v, 8);
+                    sp -= 4;
                 }
                 break;
             case _MS_OPCODE_V3DIV:
@@ -7445,6 +7773,16 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
                     VM_BINARY_OP(==, float, int32_t);
                 }
                 break;
+            case _MS_OPCODE_V2EQ:
+                {
+                    float *v0 = (float*) (stack + sp - 8);
+                    float *v1 = (float*) (stack + sp - 16);
+                    bool v = (v0[0] == v1[0]) && 
+                        (v0[1] == v1[1]);
+                    memcpy(stack + sp - 16, &v, 4);
+                    sp -= 12;
+                }
+                break;
             case _MS_OPCODE_V3EQ:
                 {
                     float *v0 = (float*) (stack + sp - 12);
@@ -7464,6 +7802,16 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
             case _MS_OPCODE_FNEQ:
                 {
                     VM_BINARY_OP(!=, float, int32_t);
+                }
+                break;
+            case _MS_OPCODE_V2NEQ:
+                {
+                    float *v0 = (float*) (stack + sp - 8);
+                    float *v1 = (float*) (stack + sp - 16);
+                    bool v = (v0[0] != v1[0]) && 
+                        (v0[1] != v1[1]);
+                    memcpy(stack + sp - 16, &v, 4);
+                    sp -= 12;
                 }
                 break;
             case _MS_OPCODE_V3NEQ:
@@ -7730,6 +8078,13 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
                     float v = *((float*) (stack + sp - 4));
                     sp -= 4;
                     m_logf("%f", v);
+                }
+                break;
+            case _MS_OPCODE_DEBUG_PRINT_VEC2:
+                {
+                    float *v = (float*) (stack + sp - 8);
+                    sp -= 8;
+                    m_logf("<%f, %f>", v[0], v[1]);
                 }
                 break;
             case _MS_OPCODE_DEBUG_PRINT_VEC3:

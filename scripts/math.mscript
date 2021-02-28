@@ -1,3 +1,15 @@
+vec2 vec2_bezier(vec2 a, vec2 b, vec2 c, vec2 d, float t) {
+    float t1 = 1.0 - t;
+    vec2 p = t1*t1*t1*a + t*t1*t1*b + t*t*t1*c + t*t*t*d;
+    return p;
+}
+
+float vec2_distance(vec2 a, vec2 b) {
+    float dx = a.x - b.x;
+    float dy = a.y - b.y;
+    return sqrt(dx * dx + dy * dy);
+}
+
 float vec3_dot(vec3 a, vec3 b) {
     return a.x * b.x + a.y * b.y + a.z * b.z;
 }

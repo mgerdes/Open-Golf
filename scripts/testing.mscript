@@ -83,6 +83,9 @@ int run(int n0, int n1, void* file_ptr) {
     }
     print("UP = ", UP, "\n");
 
+    vec2 v2 = vec2(1, 2) + 4*vec2(2, 4);
+    print("v2 = ", v2, "\n");
+
     //for (i = 0; i < stuffs.length; i++) {
         //print(i, ": ", stuffs[i], "\n");
         //stuffs[i] += 5;
