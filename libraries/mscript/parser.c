@@ -582,6 +582,10 @@ struct _ms_stmt {
         } enum_declaration;
 
         struct {
+            bool has_decl;
+            _ms_parsed_type_t decl_type;
+            char *decl_name;
+
             _ms_expr_t *init, *cond, *inc;
             _ms_stmt_t *body;
         } for_stmt;
@@ -629,7 +633,7 @@ static _ms_stmt_t *_ms_stmt_variable_declaration_new(_ms_mem_t *mem, _ms_token_t
 static _ms_stmt_t *_ms_stmt_struct_declaration_new(_ms_mem_t *mem, _ms_token_t token, char *name,
         _vec_ms_parsed_type_t member_types, vec_char_ptr_t member_names);
 static _ms_stmt_t *_ms_stmt_enum_declaration_new(_ms_mem_t *mem, _ms_token_t token, char *name, vec_char_ptr_t value_names);
-static _ms_stmt_t *_ms_stmt_for_new(_ms_mem_t *mem, _ms_token_t token, _ms_expr_t *init, _ms_expr_t *cond, _ms_expr_t *inc, _ms_stmt_t *body);
+static _ms_stmt_t *_ms_stmt_for_new(_ms_mem_t *mem, _ms_token_t token, bool has_decl, _ms_parsed_type_t decl_type, char *decl_name, _ms_expr_t *init, _ms_expr_t *cond, _ms_expr_t *inc, _ms_stmt_t *body);
 static _ms_stmt_t *_ms_stmt_import_new(_ms_mem_t *mem, _ms_token_t token, char *program_name);
 static _ms_stmt_t *_ms_stmt_import_function_new(_ms_mem_t *mem, _ms_token_t token, _ms_parsed_type_t return_type, char *name,
         _vec_ms_parsed_type_t arg_types, vec_char_ptr_t arg_names);
@@ -1228,10 +1232,13 @@ static _ms_stmt_t *_ms_stmt_enum_declaration_new(_ms_mem_t *mem, _ms_token_t tok
     return stmt;
 }
 
-static _ms_stmt_t *_ms_stmt_for_new(_ms_mem_t *mem, _ms_token_t token, _ms_expr_t *init, _ms_expr_t *cond, _ms_expr_t *inc, _ms_stmt_t *body) {
+static _ms_stmt_t *_ms_stmt_for_new(_ms_mem_t *mem, _ms_token_t token, bool has_decl, _ms_parsed_type_t decl_type, char *decl_name, _ms_expr_t *init, _ms_expr_t *cond, _ms_expr_t *inc, _ms_stmt_t *body) {
     _ms_stmt_t *stmt = _ms_mem_alloc(mem, sizeof(_ms_stmt_t));
     stmt->type = _MS_STMT_FOR;
     stmt->token = token;
+    stmt->for_stmt.has_decl = has_decl;
+    stmt->for_stmt.decl_type = decl_type;
+    stmt->for_stmt.decl_name = decl_name;
     stmt->for_stmt.init = init;
     stmt->for_stmt.cond = cond;
     stmt->for_stmt.inc = inc;
@@ -1833,10 +1840,31 @@ static _ms_stmt_t *_ms_parse_for_stmt(mscript_program_t *program) {
         goto cleanup;
     }
 
+    bool has_decl = false;
+    _ms_parsed_type_t decl_type = _ms_parsed_type("", false);
+    char *decl_name = NULL;
+    if (_ms_check_type(program)) {
+        has_decl = true;
+        decl_type = _ms_parse_type(program);
+        if (program->error) goto cleanup;
+
+        _ms_token_t peek = _ms_peek_n(program, 0);
+        if (peek.type != _MS_TOKEN_SYMBOL) {
+            _ms_program_error(program, peek, "Expected a symbol.");
+            goto cleanup;
+        }
+        decl_name = peek.symbol;
+    }
+
     _ms_expr_t *init = _ms_parse_expr(program);
     if (program->error) goto cleanup;
     if (!_ms_match_char(program, ';')) {
-        _ms_program_error(program, _ms_peek(program), "Expected ';'");
+        _ms_program_error(program, _ms_peek(program), "Expected ';'.");
+        goto cleanup;
+    }
+
+    if (init->type != _MS_EXPR_ASSIGNMENT) {
+        _ms_program_error(program, _ms_peek(program), "Expected an assignment expr.");
         goto cleanup;
     }
 
@@ -1857,7 +1885,7 @@ static _ms_stmt_t *_ms_parse_for_stmt(mscript_program_t *program) {
     _ms_stmt_t *body = _ms_parse_stmt(program);
     if (program->error) goto cleanup;
 
-    stmt = _ms_stmt_for_new(&program->compiler_mem, token, init, cond, inc, body);
+    stmt = _ms_stmt_for_new(&program->compiler_mem, token, has_decl, decl_type, decl_name, init, cond, inc, body);
 
 cleanup:
     return stmt;
@@ -2958,15 +2986,36 @@ static void _ms_verify_if_stmt(mscript_program_t *program, _ms_stmt_t *stmt, boo
 
 static void _ms_verify_for_stmt(mscript_program_t *program, _ms_stmt_t *stmt, bool *all_paths_return) {
     assert(stmt->type == _MS_STMT_FOR);
+    
+    if (stmt->for_stmt.has_decl) {
+        _ms_symbol_table_push_block(&program->symbol_table);
+    }
+
+    if (stmt->for_stmt.has_decl) {
+        char *decl_name = stmt->for_stmt.decl_name;
+        char *decl_type_name = stmt->for_stmt.decl_type.string;
+        mscript_type_t *decl_type = _ms_symbol_table_get_type(&program->symbol_table, decl_type_name);
+        if (!decl_type) {
+            _ms_program_error(program, stmt->token, "Undeclared type %s.", decl_type_name);
+            goto cleanup;
+        }
+
+        _ms_symbol_table_add_local_var(&program->symbol_table, decl_name, decl_type);
+    }
 
     _ms_verify_expr(program, stmt->for_stmt.init, NULL);
-    if (program->error) return;
+    if (program->error) goto cleanup;
     _ms_verify_expr_with_cast(program, &(stmt->for_stmt.cond), _ms_symbol_table_get_type(&program->symbol_table, "bool"));
-    if (program->error) return;
+    if (program->error) goto cleanup;
     _ms_verify_expr(program, stmt->for_stmt.inc, NULL);
-    if (program->error) return;
+    if (program->error) goto cleanup;
     _ms_verify_stmt(program, stmt->for_stmt.body, all_paths_return);
-    if (program->error) return;
+    if (program->error) goto cleanup;
+
+cleanup:
+    if (stmt->for_stmt.has_decl) {
+        _ms_symbol_table_pop_block(&program->symbol_table);
+    }
 }
 
 static void _ms_verify_return_stmt(mscript_program_t *program, _ms_stmt_t *stmt, bool *all_paths_return) {

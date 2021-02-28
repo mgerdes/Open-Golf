@@ -13,10 +13,9 @@ int run(int n0, int n1, void* file_ptr) {
     print("------------------------------\n");
     print("-------------RUN--------------\n");
     print("------------------------------\n");
-    int i;
     if (!inited) {
         stuffs = [];
-        for (i = 0; i <= 100; i++) {
+        for (int i = 0; i <= 100; i++) {
             stuffs[stuffs.length] = 5 * i;
             vecs[vecs.length] = vec3(1, 2, 3);
         }
@@ -40,13 +39,13 @@ int run(int n0, int n1, void* file_ptr) {
     print("test_scale2 = ", test_scale2, "\n");
 
     vec3 all = vec3(1.0, 2.0, 3.0);
-    for (i = 0; i < 2; i++) {
+    for (int i = 0; i < 2; i++) {
         all = 2.0 * all;
     }
     print("all.x = ", all.x, "\n");
     print("all.y = ", all.y, "\n");
     print("all.z = ", all.z, "\n");
-    for (i = 0; i < 10; i++) {
+    for (int i = 0; i < 10; i++) {
         all = all + vecs[i];
     }
     print("all = ", all, "\n");
@@ -71,7 +70,7 @@ int run(int n0, int n1, void* file_ptr) {
     v = vec3_normalize(v);
     print("v = ", v, "\n");
 
-    for (i = 0; i < 4; i++) {
+    for (int i = 0; i < 4; i++) {
         float theta = i * 0.5 * PI;
         float c = cos(theta);
         float s = sin(theta);
