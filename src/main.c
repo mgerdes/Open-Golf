@@ -87,8 +87,28 @@ static void frame(void) {
         profiler_pop_section();
 
         {
-            struct mscript *mscript = mscript_create();
-            //mscript_load_program(mscript, "testing.mscript");
+            tests_run();
+        }
+
+        {
+            struct mscript *mscript = mscript_create("scripts");
+            mscript_program_t *program = mscript_get_program(mscript, "testing.mscript");
+
+            if (program) {
+                mscript_vm_t *vm = mscript_vm_create(program);
+                mscript_val_t args[3];
+                args[0] = mscript_val_int(20);
+                args[1] = mscript_val_int(25);
+
+                struct file *file = malloc(sizeof(struct file));
+                *file = file_init("scripts/testing.mscript");
+                file_load_data(file);
+                args[2] = mscript_val_void_ptr(file);
+
+                for (int i = 0; i < 1; i++) {
+                    mscript_vm_run(vm, "run", 3, args);
+                }
+            }
         }
     }
 
