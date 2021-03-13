@@ -4,8 +4,8 @@
 #include <stdbool.h>
 
 #define MSCRIPT_MAX_SYMBOL_LEN 31
-#define MSCRIPT_MAX_FUNCTION_ARGS 15
-#define MSCRIPT_MAX_STRUCT_MEMBERS 15
+#define MSCRIPT_MAX_FUNCTION_ARGS 32
+#define MSCRIPT_MAX_STRUCT_MEMBERS 32
 
 typedef enum mscript_type_type {
     MSCRIPT_TYPE_VOID,

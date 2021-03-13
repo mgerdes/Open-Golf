@@ -9,7 +9,75 @@ vec3[] vecs = [];
 vec3 it = 4*4*vec3(1, 2, 3)*4;
 vec3 UP = vec3(0.0, 1.0, 0.0);
 
+void generate(int N, float height, float width, float length, 
+        vec2 texture_size, vec2 texture_delta,
+        vec2 bp0, vec2 bp1, vec2 bp2, vec2 bp3,
+        float ground_friction, float ground_cor, float ground_vel_scale) {
+    vec3[] points = [];
+
+    float total_dist = 0.0;
+    vec2 p0 = vec2(0.0, 0.0);
+
+    for (int i = 0; i < N + 1; i++) {
+        float t = (i + 0.0) / N;
+        vec2 p = vec2_bezier(bp0, bp1, bp2, bp3, t);
+        float x0 = 0.0;
+        float x1 = width;
+        float y = height * p.y;
+        float z = length * p.x;
+
+        points[points.length] = vec3(x0, y, z);
+        points[points.length] = vec3(x1, y, z);
+
+        vec2 p1 = vec2(z, y);
+        total_dist = total_dist + vec2_distance(p0, p1); 
+        p0 = p1;
+    }
+
+    for (int i = 0; i < points.length; i++) {
+        terrain_model_add_point(points[i]);
+    }
+
+    float dist0 = 0.0;
+    for (int i = 0; i < N; i++) {
+        float t0 = (i + 0.0) / N;
+        float t1 = (i + 1.0) / N;
+        vec2 b0 = vec2_bezier(bp0, bp1, bp2, bp3, t0);
+        vec2 b1 = vec2_bezier(bp0, bp1, bp2, bp3, t1);
+        float dist1 = dist0 + vec2_distance(b0, b1);
+        dist0 = dist1;
+
+        int num_points = num_points;
+        int mat_idx = 0;
+        int smooth_normal = 0;
+        float cor = ground_cor;
+        float friction = ground_friction;
+        float vel_scale = ground_vel_scale;
+        float texture_coord_scale = 0.5;
+        int a = 2 * (i + 1) + 0;
+        int b = 2 * (i + 1) + 1;
+        int c = 2 * (i + 0) + 1;
+        int d = 2 * (i + 0) + 0;
+        vec3 pa = points[a];
+        vec3 pb = points[b];
+        vec3 pc = points[c];
+        vec3 pd = points[d];
+        vec2 tc0 = vec2(pa.x, pa.z) + texture_delta;
+        vec2 tc1 = vec2(pb.x, pb.z) + texture_delta;
+        vec2 tc2 = vec2(pc.x, pc.z) + texture_delta;
+        vec2 tc3 = vec2(pd.x, pd.z) + texture_delta;
+        terrain_model_add_face(num_points, mat_idx, smooth_normal,
+                a, b, c, d,
+                tc0, tc1, tc2, tc3, texture_coord_scale,
+                cor, friction, vel_scale, 0);
+    }
+}
+
 int run(int n0, int n1, void* file_ptr) {
+    generate(100, 10.0, 10.0, 10.0, vec2(1.0, 1.0), vec2(0.0, 0.0),
+            vec2(0.0, 0.0), vec2(0.1, 0.1), vec2(0.3, 0.7), vec2(1.0, 1.0),
+            1.0, 1.0, 1.0);
+
     print("------------------------------\n");
     print("-------------RUN--------------\n");
     print("------------------------------\n");

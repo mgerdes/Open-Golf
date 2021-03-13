@@ -812,6 +812,8 @@ static void _ms_c_function_cos(char *args, int args_size);
 static void _ms_c_function_asin(char *args, int args_size);
 static void _ms_c_function_acos(char *args, int args_size);
 static void _ms_c_function_file_size(char *args, int args_size);
+static void _ms_c_function_terrain_model_add_point(char *args, int args_size);
+static void _ms_c_function_terrain_model_add_face(char *args, int args_size);
 
 struct mscript_vm {
     mscript_program_t *program;
@@ -6882,6 +6884,25 @@ static void _ms_program_load_stage_4(mscript_t *mscript, mscript_program_t *prog
         _ms_program_add_c_function_decl(program, name, return_type, num_args, arg_types, _ms_c_function_file_size);
     }
 
+    {
+        const char *name = "terrain_model_add_point";
+        const char *return_type = "void";
+        int num_args = 1;
+        const char *arg_types[1] = { "vec3" };
+        _ms_program_add_c_function_decl(program, name, return_type, num_args, arg_types, _ms_c_function_terrain_model_add_point);
+    }
+
+    {
+        const char *name = "terrain_model_add_face";
+        const char *return_type = "void";
+        int num_args = 16;
+        const char *arg_types[16] = { "int", "int", "int", 
+            "int", "int", "int", "int",
+            "vec2", "vec2", "vec2", "vec2", "float",
+            "float", "float", "float", "int"};
+        _ms_program_add_c_function_decl(program, name, return_type, num_args, arg_types, _ms_c_function_terrain_model_add_face);
+    }
+
     for (int i = 0; i < program->global_stmts.length; i++) {
         _ms_stmt_t *stmt = program->global_stmts.data[i];
         switch (stmt->type) {
@@ -7317,7 +7338,7 @@ mscript_t *mscript_create(void) {
         file_load_data(file);
         args[2] = mscript_val_void_ptr(file);
 
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 1; i++) {
             mscript_vm_run(vm, "run", 3, args);
             fflush(stdout); 
         }
@@ -7524,6 +7545,32 @@ static void _ms_c_function_file_size(char *args, int args_size) {
     struct file *f = (struct file*) ptr;
     int v = f->data_len;
     memcpy(args - args_size, &v, 4);
+}
+
+static void _ms_c_function_terrain_model_add_point(char *args, int args_size) {
+}
+
+#define _MS_C_FUNC_GET_ARG(type)\
+    *((type*) (args - (args_size = args_size - sizeof(type)) + sizeof(type)))
+
+static void _ms_c_function_terrain_model_add_face(char *args, int args_size) {
+    int num_points = _MS_C_FUNC_GET_ARG(int);
+    int mat_idx = _MS_C_FUNC_GET_ARG(int);
+    int smooth_normal = _MS_C_FUNC_GET_ARG(int);
+    int a = _MS_C_FUNC_GET_ARG(int);
+    int b = _MS_C_FUNC_GET_ARG(int);
+    int c = _MS_C_FUNC_GET_ARG(int);
+    int d = _MS_C_FUNC_GET_ARG(int);
+    vec2 tc0 = _MS_C_FUNC_GET_ARG(vec2);
+    vec2 tc1 = _MS_C_FUNC_GET_ARG(vec2);
+    vec2 tc2 = _MS_C_FUNC_GET_ARG(vec2);
+    vec2 tc3 = _MS_C_FUNC_GET_ARG(vec2);
+    float texture_coord_scale = _MS_C_FUNC_GET_ARG(float);
+    float cor = _MS_C_FUNC_GET_ARG(float);
+    float friction = _MS_C_FUNC_GET_ARG(float);
+    float vel_scale = _MS_C_FUNC_GET_ARG(float);
+    int auto_texture = _MS_C_FUNC_GET_ARG(int);
+    assert(args_size == 0);
 }
 
 void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, mscript_val_t *args) {
