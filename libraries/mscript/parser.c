@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #include "vec.h"
 #include "file.h"
@@ -10,6 +11,7 @@
 #include "log.h"
 #include "map.h"
 #include "sokol_time.h"
+#include "maths.h"
 
 struct _ms_stmt;
 typedef struct _ms_stmt _ms_stmt_t;
@@ -2783,7 +2785,7 @@ static void _ms_symbol_table_push_block(_ms_symbol_table_t *table) {
     _ms_symbol_block_t block;
     map_init(&block.symbol_map);
     if (l == 0) {
-        block.size = 12;
+        block.size = 3 * sizeof(int);
     }
     else if (l == 1) {
         block.size = 0;
@@ -3743,10 +3745,10 @@ static void _ms_verify_member_access_expr(mscript_program_t *program, _ms_expr_t
     else if (left_type->type == MSCRIPT_TYPE_VEC2) {
         int member_offset = 0;
         if (strcmp(expr->member_access.member_name, "x") == 0) {
-            member_offset = 0;
+            member_offset = offsetof(vec2, x);
         }
         else if (strcmp(expr->member_access.member_name, "y") == 0) {
-            member_offset = 4;
+            member_offset = offsetof(vec2, y);
         }
         else {
             _ms_program_error(program, expr->token, "Invalid member %s on vec2.", expr->member_access.member_name);
@@ -3776,13 +3778,13 @@ static void _ms_verify_member_access_expr(mscript_program_t *program, _ms_expr_t
     else if (left_type->type == MSCRIPT_TYPE_VEC3) {
         int member_offset = 0;
         if (strcmp(expr->member_access.member_name, "x") == 0) {
-            member_offset = 0;
+            member_offset = offsetof(vec3, x);
         }
         else if (strcmp(expr->member_access.member_name, "y") == 0) {
-            member_offset = 4;
+            member_offset = offsetof(vec3, y);
         }
         else if (strcmp(expr->member_access.member_name, "z") == 0) {
-            member_offset = 8;
+            member_offset = offsetof(vec3, z);
         }
         else {
             _ms_program_error(program, expr->token, "Invalid member %s on vec3.", expr->member_access.member_name);
@@ -4878,10 +4880,10 @@ static void _ms_compile_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr
                 }
                 else if (struct_type->type == MSCRIPT_TYPE_VEC2) {
                     if (strcmp(expr->member_access.member_name, "x") == 0) {
-                        offset = 0;
+                        offset = offsetof(vec2, x);
                     }
                     else if (strcmp(expr->member_access.member_name, "y") == 0) {
-                        offset = 4;
+                        offset = offsetof(vec2, y);
                     }
                     else {
                         assert(false);
@@ -4889,13 +4891,13 @@ static void _ms_compile_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr
                 }
                 else if (struct_type->type == MSCRIPT_TYPE_VEC3) {
                     if (strcmp(expr->member_access.member_name, "x") == 0) {
-                        offset = 0;
+                        offset = offsetof(vec3, x);
                     }
                     else if (strcmp(expr->member_access.member_name, "y") == 0) {
-                        offset = 4;
+                        offset = offsetof(vec3, y);
                     }
                     else if (strcmp(expr->member_access.member_name, "z") == 0) {
-                        offset = 8;
+                        offset = offsetof(vec3, z);
                     }
                     else {
                         assert(false);
@@ -5275,19 +5277,19 @@ static void _ms_compile_call_expr(mscript_program_t *program, _ms_expr_t *expr) 
         _ms_lvalue_t lvalue = expr->call.args[0]->lvalue;
         switch (lvalue.type) {
             case _MS_LVALUE_LOCAL:
-                vec_push(program->cur_opcodes, _ms_opcode_local_store(lvalue.offset, 4));
+                vec_push(program->cur_opcodes, _ms_opcode_local_store(lvalue.offset, sizeof(int)));
                 break;
             case _MS_LVALUE_GLOBAL:
-                vec_push(program->cur_opcodes, _ms_opcode_global_store(lvalue.offset, 4));
+                vec_push(program->cur_opcodes, _ms_opcode_global_store(lvalue.offset, sizeof(int)));
                 break;
             case _MS_LVALUE_ARRAY:
-                vec_push(program->cur_opcodes, _ms_opcode_array_store(4));
+                vec_push(program->cur_opcodes, _ms_opcode_array_store(sizeof(int)));
                 break;
             case _MS_LVALUE_INVALID:
                 assert(false);
                 break;
         }
-        vec_push(program->cur_opcodes, _ms_opcode_pop(4));
+        vec_push(program->cur_opcodes, _ms_opcode_pop(sizeof(int)));
     }
     else {
         int args_size = 0;
@@ -5865,7 +5867,7 @@ static void _ms_program_add_enum_decl(mscript_program_t *program, _ms_stmt_t *st
     assert(stmt->type == _MS_STMT_ENUM_DECLARATION);
 
     mscript_type_t *type = malloc(sizeof(mscript_type_t));
-    _mscript_type_init(type, stmt->enum_declaration.name, MSCRIPT_TYPE_ENUM, NULL, NULL, 4);
+    _mscript_type_init(type, stmt->enum_declaration.name, MSCRIPT_TYPE_ENUM, NULL, NULL, sizeof(int));
     vec_push(&program->exported_types, type);
 
     int num_values = stmt->enum_declaration.num_values;
@@ -5882,7 +5884,7 @@ static void _ms_program_add_enum_decl(mscript_program_t *program, _ms_stmt_t *st
     strcat(array_type_name, "[]");
 
     mscript_type_t *array_type = malloc(sizeof(mscript_type_t));
-    _mscript_type_init(array_type, array_type_name, MSCRIPT_TYPE_ARRAY, type, NULL, 4);
+    _mscript_type_init(array_type, array_type_name, MSCRIPT_TYPE_ARRAY, type, NULL, sizeof(int));
     vec_push(&program->exported_types, array_type);
 
     _ms_symbol_table_add_type(&program->symbol_table, type);
@@ -5909,7 +5911,7 @@ static void _ms_program_add_struct_decl_stub(mscript_program_t *program, _ms_stm
     strcat(array_type_name, "[]");
 
     mscript_type_t *array_type = malloc(sizeof(mscript_type_t));
-    _mscript_type_init(array_type, array_type_name, MSCRIPT_TYPE_ARRAY, type, NULL, 4);
+    _mscript_type_init(array_type, array_type_name, MSCRIPT_TYPE_ARRAY, type, NULL, sizeof(int));
     vec_push(&program->exported_types, array_type);
 
     _ms_symbol_table_add_type(&program->symbol_table, type);
@@ -7287,20 +7289,20 @@ mscript_t *mscript_create(void) {
 
     _mscript_type_init(&mscript->void_type, "void", MSCRIPT_TYPE_VOID, NULL, NULL, 0);
     _mscript_type_init(&mscript->void_star_type, "void*", MSCRIPT_TYPE_VOID_STAR, NULL, NULL, sizeof(intptr_t));
-    _mscript_type_init(&mscript->void_star_array_type, "void*[]", MSCRIPT_TYPE_ARRAY, &mscript->void_star_type, NULL, 4);
-    _mscript_type_init(&mscript->int_type, "int", MSCRIPT_TYPE_INT, NULL, NULL, 4);
-    _mscript_type_init(&mscript->int_array_type, "int[]", MSCRIPT_TYPE_ARRAY, &mscript->int_type, NULL, 4);
-    _mscript_type_init(&mscript->float_type, "float", MSCRIPT_TYPE_FLOAT, NULL, NULL, 4);
-    _mscript_type_init(&mscript->float_array_type, "float[]", MSCRIPT_TYPE_ARRAY, &mscript->float_type, NULL, 4);
+    _mscript_type_init(&mscript->void_star_array_type, "void*[]", MSCRIPT_TYPE_ARRAY, &mscript->void_star_type, NULL, sizeof(int));
+    _mscript_type_init(&mscript->int_type, "int", MSCRIPT_TYPE_INT, NULL, NULL, sizeof(int));
+    _mscript_type_init(&mscript->int_array_type, "int[]", MSCRIPT_TYPE_ARRAY, &mscript->int_type, NULL, sizeof(int));
+    _mscript_type_init(&mscript->float_type, "float", MSCRIPT_TYPE_FLOAT, NULL, NULL, sizeof(float));
+    _mscript_type_init(&mscript->float_array_type, "float[]", MSCRIPT_TYPE_ARRAY, &mscript->float_type, NULL, sizeof(int));
 
-    _mscript_type_init(&mscript->vec2_type, "vec2", MSCRIPT_TYPE_VEC2, NULL, NULL, 8);
-    _mscript_type_init(&mscript->vec2_array_type, "vec2[]", MSCRIPT_TYPE_ARRAY, &mscript->vec2_type, NULL, 4);
-    _mscript_type_init(&mscript->vec3_type, "vec3", MSCRIPT_TYPE_VEC3, NULL, NULL, 12);
-    _mscript_type_init(&mscript->vec3_array_type, "vec3[]", MSCRIPT_TYPE_ARRAY, &mscript->vec3_type, NULL, 4);
+    _mscript_type_init(&mscript->vec2_type, "vec2", MSCRIPT_TYPE_VEC2, NULL, NULL, sizeof(vec2));
+    _mscript_type_init(&mscript->vec2_array_type, "vec2[]", MSCRIPT_TYPE_ARRAY, &mscript->vec2_type, NULL, sizeof(int));
+    _mscript_type_init(&mscript->vec3_type, "vec3", MSCRIPT_TYPE_VEC3, NULL, NULL, sizeof(vec3));
+    _mscript_type_init(&mscript->vec3_array_type, "vec3[]", MSCRIPT_TYPE_ARRAY, &mscript->vec3_type, NULL, sizeof(int));
 
-    _mscript_type_init(&mscript->bool_type, "bool", MSCRIPT_TYPE_BOOL, NULL, NULL, 4);
-    _mscript_type_init(&mscript->bool_array_type, "bool[]", MSCRIPT_TYPE_ARRAY, &mscript->bool_type, NULL, 4);
-    _mscript_type_init(&mscript->char_star_type, "char*", MSCRIPT_TYPE_CHAR_STAR, NULL, NULL, 4);
+    _mscript_type_init(&mscript->bool_type, "bool", MSCRIPT_TYPE_BOOL, NULL, NULL, sizeof(int));
+    _mscript_type_init(&mscript->bool_array_type, "bool[]", MSCRIPT_TYPE_ARRAY, &mscript->bool_type, NULL, sizeof(int));
+    _mscript_type_init(&mscript->char_star_type, "char*", MSCRIPT_TYPE_CHAR_STAR, NULL, NULL, sizeof(int));
 
     struct directory dir;
     directory_init(&dir, "scripts");
@@ -7351,48 +7353,41 @@ static int _ms_copy_val(char *data, mscript_val_t val) {
     switch (val.type) {
         case MSCRIPT_VAL_INT:
             {
-                int32_t v = (int32_t) val.int_val;
-                memcpy(data, (char*) &v, 4);
-                return 4;
+                int v = (int) val.int_val;
+                memcpy(data, (char*) &v, sizeof(int));
+                return sizeof(int);
             }
             break;
         case MSCRIPT_VAL_FLOAT:
             {
                 float v = (float) val.float_val;
-                memcpy(data, (char*) &v, 4);
-                return 4;
+                memcpy(data, (char*) &v, sizeof(float));
+                return sizeof(float);
             }
             break;
         case MSCRIPT_VAL_VEC2:
             {
-                float v[2];
-                v[0] = (float) val.vec2_val.x;
-                v[1] = (float) val.vec2_val.y;
-                memcpy(data, (char*) v, 8);
-                return 8;
+                memcpy(data, (char*) &(val.vec2_val), sizeof(vec2));
+                return sizeof(vec2);
             }
             break;
         case MSCRIPT_VAL_VEC3:
             {
-                float v[3];
-                v[0] = (float) val.vec3_val.x;
-                v[1] = (float) val.vec3_val.y;
-                v[2] = (float) val.vec3_val.z;
-                memcpy(data, (char*) v, 12);
-                return 12;
+                memcpy(data, (char*) &(val.vec3_val), sizeof(vec3));
+                return sizeof(vec3);
             }
             break;
         case MSCRIPT_VAL_BOOL:
             {
-                int32_t v;
+                int v;
                 if (val.bool_val) {
-                    v = (int32_t) 1;
+                    v = (int) 1;
                 }
                 else {
-                    v = (int32_t) 0;
+                    v = (int) 0;
                 }
-                memcpy(data, (char*) &v, 4);
-                return 4;
+                memcpy(data, (char*) &v, sizeof(int));
+                return sizeof(int);
             }
             break;
         case MSCRIPT_VAL_VOID_PTR:
@@ -7447,11 +7442,11 @@ static void _ms_vm_init_global(mscript_vm_t *vm, _ms_symbol_t *symbol) {
             break;
         case MSCRIPT_VAL_ARRAY:
             {
-                assert(decl->type->size == 4);
+                assert(decl->type->size == sizeof(int));
                 assert(decl->type->type == MSCRIPT_TYPE_ARRAY);
 
                 uint32_t v = vm->arrays.length + 1;
-                memcpy(vm->memory + offset, (char*) &v, 4);
+                memcpy(vm->memory + offset, (char*) &v, sizeof(int));
 
                 int arg_size = decl->type->array_member_type->size;
                 int num_args = val.array.num_args;
@@ -7496,64 +7491,72 @@ mscript_vm_t *mscript_vm_create(mscript_program_t *program) {
     return vm;
 }
 
-#define VM_BINARY_OP(op, arg_type, result_type)\
-    assert(sp >= 8);\
-    arg_type v1 = *((arg_type*) (stack + sp - 4));\
-    arg_type v0 = *((arg_type*) (stack + sp - 8));\
-    result_type v = (result_type) (v0 op v1);\
-    memcpy(stack + sp - 8, &v, 4);\
-    sp -= 4;
+#define _MS_C_FUNC_GET_ARG(type)\
+    *((type*) (args + (offset = offset + sizeof(type)) - sizeof(type)))
+
+#define _MS_C_FUNC_RETURN(type, val)\
+    *((type*) args) = (val)
 
 static void _ms_c_function_sqrt(char *args, int args_size) {
-    assert(args_size == 4);
-    float v = *((float*) (args - 4));
+    int offset = 0;
+    float v = _MS_C_FUNC_GET_ARG(float);
+    assert(offset == args_size);
+
     v = sqrtf(v);
-    memcpy(args - 4, &v, 4);
+    _MS_C_FUNC_RETURN(float, v);
 }
 
 static void _ms_c_function_sin(char *args, int args_size) {
-    assert(args_size == 4);
-    float v = *((float*) (args - 4));
+    int offset = 0;
+    float v = _MS_C_FUNC_GET_ARG(float);
+    assert(offset == args_size);
+
     v = sinf(v);
-    memcpy(args - 4, &v, 4);
+    _MS_C_FUNC_RETURN(float, v);
 }
 
 static void _ms_c_function_cos(char *args, int args_size) {
-    assert(args_size == 4);
-    float v = *((float*) (args - 4));
+    int offset = 0;
+    float v = _MS_C_FUNC_GET_ARG(float);
+    assert(offset == args_size);
+    
     v = cosf(v);
-    memcpy(args - 4, &v, 4);
+    _MS_C_FUNC_RETURN(float, v);
 }
 
 static void _ms_c_function_asin(char *args, int args_size) {
-    assert(args_size == 4);
-    float v = *((float*) (args - 4));
+    int offset = 0;
+    float v = _MS_C_FUNC_GET_ARG(float);
+    assert(offset == args_size);
+
     v = asinf(v);
-    memcpy(args - 4, &v, 4);
+    _MS_C_FUNC_RETURN(float, v);
 }
 
 static void _ms_c_function_acos(char *args, int args_size) {
-    assert(args_size == 4);
-    float v = *((float*) (args - 4));
+    int offset = 0;
+    float v = _MS_C_FUNC_GET_ARG(float);
+    assert(offset == args_size);
+
     v = acosf(v);
-    memcpy(args - 4, &v, 4);
+    _MS_C_FUNC_RETURN(float, v);
 }
 
 static void _ms_c_function_file_size(char *args, int args_size) {
-    assert(args_size == sizeof(intptr_t));
-    intptr_t ptr = *((intptr_t*) (args - args_size));
+    int offset = 0;
+    intptr_t ptr = _MS_C_FUNC_GET_ARG(intptr_t);
+    assert(offset == args_size);
+
     struct file *f = (struct file*) ptr;
     int v = f->data_len;
-    memcpy(args - args_size, &v, 4);
+    _MS_C_FUNC_RETURN(int, v);
 }
 
 static void _ms_c_function_terrain_model_add_point(char *args, int args_size) {
 }
 
-#define _MS_C_FUNC_GET_ARG(type)\
-    *((type*) (args - (args_size = args_size - sizeof(type)) + sizeof(type)))
-
 static void _ms_c_function_terrain_model_add_face(char *args, int args_size) {
+    int offset = 0;
     int num_points = _MS_C_FUNC_GET_ARG(int);
     int mat_idx = _MS_C_FUNC_GET_ARG(int);
     int smooth_normal = _MS_C_FUNC_GET_ARG(int);
@@ -7570,8 +7573,27 @@ static void _ms_c_function_terrain_model_add_face(char *args, int args_size) {
     float friction = _MS_C_FUNC_GET_ARG(float);
     float vel_scale = _MS_C_FUNC_GET_ARG(float);
     int auto_texture = _MS_C_FUNC_GET_ARG(int);
-    assert(args_size == 0);
+    assert(offset == args_size);
+
 }
+
+#define _MS_VM_POP_ARG(type)\
+    *((type*) (stack + (sp = sp - sizeof(type))))
+
+#define _MS_VM_PUSH_ARG(type, val)\
+    *((type*) (stack + (sp = sp + sizeof(type)) - sizeof(type))) = val
+
+#define _MS_VM_BINARY_OP(op, arg_type, result_type)\
+    arg_type v2 = _MS_VM_POP_ARG(arg_type);\
+    arg_type v1 = _MS_VM_POP_ARG(arg_type);\
+    result_type v = (result_type) ((v1) op (v2));\
+    _MS_VM_PUSH_ARG(result_type, v);\
+
+#define _MS_VM_BINARY_OP_FUNCTION(function, arg1_type, arg2_type, result_type)\
+    arg2_type v2 = _MS_VM_POP_ARG(arg2_type);\
+    arg1_type v1 = _MS_VM_POP_ARG(arg1_type);\
+    result_type v = function(v1, v2);\
+    _MS_VM_PUSH_ARG(result_type, v);
 
 void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, mscript_val_t *args) {
     _ms_opcode_t *opcodes = vm->program->opcodes.data;
@@ -7598,51 +7620,42 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
             case MSCRIPT_VAL_INT:
                 {
                     assert(decl->args[i].type->type == MSCRIPT_TYPE_INT);
-                    *((int32_t*) (stack + sp)) = (int32_t)arg.int_val;
-                    sp += 4;
+                    _MS_VM_PUSH_ARG(int, arg.int_val);
                 }
                 break;
             case MSCRIPT_VAL_FLOAT:
                 {
                     assert(decl->args[i].type->type == MSCRIPT_TYPE_FLOAT);
-                    *((float*) (stack + sp)) = (float)arg.float_val;
-                    sp += 4;
+                    _MS_VM_PUSH_ARG(float, arg.float_val);
                 }
                 break;
             case MSCRIPT_VAL_VEC2:
                 {
                     assert(decl->args[i].type->type == MSCRIPT_TYPE_VEC2);
-                    *((float*) (stack + sp + 0)) = (float)arg.vec2_val.x;
-                    *((float*) (stack + sp + 4)) = (float)arg.vec2_val.y;
-                    sp += 8;
+                    _MS_VM_PUSH_ARG(vec2, arg.vec2_val);
                 }
                 break;
             case MSCRIPT_VAL_VEC3:
                 {
                     assert(decl->args[i].type->type == MSCRIPT_TYPE_VEC3);
-                    *((float*) (stack + sp + 0)) = (float)arg.vec3_val.x;
-                    *((float*) (stack + sp + 4)) = (float)arg.vec3_val.y;
-                    *((float*) (stack + sp + 8)) = (float)arg.vec3_val.z;
-                    sp += 12;
+                    _MS_VM_PUSH_ARG(vec3, arg.vec3_val);
                 }
                 break;
             case MSCRIPT_VAL_BOOL:
                 {
                     assert(decl->args[i].type->type == MSCRIPT_TYPE_BOOL);
                     if (arg.bool_val) {
-                        *((int32_t*) (stack + sp)) = (int32_t)1;
+                        _MS_VM_PUSH_ARG(int, 1);
                     }
                     else {
-                        *((int32_t*) (stack + sp)) = (int32_t)0;
+                        _MS_VM_PUSH_ARG(int, 0);
                     }
-                    sp += 4;
                 }
                 break;
             case MSCRIPT_VAL_VOID_PTR:
                 {
                     assert(decl->args[i].type->type == MSCRIPT_TYPE_VOID_STAR);
-                    *((intptr_t*) (stack + sp)) = (intptr_t)arg.void_ptr_val;
-                    sp += sizeof(intptr_t);
+                    _MS_VM_PUSH_ARG(intptr_t, (intptr_t) arg.void_ptr_val);
                 }
                 break;
             case MSCRIPT_VAL_OBJECT:
@@ -7660,11 +7673,9 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
         }
     }
 
-    *((int32_t*) (stack + sp + 0)) = (int32_t)0;
-    *((int32_t*) (stack + sp + 4)) = (int32_t)-2;
-    *((int32_t*) (stack + sp + 8)) = (int32_t)0;
-
-    sp += 12;
+    _MS_VM_PUSH_ARG(int, 0);
+    _MS_VM_PUSH_ARG(int, -2);
+    _MS_VM_PUSH_ARG(int, 0);
     fp = sp;
 
     uint64_t time0, time1;
@@ -7681,279 +7692,192 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
         switch (op.type) {
             case _MS_OPCODE_IADD:
                 {
-                    VM_BINARY_OP(+, int32_t, int32_t);
+                    _MS_VM_BINARY_OP(+, int, int);
                 }
                 break;
             case _MS_OPCODE_FADD:
                 {
-                    VM_BINARY_OP(+, float, float);
+                    _MS_VM_BINARY_OP(+, float, float);
                 }
                 break;
             case _MS_OPCODE_V2ADD:
                 {
-                    float *v1 = (float*) (stack + sp - 8);
-                    float *v0 = (float*) (stack + sp - 16);
-                    float v[2] = { 
-                        v0[0] + v1[0],
-                        v0[1] + v1[1],
-                    };
-                    memcpy(stack + sp - 16, v, 8);
-                    sp -= 8;
+                    _MS_VM_BINARY_OP_FUNCTION(vec2_add, vec2, vec2, vec2);
                 }
                 break;
             case _MS_OPCODE_V3ADD:
                 {
-                    float *v1 = (float*) (stack + sp - 12);
-                    float *v0 = (float*) (stack + sp - 24);
-                    float v[3] = { 
-                        v0[0] + v1[0],
-                        v0[1] + v1[1],
-                        v0[2] + v1[2] 
-                    };
-                    memcpy(stack + sp - 24, v, 12);
-                    sp -= 12;
+                    _MS_VM_BINARY_OP_FUNCTION(vec3_add, vec3, vec3, vec3);
                 }
                 break;
             case _MS_OPCODE_ISUB:
                 {
-                    VM_BINARY_OP(-, int32_t, int32_t);
+                    _MS_VM_BINARY_OP(-, int, int);
                 }
                 break;
             case _MS_OPCODE_FSUB:
                 {
-                    VM_BINARY_OP(-, float, float);
+                    _MS_VM_BINARY_OP(-, float, float);
                 }
                 break;
             case _MS_OPCODE_V2SUB:
                 {
-                    float *v1 = (float*) (stack + sp - 8);
-                    float *v0 = (float*) (stack + sp - 16);
-                    float v[2] = { 
-                        v0[0] - v1[0],
-                        v0[1] - v1[1],
-                    };
-                    memcpy(stack + sp - 16, v, 8);
-                    sp -= 8;
+                    _MS_VM_BINARY_OP_FUNCTION(vec2_sub, vec2, vec2, vec2);
                 }
                 break;
             case _MS_OPCODE_V3SUB:
                 {
-                    float *v1 = (float*) (stack + sp - 12);
-                    float *v0 = (float*) (stack + sp - 24);
-                    float v[3] = { 
-                        v0[0] - v1[0],
-                        v0[1] - v1[1],
-                        v0[2] - v1[2] 
-                    };
-                    memcpy(stack + sp - 24, v, 12);
-                    sp -= 12;
+                    _MS_VM_BINARY_OP_FUNCTION(vec3_sub, vec3, vec3, vec3);
                 }
                 break;
             case _MS_OPCODE_IMUL:
                 {
-                    VM_BINARY_OP(*, int32_t, int32_t);
+                    _MS_VM_BINARY_OP(*, int, int);
                 }
                 break;
             case _MS_OPCODE_FMUL:
                 {
-                    VM_BINARY_OP(*, float, float);
+                    _MS_VM_BINARY_OP(*, float, float);
                 }
                 break;
             case _MS_OPCODE_V2MUL:
                 {
-                    float *v1 = (float*) (stack + sp - 4);
-                    float *v0 = (float*) (stack + sp - 12);
-                    float v[2] = { 
-                        (*v1) * v0[0],
-                        (*v1) * v0[1],
-                    };
-                    memcpy(stack + sp - 12, v, 8);
-                    sp -= 4;
+                    _MS_VM_BINARY_OP_FUNCTION(vec2_scale, vec2, float, vec2);
                 }
                 break;
             case _MS_OPCODE_V3MUL:
                 {
-                    float *v1 = (float*) (stack + sp - 4);
-                    float *v0 = (float*) (stack + sp - 16);
-                    float v[3] = { 
-                        (*v1) * v0[0],
-                        (*v1) * v0[1],
-                        (*v1) * v0[2]  
-                    };
-                    memcpy(stack + sp - 16, v, 12);
-                    sp -= 4;
+                    _MS_VM_BINARY_OP_FUNCTION(vec3_scale, vec3, float, vec3);
                 }
                 break;
             case _MS_OPCODE_IDIV:
                 {
-                    VM_BINARY_OP(/, int32_t, int32_t);
+                    _MS_VM_BINARY_OP(/, int, int);
                 }
                 break;
             case _MS_OPCODE_FDIV:
                 {
-                    VM_BINARY_OP(/, float, float);
+                    _MS_VM_BINARY_OP(/, float, float);
                 }
                 break;
             case _MS_OPCODE_V2DIV:
                 {
-                    float *v1 = (float*) (stack + sp - 4);
-                    float *v0 = (float*) (stack + sp - 12);
-                    float v[2] = { 
-                        v0[0] / (*v1),
-                        v0[1] / (*v1),
-                    };
-                    memcpy(stack + sp - 12, v, 8);
-                    sp -= 4;
+                    _MS_VM_BINARY_OP_FUNCTION(vec2_div, vec2, float, vec2);
                 }
                 break;
             case _MS_OPCODE_V3DIV:
                 {
-                    float *v1 = (float*) (stack + sp - 4);
-                    float *v0 = (float*) (stack + sp - 16);
-                    float v[3] = { 
-                        v0[0] / (*v1),
-                        v0[1] / (*v1),
-                        v0[2] / (*v1)  
-                    };
-                    memcpy(stack + sp - 16, v, 12);
-                    sp -= 4;
+                    _MS_VM_BINARY_OP_FUNCTION(vec3_div, vec3, float, vec3);
                 }
                 break;
             case _MS_OPCODE_ILTE:
                 {
-                    VM_BINARY_OP(<=, int32_t, int32_t);
+                    _MS_VM_BINARY_OP(<=, int, int);
                 }
                 break;
             case _MS_OPCODE_FLTE:
                 {
-                    VM_BINARY_OP(<=, float, int32_t);
+                    _MS_VM_BINARY_OP(<=, float, int);
                 }
                 break;
             case _MS_OPCODE_ILT:
                 {
-                    VM_BINARY_OP(<, int32_t, int32_t);
+                    _MS_VM_BINARY_OP(<, int, int);
                 }
                 break;
             case _MS_OPCODE_FLT:
                 {
-                    VM_BINARY_OP(<, float, int32_t);
+                    _MS_VM_BINARY_OP(<, float, int);
                 }
                 break;
             case _MS_OPCODE_IGTE:
                 {
-                    VM_BINARY_OP(>=, int32_t, int32_t);
+                    _MS_VM_BINARY_OP(>=, int, int);
                 }
                 break;
             case _MS_OPCODE_FGTE:
                 {
-                    VM_BINARY_OP(>=, float, int32_t);
+                    _MS_VM_BINARY_OP(>=, float, int);
                 }
                 break;
             case _MS_OPCODE_IGT:
                 {
-                    VM_BINARY_OP(>, int32_t, int32_t);
+                    _MS_VM_BINARY_OP(>, int, int);
                 }
                 break;
             case _MS_OPCODE_FGT:
                 {
-                    VM_BINARY_OP(>, float, int32_t);
+                    _MS_VM_BINARY_OP(>, float, int);
                 }
                 break;
             case _MS_OPCODE_IEQ:
                 {
-                    VM_BINARY_OP(==, int32_t, int32_t);
+                    _MS_VM_BINARY_OP(==, int, int);
                 }
                 break;
             case _MS_OPCODE_FEQ:
                 {
-                    VM_BINARY_OP(==, float, int32_t);
+                    _MS_VM_BINARY_OP(==, float, int);
                 }
                 break;
             case _MS_OPCODE_V2EQ:
                 {
-                    float *v0 = (float*) (stack + sp - 8);
-                    float *v1 = (float*) (stack + sp - 16);
-                    bool v = (v0[0] == v1[0]) && 
-                        (v0[1] == v1[1]);
-                    memcpy(stack + sp - 16, &v, 4);
-                    sp -= 12;
+                    _MS_VM_BINARY_OP_FUNCTION(vec2_equal, vec2, vec2, int);
                 }
                 break;
             case _MS_OPCODE_V3EQ:
                 {
-                    float *v0 = (float*) (stack + sp - 12);
-                    float *v1 = (float*) (stack + sp - 24);
-                    bool v = (v0[0] == v1[0]) && 
-                        (v0[1] == v1[1]) &&
-                        (v0[2] == v1[2]);
-                    memcpy(stack + sp - 24, &v, 4);
-                    sp -= 20;
+                    _MS_VM_BINARY_OP_FUNCTION(vec3_equal, vec3, vec3, int);
                 }
                 break;
             case _MS_OPCODE_INEQ:
                 {
-                    VM_BINARY_OP(!=, int32_t, int32_t);
+                    _MS_VM_BINARY_OP(!=, int, int);
                 }
                 break;
             case _MS_OPCODE_FNEQ:
                 {
-                    VM_BINARY_OP(!=, float, int32_t);
+                    _MS_VM_BINARY_OP(!=, float, int);
                 }
                 break;
             case _MS_OPCODE_V2NEQ:
                 {
-                    float *v0 = (float*) (stack + sp - 8);
-                    float *v1 = (float*) (stack + sp - 16);
-                    bool v = (v0[0] != v1[0]) && 
-                        (v0[1] != v1[1]);
-                    memcpy(stack + sp - 16, &v, 4);
-                    sp -= 12;
+                    assert(false);
                 }
                 break;
             case _MS_OPCODE_V3NEQ:
                 {
-                    float *v0 = (float*) (stack + sp - 12);
-                    float *v1 = (float*) (stack + sp - 24);
-                    bool v = (v0[0] != v1[0]) || 
-                        (v0[1] != v1[1]) ||
-                        (v0[2] != v1[2]);
-                    memcpy(stack + sp - 24, &v, 4);
-                    sp -= 20;
+                    assert(false);
                 }
                 break;
             case _MS_OPCODE_IINC:
                 {
-                    int32_t v = *((int32_t*) (stack + sp - 4));
-                    v = v + 1;
-                    memcpy(stack + sp - 4, &v, 4);
+                    int v = _MS_VM_POP_ARG(int);
+                    _MS_VM_PUSH_ARG(int, v + 1);
                 }
                 break;
             case _MS_OPCODE_FINC:
                 {
-                    float v = *((float*) (stack + sp - 4));
-                    v = v + 1.0f;
-                    memcpy(stack + sp - 4, &v, 4);
+                    float v = _MS_VM_POP_ARG(float);
+                    _MS_VM_PUSH_ARG(float, v + 1.0f);
                 }
                 break;
             case _MS_OPCODE_NOT:
                 {
-                    int32_t v = *((int32_t*) (stack + sp - 4));
-                    v = !v;
-                    memcpy(stack + sp - 4, &v, 4);
+                    int v = _MS_VM_POP_ARG(int);
+                    _MS_VM_PUSH_ARG(int, !v);
                 }
                 break;
             case _MS_OPCODE_F2I:
                 {
-                    float vf = *((float*) (stack + sp - 4));
-                    int32_t vi = (int32_t) vf;
-                    memcpy(stack + sp - 4, &vi, 4);
+                    float v = _MS_VM_POP_ARG(float);
+                    _MS_VM_PUSH_ARG(int, (int) v);
                 }
                 break;
             case _MS_OPCODE_I2F:
                 {
-                    int32_t vi = *((int32_t*) (stack + sp - 4));
-                    float vf = (float) vi;
-                    memcpy(stack + sp - 4, &vf, 4);
+                    int v = _MS_VM_POP_ARG(int);
+                    _MS_VM_PUSH_ARG(float, (float) v);
                 }
                 break;
             case _MS_OPCODE_COPY:
@@ -7971,14 +7895,12 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
                 break;
             case _MS_OPCODE_INT:
                 {
-                    *((int32_t*) (stack + sp)) = (int32_t)op.int_val;
-                    sp += 4;
+                    _MS_VM_PUSH_ARG(int, op.int_val);
                 }
                 break;
             case _MS_OPCODE_FLOAT:
                 {
-                    *((float*) (stack + sp)) = op.float_val;
-                    sp += 4;
+                    _MS_VM_PUSH_ARG(float, op.float_val);
                 }
                 break;
             case _MS_OPCODE_LOCAL_STORE:
@@ -8029,10 +7951,7 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
                 break;
             case _MS_OPCODE_JF:
                 {
-                    assert(sp >= 4);
-
-                    int32_t v = *((int32_t*) (stack + sp - 4));
-                    sp -= 4;
+                    int v = _MS_VM_POP_ARG(int);
                     if (!v) {
                         ip = op.label - 1;
                         assert(ip >= 0);
@@ -8048,19 +7967,17 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
             case _MS_OPCODE_CALL:
                 {
                     int ret_sp = sp - op.call.args_size;
+                    _MS_VM_PUSH_ARG(int, fp);
+                    _MS_VM_PUSH_ARG(int, ip);
+                    _MS_VM_PUSH_ARG(int, ret_sp);
 
-                    memcpy(stack + sp + 0, &fp, 4);
-                    memcpy(stack + sp + 4, &ip, 4);
-                    memcpy(stack + sp + 8, &ret_sp, 4);
-
-                    sp += 12;
                     ip = op.call.label - 1;
                     fp = sp;
                 }
                 break;
             case _MS_OPCODE_C_CALL:
                 {
-                    op.c_call.fn(stack + sp, op.c_call.args_size);
+                    op.c_call.fn(stack + sp - op.c_call.args_size, op.c_call.args_size);
                     sp = (sp - op.c_call.args_size + op.c_call.return_size);
                 }
                 break;
@@ -8069,9 +7986,9 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
                     assert(sp >= op.size);
 
                     char *return_data = stack + sp - op.size;
-                    sp = (int) *((int32_t*) (stack + fp - 4));
-                    ip = (int) *((int32_t*) (stack + fp - 8));
-                    fp = (int) *((int32_t*) (stack + fp - 12));
+                    sp = (int) *((int*) (stack + fp - 1 * sizeof(int)));
+                    ip = (int) *((int*) (stack + fp - 2 * sizeof(int)));
+                    fp = (int) *((int*) (stack + fp - 3 * sizeof(int)));
 
                     memmove(stack + sp, return_data, op.size);
                     sp += op.size;
@@ -8099,16 +8016,13 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
                     vec_init(&new_array.array);
                     vec_push(&vm->arrays, new_array);
 
-                    memcpy(stack + sp, &array_idx, 4);
-                    sp += 4;
+                    _MS_VM_PUSH_ARG(int, array_idx);
                 }
                 break;
             case _MS_OPCODE_ARRAY_DELETE:
                 {
-                    int array_idx = (int) *((int32_t*) (stack + sp - 4));
-                    sp -= 4;
+                    int array_idx = _MS_VM_POP_ARG(int);
 
-                    assert(array_idx > 0);
                     _ms_vm_array_t *array = vm->arrays.data + array_idx - 1;
                     array->is_deleted = true;
                     vec_deinit(&array->array);
@@ -8118,12 +8032,11 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
                 {
                     int size = op.size;
 
-                    int offset = (int) *((int32_t*) (stack + sp - 4));
-                    int array_idx = (int) (*((int32_t*) (stack + sp - 8))) - 1;
-                    sp -= 8;
+                    int offset = _MS_VM_POP_ARG(int);
+                    int array_idx = _MS_VM_POP_ARG(int);
 
                     char *data = stack + sp - size;
-                    _ms_vm_array_t *array = vm->arrays.data + array_idx;
+                    _ms_vm_array_t *array = vm->arrays.data + array_idx - 1;
 
                     int reserve_size = offset + size;
                     if ((reserve_size % array->member_size) != 0) {
@@ -8142,11 +8055,10 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
                 {
                     int size = op.size;
 
-                    int offset = (int) *((int32_t*) (stack + sp - 4));
-                    int array_idx = (int) (*((int32_t*) (stack + sp - 8))) - 1;
-                    sp -= 8;
+                    int offset = _MS_VM_POP_ARG(int);
+                    int array_idx = _MS_VM_POP_ARG(int);
 
-                    _ms_vm_array_t *array = vm->arrays.data + array_idx;
+                    _ms_vm_array_t *array = vm->arrays.data + array_idx - 1;
 
                     assert(offset + size <= array->array.length);
                     memmove(stack + sp, array->array.data + offset, size);
@@ -8155,45 +8067,40 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
                 break;
             case _MS_OPCODE_ARRAY_LENGTH:
                 {
-                    int array_idx = (int) (*((int32_t*) (stack + sp - 4)) - 1);
-                    _ms_vm_array_t *array = vm->arrays.data + array_idx;
+                    int array_idx = _MS_VM_POP_ARG(int);
+                    _ms_vm_array_t *array = vm->arrays.data + array_idx - 1;
 
                     int len = array->array.length / array->member_size;
-                    memcpy(stack + sp - 4, &len, 4);
+                    _MS_VM_PUSH_ARG(int, len);
                 }
                 break;
             case _MS_OPCODE_DEBUG_PRINT_INT:
                 {
-                    int v = (int) *((int32_t*) (stack + sp - 4));
-                    sp -= 4;
+                    int v = _MS_VM_POP_ARG(int);
                     m_logf("%d", v);
                 }
                 break;
             case _MS_OPCODE_DEBUG_PRINT_FLOAT:
                 {
-                    float v = *((float*) (stack + sp - 4));
-                    sp -= 4;
+                    float v = _MS_VM_POP_ARG(float);
                     m_logf("%f", v);
                 }
                 break;
             case _MS_OPCODE_DEBUG_PRINT_VEC2:
                 {
-                    float *v = (float*) (stack + sp - 8);
-                    sp -= 8;
-                    m_logf("<%f, %f>", v[0], v[1]);
+                    vec2 v = _MS_VM_POP_ARG(vec2);
+                    m_logf("<%f, %f>", v.x, v.y);
                 }
                 break;
             case _MS_OPCODE_DEBUG_PRINT_VEC3:
                 {
-                    float *v = (float*) (stack + sp - 12);
-                    sp -= 12;
-                    m_logf("<%f, %f, %f>", v[0], v[1], v[2]);
+                    vec3 v = _MS_VM_POP_ARG(vec3);
+                    m_logf("<%f, %f, %f>", v.x, v.y, v.z);
                 }
                 break;
             case _MS_OPCODE_DEBUG_PRINT_BOOL:
                 {
-                    int v = (int) *((int32_t*) (stack + sp - 4));
-                    sp -= 4;
+                    int v = _MS_VM_POP_ARG(int);
 
                     if (v) {
                         m_logf("true");
@@ -8205,8 +8112,7 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
                 break;
             case _MS_OPCODE_DEBUG_PRINT_STRING:
                 {
-                    int str_pos = (int) *((int32_t*) (stack + sp - 4));
-                    sp -= 4;
+                    int str_pos = _MS_VM_POP_ARG(int);
                     char *str = vm->program->strings.data + str_pos;
                     m_logf("%s", str);
                 }
@@ -8235,5 +8141,5 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
     time_sec = stm_ms(stm_diff(time1, time0));
 
     m_logf("TIME: %f\n", (float) time_sec);
-    m_logf("%d\n", (int) *((int32_t*) stack));
+    m_logf("%d\n", (int) *((int*) stack));
 }

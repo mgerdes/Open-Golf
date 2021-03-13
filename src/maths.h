@@ -77,9 +77,10 @@ struct bounding_box bounding_box_create(vec3 center, vec3 half_lengths);
 #define V4_ZERO V4(0.0f, 0.0f, 0.0f, 0.0f)
 
 vec2 vec2_create(float x, float y);
-vec2 vec2_subtract(vec2 v1, vec2 v2);
+vec2 vec2_sub(vec2 v1, vec2 v2);
 vec2 vec2_normalize(vec2 v);
 vec2 vec2_scale(vec2 v, float s);
+vec2 vec2_div(vec2 v, float s);
 vec2 vec2_interpolate(vec2 p0, vec2 p1, float a);
 float vec2_determinant(vec2 u, vec2 v);
 float vec2_length(vec2 v);
@@ -101,7 +102,7 @@ bool vec2_point_right_of_line(vec2 point, vec2 line_p0, vec2 line_p1);
 bool vec2_point_on_line(vec2 point, vec2 line_p0, vec2 line_p1);
 bool vec2_point_in_polygon(vec2 point, int num_poly_points, vec2 *poly_points);
 vec2 vec2_bezier(vec2 p0, vec2 p1, vec2 p2, vec2 p3, float t);
-bool vec2_equal(vec2 v1, vec2 v2, float epsilon);
+bool vec2_equal(vec2 v1, vec2 v2);
 void vec2_print(vec2 v);
 
 vec3 vec3_create(float x, float y, float z);
@@ -120,7 +121,8 @@ vec3 vec3_set_length(vec3 v, float l);
 float vec3_length(vec3 v);
 float vec3_length_squared(vec3 v);
 vec3 vec3_scale(vec3 v, float s);
-bool vec3_equal(vec3 v1, vec3 v2, float eps);
+vec3 vec3_div(vec3 v, float s);
+bool vec3_equal(vec3 v1, vec3 v2);
 vec3 vec3_rotate_x(vec3 v, float theta);
 vec3 vec3_rotate_y(vec3 v, float theta);
 vec3 vec3_rotate_z(vec3 v, float theta);

@@ -2615,8 +2615,8 @@ static void hole_editor_update(struct game_editor *ed, float dt,
                             if (i == polygon_points.length - 1) p2 = polygon_points.data[0];
                             else p2 = polygon_points.data[i + 1];
 
-                            vec2 dir0 = vec2_normalize(vec2_subtract(p0, p1));
-                            vec2 dir1 = vec2_normalize(vec2_subtract(p2, p1));
+                            vec2 dir0 = vec2_normalize(vec2_sub(p0, p1));
+                            vec2 dir1 = vec2_normalize(vec2_sub(p2, p1));
                             vec2 dir = vec2_normalize(vec2_add(dir0, dir1));
                             if (vec2_length(dir) < 0.0001f) {
                                 dir = vec2_rotate(dir0, 0.5f * MF_PI);

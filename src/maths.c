@@ -47,7 +47,7 @@ vec2 vec2_create(float x, float y) {
 	return v;
 }
 
-vec2 vec2_subtract(vec2 v1, vec2 v2) {
+vec2 vec2_sub(vec2 v1, vec2 v2) {
     float x = v1.x - v2.x;
     float y = v1.y - v2.y;
     return vec2_create(x, y);
@@ -67,6 +67,10 @@ vec2 vec2_normalize(vec2 v) {
 
 vec2 vec2_scale(vec2 v, float s) {
     return vec2_create(v.x * s, v.y * s);
+}
+
+vec2 vec2_div(vec2 v, float s) {
+    return vec2_create(v.x / s, v.y / s);
 }
 
 vec2 vec2_interpolate(vec2 p0, vec2 p1, float a) {
@@ -106,7 +110,7 @@ float vec2_length_squared(vec2 v) {
 }
 
 vec2 vec2_reflect(vec2 u, vec2 v) {
-    return vec2_subtract(vec2_perpindicular_component(u, v), vec2_parallel_component(u, v));
+    return vec2_sub(vec2_perpindicular_component(u, v), vec2_parallel_component(u, v));
 }
 
 vec2 vec2_parallel_component(vec2 u, vec2 v) {
@@ -119,7 +123,7 @@ vec2 vec2_parallel_component(vec2 u, vec2 v) {
 }
 
 vec2 vec2_perpindicular_component(vec2 u, vec2 v) {
-    return vec2_subtract(u, vec2_parallel_component(u, v));
+    return vec2_sub(u, vec2_parallel_component(u, v));
 }
 
 float vec2_determinant(vec2 u, vec2 v) {
@@ -205,8 +209,8 @@ vec2 vec2_bezier(vec2 p0, vec2 p1, vec2 p2, vec2 p3, float t) {
     return v;
 }
 
-bool vec2_equal(vec2 v1, vec2 v2, float epsilon) {
-    return (fabs(v1.x - v2.x) < epsilon) && (fabs(v1.y - v2.y) < epsilon);
+bool vec2_equal(vec2 v1, vec2 v2) {
+    return (fabs(v1.x - v2.x) < 0.0001f) && (fabs(v1.y - v2.y) < 0.0001f);
 }
 
 void vec2_print(vec2 v) {
@@ -278,6 +282,10 @@ vec3 vec3_scale(vec3 v, float s) {
     return vec3_create(s * v.x, s * v.y, s * v.z);
 }
 
+vec3 vec3_div(vec3 v, float s) {
+    return vec3_create(v.x / s, v.y / s, v.z / s);
+}
+
 float vec3_distance(vec3 v1, vec3 v2) {
     return sqrtf((v1.x - v2.x) * (v1.x - v2.x) + (v1.y - v2.y) * (v1.y - v2.y) +
                  (v1.z - v2.z) * (v1.z - v2.z));
@@ -300,8 +308,8 @@ float vec3_length_squared(vec3 v) {
     return v.x * v.x + v.y * v.y + v.z * v.z;
 }
 
-bool vec3_equal(vec3 v1, vec3 v2, float eps) {
-    return (fabs(v1.x - v2.x) <= eps) && (fabs(v1.y - v2.y) <= eps) && (fabs(v1.z - v2.z) <= eps);
+bool vec3_equal(vec3 v1, vec3 v2) {
+    return (fabs(v1.x - v2.x) <= 0.0001f) && (fabs(v1.y - v2.y) <= 0.0001f) && (fabs(v1.z - v2.z) <= 0.0001f);
 }
 
 vec3 vec3_rotate_x(vec3 v, float theta) {
@@ -383,7 +391,7 @@ vec3 vec3_multiply(vec3 v1, vec3 v2) {
 vec3 vec3_orthogonal(vec3 u) {
     u = vec3_normalize(u);
     vec3 v = V3(1.0f, 0.0f, 0.0f);
-    if (vec3_equal(u, v, 0.0f)) {
+    if (vec3_equal(u, v)) {
         u = V3(0.0f, 1.0f, 0.0f);
     }
     return vec3_cross(u, v);

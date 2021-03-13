@@ -99,8 +99,8 @@ static void frame(void) {
     //
     {
         profiler_push_section("button_maths");
-        inputs.mouse_delta = vec2_subtract(inputs.mouse_pos, inputs.prev_mouse_pos);
-        inputs.mouse_down_delta = vec2_subtract(inputs.mouse_pos, inputs.mouse_down_pos);
+        inputs.mouse_delta = vec2_sub(inputs.mouse_pos, inputs.prev_mouse_pos);
+        inputs.mouse_down_delta = vec2_sub(inputs.mouse_pos, inputs.mouse_down_pos);
         inputs.prev_mouse_pos = inputs.mouse_pos;
         get_world_ray_from_window_pos(inputs.mouse_pos, &inputs.mouse_ray_orig,
                 &inputs.mouse_ray_dir);

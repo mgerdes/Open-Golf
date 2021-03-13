@@ -2,6 +2,7 @@
 #define _MSCRIPT_PARSER_H
 
 #include <stdbool.h>
+#include "maths.h"
 
 #define MSCRIPT_MAX_SYMBOL_LEN 31
 #define MSCRIPT_MAX_FUNCTION_ARGS 32
@@ -49,14 +50,8 @@ typedef struct mscript_val {
         int int_val;
         bool bool_val;
         void *void_ptr_val;
-
-        struct {
-            float x, y;
-        } vec2_val;
-
-        struct {
-            float x, y, z;
-        } vec3_val;
+        vec2 vec2_val;
+        vec3 vec3_val;
 
         struct {
             int num_args;

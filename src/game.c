@@ -31,7 +31,7 @@ static bool game_get_camera_zone_angle(struct game *game, vec3 position, float *
             if (entity.look_towards_cup) {
                 vec2 p0 = V2(game->hole.cup_entity.position.x, game->hole.cup_entity.position.z);
                 vec2 p1 = V2(position.x, position.z);
-                vec2 dir = vec2_normalize(vec2_subtract(p0, p1));
+                vec2 dir = vec2_normalize(vec2_sub(p0, p1));
                 float theta = acosf(dir.x);
                 if (dir.y <= 0.0f) {
                     theta *= -1.0f;
@@ -1301,7 +1301,7 @@ void game_update(struct game *game, float dt, struct button_inputs button_inputs
         game->aim.active = true;
         game->aim.end_pos = button_inputs.mouse_pos;
         game->aim.length = vec2_distance(game->aim.end_pos, game->aim.circle_pos);
-        game->aim.delta = vec2_normalize(vec2_subtract(game->aim.end_pos, game->aim.circle_pos));
+        game->aim.delta = vec2_normalize(vec2_sub(game->aim.end_pos, game->aim.circle_pos));
         game->aim.angle = acosf(vec2_dot(ed->game->aim.delta, V2(0.0f, -1.0f)));
         if (game->aim.delta.x < 0.0f) game->aim.angle *= -1.0f;
         if (game->aim.length > game->aim.min_power_length) {
@@ -1321,7 +1321,7 @@ void game_update(struct game *game, float dt, struct button_inputs button_inputs
         game->aim.active = true;
         game->aim.end_pos = button_inputs.mouse_pos;
         game->aim.length = vec2_distance(game->aim.end_pos, game->aim.circle_pos);
-        game->aim.delta = vec2_normalize(vec2_subtract(game->aim.end_pos, game->aim.circle_pos));
+        game->aim.delta = vec2_normalize(vec2_sub(game->aim.end_pos, game->aim.circle_pos));
         game->aim.angle = acosf(vec2_dot(ed->game->aim.delta, V2(0.0f, -1.0f)));
         if (game->aim.delta.x < 0.0f) game->aim.angle *= -1.0f;
         if (game->aim.length < game->aim.min_power_length) {
