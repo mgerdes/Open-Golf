@@ -55,7 +55,7 @@ void hotloader_watch_file(const char *path, void *udata,
 void hotloader_watch_files(const char *path, const char *ext, void *udata,
         bool (*callback)(struct file file, bool first_time, void *udata)) {
     struct directory dir;
-    directory_init(&dir, path);
+    directory_init(&dir, path, false);
     for (int i = 0; i < dir.num_files; i++) {
         if (strcmp(ext, dir.files[i].ext) != 0) {
             continue;

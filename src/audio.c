@@ -23,7 +23,7 @@ void audio_init(void) {
     map_init(&audio_sound_map);
 
 	struct directory dir;
-	directory_init(&dir, "assets/audio");
+	directory_init(&dir, "assets/audio", false);
     for (int i = 0; i < dir.num_files; i++) {
         struct file f = dir.files[i];
         file_load_data(&f);

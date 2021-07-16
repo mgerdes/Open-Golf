@@ -7305,7 +7305,7 @@ mscript_t *mscript_create(void) {
     _mscript_type_init(&mscript->char_star_type, "char*", MSCRIPT_TYPE_CHAR_STAR, NULL, NULL, sizeof(int));
 
     struct directory dir;
-    directory_init(&dir, "scripts");
+    directory_init(&dir, "scripts", false);
     for (int i = 0; i < dir.num_files; i++) {
         if (strcmp(dir.files[i].ext, ".mscript") != 0) {
             continue;

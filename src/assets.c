@@ -272,7 +272,7 @@ static void init_models(void) {
     }
 
 	struct directory dir;
-    directory_init(&dir, "assets/models");
+    directory_init(&dir, "assets/models", false);
     for (int i = 0; i < dir.num_files; i++) {
         struct file file = dir.files[i];
         if (strcmp(file.ext, ".model") != 0) {
@@ -399,7 +399,7 @@ void asset_store_init(void) {
         map_init(&_store->textures);
 
 		struct directory dir;
-		directory_init(&dir, "assets/textures");
+		directory_init(&dir, "assets/textures", false);
         for (int i = 0; i < dir.num_files; i++) {
             struct file file = dir.files[i];
 

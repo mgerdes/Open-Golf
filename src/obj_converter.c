@@ -15,7 +15,7 @@ void convert_objs(void) {
     map_init(&color_idx_map);
 
     struct directory dir;
-    directory_init(&dir, "obj_models");
+    directory_init(&dir, "obj_models", false);
     for (int i = 0; i < dir.num_files; i++) {
         struct file f = dir.files[i];
         if (strcmp(f.ext, ".obj") != 0) {

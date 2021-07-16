@@ -53,7 +53,7 @@ bool file_copy_line(struct file *file, char **line_buffer, int *line_buffer_len)
 void file_get_time(struct file *file, struct file_time *time);
 int file_time_cmp(struct file_time *time0, struct file_time *time1);
 
-void directory_init(struct directory *dir, const char *dir_name); 
+void directory_init(struct directory *dir, const char *dir_name, bool recurse); 
 void directory_deinit(struct directory *dir);
 void directory_sort_files_alphabetically(struct directory *dir);
 

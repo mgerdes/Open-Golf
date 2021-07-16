@@ -515,7 +515,7 @@ static void hole_editor_init(struct hole_editor *ce, struct renderer *renderer) 
     }
     {
         ce->file.path[0] = 0;
-        directory_init(&ce->file.holes_directory, "assets/holes");
+        directory_init(&ce->file.holes_directory, "assets/holes", false);
         ce->hole = NULL;
     }
     {
@@ -526,7 +526,7 @@ static void hole_editor_init(struct hole_editor *ce, struct renderer *renderer) 
     {
         ce->selected_entity.terrain.lightmap_width = 0;
         ce->selected_entity.terrain.lightmap_height = 0;
-        directory_init(&ce->selected_entity.environment.model_directory, "assets/models");
+        directory_init(&ce->selected_entity.environment.model_directory, "assets/models", false);
         directory_sort_files_alphabetically(&ce->selected_entity.environment.model_directory);
     }
     {
@@ -584,7 +584,7 @@ static void hole_editor_init(struct hole_editor *ce, struct renderer *renderer) 
         array_init(scripts);
 
 		struct directory dir;
-		directory_init(&dir, "model_generator_scripts");
+		directory_init(&dir, "model_generator_scripts", false);
         for (int i = 0; i < dir.num_files; i++) {
             struct file file = dir.files[i];
             if (strcmp(file.ext, ".scm") != 0) {
@@ -1877,7 +1877,7 @@ static void hole_editor_update(struct game_editor *ed, float dt,
                 igSetNextWindowSize((ImVec2){400, 600}, ImGuiCond_FirstUseEver);
                 igOpenPopup("Load");
                 directory_deinit(&ce->file.holes_directory);
-                directory_init(&ce->file.holes_directory, "assets/holes");
+                directory_init(&ce->file.holes_directory, "assets/holes", false);
                 ce->open_load_dialog = false;
             }
 

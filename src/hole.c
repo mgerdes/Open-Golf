@@ -222,7 +222,7 @@ void terrain_model_copy(struct terrain_model *model, struct terrain_model *model
 
     const char *key;
     map_iter_t iter = map_iter(&model_to_copy->generator_params);
-    while (key = map_next(&model_to_copy->generator_params, &iter)) {
+    while ((key = map_next(&model_to_copy->generator_params, &iter))) {
         float *val = map_get(&model_to_copy->generator_params, key); 
         assert(val);
         map_set(&model->generator_params, key, *val);

@@ -1,0 +1,58 @@
+Library('game-macos')
+{
+    .Compiler = '/usr/bin/clang'
+    .CompilerInputPath = { 'src/' }
+    .CompilerInputPattern = '*.c'
+    .CompilerOutputPath = 'out/game/'
+    .CompilerOptions = '-x objective-c -c -o %2 %1 -Isrc -Ilibraries -Wall -Wno-unused-function -Wno-unused-variable -g -DSOKOL_GLCORE33 -DHOLE_EDITOR -DHOTLOADER_ACTIVE'
+
+    .Librarian = '/usr/bin/ar'
+    .LibrarianOutput = 'out/game/game.a'
+    .LibrarianOptions = 'rcs %2 %1'
+}
+
+Library('cpp-libs-macos')
+{
+    .Compiler = '/usr/bin/clang'
+    .CompilerInputPath = 'libraries/'
+    .CompilerOutputPath = 'out/cpp-libs/'
+    .CompilerInputPattern = '*.cpp'
+    .CompilerOptions = '-c -o %2 %1 -Isrc -Ilibraries -Wall -g -std=c++11'
+
+    .Librarian = '/usr/bin/ar'
+    .LibrarianOutput = 'out/cpp-libs/cpp-libs.a'
+    .LibrarianOptions = 'rcs %2 %1'
+}
+
+Library('c-libs-macos')
+{
+    .Compiler = '/usr/bin/clang'
+    .CompilerInputPath = 'libraries/'
+    .CompilerOutputPath = 'out/c-libs/'
+    .CompilerInputPattern = '*.c'
+    .CompilerOptions = '-x objective-c -c %1 -o %2 -Isrc -Ilibraries -Wall -Wno-unused-function -Wno-unused-variable -g'
+
+    .Librarian = '/usr/bin/ar'
+    .LibrarianOutput = 'out/c-libs/c-libs.a'
+    .LibrarianOptions = 'rcs %2 %1'
+}
+
+Executable('minigolf-macos') 
+{
+    .Linker = '/usr/bin/clang'
+    .LinkerOutput = 'out/minigolf'
+    .LinkerOptions = '-o %2 %1 -lm -lpthread -framework Cocoa -framework CoreServices -framework OpenGL -framework AudioToolbox -lstdc++ -g'
+    .Libraries = { 'game-macos', 'cpp-libs-macos', 'c-libs-macos' }
+}
+
+XCodeProject('minigolf-xcode')
+{
+    .ProjectOutput = 'minigolf-xcode.xcodeproj/project.pbxproj'
+    .ProjectInputPaths = { 'src/', 'libs/' }
+    .DebugConfig = [ 
+        .Config = 'Debug' 
+        .Target = 'minigolf-macos'
+    ]
+    .ProjectBasePath = './'
+    .ProjectConfigs = { .DebugConfig }
+}
