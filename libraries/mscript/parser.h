@@ -74,13 +74,14 @@ mscript_val_t mscript_val_void_ptr(void *ptr);
 mscript_val_t mscript_val_object(int num_args, mscript_val_t *args);
 mscript_val_t mscript_val_array(int num_args, mscript_val_t *args);
 
-mscript_t *mscript_create(void);
-mscript_program_t *mscript_load_program(mscript_t *mscript, const char *name);
+mscript_t *mscript_create(const char *dir_name);
+mscript_program_t *mscript_get_program(mscript_t *mscript, const char *name);
 
 struct mscript_vm;
 typedef struct mscript_vm mscript_vm_t;
 
 mscript_vm_t *mscript_vm_create(mscript_program_t *program);
 void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, mscript_val_t *args);
+char *mscript_vm_get_stack(mscript_vm_t *vm);
 
 #endif

@@ -766,6 +766,7 @@ typedef vec_t(mscript_program_t *) _vec_mscript_program_ptr_t;
 typedef map_t(mscript_program_t *) _map_mscript_program_ptr_t;
 
 struct mscript {
+    const char *dir_name;
     mscript_type_t int_type, int_array_type,
                         float_type, float_array_type,
                         vec3_type, vec3_array_type,
@@ -773,7 +774,6 @@ struct mscript {
                         bool_type, bool_array_type,
                         void_type, void_star_type, void_star_array_type,
                         char_star_type;
-
     _map_mscript_program_ptr_t programs_map;
     _vec_mscript_program_ptr_t programs_array;
 };
@@ -822,6 +822,8 @@ struct mscript_vm {
     _vec_ms_vm_array_t arrays;
     int memory_size;
     char *memory;
+
+    char *stack;
 };
 
 static void debug_log_token(_ms_token_t token);
@@ -6602,7 +6604,7 @@ static void _ms_program_load_stage_1(mscript_t *mscript, struct file file) {
         return;
     }
 
-    char *script_name = file.path + strlen("scripts/");
+    char *script_name = file.path + strlen(mscript->dir_name) + 1;
     mscript_program_t *program = malloc(sizeof(mscript_program_t));
     _ms_program_init(program, mscript, file);
     map_set(&mscript->programs_map, script_name, program);
@@ -7282,8 +7284,9 @@ mscript_val_t mscript_val_array(int num_args, mscript_val_t *args) {
     return val;
 }
 
-mscript_t *mscript_create(void) {
+mscript_t *mscript_create(const char *dir_name) {
     mscript_t *mscript = malloc(sizeof(mscript_t));
+    mscript->dir_name = dir_name;
     map_init(&mscript->programs_map);
     vec_init(&mscript->programs_array);
 
@@ -7327,26 +7330,17 @@ mscript_t *mscript_create(void) {
     for (int i = 0; i < mscript->programs_array.length; i++)
         _ms_program_load_stage_7(mscript, mscript->programs_array.data[i]);
 
-    mscript_program_t *program = *(map_get(&mscript->programs_map, "testing.mscript"));
-
-    if (!program->error) {
-        mscript_vm_t *vm = mscript_vm_create(program);
-        mscript_val_t args[3];
-        args[0] = mscript_val_int(20);
-        args[1] = mscript_val_int(25);
-
-        struct file *file = malloc(sizeof(struct file));
-        *file = file_init("scripts/testing.mscript");
-        file_load_data(file);
-        args[2] = mscript_val_void_ptr(file);
-
-        for (int i = 0; i < 1; i++) {
-            mscript_vm_run(vm, "run", 3, args);
-            fflush(stdout); 
-        }
-    }
-
     return mscript;
+}
+
+mscript_program_t *mscript_get_program(mscript_t *mscript, const char *name) {
+    mscript_program_t **program = map_get(&mscript->programs_map, name);
+    if (program && !(*program)->error) {
+        return *program;
+    }
+    else {
+        return NULL;
+    }
 }
 
 static int _ms_copy_val(char *data, mscript_val_t val) {
@@ -7488,6 +7482,9 @@ mscript_vm_t *mscript_vm_create(mscript_program_t *program) {
         }
     }
 
+    // Initialize stack
+    vm->stack = malloc(8096);
+
     return vm;
 }
 
@@ -7574,7 +7571,6 @@ static void _ms_c_function_terrain_model_add_face(char *args, int args_size) {
     float vel_scale = _MS_C_FUNC_GET_ARG(float);
     int auto_texture = _MS_C_FUNC_GET_ARG(int);
     assert(offset == args_size);
-
 }
 
 #define _MS_VM_POP_ARG(type)\
@@ -7598,7 +7594,7 @@ static void _ms_c_function_terrain_model_add_face(char *args, int args_size) {
 void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, mscript_val_t *args) {
     _ms_opcode_t *opcodes = vm->program->opcodes.data;
     int fp, sp, ip;
-    char *stack = malloc(8096);
+    char *stack = vm->stack;
 
     _ms_function_decl_t *decl = _ms_symbol_table_get_function_decl(&vm->program->symbol_table, function_name);
     if (!decl) {
@@ -8142,4 +8138,9 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
 
     m_logf("TIME: %f\n", (float) time_sec);
     m_logf("%d\n", (int) *((int*) stack));
+    fflush(stdout); 
+}
+
+char *mscript_vm_get_stack(mscript_vm_t *vm) {
+    return vm->stack;
 }

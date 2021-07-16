@@ -74,9 +74,9 @@ void generate(int N, float height, float width, float length,
 }
 
 int run(int n0, int n1, void* file_ptr) {
-    generate(100, 10.0, 10.0, 10.0, vec2(1.0, 1.0), vec2(0.0, 0.0),
-            vec2(0.0, 0.0), vec2(0.1, 0.1), vec2(0.3, 0.7), vec2(1.0, 1.0),
-            1.0, 1.0, 1.0);
+    //generate(100, 10.0, 10.0, 10.0, vec2(1.0, 1.0), vec2(0.0, 0.0),
+            //vec2(0.0, 0.0), vec2(0.1, 0.1), vec2(0.3, 0.7), vec2(1.0, 1.0),
+            //1.0, 1.0, 1.0);
 
     print("------------------------------\n");
     print("-------------RUN--------------\n");
