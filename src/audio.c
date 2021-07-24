@@ -1,6 +1,6 @@
 #include "audio.h"
 
-#include "file.h"
+#include "mfile.h"
 #include "map.h"
 #include "stb_vorbis.h"
 
@@ -22,18 +22,18 @@ void audio_init(void) {
     map_init(&streams_map);
     map_init(&audio_sound_map);
 
-	struct directory dir;
-	directory_init(&dir, "assets/audio", false);
+	mdir_t dir;
+	mdir_init(&dir, "assets/audio", false);
     for (int i = 0; i < dir.num_files; i++) {
-        struct file f = dir.files[i];
-        file_load_data(&f);
+        mfile_t f = dir.files[i];
+        mfile_load_data(&f);
         int err;
         stb_vorbis *stream = stb_vorbis_open_memory((unsigned char*)f.data, f.data_len, &err, NULL);
         assert(stream && !err);
         stb_vorbis_seek(stream, 0);
         map_set(&streams_map, f.name, stream);
     }
-    directory_deinit(&dir);
+    mdir_deinit(&dir);
 }
 
 void audio_start_sound(const char *name, const char *filename, float volume, bool repeat, bool force) {

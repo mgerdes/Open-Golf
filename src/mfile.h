@@ -9,6 +9,16 @@
 
 #include "vec.h"
 
+#if defined(_WIN32)
+
+#include <Windows.h>
+#include <Shlwapi.h>
+typedef struct mfiletime {
+    FILETIME time;
+} mfiletime_t;
+
+#else
+
 #include <time.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -16,6 +26,8 @@
 typedef struct mfiletime {
     time_t time;
 } mfiletime_t;
+
+#endif
 
 // Returns < 0 if (t0 < t1), > 0 if (t0 > t1)
 int mfiletime_cmp(mfiletime_t t0, mfiletime_t t1);

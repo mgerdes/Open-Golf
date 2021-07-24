@@ -1,12 +1,12 @@
 #ifndef _ASSETS_H
 #define _ASSETS_H
 
-#include "file.h"
+#include "mfile.h"
 #include "maths.h"
 #include "sokol_gfx.h"
 
 struct model {
-    char name[FILES_MAX_FILENAME];
+    char name[MFILE_MAX_NAME];
     int num_points;
     vec3 *positions, *normals;
     vec2 *texture_coords;
@@ -14,14 +14,14 @@ struct model {
 };
 
 struct texture {
-    char name[FILES_MAX_FILENAME];
+    char name[MFILE_MAX_NAME];
     unsigned char *data;
     int width, height;
     sg_image image;
 };
 
 struct shader {
-    char name[FILES_MAX_FILENAME];
+    char name[MFILE_MAX_NAME];
     sg_pipeline pipeline;
     sg_shader shader;
 };

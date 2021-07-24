@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "mfile.h"
 
 #include <assert.h>
@@ -6,9 +8,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(_WIN32)
+
 int mfiletime_cmp(mfiletime_t time0, mfiletime_t time1) {
-    return (int)difftime(time0.time, time1.time);
+    return CompareFileTime(&time0.time, &time1.time);
 }
+
+#else
+
+int mfiletime_cmp(mfiletime_t time0, mfiletime_t time1) {
+	return (int)difftime(time0.time, time1.time);
+}
+
+#endif
 
 mfile_t mfile(const char *path) {
     mfile_t file;
@@ -189,6 +201,22 @@ bool mfile_copy_line(mfile_t *file, char **line_buffer, int *line_buffer_len) {
     return true;
 }
 
+#if defined(_WIN32)
+
+bool mfile_get_time(mfile_t *file, mfiletime_t *time) {
+    WIN32_FILE_ATTRIBUTE_DATA data;
+    if (GetFileAttributesExA(file->path, GetFileExInfoStandard, &data)) {
+        time->time = data.ftLastWriteTime;
+		return true;
+    }
+    else {
+        memset(&time->time, 0, sizeof(time->time));
+		return false;
+    }
+}
+
+#else
+
 bool mfile_get_time(mfile_t *file, mfiletime_t *time) {
     struct stat info;
     if (stat(file->path, &info)) {
@@ -198,48 +226,131 @@ bool mfile_get_time(mfile_t *file, mfiletime_t *time) {
     return true;
 }
 
+#endif
+
 static void _directory_add_file(const char *file_path, void *data) {
     mfile_t file = mfile(file_path);
     vec_mfile_t *vec = (vec_mfile_t*) data;
     vec_push(vec, file);
 }
 
-static void _directory_recurse(const char *dir_name, void (*fn)(const char *file_path, void*), void *data, bool recurse) {
-    DIR *dir_ptr = opendir(dir_name);
-    if (dir_ptr == NULL) {
+#if defined(_WIN32)
+
+void mdir_init(mdir_t *dir, const char *dir_name, bool recurse) {
+    WIN32_FIND_DATA find_data;
+    HANDLE handle = INVALID_HANDLE_VALUE;
+
+    // Have to append \* to dir_name
+    char dname[MFILE_MAX_PATH];
+    int dir_name_len = (int)strlen(dir_name);
+    for (int i = 0; i < dir_name_len; i++) {
+        if (i >= MFILE_MAX_PATH) {
+            dname[MFILE_MAX_PATH - 1] = 0;
+            break;
+        }
+        dname[i] = dir_name[i];
+    }
+    if (dir_name_len + 3 >= MFILE_MAX_PATH) {
+        dname[MFILE_MAX_PATH - 1] = 0;
+    }
+    else {
+        dname[dir_name_len] = '\\';
+        dname[dir_name_len + 1] = '*';
+        dname[dir_name_len + 2] = 0;
+    }
+
+    dir->num_files = 0;
+    dir->files = NULL;
+
+    // Loop through files first to count the num of files
+    handle = FindFirstFile(dname, &find_data);
+    if (handle == INVALID_HANDLE_VALUE) {
+        assert(false);
         return;
     }
-
-    int dir_name_len = (int) strlen(dir_name);
-
-    struct dirent *entry = NULL;
-    while ((entry = readdir(dir_ptr))) {
-        char file_path[MFILE_MAX_PATH];
-        strncpy(file_path, dir_name, MFILE_MAX_PATH);
-        file_path[MFILE_MAX_PATH - 1] = 0;
-
-        strncat(file_path, "/", MFILE_MAX_PATH - dir_name_len);
-        file_path[MFILE_MAX_PATH - 1] = 0;
-
-        strncat(file_path, entry->d_name, MFILE_MAX_PATH - dir_name_len - 1);
-        file_path[MFILE_MAX_PATH - 1] = 0;
-
-        struct stat info;
-        stat(file_path, &info);
-        if (S_ISDIR(info.st_mode)) {
-            if ((strcmp(entry->d_name, ".") != 0) &&
-                    (strcmp(entry->d_name, "..") != 0)) {
-                if (recurse) {
-                    _directory_recurse(file_path, fn, data, true);
-                }
-            }
+    while (true) {
+        if (!!(find_data.dwFileAttributes & FILE_ATTRIBUTE_NORMAL) ||
+                !(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+            dir->num_files++;
         }
-        else if (S_ISREG(info.st_mode)) {
-            fn(file_path, data);
+        if (FindNextFile(handle, &find_data) == 0) {
+            break;
         }
     }
 
-    closedir(dir_ptr);
+    dir->files = malloc(sizeof(mfile_t)*dir->num_files);
+    int file_idx = 0;
+
+    // Loop through files a second time to actually get the data
+    handle = FindFirstFile(dname, &find_data);
+    if (handle == INVALID_HANDLE_VALUE) {
+        assert(false);
+        return;
+    }
+    while (true) {
+        if (!!(find_data.dwFileAttributes & FILE_ATTRIBUTE_NORMAL) ||
+                !(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+            char full_path[MFILE_MAX_PATH];
+            char *fname = find_data.cFileName;
+            int fname_len = (int)strlen(fname);
+
+            for (int i = 0; i < dir_name_len; i++) {
+                if (i >= MFILE_MAX_PATH) {
+                    full_path[MFILE_MAX_PATH - 1] = 0;
+                    break;
+                }
+                full_path[i] = dir_name[i];
+            }
+            if (dir_name_len + 1 + fname_len + 1 >= MFILE_MAX_PATH) {
+                full_path[MFILE_MAX_PATH - 1] = 0;
+            }
+            else {
+                full_path[dir_name_len] = '/';
+                for (int j = 0; j < fname_len; j++) {
+                    full_path[dir_name_len + 1 + j] = fname[j];
+                }
+                full_path[dir_name_len + 1 + fname_len] = 0;
+            }
+
+            if (file_idx < dir->num_files) {
+                dir->files[file_idx++] = mfile(full_path);
+            }
+        }
+        if (FindNextFile(handle, &find_data) == 0) {
+            break;
+        }
+    }
+}
+
+#else
+
+static void _directory_recurse(const char *dir_name, void (*fn)(const char *file_path, void*), void *data, bool recurse) {
+	DIR *dir_ptr = opendir(dir_name);
+	if (dir_ptr == NULL) {
+		return;
+	}
+
+	struct dirent *entry = NULL;
+	while ((entry = readdir(dir_ptr))) {
+		char file_path[MFILE_MAX_PATH];
+		create_file_path(file_path, dir_name, entry->d_name);
+
+		struct stat info;
+		stat(file_path, &info);
+		if (S_ISDIR(info.st_mode)) {
+			if ((strcmp(entry->d_name, ".") != 0) &&
+					(strcmp(entry->d_name, "..") != 0)) {
+				if (recurse) {
+					_directory_recurse(file_path, fn, data, true);
+				}
+			}
+		}
+		else if (S_ISREG(info.st_mode)) {
+			fn(file_path, data);
+		}
+	}
+
+	closedir(dir_ptr);
 }
 
 void mdir_init(mdir_t *dir, const char *dir_name, bool recurse) {
@@ -252,6 +363,8 @@ void mdir_init(mdir_t *dir, const char *dir_name, bool recurse) {
     memcpy(dir->files, files.data, sizeof(mfile_t) * files.length);
     vec_deinit(&files);
 }
+
+#endif
 
 void mdir_deinit(mdir_t *dir) {
     free(dir->files);

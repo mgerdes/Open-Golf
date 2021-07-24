@@ -6,7 +6,7 @@
 #include "array.h"
 #include "assets.h"
 #include "data_stream.h"
-#include "file.h"
+#include "mfile.h"
 #include "maths.h"
 #include "renderer.h"
 #include "sokol_app.h"
@@ -69,7 +69,7 @@ struct terrain_model {
     struct array_vec3 points;
     struct array_terrain_model_face faces;
 
-    char generator_name[FILES_MAX_FILENAME + 1];
+    char generator_name[MFILE_MAX_NAME + 1];
     map_float_t generator_params;
     
     int num_elements, buf_len;
@@ -88,8 +88,8 @@ struct terrain_model_face terrain_model_get_face(struct terrain_model *model, in
 int terrain_model_get_face_idx(struct terrain_model *model, struct terrain_model_face *face);
 void terrain_model_delete_face(struct terrain_model *model, int face_idx);
 void terrain_model_update_buffers(struct terrain_model *model);
-void terrain_model_export(struct terrain_model *model, struct file *file);
-bool terrain_model_import(struct terrain_model *model, struct file *file);
+void terrain_model_export(struct terrain_model *model, mfile_t *file);
+bool terrain_model_import(struct terrain_model *model, mfile_t *file);
 void terrain_model_make_square(struct terrain_model *model);
 void terrain_model_generate_triangle_data(struct terrain_model *model,
         struct array_vec3 *positions, struct array_vec3 *normals, struct array_vec2 *texture_coords,
@@ -214,7 +214,7 @@ void water_entity_deinit(struct water_entity *entity);
 mat4 water_entity_get_transform(struct water_entity *entity);
 
 struct hole {
-    char filepath[FILES_MAX_PATH];
+    char filepath[MFILE_MAX_PATH];
     struct terrain_entity_array terrain_entities;
     struct multi_terrain_entity_array multi_terrain_entities;
     struct camera_zone_entity_array camera_zone_entities;
@@ -228,8 +228,8 @@ struct hole {
 
 void hole_init(struct hole *hole);
 void hole_reset(struct hole *hole);
-void hole_load(struct hole *hole, struct file *file);
-void hole_save(struct hole *hole, struct file *file);
+void hole_load(struct hole *hole, mfile_t *file);
+void hole_save(struct hole *hole, mfile_t *file);
 void hole_serialize(struct hole *hole, struct data_stream *stream, bool include_lightmaps);
 void hole_deserialize(struct hole *hole, struct data_stream *stream, bool include_lightmaps);
 int hole_add_camera_zone_entity(struct hole *hole);

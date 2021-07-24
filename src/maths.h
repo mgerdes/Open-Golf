@@ -152,7 +152,7 @@ mat4 mat4_create(float a, float b, float c, float d,
                  float e, float f, float g, float h,
                  float i, float j, float k, float l,
                  float m, float n, float o, float p);
-mat4 mat4_zero();
+mat4 mat4_zero(void);
 mat4 mat4_identity();
 mat4 mat4_translation(vec3 v);
 mat4 mat4_scale(vec3 v);

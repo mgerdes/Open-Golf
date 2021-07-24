@@ -36,8 +36,8 @@ static struct button_inputs inputs;
 static uint64_t last_time;
 
 //#include "mscript.h"
-#include "mscript/parser.h"
-#include "file.h"
+#include "mscript.h"
+#include "mfile.h"
 
 static void init(void) {
 #if defined(_WIN32)
@@ -100,14 +100,12 @@ static void frame(void) {
                 args[0] = mscript_val_int(20);
                 args[1] = mscript_val_int(25);
 
-                struct file *file = malloc(sizeof(struct file));
-                *file = file_init("scripts/testing.mscript");
-                file_load_data(file);
+                mfile_t *file = malloc(sizeof(mfile_t));
+                *file = mfile("scripts/testing.mscript");
+                mfile_load_data(file);
                 args[2] = mscript_val_void_ptr(file);
 
-                for (int i = 0; i < 1; i++) {
-                    mscript_vm_run(vm, "run", 3, args);
-                }
+                mscript_vm_run(vm, "run", 3, args);
             }
         }
     }
@@ -212,6 +210,7 @@ static void frame(void) {
         }
     }
 
+    fflush(stdout);
     profiler_finish_frame();
 }
 

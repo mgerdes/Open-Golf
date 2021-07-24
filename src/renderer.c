@@ -8,7 +8,7 @@
 
 #include "assets.h"
 #include "config.h"
-#include "file.h"
+#include "mfile.h"
 #include "game.h"
 #include "game_editor.h"
 #include "hotloader.h"
@@ -43,23 +43,23 @@
 
 static bool load_shader(const char *shader_name, const sg_shader_desc *const_shader_desc, sg_shader *shader) {
 #if HOTLOADER_ACTIVE
-    char fs_path[FILES_MAX_PATH + 1];
-    snprintf(fs_path, FILES_MAX_PATH, "src/shaders/bare/%s_fs.glsl", shader_name);
-    fs_path[FILES_MAX_PATH] = 0;
+    char fs_path[MFILE_MAX_PATH + 1];
+    snprintf(fs_path, MFILE_MAX_PATH, "src/shaders/bare/%s_fs.glsl", shader_name);
+    fs_path[MFILE_MAX_PATH] = 0;
 
-    char vs_path[FILES_MAX_PATH + 1];
-    snprintf(vs_path, FILES_MAX_PATH, "src/shaders/bare/%s_vs.glsl", shader_name);
-    vs_path[FILES_MAX_PATH] = 0;
+    char vs_path[MFILE_MAX_PATH + 1];
+    snprintf(vs_path, MFILE_MAX_PATH, "src/shaders/bare/%s_vs.glsl", shader_name);
+    vs_path[MFILE_MAX_PATH] = 0;
 
-    struct file fs_file = file_init(fs_path);
-    struct file vs_file = file_init(vs_path);
+    mfile_t fs_file = mfile(fs_path);
+    mfile_t vs_file = mfile(vs_path);
 
-    if (!file_load_data(&fs_file)) {
+    if (!mfile_load_data(&fs_file)) {
         return false;
     }
 
-    if (!file_load_data(&vs_file)) {
-        file_delete_data(&fs_file);
+    if (!mfile_load_data(&vs_file)) {
+        mfile_free_data(&fs_file);
         return false;
     }
 
@@ -73,7 +73,7 @@ static bool load_shader(const char *shader_name, const sg_shader_desc *const_sha
     return true;
 }
 
-static bool should_load_shader(struct file file, bool first_time) {
+static bool should_load_shader(mfile_t file, bool first_time) {
     // This can be called with either the bare shader files, in the src/shaders/bare/ folder, or normal shader 
     // files in the src/shaders/ folder. If it's called with a bare shader file it should only load if it's not
     // the first time. If it's called with a normal shader file it should only load if it is the first time.
@@ -89,7 +89,7 @@ static bool should_load_shader(struct file file, bool first_time) {
     return true;
 }
 
-static bool load_aim_icon_shader(struct file file, bool first_time, struct renderer *renderer) {
+static bool load_aim_icon_shader(mfile_t file, bool first_time, struct renderer *renderer) {
     if (!should_load_shader(file, first_time)) {
         return true;
     }
@@ -137,7 +137,7 @@ static bool load_aim_icon_shader(struct file file, bool first_time, struct rende
     return true;
 }
 
-static bool load_aim_helper_shader(struct file file, bool first_time, struct renderer *renderer) {
+static bool load_aim_helper_shader(mfile_t file, bool first_time, struct renderer *renderer) {
     if (!should_load_shader(file, first_time)) {
         return true;
     }
@@ -185,7 +185,7 @@ static bool load_aim_helper_shader(struct file file, bool first_time, struct ren
     return true;
 }
 
-static bool load_ball_shader(struct file file, bool first_time, struct renderer *renderer) {
+static bool load_ball_shader(mfile_t file, bool first_time, struct renderer *renderer) {
     if (!should_load_shader(file, first_time)) {
         return true;
     }
@@ -264,7 +264,7 @@ static bool load_ball_shader(struct file file, bool first_time, struct renderer 
     return true;
 }
 
-static bool load_hole_editor_environment_shader(struct file file, bool first_time, struct renderer *renderer) {
+static bool load_hole_editor_environment_shader(mfile_t file, bool first_time, struct renderer *renderer) {
     if (!should_load_shader(file, first_time)) {
         return true;
     }
@@ -313,7 +313,7 @@ static bool load_hole_editor_environment_shader(struct file file, bool first_tim
     return true;
 }
 
-static bool load_hole_editor_terrain_shader(struct file file, bool first_time, struct renderer *renderer) {
+static bool load_hole_editor_terrain_shader(mfile_t file, bool first_time, struct renderer *renderer) {
     if (!should_load_shader(file, first_time)) {
         return true;
     }
@@ -364,7 +364,7 @@ static bool load_hole_editor_terrain_shader(struct file file, bool first_time, s
     return true;
 }
 
-static bool load_hole_editor_water_shader(struct file file, bool first_time, struct renderer *renderer) {
+static bool load_hole_editor_water_shader(mfile_t file, bool first_time, struct renderer *renderer) {
     if (!should_load_shader(file, first_time)) {
         return true;
     }
@@ -416,7 +416,7 @@ static bool load_hole_editor_water_shader(struct file file, bool first_time, str
     return true;
 }
 
-static bool load_environment_shader(struct file file, bool first_time, struct renderer *renderer) {
+static bool load_environment_shader(mfile_t file, bool first_time, struct renderer *renderer) {
     if (!should_load_shader(file, first_time)) {
         return true;
     }
@@ -463,7 +463,7 @@ static bool load_environment_shader(struct file file, bool first_time, struct re
     return true;
 }
 
-static bool load_fxaa_shader(struct file file, bool first_time, struct renderer *renderer) {
+static bool load_fxaa_shader(mfile_t file, bool first_time, struct renderer *renderer) {
     if (!should_load_shader(file, first_time)) {
         return true;
     }
@@ -502,7 +502,7 @@ static bool load_fxaa_shader(struct file file, bool first_time, struct renderer 
     return true;
 }
 
-static bool load_cup_shader(struct file file, bool first_time, struct renderer *renderer) {
+static bool load_cup_shader(mfile_t file, bool first_time, struct renderer *renderer) {
     if (!should_load_shader(file, first_time)) {
         return true;
     }
@@ -561,7 +561,7 @@ static bool load_cup_shader(struct file file, bool first_time, struct renderer *
     return true;
 }
 
-static bool load_occluded_ball_shader(struct file file, bool first_time, struct renderer *renderer) {
+static bool load_occluded_ball_shader(mfile_t file, bool first_time, struct renderer *renderer) {
     if (!should_load_shader(file, first_time)) {
         return true;
     }
@@ -611,7 +611,7 @@ static bool load_occluded_ball_shader(struct file file, bool first_time, struct 
     return true;
 }
 
-static bool load_pass_through_shader(struct file file, bool first_time, struct renderer *renderer) {
+static bool load_pass_through_shader(mfile_t file, bool first_time, struct renderer *renderer) {
     if (!should_load_shader(file, first_time)) {
         return true;
     }
@@ -671,7 +671,7 @@ static bool load_pass_through_shader(struct file file, bool first_time, struct r
     return true;
 }
 
-static bool load_single_color_shader(struct file file, bool first_time, struct renderer *renderer) {
+static bool load_single_color_shader(mfile_t file, bool first_time, struct renderer *renderer) {
     if (!should_load_shader(file, first_time)) {
         return true;
     }
@@ -745,7 +745,7 @@ static bool load_single_color_shader(struct file file, bool first_time, struct r
     return true;
 }
 
-static bool load_terrain_shader(struct file file, bool first_time, struct renderer *renderer) {
+static bool load_terrain_shader(mfile_t file, bool first_time, struct renderer *renderer) {
     if (!should_load_shader(file, first_time)) {
         return true;
     }
@@ -822,7 +822,7 @@ static bool load_terrain_shader(struct file file, bool first_time, struct render
     return true;
 }
 
-static bool load_texture_shader(struct file file, bool first_time, struct renderer *renderer) {
+static bool load_texture_shader(mfile_t file, bool first_time, struct renderer *renderer) {
     if (!should_load_shader(file, first_time)) {
         return true;
     }
@@ -860,7 +860,7 @@ static bool load_texture_shader(struct file file, bool first_time, struct render
     return true;
 }
 
-static bool load_ui_shader(struct file file, bool first_time, struct renderer *renderer) {
+static bool load_ui_shader(mfile_t file, bool first_time, struct renderer *renderer) {
     if (!should_load_shader(file, first_time)) {
         return true;
     }
@@ -903,7 +903,7 @@ static bool load_ui_shader(struct file file, bool first_time, struct renderer *r
     return true;
 }
 
-static bool load_ui_single_color_shader(struct file file, bool first_time, struct renderer *renderer) {
+static bool load_ui_single_color_shader(mfile_t file, bool first_time, struct renderer *renderer) {
     if (!should_load_shader(file, first_time)) {
         return true;
     }
@@ -949,7 +949,7 @@ static bool load_ui_single_color_shader(struct file file, bool first_time, struc
     return true;
 }
 
-static bool load_water_shader(struct file file, bool first_time, struct renderer *renderer) {
+static bool load_water_shader(mfile_t file, bool first_time, struct renderer *renderer) {
     if (!should_load_shader(file, first_time)) {
         return true;
     }
@@ -1013,7 +1013,7 @@ static bool load_water_shader(struct file file, bool first_time, struct renderer
     return true;
 }
 
-static bool load_water_around_ball_shader(struct file file, bool first_time, struct renderer *renderer) {
+static bool load_water_around_ball_shader(mfile_t file, bool first_time, struct renderer *renderer) {
     if (!should_load_shader(file, first_time)) {
         return true;
     }
@@ -1076,7 +1076,7 @@ static bool load_water_around_ball_shader(struct file file, bool first_time, str
     return true;
 }
 
-static bool load_water_ripple_shader(struct file file, bool first_time, struct renderer *renderer) {
+static bool load_water_ripple_shader(mfile_t file, bool first_time, struct renderer *renderer) {
     if (!should_load_shader(file, first_time)) {
         return true;
     }
@@ -1140,25 +1140,25 @@ static bool load_water_ripple_shader(struct file file, bool first_time, struct r
 }
 
 static void renderer_watch_shader(const char *name, struct renderer *renderer, 
-        bool (*callback)(struct file file, bool first_time, struct renderer *udata)) {
-    char shader_filename[FILES_MAX_PATH+1];
-    snprintf(shader_filename, FILES_MAX_PATH, "src/shaders/%s.glsl", name);
-    shader_filename[FILES_MAX_PATH] = 0;
+        bool (*callback)(mfile_t file, bool first_time, struct renderer *udata)) {
+    char shader_filename[MFILE_MAX_PATH+1];
+    snprintf(shader_filename, MFILE_MAX_PATH, "src/shaders/%s.glsl", name);
+    shader_filename[MFILE_MAX_PATH] = 0;
     hotloader_watch_file(shader_filename, renderer, 
-            (bool (*)(struct file file, bool first_time, void *udata))callback);
+            (bool (*)(mfile_t file, bool first_time, void *udata))callback);
 
 #if HOTLOADER_ACTIVE
-    char bare_fs_filename[FILES_MAX_PATH+1];
-    snprintf(bare_fs_filename, FILES_MAX_PATH, "src/shaders/bare/%s_fs.glsl", name);
-    bare_fs_filename[FILES_MAX_PATH] = 0;
+    char bare_fs_filename[MFILE_MAX_PATH+1];
+    snprintf(bare_fs_filename, MFILE_MAX_PATH, "src/shaders/bare/%s_fs.glsl", name);
+    bare_fs_filename[MFILE_MAX_PATH] = 0;
     hotloader_watch_file(bare_fs_filename, renderer, 
-            (bool (*)(struct file file, bool first_time, void *udata))callback);
+            (bool (*)(mfile_t file, bool first_time, void *udata))callback);
 
-    char bare_vs_filename[FILES_MAX_PATH+1];
-    snprintf(bare_vs_filename, FILES_MAX_PATH, "src/shaders/bare/%s_vs.glsl", name);
-    bare_vs_filename[FILES_MAX_PATH] = 0;
+    char bare_vs_filename[MFILE_MAX_PATH+1];
+    snprintf(bare_vs_filename, MFILE_MAX_PATH, "src/shaders/bare/%s_vs.glsl", name);
+    bare_vs_filename[MFILE_MAX_PATH] = 0;
     hotloader_watch_file(bare_vs_filename, renderer,
-            (bool (*)(struct file file, bool first_time, void *udata))callback);
+            (bool (*)(mfile_t file, bool first_time, void *udata))callback);
 #endif
 }
 
@@ -1168,12 +1168,12 @@ static int get_font_file_property(const char *line_buffer, const char *prop) {
     return atoi(str + strlen(prop) + 1);
 }
 
-static void create_font(struct font *font, struct file *file) {
-    file_load_data(file);
+static void create_font(struct font *font, mfile_t *file) {
+    mfile_load_data(file);
 
     char *line_buffer = NULL;
     int line_buffer_len = 0;
-    while (file_copy_line(file, &line_buffer, &line_buffer_len)) {
+    while (mfile_copy_line(file, &line_buffer, &line_buffer_len)) {
         if (strstr(line_buffer, "char") != line_buffer || strstr(line_buffer, "chars") == line_buffer) {
             continue;
         }
@@ -1190,7 +1190,7 @@ static void create_font(struct font *font, struct file *file) {
         font->chars[id].xadvance = get_font_file_property(line_buffer, "xadvance");
     }
 
-    file_delete_data(file);
+    mfile_free_data(file);
 }
 
 void renderer_init(struct renderer *renderer) {
@@ -1293,13 +1293,13 @@ void renderer_init(struct renderer *renderer) {
     }
 
     {
-        struct file small_font_file = file_init("assets/font/font_small.fnt");
+        mfile_t small_font_file = mfile("assets/font/font_small.fnt");
         create_font(&renderer->small_font, &small_font_file);
 
-        struct file medium_font_file = file_init("assets/font/font_medium.fnt");
+        mfile_t medium_font_file = mfile("assets/font/font_medium.fnt");
         create_font(&renderer->medium_font, &medium_font_file);
 
-        struct file large_font_file = file_init("assets/font/font_large.fnt");
+        mfile_t large_font_file = mfile("assets/font/font_large.fnt");
         create_font(&renderer->large_font, &large_font_file);
     }
 

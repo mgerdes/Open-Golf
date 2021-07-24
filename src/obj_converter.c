@@ -1,7 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 
 #include "array.h"
-#include "file.h"
+#include "mfile.h"
 #include "log.h"
 #include "map.h"
 #include "stb_image_write.h"
@@ -14,19 +14,19 @@ void convert_objs(void) {
     array_init(&colors);
     map_init(&color_idx_map);
 
-    struct directory dir;
-    directory_init(&dir, "obj_models", false);
+    mdir_t dir;
+    mdir_init(&dir, "obj_models", false);
     for (int i = 0; i < dir.num_files; i++) {
-        struct file f = dir.files[i];
+        mfile_t f = dir.files[i];
         if (strcmp(f.ext, ".obj") != 0) {
             continue;
         }
-        file_load_data(&f);
+        mfile_load_data(&f);
 
-        char basename[FILES_MAX_PATH];
+        char basename[MFILE_MAX_PATH];
         strcpy(basename, f.name);
         basename[strlen(basename) - strlen(".obj")] = 0;
-        char out_filename[FILES_MAX_PATH];
+        char out_filename[MFILE_MAX_PATH];
         sprintf(out_filename, "assets/models/%s.terrain_model", basename);
         FILE *out_file = fopen(out_filename, "w");
 
@@ -127,7 +127,7 @@ void convert_objs(void) {
         tinyobj_shapes_free(shapes, num_shapes);
         tinyobj_materials_free(materials, num_materials);
         fclose(out_file);
-        file_delete_data(&f);
+        mfile_free_data(&f);
     }
 
     {
@@ -169,7 +169,7 @@ void convert_objs(void) {
         free(image_data);
     }
 
-    directory_deinit(&dir);
+    mdir_deinit(&dir);
 
     map_deinit(&color_idx_map);
     array_deinit(&colors);

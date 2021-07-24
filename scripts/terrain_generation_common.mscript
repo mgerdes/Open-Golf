@@ -1,9 +1,0 @@
-import "math.mscript";
-
-struct terrain_model_face {
-    int mat_idx, smooth_normal;
-    int x, y, z, w;
-    float tex_coord_scale;
-    float cor, friction, vel_scale;
-    int auto_texture;
-}

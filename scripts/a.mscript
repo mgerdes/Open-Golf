@@ -1,6 +1,0 @@
-import "c.mscript";
-
-struct a_struct {
-    float x;
-    c_struct c;
-}

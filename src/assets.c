@@ -6,7 +6,7 @@
 #include <stdbool.h>
 
 #include "array.h"
-#include "file.h"
+#include "mfile.h"
 #include "map.h"
 #include "profiler.h"
 #include "stb_image.h"
@@ -35,16 +35,16 @@ static void model_create_buffers(struct model *model) {
 //
 // Texture asset
 //
-static bool texture_create(struct file *file, struct texture *texture) {
+static bool texture_create(mfile_t *file, struct texture *texture) {
     int x, y, n;
     int force_channels = 4;
     stbi_set_flip_vertically_on_load(0);
-    if (!file_load_data(file)) {
+    if (!mfile_load_data(file)) {
         return false;
     }
     unsigned char *tex_data = stbi_load_from_memory((unsigned char*) file->data, file->data_len, &x, &y, &n,
             force_channels);
-    file_delete_data(file);
+    mfile_free_data(file);
     assert(tex_data);
 
     sg_filter filter = SG_FILTER_LINEAR;
@@ -271,46 +271,46 @@ static void init_models(void) {
         map_set(&_store->models, name, model);
     }
 
-	struct directory dir;
-    directory_init(&dir, "assets/models", false);
+	mdir_t dir;
+    mdir_init(&dir, "assets/models", false);
     for (int i = 0; i < dir.num_files; i++) {
-        struct file file = dir.files[i];
+        mfile_t file = dir.files[i];
         if (strcmp(file.ext, ".model") != 0) {
             continue;
         }
-        if (!file_load_data(&file)) {
+        if (!mfile_load_data(&file)) {
             continue;
         }
 
         int line_buffer_len = 1024;
         char *line_buffer = malloc(line_buffer_len);
 
-        file_copy_line(&file, &line_buffer, &line_buffer_len); 
-        char model_name[FILES_MAX_FILENAME];
+        mfile_copy_line(&file, &line_buffer, &line_buffer_len); 
+        char model_name[MFILE_MAX_NAME];
         strcpy(model_name, line_buffer);
 
-        file_copy_line(&file, &line_buffer, &line_buffer_len);
+        mfile_copy_line(&file, &line_buffer, &line_buffer_len);
         int num_materials = atoi(line_buffer);
 
         for (int j = 0; j < num_materials; j++) {
-            file_copy_line(&file, &line_buffer, &line_buffer_len);
+            mfile_copy_line(&file, &line_buffer, &line_buffer_len);
             float vals[9];
             line_parse_floats(line_buffer, vals, 9);
 
-            file_copy_line(&file, &line_buffer, &line_buffer_len);
+            mfile_copy_line(&file, &line_buffer, &line_buffer_len);
         }
 
-        file_copy_line(&file, &line_buffer, &line_buffer_len);
+        mfile_copy_line(&file, &line_buffer, &line_buffer_len);
         int num_shapes = atoi(line_buffer);
         assert(num_shapes == 1);
 
-        file_copy_line(&file, &line_buffer, &line_buffer_len);
+        mfile_copy_line(&file, &line_buffer, &line_buffer_len);
         int num_points = atoi(line_buffer);
         vec3 *positions = malloc(sizeof(vec3) * num_points);
         vec3 *normals = malloc(sizeof(vec3) * num_points);
         vec2 *texture_coords = malloc(sizeof(vec2) * num_points);
         for (int j = 0; j < num_points; j++) {
-            file_copy_line(&file, &line_buffer, &line_buffer_len);
+            mfile_copy_line(&file, &line_buffer, &line_buffer_len);
 
             float vals[11];
             line_parse_floats(line_buffer, vals, 11);
@@ -328,14 +328,14 @@ static void init_models(void) {
         model_create_buffers(&model);
         map_set(&_store->models, model_name, model);
 
-        file_delete_data(&file);
+        mfile_free_data(&file);
     }
     for (int i = 0; i < dir.num_files; i++) {
-        struct file file = dir.files[i];
+        mfile_t file = dir.files[i];
         if (strcmp(file.ext, ".terrain_model") != 0) {
             continue;
         }
-        if (!file_load_data(&file)) {
+        if (!mfile_load_data(&file)) {
             continue;
         }
 
@@ -347,7 +347,7 @@ static void init_models(void) {
 
         char *line_buf = NULL;
         int line_buf_len = 0;
-        while (file_copy_line(&file, &line_buf, &line_buf_len)) {
+        while (mfile_copy_line(&file, &line_buf, &line_buf_len)) {
             vec3 p, n;
             vec2 tc;
             if(sscanf(line_buf, "%f %f %f %f %f %f %f %f",
@@ -375,9 +375,9 @@ static void init_models(void) {
         array_deinit(&normals);
         array_deinit(&texture_coords);
 
-        file_delete_data(&file);
+        mfile_free_data(&file);
     }
-    directory_deinit(&dir);
+    mdir_deinit(&dir);
 }
 
 void asset_store_init(void) {
@@ -398,10 +398,10 @@ void asset_store_init(void) {
     {
         map_init(&_store->textures);
 
-		struct directory dir;
-		directory_init(&dir, "assets/textures", false);
+		mdir_t dir;
+		mdir_init(&dir, "assets/textures", false);
         for (int i = 0; i < dir.num_files; i++) {
-            struct file file = dir.files[i];
+            mfile_t file = dir.files[i];
 
             struct texture texture;
             bool ret = texture_create(&file, &texture);
@@ -409,7 +409,7 @@ void asset_store_init(void) {
 
             map_set(&_store->textures, texture.name, texture);
         }
-		directory_deinit(&dir);
+		mdir_deinit(&dir);
     }
 
     profiler_pop_section();

@@ -798,7 +798,7 @@ void terrain_model_update_buffers(struct terrain_model *model) {
     array_deinit(&material_idx);
 }
 
-void terrain_model_export(struct terrain_model *model, struct file *file) {
+void terrain_model_export(struct terrain_model *model, mfile_t *file) {
     char sprintf_buffer[1024];
     struct array_char buffer;
     array_init(&buffer);
@@ -828,12 +828,12 @@ void terrain_model_export(struct terrain_model *model, struct file *file) {
         array_pusharr(&buffer, sprintf_buffer, (int) strlen(sprintf_buffer));
     }
 
-    file_set_data(file, buffer.data, buffer.length);
+    mfile_set_data(file, buffer.data, buffer.length);
     array_deinit(&buffer);
 }
 
-bool terrain_model_import(struct terrain_model *model, struct file *file) {
-    if (!file_load_data(file)) {
+bool terrain_model_import(struct terrain_model *model, mfile_t *file) {
+    if (!mfile_load_data(file)) {
         return false;
     }
 
@@ -850,7 +850,7 @@ bool terrain_model_import(struct terrain_model *model, struct file *file) {
     array_init(&faces);
 
     {
-        file_copy_line(file, &line_buffer, &line_buffer_len);
+        mfile_copy_line(file, &line_buffer, &line_buffer_len);
         line_num++;
         if (line_buffer[0] != 'M' || line_buffer[1] != 'O' || line_buffer[2] != 'D' || 
                 line_buffer[3] != 'E' || line_buffer[4] != 'L') {
@@ -861,7 +861,7 @@ bool terrain_model_import(struct terrain_model *model, struct file *file) {
     }
 
     {
-        file_copy_line(file, &line_buffer, &line_buffer_len);
+        mfile_copy_line(file, &line_buffer, &line_buffer_len);
         line_num++;
     }
 
@@ -869,7 +869,7 @@ bool terrain_model_import(struct terrain_model *model, struct file *file) {
         for (int i = 0; i < MAX_NUM_TERRAIN_MODEL_MATERIALS; i++) {
             vec3 c;
 
-            file_copy_line(file, &line_buffer, &line_buffer_len);
+            mfile_copy_line(file, &line_buffer, &line_buffer_len);
             line_num++;
             n = sscanf(line_buffer, "%f %f %f", &c.x, &c.y, &c.z);
             if (n != 3) {
@@ -879,7 +879,7 @@ bool terrain_model_import(struct terrain_model *model, struct file *file) {
             }
             color0[i] = c;
 
-            file_copy_line(file, &line_buffer, &line_buffer_len);
+            mfile_copy_line(file, &line_buffer, &line_buffer_len);
             line_num++;
             n = sscanf(line_buffer, "%f %f %f", &c.x, &c.y, &c.z);
             if (n != 3) {
@@ -892,7 +892,7 @@ bool terrain_model_import(struct terrain_model *model, struct file *file) {
     }
 
     {
-        file_copy_line(file, &line_buffer, &line_buffer_len);
+        mfile_copy_line(file, &line_buffer, &line_buffer_len);
         line_num++;
 
         int num_points;
@@ -904,7 +904,7 @@ bool terrain_model_import(struct terrain_model *model, struct file *file) {
         }
 
         for (int i = 0; i < num_points; i++) {
-            file_copy_line(file, &line_buffer, &line_buffer_len);
+            mfile_copy_line(file, &line_buffer, &line_buffer_len);
             line_num++;
             vec3 point;
             n = sscanf(line_buffer, "%f %f %f", &point.x, &point.y, &point.z);
@@ -919,7 +919,7 @@ bool terrain_model_import(struct terrain_model *model, struct file *file) {
     }
 
     {
-        file_copy_line(file, &line_buffer, &line_buffer_len);
+        mfile_copy_line(file, &line_buffer, &line_buffer_len);
         line_num++;
 
         int num_faces;
@@ -933,7 +933,7 @@ bool terrain_model_import(struct terrain_model *model, struct file *file) {
         for (int i = 0; i < num_faces; i++) {
             struct terrain_model_face face;
 
-            file_copy_line(file, &line_buffer, &line_buffer_len);
+            mfile_copy_line(file, &line_buffer, &line_buffer_len);
             line_num++;
             n = sscanf(line_buffer, "%d", &face.num_points);
             if (n != 1) {
@@ -942,7 +942,7 @@ bool terrain_model_import(struct terrain_model *model, struct file *file) {
                 goto clean_up;
             }
 
-            file_copy_line(file, &line_buffer, &line_buffer_len);
+            mfile_copy_line(file, &line_buffer, &line_buffer_len);
             line_num++;
             n = sscanf(line_buffer, "%d %d", &face.mat_idx, &face.smooth_normal);
             if (n != 2) {
@@ -951,7 +951,7 @@ bool terrain_model_import(struct terrain_model *model, struct file *file) {
                 goto clean_up;
             }
 
-            file_copy_line(file, &line_buffer, &line_buffer_len);
+            mfile_copy_line(file, &line_buffer, &line_buffer_len);
             line_num++;
             n = sscanf(line_buffer, "%d %d %d %d", &face.x, &face.y, &face.z, &face.w);
             if (n != 4) {
@@ -960,7 +960,7 @@ bool terrain_model_import(struct terrain_model *model, struct file *file) {
                 goto clean_up;
             }
 
-            file_copy_line(file, &line_buffer, &line_buffer_len);
+            mfile_copy_line(file, &line_buffer, &line_buffer_len);
             line_num++;
             n = sscanf(line_buffer, "%f %f %f %f %f %f %f %f", 
                     &face.texture_coords[0].x, &face.texture_coords[0].y,
@@ -993,7 +993,7 @@ bool terrain_model_import(struct terrain_model *model, struct file *file) {
 clean_up:
     array_deinit(&points);
     array_deinit(&faces);
-    file_delete_data(file);
+    mfile_free_data(file);
     return is_error;
 }
 
@@ -1433,7 +1433,7 @@ struct terrain_model_info {
 
     vec3 color0[MAX_NUM_TERRAIN_MODEL_MATERIALS], color1[MAX_NUM_TERRAIN_MODEL_MATERIALS];
 
-    char generator_name[FILES_MAX_FILENAME + 1];
+    char generator_name[MFILE_MAX_NAME + 1];
     map_float_t generator_params;
 };
 
@@ -1501,8 +1501,8 @@ static void hole_deserialize_27_terrain_model(struct data_stream *stream, struct
     }
 
     char *generator_name = deserialize_string(stream);
-    strncpy(info->generator_name, generator_name, FILES_MAX_FILENAME + 1);
-    info->generator_name[FILES_MAX_FILENAME] = 0;
+    strncpy(info->generator_name, generator_name, MFILE_MAX_NAME + 1);
+    info->generator_name[MFILE_MAX_NAME] = 0;
     free(generator_name);
 
     map_init(&info->generator_params);
@@ -1531,8 +1531,8 @@ static void fill_terrain_model(struct terrain_model *model, struct terrain_model
         model->materials[i].color1 = info->color1[i];
     }
 
-    strncpy(model->generator_name, info->generator_name, FILES_MAX_FILENAME + 1);
-    model->generator_name[FILES_MAX_FILENAME] = 0;
+    strncpy(model->generator_name, info->generator_name, MFILE_MAX_NAME + 1);
+    model->generator_name[MFILE_MAX_NAME] = 0;
 
     map_deinit(&model->generator_params);
     map_init(&model->generator_params);
@@ -2024,27 +2024,27 @@ void hole_reset(struct hole *hole) {
     hole->camera_zone_entities.length = 0;
 }
 
-void hole_load(struct hole *hole, struct file *file) {
-    if (!file_load_data(file)) {
+void hole_load(struct hole *hole, mfile_t *file) {
+    if (!mfile_load_data(file)) {
         return;
     }
-    strncpy(hole->filepath, file->path, FILES_MAX_PATH);
-    hole->filepath[FILES_MAX_PATH - 1] = 0;
+    strncpy(hole->filepath, file->path, MFILE_MAX_PATH);
+    hole->filepath[MFILE_MAX_PATH - 1] = 0;
     struct data_stream stream;
     data_stream_init(&stream);
     data_stream_push(&stream, file->data, file->data_len);
     data_stream_decompress(&stream);
     hole_deserialize(hole, &stream, true);
-    file_delete_data(file);
+    mfile_free_data(file);
     data_stream_deinit(&stream);
 }
 
-void hole_save(struct hole *hole, struct file *file) {
+void hole_save(struct hole *hole, mfile_t *file) {
     struct data_stream stream;
     data_stream_init(&stream);
     hole_serialize(hole, &stream, true);
     data_stream_compress(&stream);
-    file_set_data(file, stream.data, stream.len);
+    mfile_set_data(file, stream.data, stream.len);
     data_stream_deinit(&stream);
 }
 

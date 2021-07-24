@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "mstring.h"
 
 #include <stdlib.h>
@@ -6,7 +8,7 @@
 #include <stdio.h>
 
 void mstring_init(mstring_t *str, const char *cstr) {
-    int len = strlen(cstr);
+    int len = (int)strlen(cstr);
     str->cap = len;
     str->len = len;
     str->cstr = malloc(sizeof(char)*(str->cap + 1));
@@ -37,7 +39,7 @@ void mstring_append_str(mstring_t *str, mstring_t *str2) {
 }
 
 void mstring_append_cstr(mstring_t *str, const char *cstr) {
-    int cstr_len = strlen(cstr);
+    int cstr_len = (int)strlen(cstr);
     if (str->cap >= cstr_len + str->len) {
         strcat(str->cstr, cstr);
     }

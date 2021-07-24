@@ -268,10 +268,10 @@ void game_load_hole(struct game *game, struct game_editor *ed, int hole_num) {
     assert(hole_num >= 0 && hole_num < config_get_int("game_num_holes"));
 
     game->cur_hole = hole_num;
-    char filename[FILES_MAX_PATH + 1];
-    snprintf(filename, FILES_MAX_PATH, "assets/holes/hole%d.hole", hole_num + 1);
-    filename[FILES_MAX_PATH] = 0;
-    struct file file = file_init(filename);
+    char filename[MFILE_MAX_PATH + 1];
+    snprintf(filename, MFILE_MAX_PATH, "assets/holes/hole%d.hole", hole_num + 1);
+    filename[MFILE_MAX_PATH] = 0;
+    mfile_t file = mfile(filename);
     hole_load(&game->hole, &file);
     hole_update_buffers(&game->hole);
 

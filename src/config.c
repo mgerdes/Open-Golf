@@ -2,7 +2,7 @@
 
 #include "config.h"
 
-#include "file.h"
+#include "mfile.h"
 #include "hotloader.h"
 #include "map.h"
 
@@ -12,14 +12,14 @@ map_vec2_t _vec2_map;
 map_vec3_t _vec3_map;
 map_vec4_t _vec4_map;
 
-static bool config_update(struct file file, bool first_time, void *udata) {
-    if (!file_load_data(&file)) {
+static bool config_update(mfile_t file, bool first_time, void *udata) {
+    if (!mfile_load_data(&file)) {
         return false;
     }
 
     char *buf = NULL;
     int buf_len = 0;
-    while (file_copy_line(&file, &buf, &buf_len)) {
+    while (mfile_copy_line(&file, &buf, &buf_len)) {
         char property_name[256];
         property_name[255] = 0;
         int i;
@@ -46,7 +46,7 @@ static bool config_update(struct file file, bool first_time, void *udata) {
     }
 
     free(buf);
-    file_delete_data(&file);
+    mfile_free_data(&file);
     return true;
 }
 

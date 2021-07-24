@@ -109,7 +109,6 @@ static void object_modifier_update(struct object_modifier *om, float dt, struct 
     }
 
     vec3 *pos = &om->pos;
-    float clamp = om->translate_mode.clamp;
 
     if (om->mode == OBJECT_MODIFIER_MODE_TRANSLATE) {
         vec3 axis[3] = { 
@@ -334,11 +333,11 @@ static void hole_editor_update_model_generator_scripts(struct hole_editor *ce, b
     struct array_model_generator_script *scripts = &ce->scripts;
     for (int i = 0; i < scripts->length; i++) {
         struct model_generator_script *script = &scripts->data[i];
-        struct file file = script->file;
-        struct file_time cur_time;
-        file_get_time(&file, &cur_time);
-        if (first_time || (file_time_cmp(&script->load_time, &cur_time) < 0.0f)) {
-            if (file_load_data(&file)) {
+        mfile_t file = script->file;
+        mfiletime_t cur_time;
+        mfile_get_time(&file, &cur_time);
+        if (first_time || (mfiletime_cmp(script->load_time, cur_time) < 0.0f)) {
+            if (mfile_load_data(&file)) {
                 ce->sc_error[0] = 0;
                 script->load_time = cur_time;
                 script->params.length = 0;
@@ -371,7 +370,7 @@ static void hole_editor_update_model_generator_scripts(struct hole_editor *ce, b
                 }
                 script->values.length = script->params.length;
 
-                file_delete_data(&file);
+                mfile_free_data(&file);
             }
         }
     }
@@ -515,7 +514,7 @@ static void hole_editor_init(struct hole_editor *ce, struct renderer *renderer) 
     }
     {
         ce->file.path[0] = 0;
-        directory_init(&ce->file.holes_directory, "assets/holes", false);
+        mdir_init(&ce->file.holes_directory, "assets/holes", false);
         ce->hole = NULL;
     }
     {
@@ -526,8 +525,8 @@ static void hole_editor_init(struct hole_editor *ce, struct renderer *renderer) 
     {
         ce->selected_entity.terrain.lightmap_width = 0;
         ce->selected_entity.terrain.lightmap_height = 0;
-        directory_init(&ce->selected_entity.environment.model_directory, "assets/models", false);
-        directory_sort_files_alphabetically(&ce->selected_entity.environment.model_directory);
+        mdir_init(&ce->selected_entity.environment.model_directory, "assets/models", false);
+        //directory_sort_files_alphabetically(&ce->selected_entity.environment.model_directory);
     }
     {
         ce->multi_terrain_entities.is_moving = false;
@@ -583,10 +582,10 @@ static void hole_editor_init(struct hole_editor *ce, struct renderer *renderer) 
         struct array_model_generator_script *scripts = &ce->scripts;
         array_init(scripts);
 
-		struct directory dir;
-		directory_init(&dir, "model_generator_scripts", false);
+		mdir_t dir;
+		mdir_init(&dir, "model_generator_scripts", false);
         for (int i = 0; i < dir.num_files; i++) {
-            struct file file = dir.files[i];
+            mfile_t file = dir.files[i];
             if (strcmp(file.ext, ".scm") != 0) {
                 continue;
             }
@@ -597,7 +596,7 @@ static void hole_editor_init(struct hole_editor *ce, struct renderer *renderer) 
             script.file = file;
             array_push(scripts, script);
         }
-        directory_deinit(&dir);
+        mdir_deinit(&dir);
         hole_editor_update_model_generator_scripts(ce, true);
     }
 #if defined(_WIN32)
@@ -609,7 +608,6 @@ static void hole_editor_init(struct hole_editor *ce, struct renderer *renderer) 
 
 static void add_unique_point(struct array_int *added_points_idxs, struct array_int *new_points_idxs,
         struct array_vec3 *points, int point_idx, vec3 point, int *new_point_idx) {
-    bool already_added = false; 
     for (int i = 0; i < added_points_idxs->length; i++) {
         if (added_points_idxs->data[i] == point_idx) {
             *new_point_idx = new_points_idxs->data[i];
@@ -632,7 +630,6 @@ static void hole_editor_update(struct game_editor *ed, float dt,
     if (ce->global_illumination.do_it) {
         if (!lightmap_generator_is_running()) {
             ce->global_illumination.do_it = false;
-            struct hole *hole = ce->hole;
             struct lightmap_generator_data *data = ce->global_illumination.data;
 
             for (int i = 0; i < data->entities.length; i++) {
@@ -791,7 +788,6 @@ static void hole_editor_update(struct game_editor *ed, float dt,
     if (ce->multi_terrain_entities.is_moving) {
         bool should_move = true;
         for (int i = 0; i < ce->hole->multi_terrain_entities.length; i++) {
-            struct multi_terrain_entity *entity = &ce->hole->multi_terrain_entities.data[i];
             struct editor_entity editor_entity = make_editor_entity(EDITOR_ENTITY_MULTI_TERRAIN_MOVING, i);
             if (editor_entity_array_contains_entity(&ce->selected_array, editor_entity) ||
                     editor_entity_array_contains_entity(&ce->hovered_array, editor_entity)) {
@@ -1861,9 +1857,9 @@ static void hole_editor_update(struct game_editor *ed, float dt,
 
             igSetNextWindowSize((ImVec2){400, 200}, ImGuiCond_FirstUseEver);
             if (igBeginPopupModal("Save As", NULL, 0)) {
-                igInputText("Path", ce->file.path, FILES_MAX_PATH, 0, NULL, NULL);
+                igInputText("Path", ce->file.path, MFILE_MAX_PATH, 0, NULL, NULL);
                 if (igButton("Save", (ImVec2){0, 0})) {
-                    struct file file = file_init(ce->file.path);
+                    mfile_t file = mfile(ce->file.path);
                     hole_save(ce->hole, &file);
                     hole_load(ce->hole, &file);
                     igCloseCurrentPopup();
@@ -1876,25 +1872,25 @@ static void hole_editor_update(struct game_editor *ed, float dt,
             if (ce->open_load_dialog) {
                 igSetNextWindowSize((ImVec2){400, 600}, ImGuiCond_FirstUseEver);
                 igOpenPopup("Load");
-                directory_deinit(&ce->file.holes_directory);
-                directory_init(&ce->file.holes_directory, "assets/holes", false);
+                mdir_deinit(&ce->file.holes_directory);
+                mdir_init(&ce->file.holes_directory, "assets/holes", false);
                 ce->open_load_dialog = false;
             }
 
             igSetNextWindowSize((ImVec2){400, 600}, ImGuiCond_FirstUseEver);
             if (igBeginPopupModal("Load", NULL, 0)) {
                 for (int i =- 0; i < ce->file.holes_directory.num_files; i++) {
-                    struct file f = ce->file.holes_directory.files[i];
+                    mfile_t f = ce->file.holes_directory.files[i];
                     if (igSelectableBool(f.path, false, ImGuiSelectableFlags_AllowDoubleClick, 
                                 (ImVec2){0, 0})) {
-                        strncpy(ce->file.path, f.path, FILES_MAX_PATH);
-                        ce->file.path[FILES_MAX_PATH - 1] = 0;
+                        strncpy(ce->file.path, f.path, MFILE_MAX_PATH);
+                        ce->file.path[MFILE_MAX_PATH - 1] = 0;
                         ce->selected_array.length = 0;
                         ce->hovered_array.length = 0;
                         ce->edit_terrain_model.selected_array.length = 0;
                         ce->edit_terrain_model.hovered_array.length = 0;
 
-                        struct file file = file_init(ce->file.path);
+                        mfile_t file = mfile(ce->file.path);
                         hole_reset(ce->hole);
                         hole_load(ce->hole, &file);
                         igCloseCurrentPopup();
@@ -1925,7 +1921,7 @@ static void hole_editor_update(struct game_editor *ed, float dt,
                             ce->open_save_as_dialog = true;
                         }
                         else {
-                            struct file file = file_init(ce->file.path);
+                            mfile_t file = mfile(ce->file.path);
                             hole_save(ce->hole, &file);
                             hole_load(ce->hole, &file);
                         }
@@ -2248,7 +2244,6 @@ static void hole_editor_update(struct game_editor *ed, float dt,
                 igCheckbox("Modify Camera Zone Entities", &ce->camera_zone_entities.can_modify);
 
                 for (int i = 0; i < ce->hole->terrain_entities.length; i++) {
-                    struct terrain_entity *terrain = &ce->hole->terrain_entities.data[i];
                     char label[512];
                     sprintf(label, "Terrain: %d", i);
 
@@ -2262,7 +2257,6 @@ static void hole_editor_update(struct game_editor *ed, float dt,
                 }
 
                 for (int i = 0; i < ce->hole->multi_terrain_entities.length; i++) {
-                    struct multi_terrain_entity *terrain = &ce->hole->multi_terrain_entities.data[i];
                     char label[512];
                     sprintf(label, "Moving Terrain (Moving Part): %d", i);
 
@@ -2276,7 +2270,6 @@ static void hole_editor_update(struct game_editor *ed, float dt,
                 }
 
                 for (int i = 0; i < ce->hole->multi_terrain_entities.length; i++) {
-                    struct multi_terrain_entity *terrain = &ce->hole->multi_terrain_entities.data[i];
                     char label[512];
                     sprintf(label, "Moving Terrain (Static Part): %d", i);
 
@@ -2336,7 +2329,6 @@ static void hole_editor_update(struct game_editor *ed, float dt,
                 }
 
                 for (int i = 0; i < ce->hole->camera_zone_entities.length; i++) {
-                    struct camera_zone_entity *camera_zone = &ce->hole->camera_zone_entities.data[i];
                     char label[512];
                     sprintf(label, "Camera Zone: %d", i);
 
@@ -2350,7 +2342,6 @@ static void hole_editor_update(struct game_editor *ed, float dt,
                 }
 
                 for (int i = 0; i < ce->hole->environment_entities.length; i++) {
-                    struct environment_entity *environment = &ce->hole->environment_entities.data[i];
                     char label[512];
                     sprintf(label, "Environment: %d", i);
 
@@ -2364,7 +2355,6 @@ static void hole_editor_update(struct game_editor *ed, float dt,
                 }
 
                 for (int i = 0; i < ce->hole->water_entities.length; i++) {
-                    struct water_entity *water = &ce->hole->water_entities.data[i];
                     char label[512];
                     sprintf(label, "Water: %d", i);
 
@@ -2457,8 +2447,8 @@ static void hole_editor_update(struct game_editor *ed, float dt,
                             model->faces.length = 0;
                             map_deinit(&model->generator_params);
                             map_init(&model->generator_params);
-                            strncpy(model->generator_name, script->file.name, FILES_MAX_FILENAME + 1);
-                            model->generator_name[FILES_MAX_FILENAME] = 0;
+                            strncpy(model->generator_name, script->file.name, MFILE_MAX_NAME + 1);
+                            model->generator_name[MFILE_MAX_NAME] = 0;
                             ce->sc_error[0] = 0;
 
                             s7_scheme *sc = ce->sc_state;
@@ -3294,9 +3284,9 @@ static void hole_editor_update(struct game_editor *ed, float dt,
 
                     if (igTreeNodeStr("Model")) {
                         struct model *model = environment->model;
-                        struct directory *dir = &ce->selected_entity.environment.model_directory;
+                        mdir_t *dir = &ce->selected_entity.environment.model_directory;
                         for (int i = 0; i < dir->num_files; i++) {
-                            struct file f = dir->files[i];
+                            mfile_t f = dir->files[i];
                             if (strcmp(f.ext, ".terrain_model") != 0) {
                                 continue;
                             }
@@ -3459,8 +3449,6 @@ static void hole_editor_update(struct game_editor *ed, float dt,
                 igInputFloat("Clamp", &om->translate_mode.clamp, 0.0f, 0.0f, "%0.5f", 0);
             }
             else if (om->mode == OBJECT_MODIFIER_MODE_ROTATE) {
-                float clamp = om->rotate_mode.clamp;
-
                 float delta = om->rotate_mode.delta_theta;
                 float delta_degrees = delta * 180.0f / MF_PI;
                 if (igInputFloat("Delta", (float*) &delta_degrees, 0.0f, 0.0f, "%0.5f", 0)) {
@@ -3643,8 +3631,8 @@ void game_editor_update(struct game_editor *ed, float dt, struct button_inputs b
 #ifdef HOLE_EDITOR
                 if (igButton("Open Course Editor", (ImVec2){0, 0})) {
                     ed->hole_editor.hole = &ed->game->hole;
-                    strncpy(ed->hole_editor.file.path, ed->hole_editor.hole->filepath, FILES_MAX_PATH);
-                    ed->hole_editor.file.path[FILES_MAX_PATH - 1] = 0;
+                    strncpy(ed->hole_editor.file.path, ed->hole_editor.hole->filepath, MFILE_MAX_PATH);
+                    ed->hole_editor.file.path[MFILE_MAX_PATH - 1] = 0;
                     ed->editing_hole = true;
                 }
 #endif

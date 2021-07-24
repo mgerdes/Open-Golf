@@ -50,3 +50,4 @@ minigolf.worker.js
 *.d
 
 *.o
+*.fdb

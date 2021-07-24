@@ -20,6 +20,7 @@ typedef enum mscript_type_type {
     MSCRIPT_TYPE_STRUCT,
     MSCRIPT_TYPE_ENUM,
     MSCRIPT_TYPE_ARRAY,
+    MSCRIPT_TYPE_REF,
     MSCRIPT_NUM_TYPES,
 } mscript_type_type_t;
 

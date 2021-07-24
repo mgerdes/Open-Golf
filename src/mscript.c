@@ -1,12 +1,12 @@
 #define _CRT_SECURE_NO_WARNINGS
-#include "mscript/parser.h"
+#include "mscript.h"
 
 #include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
 
 #include "vec.h"
-#include "file.h"
+#include "mfile.h"
 #include "hotloader.h"
 #include "log.h"
 #include "map.h"
@@ -197,6 +197,7 @@ typedef enum _ms_lvalue_type {
     _MS_LVALUE_LOCAL,
     _MS_LVALUE_GLOBAL,
     _MS_LVALUE_ARRAY,
+    _MS_LVALUE_REF,
 } _ms_lvalue_type_t;
 
 typedef struct _ms_lvalue {
@@ -208,6 +209,7 @@ _ms_lvalue_t _ms_lvalue_invalid(void);
 _ms_lvalue_t _ms_lvalue_local(int offset);
 _ms_lvalue_t _ms_lvalue_global(int offset);
 _ms_lvalue_t _ms_lvalue_array(void);
+_ms_lvalue_t _ms_lvalue_ref(void);
 
 static bool _ms_is_char_digit(char c);
 static bool _ms_is_char_start_of_symbol(char c);
@@ -247,7 +249,7 @@ typedef struct _ms_parsed_type {
 } _ms_parsed_type_t;
 typedef vec_t(_ms_parsed_type_t) _vec_ms_parsed_type_t;
 
-static _ms_parsed_type_t _ms_parsed_type(const char *name, bool is_array);
+static _ms_parsed_type_t _ms_parsed_type(const char *name, bool is_array, bool is_ref);
 
 typedef struct _ms_mem {
     size_t pool_size;
@@ -292,14 +294,14 @@ static mscript_type_t *_ms_struct_decl_get_member(_ms_struct_decl_t *decl, const
 struct mscript_type {
     char name[MSCRIPT_MAX_SYMBOL_LEN + 3];
     mscript_type_type_t type;
-    mscript_type_t *array_member_type;
+    mscript_type_t *ref_type;
     _ms_struct_decl_t *struct_decl;
     int size;
 };
 typedef vec_t(mscript_type_t*) _vec_mscript_type_ptr_t;
 
 static void _mscript_type_init(mscript_type_t *type, const char *name, mscript_type_type_t type_type,
-        mscript_type_t *array_member_type, _ms_struct_decl_t *struct_decl, int size);
+        mscript_type_t *ref_type, _ms_struct_decl_t *struct_decl, int size);
 
 typedef struct _ms_function_decl_arg {
     mscript_type_t *type;
@@ -421,6 +423,8 @@ typedef enum _ms_expr_type {
 typedef enum unary_op_type {
     _MS_UNARY_OP_POST_INC,
     _MS_UNARY_OP_LOGICAL_NOT,
+    _MS_UNARY_OP_REFERENCE,
+    _MS_UNARY_OP_DEREFERENCE,
 } _ms_unary_op_type_t;
 
 typedef enum _ms_binary_op_type {
@@ -650,6 +654,7 @@ static _ms_expr_t *_ms_parse_expr_term(mscript_program_t *program);
 static _ms_expr_t *_ms_parse_expr_factor(mscript_program_t *program);
 static _ms_expr_t *_ms_parse_expr_unary(mscript_program_t *program);
 static _ms_expr_t *_ms_parse_expr_member_access_or_array_access(mscript_program_t *program);
+static _ms_expr_t *_ms_parse_expr_reference_or_dereference(mscript_program_t *program);
 static _ms_expr_t *_ms_parse_call_expr(mscript_program_t *program);
 static _ms_expr_t *_ms_parse_primary_expr(mscript_program_t *program);
 static _ms_expr_t *_ms_parse_array_expr(mscript_program_t *program);
@@ -730,7 +735,7 @@ static void _ms_compile_cast_expr(mscript_program_t *program, _ms_expr_t *expr);
 typedef vec_t(mscript_program_t *) _vec_program_ptr;
 
 struct mscript_program {
-    struct file file;
+    mfile_t file;
     bool visited;
     mscript_t *mscript;
 
@@ -778,7 +783,7 @@ struct mscript {
     _vec_mscript_program_ptr_t programs_array;
 };
 
-static void _ms_program_init(mscript_program_t *program, mscript_t *mscript, struct file file);
+static void _ms_program_init(mscript_program_t *program, mscript_t *mscript, mfile_t file);
 static void _ms_program_tokenize(mscript_program_t *program);
 static void _ms_program_error(mscript_program_t *program, _ms_token_t token, char *fmt, ...);
 static void _ms_program_error_no_token(mscript_program_t *program, char *fmt, ...);
@@ -793,7 +798,7 @@ static void _ms_program_add_function_decl_stub(mscript_program_t *program, _ms_s
 static void _ms_program_patch_function_decl(mscript_program_t *program, _ms_stmt_t *stmt);
 static void _ms_program_add_c_function_decl(mscript_program_t *program, const char *name, const char *return_type_str, int num_args, const char **arg_types_str, void (*fn)(char *args, int args_size));
 static int _ms_program_add_string(mscript_program_t *program, char *string);
-static void _ms_program_load_stage_1(mscript_t *mscript, struct file file);
+static void _ms_program_load_stage_1(mscript_t *mscript, mfile_t file);
 static void _ms_program_load_stage_2(mscript_t *mscript, mscript_program_t *program);
 static void _ms_program_load_stage_3(mscript_t *mscript, mscript_program_t *program);
 static void _ms_program_load_stage_4(mscript_t *mscript, mscript_program_t *program);
@@ -869,11 +874,11 @@ static mscript_type_t *_ms_struct_decl_get_member(_ms_struct_decl_t *decl, const
 }
 
 static void _mscript_type_init(mscript_type_t *type, const char *name, mscript_type_type_t type_type, 
-        mscript_type_t *array_member_type, _ms_struct_decl_t *struct_decl, int size) {
+        mscript_type_t *ref_type, _ms_struct_decl_t *struct_decl, int size) {
     type->type = type_type;
     strncpy(type->name, name, MSCRIPT_MAX_SYMBOL_LEN + 2);
     type->name[MSCRIPT_MAX_SYMBOL_LEN + 2] = 0;
-    type->array_member_type = array_member_type;
+    type->ref_type = ref_type;
     type->struct_decl = struct_decl;
     type->size = size;
 }
@@ -901,6 +906,12 @@ _ms_lvalue_t _ms_lvalue_global(int offset) {
 _ms_lvalue_t _ms_lvalue_array(void) {
     _ms_lvalue_t lvalue;
     lvalue.type = _MS_LVALUE_ARRAY;
+    return lvalue;
+}
+
+_ms_lvalue_t _ms_lvalue_ref(void) {
+    _ms_lvalue_t lvalue;
+    lvalue.type = _MS_LVALUE_REF;
     return lvalue;
 }
 
@@ -1288,6 +1299,7 @@ static _ms_stmt_t *_ms_stmt_expr_new(_ms_mem_t *mem, _ms_token_t token, _ms_expr
 static _ms_parsed_type_t _ms_parse_type(mscript_program_t *program) {
     const char *name = NULL;
     bool is_array = false;
+    bool is_ref = false;
 
     if (_ms_match_symbol(program, "void")) {
         if (_ms_match_char(program, '*')) {
@@ -1310,7 +1322,7 @@ static _ms_parsed_type_t _ms_parse_type(mscript_program_t *program) {
         _ms_token_t tok = _ms_peek(program);
         if (tok.type != _MS_TOKEN_SYMBOL) {
             _ms_program_error(program, tok, "Expected symbol");
-            return _ms_parsed_type("", false);
+            return _ms_parsed_type("", false, false);
         }
         _ms_eat(program);
 
@@ -1321,7 +1333,11 @@ static _ms_parsed_type_t _ms_parse_type(mscript_program_t *program) {
         is_array = true;
     }
 
-    return _ms_parsed_type(name, is_array);
+    if (_ms_match_char_n(program, 1, '*')) {
+        is_ref = true;
+    }
+
+    return _ms_parsed_type(name, is_array, is_ref);
 }
 
 static _ms_expr_t *_ms_parse_object_expr(mscript_program_t *program) {
@@ -1496,9 +1512,34 @@ cleanup:
     return expr;
 }
 
+static _ms_expr_t *_ms_parse_expr_reference_or_dereference(mscript_program_t *program) {
+    _ms_token_t token = _ms_peek(program);
+    _ms_expr_t *expr = NULL;
+
+    if (_ms_match_char(program, '*')) {
+        expr = _ms_parse_call_expr(program);
+        if (program->error) goto cleanup;
+
+        expr = _ms_expr_unary_op_new(&program->compiler_mem, token, _MS_UNARY_OP_DEREFERENCE, expr);
+    }
+    else if (_ms_match_char(program, '&')) {
+        expr = _ms_parse_call_expr(program);
+        if (program->error) goto cleanup;
+
+        expr = _ms_expr_unary_op_new(&program->compiler_mem, token, _MS_UNARY_OP_REFERENCE, expr);
+    }
+    else {
+        expr = _ms_parse_call_expr(program);
+        if (program->error) goto cleanup;
+    }
+
+cleanup:
+    return expr;
+}
+
 static _ms_expr_t *_ms_parse_expr_member_access_or_array_access(mscript_program_t *program) {
     _ms_token_t token = _ms_peek(program);
-    _ms_expr_t *expr = _ms_parse_call_expr(program);
+    _ms_expr_t *expr = _ms_parse_expr_reference_or_dereference(program);
     if (program->error) goto cleanup;
 
     while (true) {
@@ -1533,7 +1574,6 @@ cleanup:
 
 static _ms_expr_t *_ms_parse_expr_unary(mscript_program_t *program) {
     _ms_token_t token = _ms_peek(program);
-
     _ms_expr_t *expr = NULL;
 
     if (_ms_match_char(program, '!')) {
@@ -1847,7 +1887,7 @@ static _ms_stmt_t *_ms_parse_for_stmt(mscript_program_t *program) {
     }
 
     bool has_decl = false;
-    _ms_parsed_type_t decl_type = _ms_parsed_type("", false);
+    _ms_parsed_type_t decl_type = _ms_parsed_type("", false, false);
     char *decl_name = NULL;
     if (_ms_check_type(program)) {
         has_decl = true;
@@ -2456,7 +2496,8 @@ static bool _ms_is_char(char c) {
         (c == '[') ||
         (c == ']') ||
         (c == '.') ||
-        (c == ';');
+        (c == ';') ||
+        (c == '&');
 }
 
 static _ms_token_t _ms_token_number(const char *text, int *len, int line, int col) {
@@ -2594,12 +2635,15 @@ static _ms_token_t _ms_token_eof(int line, int col) {
     return token;
 }
 
-static _ms_parsed_type_t _ms_parsed_type(const char *name, bool is_array) {
+static _ms_parsed_type_t _ms_parsed_type(const char *name, bool is_array, bool is_ref) {
     _ms_parsed_type_t type;
     strncpy(type.string, name, MSCRIPT_MAX_SYMBOL_LEN);
     type.string[MSCRIPT_MAX_SYMBOL_LEN] = 0;
     if (is_array) {
         strcat(type.string, "[]");
+    }
+    if (is_ref) {
+        strcat(type.string, "*");
     }
     return type;
 }
@@ -3173,7 +3217,7 @@ static void _ms_verify_expr_with_cast(mscript_program_t *program, _ms_expr_t **e
     mscript_type_type_t result_type_type = (*expr)->result_type->type;
     if (type->type == MSCRIPT_TYPE_INT) {
         if (result_type_type == MSCRIPT_TYPE_FLOAT) {
-            _ms_parsed_type_t parsed_type = _ms_parsed_type("int", false);
+            _ms_parsed_type_t parsed_type = _ms_parsed_type("int", false, false);
             *expr = _ms_expr_cast_new(&program->compiler_mem, (*expr)->token, parsed_type, *expr);
             (*expr)->result_type = _ms_symbol_table_get_type(&program->symbol_table, parsed_type.string);
 
@@ -3190,7 +3234,7 @@ static void _ms_verify_expr_with_cast(mscript_program_t *program, _ms_expr_t **e
     }
     else if (type->type == MSCRIPT_TYPE_FLOAT) {
         if (result_type_type == MSCRIPT_TYPE_INT) {
-            _ms_parsed_type_t parsed_type = _ms_parsed_type("float", false);
+            _ms_parsed_type_t parsed_type = _ms_parsed_type("float", false, false);
             *expr = _ms_expr_cast_new(&program->compiler_mem, (*expr)->token, parsed_type, *expr);
             (*expr)->result_type = _ms_symbol_table_get_type(&program->symbol_table, parsed_type.string);
 
@@ -3207,7 +3251,7 @@ static void _ms_verify_expr_with_cast(mscript_program_t *program, _ms_expr_t **e
     }
     else if (type->type == MSCRIPT_TYPE_BOOL) {
         if (result_type_type == MSCRIPT_TYPE_ARRAY) {
-            _ms_parsed_type_t parsed_type = _ms_parsed_type("bool", false);
+            _ms_parsed_type_t parsed_type = _ms_parsed_type("bool", false, false);
             *expr = _ms_expr_cast_new(&program->compiler_mem, (*expr)->token, parsed_type, *expr);
             (*expr)->result_type = _ms_symbol_table_get_type(&program->symbol_table, parsed_type.string);
             (*expr)->is_const = false;
@@ -3224,7 +3268,6 @@ static void _ms_verify_expr_with_cast(mscript_program_t *program, _ms_expr_t **e
 
 static void _ms_verify_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr) {
     switch (expr->type) {
-        case _MS_EXPR_UNARY_OP:
         case _MS_EXPR_BINARY_OP:
         case _MS_EXPR_CALL:
         case _MS_EXPR_DEBUG_PRINT:
@@ -3241,9 +3284,27 @@ static void _ms_verify_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr)
                 _ms_program_error(program, expr->token, "Invalid lvalue.");
             }
             break;
+        case _MS_EXPR_UNARY_OP:
+            {
+                if (expr->unary_op.type != _MS_UNARY_OP_DEREFERENCE) {
+                    _ms_program_error(program, expr->token, "Invalid lvalue.");
+                    return;
+                }
+
+                _ms_verify_lvalue_expr(program, expr->unary_op.operand);
+                if (program->error) return;
+
+                mscript_type_t *operand_type = expr->unary_op.operand->result_type;
+                if (operand_type->type == MSCRIPT_TYPE_REF) {
+                    expr->result_type = operand_type->ref_type;
+                    expr->lvalue = _ms_lvalue_ref();
+                    expr->is_const = false;
+                }
+            }
+            break;
         case _MS_EXPR_ARRAY_ACCESS:
             {
-                _ms_verify_expr(program, expr->array_access.left, NULL);
+                _ms_verify_lvalue_expr(program, expr->array_access.left);
                 if (program->error) return;
 
                 mscript_type_t *left_type = expr->array_access.left->result_type;
@@ -3255,14 +3316,14 @@ static void _ms_verify_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr)
                 _ms_verify_expr_with_cast(program, &(expr->array_access.right), _ms_symbol_table_get_type(&program->symbol_table, "int"));
                 if (program->error) return;
 
-                expr->result_type = left_type->array_member_type;
+                expr->result_type = left_type->ref_type;
                 expr->lvalue = _ms_lvalue_array();
                 expr->is_const = false;
             }
             break;
         case _MS_EXPR_MEMBER_ACCESS:
             {
-                _ms_verify_expr(program, expr->member_access.left, NULL);
+                _ms_verify_lvalue_expr(program, expr->member_access.left);
                 if (program->error) return;
 
                 mscript_type_t *left_type = expr->member_access.left->result_type;
@@ -3292,6 +3353,9 @@ static void _ms_verify_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr)
                         break;
                     case _MS_LVALUE_ARRAY:
                         lvalue = _ms_lvalue_array();
+                        break;
+                    case _MS_LVALUE_REF:
+                        lvalue = _ms_lvalue_ref();
                         break;
                 }
 
@@ -3371,6 +3435,7 @@ static void _ms_verify_unary_op_expr(mscript_program_t *program, _ms_expr_t *exp
                 if (program->error) return;
 
                 expr->is_const = false;
+                expr->lvalue = _ms_lvalue_invalid();
 
                 mscript_type_t *operand_type = expr->unary_op.operand->result_type;
                 if (operand_type->type == MSCRIPT_TYPE_INT) {
@@ -3396,11 +3461,52 @@ static void _ms_verify_unary_op_expr(mscript_program_t *program, _ms_expr_t *exp
                     assert(expr->unary_op.operand->const_val.type == MSCRIPT_VAL_BOOL);
                     expr->const_val = mscript_val_bool(!expr->unary_op.operand->const_val.bool_val);
                 }
+                expr->lvalue = _ms_lvalue_invalid();
+            }
+            break;
+        case _MS_UNARY_OP_REFERENCE:
+            {
+                _ms_verify_lvalue_expr(program, expr->unary_op.operand);
+                if (program->error) return;
+
+                mscript_type_t *operand_type = expr->unary_op.operand->result_type;
+                if (operand_type->type == MSCRIPT_TYPE_STRUCT) {
+                    char ref_type_name[MSCRIPT_MAX_SYMBOL_LEN + 2];
+                    strncpy(ref_type_name, operand_type->name, MSCRIPT_MAX_SYMBOL_LEN);
+                    ref_type_name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+                    strcat(ref_type_name, "*");
+
+                    mscript_type_t *result_type = _ms_symbol_table_get_type(&program->symbol_table, ref_type_name);
+                    assert(result_type && result_type->type == MSCRIPT_TYPE_REF);
+
+                    expr->result_type = _ms_symbol_table_get_type(&program->symbol_table, ref_type_name);
+                    expr->is_const = false;
+                    expr->lvalue = _ms_lvalue_invalid();
+                }
+                else {
+                    _ms_program_error(program, expr->token, "Unable to reference this type %s.", operand_type->name);
+                    return;
+                }
+            }
+            break;
+        case _MS_UNARY_OP_DEREFERENCE:
+            {
+                _ms_verify_lvalue_expr(program, expr->unary_op.operand);
+                if (program->error) return;
+
+                mscript_type_t *operand_type = expr->unary_op.operand->result_type;
+                if (operand_type->type == MSCRIPT_TYPE_REF) {
+                    expr->result_type = operand_type->ref_type;
+                    expr->is_const = false;
+                    expr->lvalue = _ms_lvalue_ref();
+                }
+                else {
+                    _ms_program_error(program, expr->token, "Unable to dereference this type %s.", operand_type->name);
+                    return;
+                }
             }
             break;
     }
-
-    expr->lvalue = _ms_lvalue_invalid();
 }
 
 static void _ms_verify_binary_op_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type) {
@@ -3595,14 +3701,14 @@ static void _ms_verify_binary_op_expr(mscript_program_t *program, _ms_expr_t *ex
 
     if (left_result_type != wanted_left_type) {
         expr->binary_op.left = _ms_expr_cast_new(&program->compiler_mem, expr->token,
-                _ms_parsed_type(wanted_left_type->name, false), expr->binary_op.left);
+                _ms_parsed_type(wanted_left_type->name, false, false), expr->binary_op.left);
         _ms_verify_expr(program, expr->binary_op.left, NULL);
         assert(!program->error);
     }
 
     if (right_result_type != wanted_right_type) {
         expr->binary_op.right = _ms_expr_cast_new(&program->compiler_mem,
-                expr->token, _ms_parsed_type(wanted_right_type->name, false), expr->binary_op.right);
+                expr->token, _ms_parsed_type(wanted_right_type->name, false, false), expr->binary_op.right);
         _ms_verify_expr(program, expr->binary_op.right, NULL);
         assert(!program->error);
     }
@@ -3710,7 +3816,7 @@ static void _ms_verify_debug_print_expr(mscript_program_t *program, _ms_expr_t *
 static void _ms_verify_member_access_expr(mscript_program_t *program, _ms_expr_t *expr, mscript_type_t *expected_type) {
     assert(expr->type == _MS_EXPR_MEMBER_ACCESS);
 
-    _ms_verify_expr(program, expr->member_access.left, NULL);
+    _ms_verify_lvalue_expr(program, expr->member_access.left);
     if (program->error) return;
 
     mscript_type_t *left_type = expr->member_access.left->result_type;
@@ -3952,7 +4058,7 @@ static void _ms_verify_array_expr(mscript_program_t *program, _ms_expr_t *expr, 
         return;
     }
 
-    mscript_type_t *arg_type = expected_type->array_member_type;
+    mscript_type_t *arg_type = expected_type->ref_type;
     bool is_const = true;
     for (int i = 0; i < expr->array.num_args; i++) {
         _ms_verify_expr_with_cast(program, &(expr->array.args[i]), arg_type);
@@ -3992,7 +4098,7 @@ static void _ms_verify_array_access_expr(mscript_program_t *program, _ms_expr_t 
     if (program->error) return;
 
     expr->is_const = false;
-    expr->result_type = left_type->array_member_type;
+    expr->result_type = left_type->ref_type;
     expr->lvalue = _ms_lvalue_array();
 }
 
@@ -4835,7 +4941,6 @@ static void _ms_compile_expr(mscript_program_t *program, _ms_expr_t *expr) {
 
 static void _ms_compile_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr) {
     switch (expr->type) {
-        case _MS_EXPR_UNARY_OP:
         case _MS_EXPR_BINARY_OP:
         case _MS_EXPR_CALL:
         case _MS_EXPR_DEBUG_PRINT:
@@ -4849,6 +4954,12 @@ static void _ms_compile_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr
         case _MS_EXPR_CAST:
         case _MS_EXPR_NULL:
             assert(false);
+            break;
+        case _MS_EXPR_UNARY_OP:
+            {
+                assert(expr->unary_op.type == _MS_UNARY_OP_DEREFERENCE);    
+                _ms_compile_expr(program, expr->unary_op.operand);
+            }
             break;
         case _MS_EXPR_ARRAY_ACCESS:
             {
@@ -4918,6 +5029,10 @@ static void _ms_compile_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr
                         vec_push(program->cur_opcodes, _ms_opcode_int(offset));
                         vec_push(program->cur_opcodes, _ms_opcode_iadd());
                         break;
+                    case _MS_LVALUE_REF:
+                        vec_push(program->cur_opcodes, _ms_opcode_int(offset));
+                        vec_push(program->cur_opcodes, _ms_opcode_iadd());
+                        break;
                     case _MS_LVALUE_INVALID:
                         assert(false);
                         break;
@@ -4969,6 +5084,16 @@ static void _ms_compile_unary_op_expr(mscript_program_t *program, _ms_expr_t *ex
             {
                 assert(operand->result_type->type == MSCRIPT_TYPE_BOOL);
                 vec_push(program->cur_opcodes, _ms_opcode_not());
+            }
+            break;
+        case _MS_UNARY_OP_REFERENCE:
+            {
+                vec_push(program->cur_opcodes, _ms_opcode_reference(operand->lvalue.offset));
+            }
+            break;
+        case _MS_UNARY_OP_DEREFERENCE:
+            {
+                assert(false);
             }
             break;
     }
@@ -5621,7 +5746,7 @@ static void _ms_compile_array_expr(mscript_program_t *program, _ms_expr_t *expr)
     assert(expr->type == _MS_EXPR_ARRAY);
 
     assert(expr->result_type->type == MSCRIPT_TYPE_ARRAY);
-    mscript_type_t *arg_type = expr->result_type->array_member_type;
+    mscript_type_t *arg_type = expr->result_type->ref_type;
 
     int size = arg_type->size;
     vec_push(program->cur_opcodes, _ms_opcode_array_create(size));
@@ -5690,7 +5815,7 @@ static void _ms_compile_cast_expr(mscript_program_t *program, _ms_expr_t *expr) 
     }
 }
 
-static void _ms_program_init(mscript_program_t *prog, mscript_t *mscript, struct file file) {
+static void _ms_program_init(mscript_program_t *prog, mscript_t *mscript, mfile_t file) {
     prog->file = file;
     prog->error = NULL;
     prog->mscript = mscript;
@@ -5906,18 +6031,31 @@ static void _ms_program_add_struct_decl_stub(mscript_program_t *program, _ms_stm
     mscript_type_t *type = malloc(sizeof(mscript_type_t));
     _mscript_type_init(type, decl->name, MSCRIPT_TYPE_STRUCT, NULL, decl, -1);
     vec_push(&program->exported_types, type);
-
-    char array_type_name[MSCRIPT_MAX_SYMBOL_LEN + 3];
-    strncpy(array_type_name, type->name, MSCRIPT_MAX_SYMBOL_LEN);
-    array_type_name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
-    strcat(array_type_name, "[]");
-
-    mscript_type_t *array_type = malloc(sizeof(mscript_type_t));
-    _mscript_type_init(array_type, array_type_name, MSCRIPT_TYPE_ARRAY, type, NULL, sizeof(int));
-    vec_push(&program->exported_types, array_type);
-
     _ms_symbol_table_add_type(&program->symbol_table, type);
-    _ms_symbol_table_add_type(&program->symbol_table, array_type);
+
+    {
+        char array_type_name[MSCRIPT_MAX_SYMBOL_LEN + 3];
+        strncpy(array_type_name, type->name, MSCRIPT_MAX_SYMBOL_LEN);
+        array_type_name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+        strcat(array_type_name, "[]");
+
+        mscript_type_t *array_type = malloc(sizeof(mscript_type_t));
+        _mscript_type_init(array_type, array_type_name, MSCRIPT_TYPE_ARRAY, type, NULL, sizeof(int));
+        vec_push(&program->exported_types, array_type);
+        _ms_symbol_table_add_type(&program->symbol_table, array_type);
+    }
+
+    {
+        char ref_type_name[MSCRIPT_MAX_SYMBOL_LEN + 2];
+        strncpy(ref_type_name, type->name, MSCRIPT_MAX_SYMBOL_LEN);
+        ref_type_name[MSCRIPT_MAX_SYMBOL_LEN] = 0;
+        strcat(ref_type_name, "*");
+
+        mscript_type_t *ref_type = malloc(sizeof(mscript_type_t));
+        _mscript_type_init(ref_type, ref_type_name, MSCRIPT_TYPE_REF, type, NULL, sizeof(int));
+        vec_push(&program->exported_types, ref_type);
+        _ms_symbol_table_add_type(&program->symbol_table, ref_type);
+    }
 }
 
 static void _ms_program_patch_struct_decl(mscript_program_t *program, _ms_stmt_t *stmt) {
@@ -6239,7 +6377,9 @@ static void debug_log_expr(_ms_expr_t *expr) {
             break;
         case _MS_EXPR_MEMBER_ACCESS:
             m_log("(");
+            m_log("(");
             debug_log_expr(expr->member_access.left);
+            m_log(")");
             m_logf(".%s)", expr->member_access.member_name);
             m_log(")");
             break;
@@ -6259,6 +6399,16 @@ static void debug_log_expr(_ms_expr_t *expr) {
                     break;
                 case _MS_UNARY_OP_LOGICAL_NOT:
                     m_log("!(");
+                    debug_log_expr(expr->unary_op.operand);
+                    m_log(")");
+                    break;
+                case _MS_UNARY_OP_REFERENCE:
+                    m_log("&(");
+                    debug_log_expr(expr->unary_op.operand);
+                    m_log(")");
+                    break;
+                case _MS_UNARY_OP_DEREFERENCE:
+                    m_log("*(");
                     debug_log_expr(expr->unary_op.operand);
                     m_log(")");
                     break;
@@ -6599,8 +6749,8 @@ static void debug_log_opcodes(_ms_opcode_t *opcodes, int num_opcodes) {
     }
 }
 
-static void _ms_program_load_stage_1(mscript_t *mscript, struct file file) {
-    if (!file_load_data(&file)) {
+static void _ms_program_load_stage_1(mscript_t *mscript, mfile_t file) {
+    if (!mfile_load_data(&file)) {
         return;
     }
 
@@ -6703,6 +6853,9 @@ static void _ms_program_load_stage_1(mscript_t *mscript, struct file file) {
                 {
                     _ms_program_add_function_decl_stub(program, stmt);
                     if (program->error) goto cleanup;
+
+                    debug_log_stmt(stmt);
+                    fflush(stdout);
                 }
                 break;
             case _MS_STMT_IMPORT_FUNCTION:
@@ -7307,15 +7460,15 @@ mscript_t *mscript_create(const char *dir_name) {
     _mscript_type_init(&mscript->bool_array_type, "bool[]", MSCRIPT_TYPE_ARRAY, &mscript->bool_type, NULL, sizeof(int));
     _mscript_type_init(&mscript->char_star_type, "char*", MSCRIPT_TYPE_CHAR_STAR, NULL, NULL, sizeof(int));
 
-    struct directory dir;
-    directory_init(&dir, "scripts", false);
+    mdir_t dir;
+    mdir_init(&dir, "scripts", false);
     for (int i = 0; i < dir.num_files; i++) {
         if (strcmp(dir.files[i].ext, ".mscript") != 0) {
             continue;
         }
         _ms_program_load_stage_1(mscript, dir.files[i]);
     }
-    directory_deinit(&dir);
+    mdir_deinit(&dir);
 
     for (int i = 0; i < mscript->programs_array.length; i++)
         _ms_program_load_stage_2(mscript, mscript->programs_array.data[i]);
@@ -7442,7 +7595,7 @@ static void _ms_vm_init_global(mscript_vm_t *vm, _ms_symbol_t *symbol) {
                 uint32_t v = vm->arrays.length + 1;
                 memcpy(vm->memory + offset, (char*) &v, sizeof(int));
 
-                int arg_size = decl->type->array_member_type->size;
+                int arg_size = decl->type->ref_type->size;
                 int num_args = val.array.num_args;
                 char *data = malloc(arg_size * num_args);
                 char *data_start = data;
@@ -7544,7 +7697,7 @@ static void _ms_c_function_file_size(char *args, int args_size) {
     intptr_t ptr = _MS_C_FUNC_GET_ARG(intptr_t);
     assert(offset == args_size);
 
-    struct file *f = (struct file*) ptr;
+    mfile_t *f = (mfile_t*) ptr;
     int v = f->data_len;
     _MS_C_FUNC_RETURN(int, v);
 }

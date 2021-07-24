@@ -8,7 +8,7 @@
 #include "array.h"
 #include "assets.h"
 #include "data_stream.h"
-#include "file.h"
+#include "mfile.h"
 #include "game.h"
 #include "lightmaps.h"
 #include "renderer.h"
@@ -73,8 +73,8 @@ struct hole_editor_state {
 array_t(struct hole_editor_state, hole_editor_state_array);
 
 struct model_generator_script {
-    struct file_time load_time;
-    struct file file; 
+    mfiletime_t load_time;
+    mfile_t file; 
     struct array_char_ptr params;
     struct array_float values;
 
@@ -111,8 +111,8 @@ struct hole_editor {
     struct hole *hole;
 
     struct {
-        char path[FILES_MAX_PATH];
-        struct directory holes_directory;
+        char path[MFILE_MAX_PATH];
+        mdir_t holes_directory;
     } file;
 
     struct {
@@ -140,7 +140,7 @@ struct hole_editor {
             int lightmap_width, lightmap_height;
         } terrain;
         struct {
-            struct directory model_directory;
+            mdir_t model_directory;
         } environment;
     } selected_entity;
 
@@ -167,7 +167,7 @@ struct hole_editor {
         float selected_face_cor, selected_face_friction, selected_face_vel_scale;
 
         bool points_selectable, faces_selectable;
-        char model_filename[FILES_MAX_FILENAME];
+        char model_filename[MFILE_MAX_NAME];
 
         struct array_vec3 copied_points;
         struct array_terrain_model_face copied_faces;
