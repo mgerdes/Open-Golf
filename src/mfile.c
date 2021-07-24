@@ -324,6 +324,31 @@ void mdir_init(mdir_t *dir, const char *dir_name, bool recurse) {
 
 #else
 
+static void _create_file_path(char *file_path, const char *dir_name, const char *file_name) {
+    int dir_name_len = (int)strlen(dir_name);
+    int file_name_len = (int)strlen(file_name);
+
+    for (int i = 0; i < dir_name_len; i++) {
+        if (i < MFILE_MAX_PATH) {
+            file_path[i] = dir_name[i];
+        }
+        else {
+            file_path[MFILE_MAX_PATH - 1] = 0;
+            break;
+        }
+    }
+    if (dir_name_len + 1 + file_name_len < MFILE_MAX_PATH) {
+        file_path[dir_name_len] = '/';
+        for (int j = 0; j < file_name_len; j++) {
+            file_path[dir_name_len + 1 + j] = file_name[j];
+        }
+        file_path[dir_name_len + 1 + file_name_len] = 0;
+    }
+    else {
+        file_path[MFILE_MAX_PATH - 1] = 0;
+    }
+}
+
 static void _directory_recurse(const char *dir_name, void (*fn)(const char *file_path, void*), void *data, bool recurse) {
 	DIR *dir_ptr = opendir(dir_name);
 	if (dir_ptr == NULL) {
@@ -333,7 +358,7 @@ static void _directory_recurse(const char *dir_name, void (*fn)(const char *file
 	struct dirent *entry = NULL;
 	while ((entry = readdir(dir_ptr))) {
 		char file_path[MFILE_MAX_PATH];
-		create_file_path(file_path, dir_name, entry->d_name);
+		_create_file_path(file_path, dir_name, entry->d_name);
 
 		struct stat info;
 		stat(file_path, &info);

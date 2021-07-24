@@ -65,6 +65,9 @@ typedef enum _ms_opcode_type {
     _MS_OPCODE_LOCAL_LOAD,
     _MS_OPCODE_GLOBAL_STORE,
     _MS_OPCODE_GLOBAL_LOAD,
+    _MS_OPCODE_REFERENCE,
+    _MS_OPCODE_REFERENCE_STORE,
+    _MS_OPCODE_REFERENCE_LOAD,
     _MS_OPCODE_JF,
     _MS_OPCODE_JMP,
     _MS_OPCODE_CALL,
@@ -167,6 +170,9 @@ static _ms_opcode_t _ms_opcode_local_store(int offset, int size);
 static _ms_opcode_t _ms_opcode_local_load(int offset, int size);
 static _ms_opcode_t _ms_opcode_global_store(int offset, int size);
 static _ms_opcode_t _ms_opcode_global_load(int offset, int size);
+static _ms_opcode_t _ms_opcode_reference(int offset);
+static _ms_opcode_t _ms_opcode_reference_store(int size);
+static _ms_opcode_t _ms_opcode_reference_load(int size);
 static _ms_opcode_t _ms_opcode_jf(int label);
 static _ms_opcode_t _ms_opcode_jmp(int label);
 static _ms_opcode_t _ms_opcode_call(int label, int args_size);
@@ -3845,6 +3851,9 @@ static void _ms_verify_member_access_expr(mscript_program_t *program, _ms_expr_t
             case _MS_LVALUE_ARRAY:
                 lvalue = _ms_lvalue_array();
                 break;
+            case _MS_LVALUE_REF:
+                lvalue = _ms_lvalue_ref();
+                break;
         }
 
         expr->result_type = member_type;
@@ -3877,6 +3886,9 @@ static void _ms_verify_member_access_expr(mscript_program_t *program, _ms_expr_t
                 break;
             case _MS_LVALUE_ARRAY:
                 lvalue = _ms_lvalue_array();
+                break;
+            case _MS_LVALUE_REF:
+                assert(false);
                 break;
         }
 
@@ -3913,6 +3925,9 @@ static void _ms_verify_member_access_expr(mscript_program_t *program, _ms_expr_t
                 break;
             case _MS_LVALUE_ARRAY:
                 lvalue = _ms_lvalue_array();
+                break;
+            case _MS_LVALUE_REF:
+                assert(false);
                 break;
         }
 
@@ -4534,6 +4549,27 @@ static _ms_opcode_t _ms_opcode_global_load(int offset, int size) {
     return op;
 }
 
+static _ms_opcode_t _ms_opcode_reference(int offset) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_REFERENCE;
+    op.load_store.offset = offset;
+    return op;
+}
+
+static _ms_opcode_t _ms_opcode_reference_store(int size) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_REFERENCE_STORE;
+    op.load_store.size = size;
+    return op;
+}
+
+static _ms_opcode_t _ms_opcode_reference_load(int size) {
+    _ms_opcode_t op;
+    op.type = _MS_OPCODE_REFERENCE_LOAD;
+    op.load_store.size = size;
+    return op;
+}
+
 static _ms_opcode_t _ms_opcode_jf(int label) {
     _ms_opcode_t op;
     op.type = _MS_OPCODE_JF;
@@ -5048,11 +5084,12 @@ static void _ms_compile_unary_op_expr(mscript_program_t *program, _ms_expr_t *ex
     assert(expr->type == _MS_EXPR_UNARY_OP);
 
     _ms_expr_t *operand = expr->unary_op.operand;
-    _ms_compile_expr(program, operand);
 
     switch (expr->unary_op.type) {
         case _MS_UNARY_OP_POST_INC:
             {
+                _ms_compile_expr(program, operand);
+
                 if (operand->result_type->type == MSCRIPT_TYPE_INT) {
                     vec_push(program->cur_opcodes, _ms_opcode_iinc());
                 }
@@ -5077,11 +5114,15 @@ static void _ms_compile_unary_op_expr(mscript_program_t *program, _ms_expr_t *ex
                     case _MS_LVALUE_INVALID:
                         assert(false);
                         break;
+                    case _MS_LVALUE_REF:
+                        assert(false);
+                        break;
                 }
             }
             break;
         case _MS_UNARY_OP_LOGICAL_NOT:
             {
+                _ms_compile_expr(program, operand);
                 assert(operand->result_type->type == MSCRIPT_TYPE_BOOL);
                 vec_push(program->cur_opcodes, _ms_opcode_not());
             }
@@ -5357,6 +5398,9 @@ static void _ms_compile_binary_op_expr(mscript_program_t *program, _ms_expr_t *e
         case _MS_OPCODE_LOCAL_LOAD:
         case _MS_OPCODE_GLOBAL_STORE:
         case _MS_OPCODE_GLOBAL_LOAD:
+        case _MS_OPCODE_REFERENCE:
+        case _MS_OPCODE_REFERENCE_STORE:
+        case _MS_OPCODE_REFERENCE_LOAD:
         case _MS_OPCODE_JF:
         case _MS_OPCODE_JMP:
         case _MS_OPCODE_CALL:
@@ -5413,6 +5457,9 @@ static void _ms_compile_call_expr(mscript_program_t *program, _ms_expr_t *expr) 
                 vec_push(program->cur_opcodes, _ms_opcode_array_store(sizeof(int)));
                 break;
             case _MS_LVALUE_INVALID:
+                assert(false);
+                break;
+            case _MS_LVALUE_REF:
                 assert(false);
                 break;
         }
@@ -5521,6 +5568,13 @@ static void _ms_compile_debug_print_type(mscript_program_t *program, mscript_typ
                 vec_push(program->cur_opcodes, _ms_opcode_debug_print_int());
             }
             break;
+        case MSCRIPT_TYPE_REF:
+            {
+                assert(type->ref_type->type == MSCRIPT_TYPE_STRUCT);
+                vec_push(program->cur_opcodes, _ms_opcode_reference_load(type->ref_type->size));
+                _ms_compile_debug_print_type(program, type->ref_type);
+            }
+            break;
         case MSCRIPT_NUM_TYPES:
             assert(false);
             break;
@@ -5566,6 +5620,9 @@ static void _ms_compile_array_access_expr(mscript_program_t *program, _ms_expr_t
         case _MS_LVALUE_INVALID:
             assert(false);
             break;
+        case _MS_LVALUE_REF:
+            assert(false);
+            break;
     }
 
     _ms_compile_expr(program, right);
@@ -5592,6 +5649,9 @@ static void _ms_compile_member_access_expr(mscript_program_t *program, _ms_expr_
             case _MS_LVALUE_ARRAY:
                 vec_push(program->cur_opcodes, _ms_opcode_array_load(expr->result_type->size));
                 break;
+            case _MS_LVALUE_REF:
+                vec_push(program->cur_opcodes, _ms_opcode_reference_load(expr->result_type->size));
+                break;
             case _MS_LVALUE_INVALID:
                 assert(false);
                 break;
@@ -5611,6 +5671,9 @@ static void _ms_compile_member_access_expr(mscript_program_t *program, _ms_expr_
                 vec_push(program->cur_opcodes, _ms_opcode_array_load(left->result_type->size));
                 break;
             case _MS_LVALUE_INVALID:
+                assert(false);
+                break;
+            case _MS_LVALUE_REF:
                 assert(false);
                 break;
         }
@@ -5641,6 +5704,9 @@ static void _ms_compile_assignment_expr(mscript_program_t *program, _ms_expr_t *
             break;
         case _MS_LVALUE_ARRAY:
             vec_push(program->cur_opcodes, _ms_opcode_array_store(expr->result_type->size));
+            break;
+        case _MS_LVALUE_REF:
+            vec_push(program->cur_opcodes, _ms_opcode_reference_store(expr->result_type->size));
             break;
         case _MS_LVALUE_INVALID:
             assert(false);
@@ -5724,6 +5790,9 @@ static void _ms_compile_symbol_expr(mscript_program_t *program, _ms_expr_t *expr
                 break;
             case _MS_LVALUE_GLOBAL:
                 vec_push(program->cur_opcodes, _ms_opcode_global_load(lvalue.offset, expr->result_type->size));
+                break;
+            case _MS_LVALUE_REF:
+                assert(false);
                 break;
         }
     }
@@ -6663,6 +6732,15 @@ static void debug_log_opcodes(_ms_opcode_t *opcodes, int num_opcodes) {
             case _MS_OPCODE_GLOBAL_LOAD:
                 m_logf("GLOBAL_LOAD %d %d", op.load_store.offset, op.load_store.size);
                 break;
+            case _MS_OPCODE_REFERENCE:
+                m_logf("REFERENCE %d", op.load_store.offset);
+                break;
+            case _MS_OPCODE_REFERENCE_STORE:
+                m_logf("REFERENCE_STORE %d", op.load_store.size);
+                break;
+            case _MS_OPCODE_REFERENCE_LOAD:
+                m_logf("REFERENCE_LOAD %d", op.load_store.size);
+                break;
             case _MS_OPCODE_JF:
                 m_logf("JF %d", op.label);
                 break;
@@ -6854,8 +6932,8 @@ static void _ms_program_load_stage_1(mscript_t *mscript, mfile_t file) {
                     _ms_program_add_function_decl_stub(program, stmt);
                     if (program->error) goto cleanup;
 
-                    debug_log_stmt(stmt);
-                    fflush(stdout);
+                    //debug_log_stmt(stmt);
+                    //fflush(stdout);
                 }
                 break;
             case _MS_STMT_IMPORT_FUNCTION:
@@ -7211,6 +7289,9 @@ static void _ms_program_load_stage_7(mscript_t *mscript, mscript_program_t *prog
         }
     }
 
+    debug_log_opcodes(intermediate_opcodes.data, intermediate_opcodes.length);
+    fflush(stdout);
+
     vec_int_t labels;
     vec_init(&labels);
 
@@ -7261,6 +7342,9 @@ static void _ms_program_load_stage_7(mscript_t *mscript, mscript_program_t *prog
             case _MS_OPCODE_LOCAL_LOAD:
             case _MS_OPCODE_GLOBAL_STORE:
             case _MS_OPCODE_GLOBAL_LOAD:
+            case _MS_OPCODE_REFERENCE:
+            case _MS_OPCODE_REFERENCE_STORE:
+            case _MS_OPCODE_REFERENCE_LOAD:
             case _MS_OPCODE_RETURN:
             case _MS_OPCODE_PUSH:
             case _MS_OPCODE_POP:
@@ -8095,6 +8179,31 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
                     char *dest = stack + sp;
                     char *src = vm->memory + offset;
                     memmove(dest, src, size);
+                    sp += size;
+                }
+                break;
+            case _MS_OPCODE_REFERENCE:
+                {
+                    int ref = sp + op.load_store.offset;
+                    int size = sizeof(int);
+                    char *dest = stack + sp;
+                    memmove(dest, &ref, size);
+                    sp += size;
+                }
+                break;
+            case _MS_OPCODE_REFERENCE_STORE:
+                {
+                    int size = op.load_store.size;
+                    int ref = _MS_VM_POP_ARG(int);
+                    char *data = stack + sp - size;
+                    memmove(stack + ref, data, size);
+                }
+                break;
+            case _MS_OPCODE_REFERENCE_LOAD:
+                {
+                    int size = op.load_store.size;
+                    int ref = _MS_VM_POP_ARG(int);
+                    memmove(stack + sp, stack + ref, size);
                     sp += size;
                 }
                 break;

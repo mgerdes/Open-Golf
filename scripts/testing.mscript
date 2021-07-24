@@ -7,8 +7,8 @@ void do_stuff(foobar* f) {
 }
 
 int run(int n0, int n1, void* file_ptr) {
-    foobar f = { x = 1, y = 2, sum = 0 };
+    foobar f = { x = n0, y = n1, sum = 0 };
     do_stuff(&f);
-    print("f.sum = ", f.sum, "\n");
+    print("f = ", f, "\n");
     return 100;
 }
