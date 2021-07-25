@@ -1559,6 +1559,17 @@ static _ms_expr_t *_ms_parse_expr_member_access_or_array_access(mscript_program_
 
             expr = _ms_expr_member_access_new(&program->compiler_mem, token, expr, tok.symbol);
         }
+        else if (_ms_match_char_n(program, 2, '-', '>')) {
+            _ms_token_t tok = _ms_peek(program);
+            if (tok.type != _MS_TOKEN_SYMBOL) {
+                _ms_program_error(program, tok, "Expected symbol token");
+                goto cleanup;
+            }
+            _ms_eat(program);
+
+            expr = _ms_expr_unary_op_new(&program->compiler_mem, token, _MS_UNARY_OP_DEREFERENCE, expr);
+            expr = _ms_expr_member_access_new(&program->compiler_mem, token, expr, tok.symbol);
+        }
         else if (_ms_match_char(program, '[')) {
             _ms_expr_t *right = _ms_parse_expr(program);
             if (program->error) goto cleanup;
@@ -5011,13 +5022,11 @@ static void _ms_compile_lvalue_expr(mscript_program_t *program, _ms_expr_t *expr
                 assert(struct_type->type == MSCRIPT_TYPE_STRUCT || struct_type->type == MSCRIPT_TYPE_VEC3 || struct_type->type == MSCRIPT_TYPE_VEC2);
 
                 int offset = 0;
-
                 if (struct_type->type == MSCRIPT_TYPE_STRUCT) {
                     _ms_struct_decl_t *decl = struct_type->struct_decl;
                     assert(decl);
 
                     bool found_member = false;
-                    int offset = 0;
                     for (int i = 0; i < decl->num_members; i++) {
                         if (strcmp(expr->member_access.member_name, decl->members[i].name) == 0) {
                             found_member = true;
@@ -5129,6 +5138,7 @@ static void _ms_compile_unary_op_expr(mscript_program_t *program, _ms_expr_t *ex
             break;
         case _MS_UNARY_OP_REFERENCE:
             {
+                assert(expr->result_type->type == MSCRIPT_TYPE_REF);
                 vec_push(program->cur_opcodes, _ms_opcode_reference(operand->lvalue.offset));
             }
             break;
@@ -6733,7 +6743,7 @@ static void debug_log_opcodes(_ms_opcode_t *opcodes, int num_opcodes) {
                 m_logf("GLOBAL_LOAD %d %d", op.load_store.offset, op.load_store.size);
                 break;
             case _MS_OPCODE_REFERENCE:
-                m_logf("REFERENCE %d", op.load_store.offset);
+                m_logf("REFERENCE %d %d", op.load_store.offset, op.load_store.size);
                 break;
             case _MS_OPCODE_REFERENCE_STORE:
                 m_logf("REFERENCE_STORE %d", op.load_store.size);
@@ -7289,8 +7299,8 @@ static void _ms_program_load_stage_7(mscript_t *mscript, mscript_program_t *prog
         }
     }
 
-    debug_log_opcodes(intermediate_opcodes.data, intermediate_opcodes.length);
-    fflush(stdout);
+    //debug_log_opcodes(intermediate_opcodes.data, intermediate_opcodes.length);
+    //fflush(stdout);
 
     vec_int_t labels;
     vec_init(&labels);
@@ -7448,6 +7458,9 @@ static void _ms_program_load_stage_7(mscript_t *mscript, mscript_program_t *prog
 
         }
     }
+
+    //debug_log_opcodes(program->opcodes.data, program->opcodes.length);
+    //fflush(stdout);
 
 //cleanup:
     if (program->error) {
@@ -8184,11 +8197,10 @@ void mscript_vm_run(mscript_vm_t *vm, const char *function_name, int num_args, m
                 break;
             case _MS_OPCODE_REFERENCE:
                 {
-                    int ref = sp + op.load_store.offset;
-                    int size = sizeof(int);
+                    int ref = fp + op.load_store.offset;
                     char *dest = stack + sp;
-                    memmove(dest, &ref, size);
-                    sp += size;
+                    memmove(dest, &ref, sizeof(int));
+                    sp += sizeof(int);
                 }
                 break;
             case _MS_OPCODE_REFERENCE_STORE:
