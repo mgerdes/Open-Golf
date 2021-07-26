@@ -93,7 +93,7 @@ static void frame(void) {
         //}
 
         {
-            struct mscript *mscript = mscript_create("scripts");
+            struct mscript *mscript = mscript_create("data/scripts");
             mscript_program_t *program = mscript_get_program(mscript, "testing.mscript");
 
             if (program) {

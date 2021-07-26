@@ -14,6 +14,8 @@ typedef struct mfiletime {
     uint64_t unix_time;
 } mfiletime_t;
 
+typedef vec_t(mfiletime_t) vec_mfiletime_t;
+
 // Returns < 0 if (t0 < t1), > 0 if (t0 > t1)
 int mfiletime_cmp(mfiletime_t t0, mfiletime_t t1);
 

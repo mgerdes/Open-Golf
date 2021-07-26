@@ -6,7 +6,9 @@
 #include <stddef.h>
 
 #include "vec.h"
+#include "mdata.h"
 #include "mfile.h"
+#include "mstring.h"
 #include "hotloader.h"
 #include "log.h"
 #include "map.h"
@@ -7534,6 +7536,266 @@ mscript_val_t mscript_val_array(int num_args, mscript_val_t *args) {
     return val;
 }
 
+static bool _mdata_mscript_mdata_file_creator(int num_files, mfile_t *files, bool *file_changed, mdata_file_t **mdata_files, void *udata) {
+    mscript_t *mscript = (mscript_t*) udata;
+
+    for (int i = 0; i < num_files; i++)
+        _ms_program_load_stage_1(mscript, files[i]);
+    for (int i = 0; i < num_files; i++)
+        _ms_program_load_stage_2(mscript, mscript->programs_array.data[i]);
+    for (int i = 0; i < num_files; i++)
+        _ms_program_load_stage_3(mscript, mscript->programs_array.data[i]);
+    for (int i = 0; i < num_files; i++)
+        _ms_program_load_stage_4(mscript, mscript->programs_array.data[i]);
+    for (int i = 0; i < num_files; i++)
+        _ms_program_load_stage_5(mscript, mscript->programs_array.data[i]);
+    for (int i = 0; i < num_files; i++)
+        _ms_program_load_stage_6(mscript, mscript->programs_array.data[i]);
+    for (int i = 0; i < num_files; i++)
+        _ms_program_load_stage_7(mscript, mscript->programs_array.data[i]);
+
+    for (int i = 0; i < num_files; i++) {
+        mdata_file_t *mdata_file = mdata_files[i];
+        mscript_program_t *program = mscript->programs_array.data[i];
+
+        mdata_file_add_val_int(mdata_file, "version", 0);
+
+        mstring_t str;
+        mstring_init(&str, "");
+        for (int j = 0; j < program->opcodes.length; j++) {
+            _ms_opcode_t op = program->opcodes.data[j];
+            switch (op.type) {
+                case _MS_OPCODE_IADD:
+                    mstring_appendf(&str, "IADD");
+                    break;
+                case _MS_OPCODE_FADD:
+                    mstring_appendf(&str, "FADD");
+                    break;
+                case _MS_OPCODE_V2ADD:
+                    mstring_appendf(&str, "V2ADD");
+                    break;
+                case _MS_OPCODE_V3ADD:
+                    mstring_appendf(&str, "V3ADD");
+                    break;
+                case _MS_OPCODE_ISUB:
+                    mstring_appendf(&str, "ISUB");
+                    break;
+                case _MS_OPCODE_FSUB:
+                    mstring_appendf(&str, "FSUB");
+                    break;
+                case _MS_OPCODE_V2SUB:
+                    mstring_appendf(&str, "V2SUB");
+                    break;
+                case _MS_OPCODE_V3SUB:
+                    mstring_appendf(&str, "V3SUB");
+                    break;
+                case _MS_OPCODE_IMUL:
+                    mstring_appendf(&str, "IMUL");
+                    break;
+                case _MS_OPCODE_FMUL:
+                    mstring_appendf(&str, "FMUL");
+                    break;
+                case _MS_OPCODE_V2MUL:
+                    mstring_appendf(&str, "V2MUL");
+                    break;
+                case _MS_OPCODE_V3MUL:
+                    mstring_appendf(&str, "V3MUL");
+                    break;
+                case _MS_OPCODE_IDIV:
+                    mstring_appendf(&str, "IDIV");
+                    break;
+                case _MS_OPCODE_FDIV:
+                    mstring_appendf(&str, "FDIV");
+                    break;
+                case _MS_OPCODE_V2DIV:
+                    mstring_appendf(&str, "V2DIV");
+                    break;
+                case _MS_OPCODE_V3DIV:
+                    mstring_appendf(&str, "V3DIV");
+                    break;
+                case _MS_OPCODE_ILTE:
+                    mstring_appendf(&str, "ILTE");
+                    break;
+                case _MS_OPCODE_FLTE:
+                    mstring_appendf(&str, "FLTE");
+                    break;
+                case _MS_OPCODE_ILT:
+                    mstring_appendf(&str, "ILT");
+                    break;
+                case _MS_OPCODE_FLT:
+                    mstring_appendf(&str, "FLT");
+                    break;
+                case _MS_OPCODE_IGTE:
+                    mstring_appendf(&str, "IGTE");
+                    break;
+                case _MS_OPCODE_FGTE:
+                    mstring_appendf(&str, "FGTE");
+                    break;
+                case _MS_OPCODE_IGT:
+                    mstring_appendf(&str, "IGT");
+                    break;
+                case _MS_OPCODE_FGT:
+                    mstring_appendf(&str, "FGT");
+                    break;
+                case _MS_OPCODE_IEQ:
+                    mstring_appendf(&str, "IEQ");
+                    break;
+                case _MS_OPCODE_FEQ:
+                    mstring_appendf(&str, "FEQ");
+                    break;
+                case _MS_OPCODE_V2EQ:
+                    mstring_appendf(&str, "V2EQ");
+                    break;
+                case _MS_OPCODE_V3EQ:
+                    mstring_appendf(&str, "V3EQ");
+                    break;
+                case _MS_OPCODE_INEQ:
+                    mstring_appendf(&str, "INEQ");
+                    break;
+                case _MS_OPCODE_FNEQ:
+                    mstring_appendf(&str, "FNEQ");
+                    break;
+                case _MS_OPCODE_V2NEQ:
+                    mstring_appendf(&str, "V2NEQ");
+                    break;
+                case _MS_OPCODE_V3NEQ:
+                    mstring_appendf(&str, "V3NEQ");
+                    break;
+                case _MS_OPCODE_IINC:
+                    mstring_appendf(&str, "IINC");
+                    break;
+                case _MS_OPCODE_FINC:
+                    mstring_appendf(&str, "FINC");
+                    break;
+                case _MS_OPCODE_NOT:
+                    mstring_appendf(&str, "NOT");
+                    break;
+                case _MS_OPCODE_F2I:
+                    mstring_appendf(&str, "F2I");
+                    break;
+                case _MS_OPCODE_I2F:
+                    mstring_appendf(&str, "I2F");
+                    break;
+                case _MS_OPCODE_COPY:
+                    mstring_appendf(&str, "COPY %d %d", op.load_store.offset, op.load_store.size);
+                    break;
+                case _MS_OPCODE_INT:
+                    mstring_appendf(&str, "INT %d", op.int_val);
+                    break;
+                case _MS_OPCODE_FLOAT:
+                    mstring_appendf(&str, "CONST_FLOAT %f", op.float_val);
+                    break;
+                case _MS_OPCODE_LOCAL_STORE:
+                    mstring_appendf(&str, "LOCAL_STORE %d %d", op.load_store.offset, op.load_store.size);
+                    break;
+                case _MS_OPCODE_LOCAL_LOAD:
+                    mstring_appendf(&str, "LOCAL_LOAD %d %d", op.load_store.offset, op.load_store.size);
+                    break;
+                case _MS_OPCODE_GLOBAL_STORE:
+                    mstring_appendf(&str, "GLOBAL_STORE %d %d", op.load_store.offset, op.load_store.size);
+                    break;
+                case _MS_OPCODE_GLOBAL_LOAD:
+                    mstring_appendf(&str, "GLOBAL_LOAD %d %d", op.load_store.offset, op.load_store.size);
+                    break;
+                case _MS_OPCODE_REFERENCE:
+                    mstring_appendf(&str, "REFERENCE %d %d", op.load_store.offset, op.load_store.size);
+                    break;
+                case _MS_OPCODE_REFERENCE_STORE:
+                    mstring_appendf(&str, "REFERENCE_STORE %d", op.load_store.size);
+                    break;
+                case _MS_OPCODE_REFERENCE_LOAD:
+                    mstring_appendf(&str, "REFERENCE_LOAD %d", op.load_store.size);
+                    break;
+                case _MS_OPCODE_JF:
+                    mstring_appendf(&str, "JF %d", op.label);
+                    break;
+                case _MS_OPCODE_JMP:
+                    mstring_appendf(&str, "JMP %d", op.label);
+                    break;
+                case _MS_OPCODE_C_CALL:
+                    mstring_appendf(&str, "C_CALL %s", op.string);
+                    break;
+                case _MS_OPCODE_CALL:
+                    mstring_appendf(&str, "CALL %d %d", op.call.label, op.call.args_size);
+                    break;
+                case _MS_OPCODE_RETURN:
+                    mstring_appendf(&str, "RETURN");
+                    break;
+                case _MS_OPCODE_PUSH:
+                    mstring_appendf(&str, "PUSH %d", op.size);
+                    break;
+                case _MS_OPCODE_POP:
+                    mstring_appendf(&str, "POP %d", op.size);
+                    break;
+                case _MS_OPCODE_ARRAY_CREATE:
+                    mstring_appendf(&str, "ARRAY_CREATE %d", op.size);
+                    break;
+                case _MS_OPCODE_ARRAY_DELETE:
+                    mstring_appendf(&str, "ARRAY_DELETE");
+                    break;
+                case _MS_OPCODE_ARRAY_STORE:
+                    mstring_appendf(&str, "ARRAY_STORE %d", op.size);
+                    break;
+                case _MS_OPCODE_ARRAY_LOAD:
+                    mstring_appendf(&str, "ARRAY_LOAD %d", op.size);
+                    break;
+                case _MS_OPCODE_ARRAY_LENGTH:
+                    mstring_appendf(&str, "ARRAY_LENGTH");
+                    break;
+                case _MS_OPCODE_DEBUG_PRINT_INT:
+                    mstring_appendf(&str, "DEBUG_PRINT_INT");
+                    break;
+                case _MS_OPCODE_DEBUG_PRINT_FLOAT:
+                    mstring_appendf(&str, "DEBUG_PRINT_FLOAT");
+                    break;
+                case _MS_OPCODE_DEBUG_PRINT_VEC2:
+                    mstring_appendf(&str, "DEBUG_PRINT_VEC2");
+                    break;
+                case _MS_OPCODE_DEBUG_PRINT_VEC3:
+                    mstring_appendf(&str, "DEBUG_PRINT_VEC3");
+                    break;
+                case _MS_OPCODE_DEBUG_PRINT_BOOL:
+                    mstring_appendf(&str, "DEBUG_PRINT_BOOL");
+                    break;
+                case _MS_OPCODE_DEBUG_PRINT_STRING:
+                    mstring_appendf(&str, "DEBUG_PRINT_STRING");
+                    break;
+                case _MS_OPCODE_DEBUG_PRINT_STRING_CONST:
+                    mstring_appendf(&str, "DEBUG_PRINT_SHORT_STRING: %s", op.string);
+                    break;
+                case _MS_OPCODE_INTERMEDIATE_LABEL:
+                    mstring_appendf(&str, "INTERMEDIATE_LABEL %d", op.label);
+                    break;
+                case _MS_OPCODE_INTERMEDIATE_FUNC:
+                    mstring_appendf(&str, "INTERMEDIATE_FUNC %s", op.string);
+                    break;
+                case _MS_OPCODE_INTERMEDIATE_CALL:
+                    mstring_appendf(&str, "INTERMEDIATE_CALL %s", op.string);
+                    break;
+                case _MS_OPCODE_INTERMEDIATE_C_CALL:
+                    mstring_appendf(&str, "INTERMEDIATE_C_CALL %s", op.string);
+                    break;
+                case _MS_OPCODE_INTERMEDIATE_JF:
+                    mstring_appendf(&str, "INTERMEDIATE_JF %d", op.label);
+                    break;
+                case _MS_OPCODE_INTERMEDIATE_JMP:
+                    mstring_appendf(&str, "INTERMEDIATE_JMP %d", op.label);
+                    break;
+                case _MS_OPCODE_INTERMEDIATE_STRING:
+                    mstring_appendf(&str, "INTERMEDIATE_STRING %s", op.intermediate_string);
+                    break;
+                default:
+                    break;
+            }
+            mstring_appendf(&str, "\n");
+        }
+        mdata_file_add_val_binary_data(mdata_file, "opcodes", str.cstr, str.len, false);
+        mstring_deinit(&str);
+    }
+
+    return true;
+}
+
 mscript_t *mscript_create(const char *dir_name) {
     mscript_t *mscript = malloc(sizeof(mscript_t));
     mscript->dir_name = dir_name;
@@ -7557,28 +7819,7 @@ mscript_t *mscript_create(const char *dir_name) {
     _mscript_type_init(&mscript->bool_array_type, "bool[]", MSCRIPT_TYPE_ARRAY, &mscript->bool_type, NULL, sizeof(int));
     _mscript_type_init(&mscript->char_star_type, "char*", MSCRIPT_TYPE_CHAR_STAR, NULL, NULL, sizeof(int));
 
-    mdir_t dir;
-    mdir_init(&dir, "scripts", false);
-    for (int i = 0; i < dir.num_files; i++) {
-        if (strcmp(dir.files[i].ext, ".mscript") != 0) {
-            continue;
-        }
-        _ms_program_load_stage_1(mscript, dir.files[i]);
-    }
-    mdir_deinit(&dir);
-
-    for (int i = 0; i < mscript->programs_array.length; i++)
-        _ms_program_load_stage_2(mscript, mscript->programs_array.data[i]);
-    for (int i = 0; i < mscript->programs_array.length; i++)
-        _ms_program_load_stage_3(mscript, mscript->programs_array.data[i]);
-    for (int i = 0; i < mscript->programs_array.length; i++)
-        _ms_program_load_stage_4(mscript, mscript->programs_array.data[i]);
-    for (int i = 0; i < mscript->programs_array.length; i++)
-        _ms_program_load_stage_5(mscript, mscript->programs_array.data[i]);
-    for (int i = 0; i < mscript->programs_array.length; i++)
-        _ms_program_load_stage_6(mscript, mscript->programs_array.data[i]);
-    for (int i = 0; i < mscript->programs_array.length; i++)
-        _ms_program_load_stage_7(mscript, mscript->programs_array.data[i]);
+    mdata_add_extension_handler(dir_name, ".mscript", _mdata_mscript_mdata_file_creator, mscript);
 
     return mscript;
 }

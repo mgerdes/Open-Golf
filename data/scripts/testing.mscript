@@ -41,6 +41,7 @@ int run(int n0, int n1, void* file_ptr) {
     ui_button_update(&b);
     print("button = ", b, "\n");
 
+    float s = sin(100);
 
     foo f = { x = n0, y = n1, b = { sum = 0 } };
     foo g = { x = 1, y = 2, b = { sum = 0 } };

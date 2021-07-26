@@ -1194,7 +1194,7 @@ static void create_font(struct font *font, mfile_t *file) {
     mfile_free_data(file);
 }
 
-static bool _mdata_texture_mdata_file_creator(mfile_t file, mdata_file_t *mdata_file) {
+static bool _mdata_texture_mdata_file_creator(mfile_t file, mdata_file_t *mdata_file, void *udata) {
     mdata_file_add_val_int(mdata_file, "version", 0);
 
     if (!mfile_load_data(&file)) {
@@ -1206,7 +1206,7 @@ static bool _mdata_texture_mdata_file_creator(mfile_t file, mdata_file_t *mdata_
         int force_channels = 4;
         stbi_set_flip_vertically_on_load(0);
         unsigned char *tex_data = stbi_load_from_memory((unsigned char*) file.data, file.data_len, &x, &y, &n, force_channels);
-        mdata_file_add_val_binary_data(mdata_file, "tex_data", (char*)tex_data, n * x * y);
+        mdata_file_add_val_binary_data(mdata_file, "tex_data", (char*)tex_data, n * x * y, true);
         free(tex_data);
     }
 
@@ -1230,7 +1230,7 @@ void renderer_init(struct renderer *renderer) {
     renderer->game_fb_width = 1280;
     renderer->game_fb_height = 720;
 
-    mdata_add_extension_handler(".png", _mdata_texture_mdata_file_creator);
+    //mdata_add_extension_handler(".png", _mdata_texture_mdata_file_creator, NULL);
 
     {
         sg_image_desc fxaa_image_desc = {
