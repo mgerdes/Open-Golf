@@ -40,6 +40,7 @@ void hotloader_update(void) {
 
 void hotloader_watch_file(const char *path, void *udata,
         bool (*callback)(mfile_t file, bool first_time, void *udata)) {
+#if HOTLOADER_ACTIVE
     mfile_t file = mfile(path);
 
     bool ret = callback(file, true,udata);
@@ -50,12 +51,26 @@ void hotloader_watch_file(const char *path, void *udata,
     hotloader_file.callback = callback;
     hotloader_file.udata = udata;
     array_push(&_state.files, hotloader_file);
+#endif
 }
 
-void hotloader_watch_files(const char *path, const char *ext, void *udata,
-        bool (*callback)(mfile_t file, bool first_time, void *udata)) {
+void hotloader_watch_files(const char *path, void *udata,
+        bool (*callback)(mfile_t file, bool first_time, void *udata), bool recurse) {
+#if HOTLOADER_ACTIVE
     mdir_t dir;
-    mdir_init(&dir, path, false);
+    mdir_init(&dir, path, recurse);
+    for (int i = 0; i < dir.num_files; i++) {
+        hotloader_watch_file(dir.files[i].path, udata, callback);
+    }
+    mdir_deinit(&dir);
+#endif
+}
+
+void hotloader_watch_files_with_ext(const char *path, const char *ext, void *udata,
+        bool (*callback)(mfile_t file, bool first_time, void *udata), bool recurse) {
+#if HOTLOADER_ACTIVE
+    mdir_t dir;
+    mdir_init(&dir, path, recurse);
     for (int i = 0; i < dir.num_files; i++) {
         if (strcmp(ext, dir.files[i].ext) != 0) {
             continue;
@@ -64,4 +79,5 @@ void hotloader_watch_files(const char *path, const char *ext, void *udata,
         hotloader_watch_file(dir.files[i].path, udata, callback);
     }
     mdir_deinit(&dir);
+#endif
 }

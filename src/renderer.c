@@ -13,6 +13,7 @@
 #include "game_editor.h"
 #include "hotloader.h"
 #include "log.h"
+#include "mdata.h"
 #include "profiler.h"
 #include "rnd.h"
 #include "stb_image.h"
@@ -1193,6 +1194,30 @@ static void create_font(struct font *font, mfile_t *file) {
     mfile_free_data(file);
 }
 
+static bool _mdata_texture_mdata_file_creator(mfile_t file, mdata_file_t *mdata_file) {
+    mdata_file_add_val_int(mdata_file, "version", 0);
+
+    if (!mfile_load_data(&file)) {
+        return false;
+    }
+
+    {
+        int x, y, n;
+        int force_channels = 4;
+        stbi_set_flip_vertically_on_load(0);
+        unsigned char *tex_data = stbi_load_from_memory((unsigned char*) file.data, file.data_len, &x, &y, &n, force_channels);
+        mdata_file_add_val_binary_data(mdata_file, "tex_data", (char*)tex_data, n * x * y);
+        free(tex_data);
+    }
+
+    mfile_free_data(&file);
+    return true;
+}
+
+static bool _mdata_texture_mdata_file_handler(mdata_file_t *mdata_file, struct renderer *renderer) {
+    return true;
+}
+
 void renderer_init(struct renderer *renderer) {
     profiler_push_section("renderer_init");
     memset(renderer, 0, sizeof(struct renderer));
@@ -1204,6 +1229,8 @@ void renderer_init(struct renderer *renderer) {
     renderer->cam_inclination_angle = 0.64f * (float)M_PI;
     renderer->game_fb_width = 1280;
     renderer->game_fb_height = 720;
+
+    //mdata_add_handler(".png", _mdata_texture_handler);
 
     {
         sg_image_desc fxaa_image_desc = {

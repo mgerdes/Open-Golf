@@ -10,17 +10,21 @@
 
 #if defined(_WIN32)
 
-int mfiletime_cmp(mfiletime_t time0, mfiletime_t time1) {
-    return CompareFileTime(&time0.time, &time1.time);
-}
+#include <Windows.h>
+#include <Shlwapi.h>
 
 #else
 
-int mfiletime_cmp(mfiletime_t time0, mfiletime_t time1) {
-	return (int)difftime(time0.time, time1.time);
-}
+#include <time.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <unistd.h>
 
 #endif
+
+int mfiletime_cmp(mfiletime_t time0, mfiletime_t time1) {
+    return time1.unix_time > time0.unix_time;
+}
 
 mfile_t mfile(const char *path) {
     mfile_t file;
@@ -85,6 +89,25 @@ mfile_t mfile_new_ext(mfile_t *file, const char *ext) {
     new_file.data_copy_pos = NULL;
 
     return new_file;
+}
+
+mfile_t mfile_append_extension(const char *path, const char *ext) {
+    mfile_t file = mfile(path);
+
+    int ext_len = (int) strlen(file.ext);
+    int path_len = (int) strlen(file.path);
+    int name_len = (int) strlen(file.name);
+
+    strncpy(file.path + path_len, ext, MFILE_MAX_PATH);
+    file.path[MFILE_MAX_PATH - 1] = 0;
+
+    strncpy(file.name + name_len, ext, MFILE_MAX_NAME);
+    file.name[MFILE_MAX_NAME - 1] = 0;
+
+    strncpy(file.ext, ext, MFILE_MAX_EXT);
+    file.ext[MFILE_MAX_EXT - 1] = 0;
+
+    return file;
 }
 
 bool mfile_load_data(mfile_t *file) {
@@ -203,14 +226,23 @@ bool mfile_copy_line(mfile_t *file, char **line_buffer, int *line_buffer_len) {
 
 #if defined(_WIN32)
 
+#define _WINDOWS_TICK 10000000
+#define _SEC_TO_UNIX_EPOCH 11644473600LL
+
+uint64_t _windows_ticks_to_unix_time(long long windows_tick)
+{
+     return (uint64_t)(windows_ticks / _WINDOWS_TICK - _SEC_TO_UNIX_EPOCH);
+}
+
+// https://stackoverflow.com/a/6161842
 bool mfile_get_time(mfile_t *file, mfiletime_t *time) {
     WIN32_FILE_ATTRIBUTE_DATA data;
     if (GetFileAttributesExA(file->path, GetFileExInfoStandard, &data)) {
-        time->time = data.ftLastWriteTime;
+        time->time = _windows_ticks_to_unix_time(data.ftLastWriteTime);
 		return true;
     }
     else {
-        memset(&time->time, 0, sizeof(time->time));
+        time->unix_time = 0;
 		return false;
     }
 }
@@ -220,9 +252,10 @@ bool mfile_get_time(mfile_t *file, mfiletime_t *time) {
 bool mfile_get_time(mfile_t *file, mfiletime_t *time) {
     struct stat info;
     if (stat(file->path, &info)) {
+        time->unix_time = 0;
         return false;
     }
-    time->time = info.st_mtime;
+    time->unix_time = (uint64_t)info.st_mtime;
     return true;
 }
 

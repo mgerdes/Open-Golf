@@ -9,25 +9,9 @@
 
 #include "vec.h"
 
-#if defined(_WIN32)
-
-#include <Windows.h>
-#include <Shlwapi.h>
 typedef struct mfiletime {
-    FILETIME time;
+    uint64_t unix_time;
 } mfiletime_t;
-
-#else
-
-#include <time.h>
-#include <sys/stat.h>
-#include <dirent.h>
-#include <unistd.h>
-typedef struct mfiletime {
-    time_t time;
-} mfiletime_t;
-
-#endif
 
 // Returns < 0 if (t0 < t1), > 0 if (t0 > t1)
 int mfiletime_cmp(mfiletime_t t0, mfiletime_t t1);
@@ -49,6 +33,7 @@ typedef vec_t(mfile_t) vec_mfile_t;
 
 mfile_t mfile(const char *path);
 mfile_t mfile_new_ext(mfile_t *file, const char *ext);
+mfile_t mfile_append_extension(const char *path, const char *ext);
 bool mfile_load_data(mfile_t *file);
 void mfile_free_data(mfile_t *file);
 bool mfile_set_data(mfile_t *file, char *data, int data_len);

@@ -7,6 +7,16 @@
 #include <string.h>
 #include <stdio.h>
 
+static void _mstring_grow(mstring_t *str, int new_len) {
+    if (str->cap < new_len) {
+        char *old_cstr = str->cstr;  
+        str->cap = 2 * (str->cap + 1);
+        str->cstr =  malloc(sizeof(char)*(str->cap + 1));
+        strcpy(str->cstr, old_cstr);
+        free(old_cstr);
+    }
+}
+
 void mstring_init(mstring_t *str, const char *cstr) {
     int len = (int)strlen(cstr);
     str->cap = len;
@@ -52,4 +62,17 @@ void mstring_append_cstr(mstring_t *str, const char *cstr) {
         strcat(str->cstr, cstr);
         free(old_cstr);
     }
+}
+
+void mstring_appendf(mstring_t *str, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    int len = vsnprintf(NULL, 0, format, args);
+    va_end(args);
+
+    _mstring_grow(str, str->len + len);
+    va_start(args, format);
+    vsprintf(str->cstr + str->len, format, args);
+    va_end(args);
+    str->len += len;
 }

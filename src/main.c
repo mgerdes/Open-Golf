@@ -10,6 +10,7 @@
 #endif
 #include "hotloader.h"
 #include "log.h"
+#include "mdata.h"
 #include "profiler.h"
 #include "renderer.h"
 #include "sokol_app.h"
@@ -84,6 +85,7 @@ static void frame(void) {
         game_load_hole(&game, &game_editor, 0);
         game.state = GAME_STATE_MAIN_MENU;
         main_menu_init(&main_menu);
+        mdata_init();
         profiler_pop_section();
 
         //{
