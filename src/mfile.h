@@ -6,6 +6,7 @@
 #define MFILE_MAX_EXT 32
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "vec.h"
 

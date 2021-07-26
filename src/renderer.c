@@ -1230,7 +1230,7 @@ void renderer_init(struct renderer *renderer) {
     renderer->game_fb_width = 1280;
     renderer->game_fb_height = 720;
 
-    //mdata_add_handler(".png", _mdata_texture_handler);
+    mdata_add_extension_handler(".png", _mdata_texture_mdata_file_creator);
 
     {
         sg_image_desc fxaa_image_desc = {

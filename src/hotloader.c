@@ -76,6 +76,7 @@ void hotloader_watch_files_with_ext(const char *path, const char *ext, void *uda
             continue;
         }
 
+
         hotloader_watch_file(dir.files[i].path, udata, callback);
     }
     mdir_deinit(&dir);

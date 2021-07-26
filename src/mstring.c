@@ -10,7 +10,7 @@
 static void _mstring_grow(mstring_t *str, int new_len) {
     if (str->cap < new_len) {
         char *old_cstr = str->cstr;  
-        str->cap = 2 * (str->cap + 1);
+        str->cap = 2 * (new_len + 1);
         str->cstr =  malloc(sizeof(char)*(str->cap + 1));
         strcpy(str->cstr, old_cstr);
         free(old_cstr);
@@ -50,6 +50,10 @@ void mstring_append_str(mstring_t *str, mstring_t *str2) {
 
 void mstring_append_cstr(mstring_t *str, const char *cstr) {
     int cstr_len = (int)strlen(cstr);
+    mstring_append_cstr_len(str, cstr, cstr_len);
+}
+
+void mstring_append_cstr_len(mstring_t *str, const char *cstr, int cstr_len) {
     if (str->cap >= cstr_len + str->len) {
         strcat(str->cstr, cstr);
     }

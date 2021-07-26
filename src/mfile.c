@@ -23,7 +23,7 @@
 #endif
 
 int mfiletime_cmp(mfiletime_t time0, mfiletime_t time1) {
-    return time1.unix_time > time0.unix_time;
+    return time0.unix_time > time1.unix_time;
 }
 
 mfile_t mfile(const char *path) {
@@ -226,19 +226,28 @@ bool mfile_copy_line(mfile_t *file, char **line_buffer, int *line_buffer_len) {
 
 #if defined(_WIN32)
 
-#define _WINDOWS_TICK 10000000
-#define _SEC_TO_UNIX_EPOCH 11644473600LL
-
-uint64_t _windows_ticks_to_unix_time(long long windows_tick)
+// https://www.frenk.com/2009/12/convert-filetime-to-unix-timestamp/
+uint64_t _FILETIME_to_unix_time(FILETIME ft)
 {
-     return (uint64_t)(windows_ticks / _WINDOWS_TICK - _SEC_TO_UNIX_EPOCH);
+	// takes the last modified date
+	LARGE_INTEGER date, adjust;
+	date.HighPart = ft.dwHighDateTime;
+	date.LowPart = ft.dwLowDateTime;
+
+	// 100-nanoseconds = milliseconds * 10000
+	adjust.QuadPart = 11644473600000 * 10000;
+
+	// removes the diff between 1970 and 1601
+	date.QuadPart -= adjust.QuadPart;
+
+	// converts back from 100-nanoseconds to seconds
+	return (uint64_t) (date.QuadPart / 10000000);
 }
 
-// https://stackoverflow.com/a/6161842
 bool mfile_get_time(mfile_t *file, mfiletime_t *time) {
     WIN32_FILE_ATTRIBUTE_DATA data;
     if (GetFileAttributesExA(file->path, GetFileExInfoStandard, &data)) {
-        time->time = _windows_ticks_to_unix_time(data.ftLastWriteTime);
+        time->unix_time = _FILETIME_to_unix_time(data.ftLastWriteTime);
 		return true;
     }
     else {
@@ -269,6 +278,74 @@ static void _directory_add_file(const char *file_path, void *data) {
 
 #if defined(_WIN32)
 
+static void _directory_recurse(const char *dir_name, void (*fn)(const char *file_path, void*), void *data, bool recurse) {
+    WIN32_FIND_DATA find_data;
+    HANDLE handle = INVALID_HANDLE_VALUE;
+
+    // Have to append \* to dir_name
+    char dname[MFILE_MAX_PATH];
+    int dir_name_len = (int)strlen(dir_name);
+    for (int i = 0; i < dir_name_len; i++) {
+        if (i >= MFILE_MAX_PATH) {
+            dname[MFILE_MAX_PATH - 1] = 0;
+            break;
+        }
+        dname[i] = dir_name[i];
+    }
+    if (dir_name_len + 3 >= MFILE_MAX_PATH) {
+        dname[MFILE_MAX_PATH - 1] = 0;
+    }
+    else {
+        dname[dir_name_len] = '\\';
+        dname[dir_name_len + 1] = '*';
+        dname[dir_name_len + 2] = 0;
+    }
+
+    handle = FindFirstFile(dname, &find_data);
+    if (handle == INVALID_HANDLE_VALUE) {
+        assert(false);
+        return;
+    }
+    while (true) {
+        char full_path[MFILE_MAX_PATH];
+        char *fname = find_data.cFileName;
+        int fname_len = (int)strlen(fname);
+
+        for (int i = 0; i < dir_name_len; i++) {
+            if (i >= MFILE_MAX_PATH) {
+                full_path[MFILE_MAX_PATH - 1] = 0;
+                break;
+            }
+            full_path[i] = dir_name[i];
+        }
+        if (dir_name_len + 1 + fname_len + 1 >= MFILE_MAX_PATH) {
+            full_path[MFILE_MAX_PATH - 1] = 0;
+        }
+        else {
+            full_path[dir_name_len] = '/';
+            for (int j = 0; j < fname_len; j++) {
+                full_path[dir_name_len + 1 + j] = fname[j];
+            }
+            full_path[dir_name_len + 1 + fname_len] = 0;
+        }
+
+        if (recurse && (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+            if ((strcmp(fname, ".") != 0) && (strcmp(fname, "..") != 0)) {
+                _directory_recurse(full_path, fn, data, recurse);
+            }
+        }
+        else if (!!(find_data.dwFileAttributes & FILE_ATTRIBUTE_NORMAL) ||
+                !(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+            _directory_add_file(full_path, data);
+        }
+
+        if (FindNextFile(handle, &find_data) == 0) {
+            break;
+        }
+    }
+}
+
+/*
 void mdir_init(mdir_t *dir, const char *dir_name, bool recurse) {
     WIN32_FIND_DATA find_data;
     HANDLE handle = INVALID_HANDLE_VALUE;
@@ -354,6 +431,7 @@ void mdir_init(mdir_t *dir, const char *dir_name, bool recurse) {
         }
     }
 }
+*/
 
 #else
 
@@ -411,6 +489,8 @@ static void _directory_recurse(const char *dir_name, void (*fn)(const char *file
 	closedir(dir_ptr);
 }
 
+#endif
+
 void mdir_init(mdir_t *dir, const char *dir_name, bool recurse) {
     vec_mfile_t files;
     vec_init(&files);
@@ -421,8 +501,6 @@ void mdir_init(mdir_t *dir, const char *dir_name, bool recurse) {
     memcpy(dir->files, files.data, sizeof(mfile_t) * files.length);
     vec_deinit(&files);
 }
-
-#endif
 
 void mdir_deinit(mdir_t *dir) {
     free(dir->files);
