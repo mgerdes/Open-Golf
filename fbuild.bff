@@ -1,52 +1,42 @@
-.VSBasePath = 'C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023'
-.WindowsSDKBasePath = 'C:\Program Files (x86)\Windows Kits\10\Lib\10.0.17763.0'
-.INCLUDE = 'src;libraries;C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\include;;C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\atlmfc\include;;C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\VS\include;;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\ucrt;;;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\um;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\shared;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\winrt;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\cppwinrt;Include\um;'
+.OSXCompiler = '/usr/bin/clang'
+.OSXCompilerOptions = '%1 -o %2 -c -Isrc -Ilibs -Wall -Wno-unused-function -Wno-unused-variable -g -DSOKOL_GLCORE33 -DHOLE_EDITOR -DHOTLOADER_ACTIVE'
 
-Library('game-macos')
+ObjectList('core-osx-debug')
 {
-    .Compiler = '/usr/bin/clang'
+    .Compiler = '$OSXCompiler$'
     .CompilerInputPath = { 'src/' }
     .CompilerInputPattern = '*.c'
-    .CompilerOutputPath = 'out/game/'
-    .CompilerOptions = '-x objective-c -c -o %2 %1 -Isrc -Ilibraries -Wall -Wno-unused-function -Wno-unused-variable -g -DSOKOL_GLCORE33 -DHOLE_EDITOR -DHOTLOADER_ACTIVE'
-
-    .Librarian = '/usr/bin/ar'
-    .LibrarianOutput = 'out/game/game.a'
-    .LibrarianOptions = 'rcs %2 %1'
+    .CompilerOutputPath = 'out/osx-debug/core/'
+    .CompilerOptions = '-x objective-c ' + 
+                    '$OSXCompilerOptions$ '
 }
 
-Library('cpp-libs-macos')
+ObjectList('cpp-libs-osx-debug')
 {
-    .Compiler = '/usr/bin/clang'
-    .CompilerInputPath = 'libraries/'
-    .CompilerOutputPath = 'out/cpp-libs/'
+    .Compiler = '$OSXCompiler$'
+    .CompilerInputPath = 'libs/'
+    .CompilerOutputPath = 'out/osx-debug/cpp-libs/'
     .CompilerInputPattern = '*.cpp'
-    .CompilerOptions = '-c -o %2 %1 -Isrc -Ilibraries -Wall -g -std=c++11'
-
-    .Librarian = '/usr/bin/ar'
-    .LibrarianOutput = 'out/cpp-libs/cpp-libs.a'
-    .LibrarianOptions = 'rcs %2 %1'
+    .CompilerOptions = '$OSXCompilerOptions$ ' +
+                    '-std=c++11'
 }
 
-Library('c-libs-macos')
+ObjectList('c-libs-osx-debug')
 {
     .Compiler = '/usr/bin/clang'
-    .CompilerInputPath = 'libraries/'
-    .CompilerOutputPath = 'out/c-libs/'
+    .CompilerInputPath = 'libs/'
+    .CompilerOutputPath = 'out/osx-debug/c-libs/'
     .CompilerInputPattern = '*.c'
-    .CompilerOptions = '-x objective-c -c %1 -o %2 -Isrc -Ilibraries -Wall -Wno-unused-function -Wno-unused-variable -g'
-
-    .Librarian = '/usr/bin/ar'
-    .LibrarianOutput = 'out/c-libs/c-libs.a'
-    .LibrarianOptions = 'rcs %2 %1'
+    .CompilerOptions = '-x objective-c ' +
+                    '$OSXCompilerOptions$ '
 }
 
-Executable('minigolf-macos') 
+Executable('minigolf-osx-debug') 
 {
     .Linker = '/usr/bin/clang'
-    .LinkerOutput = 'out/minigolf'
-    .LinkerOptions = '-o %2 %1 -lm -lpthread -framework Cocoa -framework CoreServices -framework OpenGL -framework AudioToolbox -lstdc++ -g'
-    .Libraries = { 'game-macos', 'cpp-libs-macos', 'c-libs-macos' }
+    .LinkerOutput = 'out/osx-debug/minigolf'
+    .LinkerOptions = '-o %2 %1 -lm -lpthread -lstdc++ -framework Cocoa -framework CoreServices -framework OpenGL -framework AudioToolbox -g'
+    .Libraries = { 'core-osx-debug', 'cpp-libs-osx-debug', 'c-libs-osx-debug' }
 }
 
 XCodeProject('minigolf-xcode')
@@ -55,11 +45,16 @@ XCodeProject('minigolf-xcode')
     .ProjectInputPaths = { 'src/', 'libs/' }
     .DebugConfig = [ 
         .Config = 'Debug' 
-        .Target = 'minigolf-macos'
+        .Target = 'minigolf-osx-debug'
     ]
     .ProjectBasePath = './'
     .ProjectConfigs = { .DebugConfig }
 }
+
+.VSBasePath = 'C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023'
+.WindowsSDKBasePath = 'C:\Program Files (x86)\Windows Kits\10\Lib\10.0.17763.0'
+.INCLUDE = 'src;libraries;C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\include;;C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\atlmfc\include;;C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\VS\include;;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\ucrt;;;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\um;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\shared;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\winrt;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\cppwinrt;Include\um;'
+
 
 ObjectList('game-windows')
 {

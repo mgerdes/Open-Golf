@@ -1,1 +1,1 @@
-tools/FASTBuild/osx/FBuild minigolf-macos
+tools/FASTBuild/osx/FBuild minigolf-osx-debug $@
