@@ -1,3 +1,57 @@
+//
+// HTML5
+//
+
+.HTMLCompilerOptions = '%1 -o %2 -c -O3 -Isrc -Ilibs -DSOKOL_GLES3 -DNDEBUG -s USE_PTHREADS=1'
+
+Compiler('emcc')
+{
+    .Executable = '/Users/michaelgerdes/code/emsdk/upstream/emscripten/emcc'
+    .CompilerFamily = 'custom'
+}
+
+ObjectList('core-html-debug')
+{
+    .Compiler = 'emcc'
+    .CompilerFamily = 'custom'
+    .CompilerInputPath = { 'src/' }
+    .CompilerInputPattern = '*.c'
+    .CompilerOptions = '$HTMLCompilerOptions$'
+    .CompilerOutputPath = 'out/html-debug/core/'
+}
+
+ObjectList('cpp-libs-html-debug')
+{
+    .Compiler = 'emcc'
+    .CompilerFamily = 'custom'
+    .CompilerInputPath = { 'libs/' }
+    .CompilerInputPattern = '*.cpp'
+    .CompilerOptions = '$HTMLCompilerOptions$'
+    .CompilerOutputPath = 'out/html-debug/cpp-libs/'
+}
+
+ObjectList('c-libs-html-debug')
+{
+    .Compiler = 'emcc'
+    .CompilerFamily = 'custom'
+    .CompilerInputPath = { 'libs/' }
+    .CompilerInputPattern = '*.c'
+    .CompilerOptions = '$HTMLCompilerOptions$'
+    .CompilerOutputPath = 'out/html-debug/cpp-libs/'
+}
+
+Executable('minigolf-html-debug') 
+{
+    .Linker = '/Users/michaelgerdes/code/emsdk/upstream/emscripten/emcc'
+    .LinkerOutput = 'out/html-debug/minigolf.html'
+    .LinkerOptions = '%1 -o %2 --preload-file assets -s USE_WEBGL2=1 -s FULL_ES3=1 -s ERROR_ON_UNDEFINED_SYMBOLS=1 -s ALLOW_MEMORY_GROWTH=1 -s USE_PTHREADS=1 -s WASM_MEM_MAX=100Mb --preload-file assets --shell-file build/html/shell.html'
+    .Libraries = { 'core-html-debug', 'cpp-libs-html-debug', 'c-libs-html-debug' }
+}
+
+//
+// OSX
+//
+
 .OSXCompiler = '/usr/bin/clang'
 .OSXCompilerOptions = '%1 -o %2 -c -Isrc -Ilibs -Wall -Wno-unused-function -Wno-unused-variable -g -DSOKOL_GLCORE33 -DHOLE_EDITOR -DHOTLOADER_ACTIVE'
 

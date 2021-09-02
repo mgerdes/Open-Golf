@@ -1194,7 +1194,7 @@ static void create_font(struct font *font, mfile_t *file) {
     mfile_free_data(file);
 }
 
-static bool _mdata_texture_mdata_file_creator(mfile_t file, mdata_file_t *mdata_file, void *udata) {
+static bool _mdata_texture_file_creator(mfile_t file, mdata_file_t *mdata_file, void *udata) {
     mdata_file_add_val_int(mdata_file, "version", 0);
 
     if (!mfile_load_data(&file)) {

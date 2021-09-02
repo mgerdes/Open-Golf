@@ -4,6 +4,7 @@
 
 #include "mfile.h"
 #include "hotloader.h"
+#include "log.h"
 #include "map.h"
 
 map_int_t _int_map;
@@ -14,6 +15,7 @@ map_vec4_t _vec4_map;
 
 static bool config_update(mfile_t file, bool first_time, void *udata) {
     if (!mfile_load_data(&file)) {
+        m_logf("Could not load file: %s\n", file.path);
         return false;
     }
 
