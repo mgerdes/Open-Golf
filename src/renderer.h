@@ -17,6 +17,14 @@ struct font {
     } chars[256];
 };
 
+typedef struct _mtexture {
+    unsigned char *data;
+    int width, height;
+    sg_image sg_image;
+} mtexture_t;
+
+typedef map_t(mtexture_t) map_mtexture_t;
+
 struct renderer {
     int window_width, window_height;
     int game_fb_width, game_fb_height;
@@ -27,6 +35,8 @@ struct renderer {
     float near_plane, far_plane;
     mat4 proj_mat, view_mat, proj_view_mat;
     mat4 ui_proj_mat;
+
+    map_mtexture_t texture_map;
 
     struct {
         sg_image 

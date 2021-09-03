@@ -7558,7 +7558,7 @@ static bool _mdata_mscript_mdata_file_creator(int num_files, mfile_t *files, boo
         mdata_file_t *mdata_file = mdata_files[i];
         mscript_program_t *program = mscript->programs_array.data[i];
 
-        mdata_file_add_val_int(mdata_file, "version", 0);
+        mdata_file_add_val_int(mdata_file, "version", 0, false);
 
         mstring_t str;
         mstring_init(&str, "");
@@ -7819,7 +7819,7 @@ mscript_t *mscript_create(const char *dir_name) {
     _mscript_type_init(&mscript->bool_array_type, "bool[]", MSCRIPT_TYPE_ARRAY, &mscript->bool_type, NULL, sizeof(int));
     _mscript_type_init(&mscript->char_star_type, "char*", MSCRIPT_TYPE_CHAR_STAR, NULL, NULL, sizeof(int));
 
-    mdata_add_extension_handler(dir_name, ".mscript", _mdata_mscript_mdata_file_creator, mscript);
+    //mdata_add_extension_handler(dir_name, ".mscript", _mdata_mscript_mdata_file_creator, mscript);
 
     return mscript;
 }
