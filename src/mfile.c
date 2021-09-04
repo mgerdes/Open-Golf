@@ -303,7 +303,7 @@ static void _directory_recurse(const char *dir_name, void (*fn)(const char *file
 
     handle = FindFirstFile(dname, &find_data);
     if (handle == INVALID_HANDLE_VALUE) {
-        assert(false);
+        //assert(false);
         return;
     }
     while (true) {

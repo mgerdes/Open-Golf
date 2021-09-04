@@ -107,7 +107,7 @@ XCodeProject('minigolf-xcode')
 
 .VSBasePath = 'C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023'
 .WindowsSDKBasePath = 'C:\Program Files (x86)\Windows Kits\10\Lib\10.0.17763.0'
-.INCLUDE = 'src;libraries;C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\include;;C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\atlmfc\include;;C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\VS\include;;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\ucrt;;;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\um;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\shared;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\winrt;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\cppwinrt;Include\um;'
+.INCLUDE = 'src;libs;C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\include;;C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\atlmfc\include;;C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\VS\include;;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\ucrt;;;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\um;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\shared;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\winrt;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\cppwinrt;Include\um;'
 
 
 ObjectList('game-windows')
@@ -129,7 +129,7 @@ ObjectList('game-windows')
                 + ' /D SOKOL_GLCORE33'
                 + ' /D HOTLOADER_ACTIVE'
                 + ' /I src'
-                + ' /I libraries'
+                + ' /I libs'
                 + ' /I "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\include"'
                 + ' /I "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\atlmfc\include"'
                 + ' /I "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\VS\include"'
@@ -143,7 +143,7 @@ ObjectList('game-windows')
 ObjectList('cpp-libs-windows')
 {
     .Compiler = '$VSBasePath$\bin\Hostx64\x64\cl.exe'
-    .CompilerInputPath = { 'libraries/' }
+    .CompilerInputPath = { 'libs/' }
     .CompilerInputPattern = '*.cpp'
     .CompilerOutputPath = 'out/cpp-libs-windows/'
     .CompilerOptions = '"%1"'
@@ -159,7 +159,7 @@ ObjectList('cpp-libs-windows')
                 + ' /D SOKOL_GLCORE33'
                 + ' /D HOTLOADER_ACTIVE'
                 + ' /I src'
-                + ' /I libraries'
+                + ' /I libs'
                 + ' /I "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\include"'
                 + ' /I "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\atlmfc\include"'
                 + ' /I "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\VS\include"'
@@ -173,7 +173,7 @@ ObjectList('cpp-libs-windows')
 ObjectList('c-libs-windows')
 {
     .Compiler = '$VSBasePath$\bin\Hostx64\x64\cl.exe'
-    .CompilerInputPath = { 'libraries/' }
+    .CompilerInputPath = { 'libs/' }
     .CompilerInputPattern = '*.c'
     .CompilerOutputPath = 'out/c-libs-windows/'
     .CompilerOptions = '"%1"'
@@ -189,7 +189,7 @@ ObjectList('c-libs-windows')
                 + ' /D SOKOL_GLCORE33'
                 + ' /D HOTLOADER_ACTIVE'
                 + ' /I src'
-                + ' /I libraries'
+                + ' /I libs'
                 + ' /I "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\include"'
                 + ' /I "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\atlmfc\include"'
                 + ' /I "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\VS\include"'
@@ -210,7 +210,7 @@ Executable('minigolf-windows')
                 + ' /ignore:4217'
                 + ' /ignore:4098'
                 + ' /INCREMENTAL'
-                + ' /LIBPATH:"libraries/GLFW"'
+                + ' /LIBPATH:"libs/GLFW"'
                 + ' /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\lib\x64"'
                 + ' /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\atlmfc\lib\x64"'
                 + ' /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\VS\lib\x64"'
@@ -242,8 +242,8 @@ Executable('minigolf-windows')
 
 .ProjectCommon = 
 [
-    .ProjectBuildCommand = 'cd ^$(SolutionDir)..\..\ &amp; tools\FASTBuild\windows\FBuild.exe -ide -dist -cache ^$(ProjectName)'
-    .ProjectRebuildCommand = 'cd ^$(SolutionDir)..\..\ &amp; tools\FASTBuild\windows\FBuild.exe -ide -dist -cache -clean ^$(ProjectName)'
+    .ProjectBuildCommand = 'cd ^$(SolutionDir)..\..\ &amp; tools\FASTBuild\win32\FBuild.exe -ide -dist -cache ^$(ProjectName)'
+    .ProjectRebuildCommand = 'cd ^$(SolutionDir)..\..\ &amp; tools\FASTBuild\win32\FBuild.exe -ide -dist -cache -clean ^$(ProjectName)'
     .LocalDebuggerCommand = 'out\minigolf.exe'
     .LocalDebuggerWorkingDirectory = '^$(SolutionDir)..\..\'
 ]

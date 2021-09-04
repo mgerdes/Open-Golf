@@ -13,6 +13,7 @@ void mdata_add_extension_handler(const char *ext, bool (*mdata_file_creator)(mfi
 
 bool mdata_file_get_val_int(mdata_file_t *mdata_file, const char *field, int *val);
 bool mdata_file_get_val_uint64(mdata_file_t *mdata_file, const char *field, uint64_t *val);
+bool mdata_file_get_val_string(mdata_file_t *mdata_file, const char *field, const char **string);
 bool mdata_file_get_val_binary_data(mdata_file_t *mdata_file, const char *field, char **data, int *data_len);
 
 void mdata_file_add_val_int(mdata_file_t *mdata_file, const char *field, int int_val, bool user_set);

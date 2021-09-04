@@ -1219,13 +1219,28 @@ static bool _mdata_texture_file_handler(const char *file_path, mdata_file_t *mda
     stbi_set_flip_vertically_on_load(0);
     unsigned char *data = stbi_load_from_memory((unsigned char*) tex_data, tex_data_len, &x, &y, &n, force_channels);
     assert(data);
+
     
+    sg_filter filter = SG_FILTER_LINEAR;
+    const char *filter_string = NULL;
+    if (mdata_file_get_val_string(mdata_file, "filter", &filter_string)) {
+        if (strcmp(filter_string, "linear") == 0) {
+            filter = SG_FILTER_LINEAR;
+        }
+        else if (strcmp(filter_string, "nearest") == 0) {
+            filter = SG_FILTER_NEAREST;
+        }
+        else {
+
+        }
+    }
+
     sg_image_desc img_desc = {
         .width = x,
         .height = y,
         .pixel_format = SG_PIXELFORMAT_RGBA8,
-        .min_filter = SG_FILTER_LINEAR,
-        .mag_filter = SG_FILTER_LINEAR,
+        .min_filter = filter,
+        .mag_filter = filter,
         .wrap_u = SG_WRAP_REPEAT,
         .wrap_v = SG_WRAP_REPEAT,
         .content.subimage[0][0] = {
