@@ -4,6 +4,7 @@
 
 #include <assert.h>
 
+#include "base64.h"
 #include "data_stream.h"
 #include "hotloader.h"
 #include "mstring.h"
@@ -107,16 +108,7 @@ mdata_file_t *_load_mdata_file(mfile_t file) {
             while (file.data[i++] != '\n');
         }
         else if (strcmp(type, "bin_data") == 0) {
-            int bin_data_len = 0;
-            while (file.data[i] != ' ') {
-                if (file.data[i] < '0' || file.data[i] > '9') assert(false);
-                bin_data_len *= 10;
-                bin_data_len += (file.data[i] - '0');
-                i++;
-                if (i >= file.data_len) assert(false);
-            }
-            // skip over the space, the binary data, and the newline
-            i += (bin_data_len + 2);
+            while (file.data[i++] != '\n');
         }
         else {
             assert(false);
@@ -173,8 +165,8 @@ void mdata_add_extension_handler(const char *ext, bool (*mdata_file_creator)(mfi
 
         mstring_t str; 
         mstring_init(&str, "");
-        for (int i = 0; i < mdata_file->vals.length; i++) {
-            _mdata_file_val_t file_val = mdata_file->vals.data[i];
+        for (int j = 0; j < mdata_file->vals.length; j++) {
+            _mdata_file_val_t file_val = mdata_file->vals.data[j];
             switch (file_val.type) {
                 case _MDATA_FILE_VAL_TYPE_INT:
                     mstring_appendf(&str, "int %s %d\n", file_val.name, file_val.int_val);
@@ -186,9 +178,11 @@ void mdata_add_extension_handler(const char *ext, bool (*mdata_file_creator)(mfi
                     mstring_appendf(&str, "string %s \"%s\"\n", file_val.name, file_val.string_val);
                     break;
                 case _MDATA_FILE_VAL_TYPE_BIN_DATA:
-                    mstring_appendf(&str, "bin_data %s %d ", file_val.name, file_val.data_val.len);
-                    mstring_append_cstr_len(&str, file_val.data_val.data, file_val.data_val.len);
-                    mstring_appendf(&str, "\n");
+                    {
+                        char *encoding = base64_encode((const unsigned char*)file_val.data_val.data, file_val.data_val.len);
+                        mstring_appendf(&str, "bin_data %s %s\n", file_val.name, encoding);
+                        free(encoding);
+                    }
                     break;
             }
         }
