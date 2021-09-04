@@ -14,6 +14,5 @@ void mstring_append_str(mstring_t *str, mstring_t *str2);
 void mstring_append_cstr(mstring_t *str, const char *cstr);
 void mstring_append_cstr_len(mstring_t *str, const char *cstr, int cstr_len);
 void mstring_appendf(mstring_t *str, const char *format, ...);
-void mstring_append_base64_encode(mstring_t *str, const unsigned char *src, int len);
 
 #endif
