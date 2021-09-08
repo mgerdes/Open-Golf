@@ -1199,9 +1199,9 @@ static bool _mdata_texture_file_creator(mfile_t file, mdata_file_t *mdata_file, 
         return false;
     }
 
-    mdata_file_add_val_int(mdata_file, "version", 0, false);
-    mdata_file_add_val_string(mdata_file, "filter", "linear", true);
-    mdata_file_add_val_binary_data(mdata_file, "tex_data", file.data, file.data_len, false);
+    mdata_file_add_int(mdata_file, "version", 0, false);
+    mdata_file_add_string(mdata_file, "filter", "linear", true);
+    mdata_file_add_data(mdata_file, "tex_data", file.data, file.data_len, false);
 
     mfile_free_data(&file);
     return true;
@@ -1212,7 +1212,7 @@ static bool _mdata_texture_file_handler(const char *file_path, mdata_file_t *mda
 
     char *tex_data;
     int tex_data_len;
-    mdata_file_get_val_binary_data(mdata_file, "tex_data", &tex_data, &tex_data_len);
+    mdata_file_get_data(mdata_file, "tex_data", &tex_data, &tex_data_len);
 
     int x, y, n;
     int force_channels = 4;
@@ -1223,7 +1223,7 @@ static bool _mdata_texture_file_handler(const char *file_path, mdata_file_t *mda
     
     sg_filter filter = SG_FILTER_LINEAR;
     const char *filter_string = NULL;
-    if (mdata_file_get_val_string(mdata_file, "filter", &filter_string)) {
+    if (mdata_file_get_string(mdata_file, "filter", &filter_string)) {
         if (strcmp(filter_string, "linear") == 0) {
             filter = SG_FILTER_LINEAR;
         }

@@ -3,46 +3,51 @@
 #include "mdata.h"
 
 #include <assert.h>
+#include "map.h"
+#include "vec.h"
 
 #include "base64.h"
 #include "data_stream.h"
 #include "hotloader.h"
+#include "mcommon.h"
 #include "mstring.h"
 #include "log.h"
 
-#define _MDATA_VAL_MAX_NAME 32
+#define _VAL_MAX_NAME_LEN 32
 
-enum _mdata_file_val_type {
-    _MDATA_FILE_VAL_TYPE_INT,
-    _MDATA_FILE_VAL_TYPE_UINT64,
-    _MDATA_FILE_VAL_TYPE_STRING,
-    _MDATA_FILE_VAL_TYPE_BIN_DATA,
+enum _val_type {
+    _VAL_TYPE_INT,
+    _VAL_TYPE_UINT64,
+    _VAL_TYPE_STRING,
+    _VAL_TYPE_DATA,
 };
 
-typedef struct _mdata_file_val {
-    enum _mdata_file_val_type type;
+typedef struct _val {
+    enum _val_type type;
     union {
         int int_val;
         uint64_t uint64_val;
         struct {
-            char *data;
-            int len;
-        } data_val;
+            char *data_val;
+            int data_val_len;
+        };
         char *string_val;
     };
-    char name[_MDATA_VAL_MAX_NAME + 1];
+    char name[_VAL_MAX_NAME_LEN];
     bool user_set;
-} _mdata_file_val_t;
+} _val_t;
 
-typedef vec_t(_mdata_file_val_t) _vec_mdata_file_val_t;
+typedef vec_t(_val_t) _vec_val_t;
+typedef map_t(_val_t) _map_val_t;
 
 struct mdata_file {
-    _vec_mdata_file_val_t vals; 
+    _map_val_t vals_map;
+    _vec_val_t vals_vec; 
 };
 
 typedef vec_t(mdata_file_t*) _vec_mdata_file_ptr_t;
 
-typedef struct _mdata_extension_handler {
+typedef struct _ext_handler {
     vec_mfile_t files;
     vec_mfiletime_t file_load_times;
     _vec_mdata_file_ptr_t mdata_files;
@@ -50,10 +55,46 @@ typedef struct _mdata_extension_handler {
     void *udata;
     bool (*mdata_file_creator)(mfile_t file, mdata_file_t *mdata_file, void *udata);
     bool (*mdata_file_handler)(const char *file_path, mdata_file_t *mdata_file, void *udata);
-} _mdata_extension_handler_t;
+} _ext_handler_t;
 
-typedef vec_t(_mdata_extension_handler_t) _vec_mdata_extension_handler_t;
+typedef vec_t(_ext_handler_t) _vec_mdata_extension_handler_t;
 static _vec_mdata_extension_handler_t _extension_handlers;
+
+static _val_t _create_int_val(const char *name, int int_val) {
+    _val_t val;
+    val.type = _VAL_TYPE_INT;
+    mstrncpy(val.name, name, _VAL_MAX_NAME_LEN);
+    val.int_val = int_val;
+    return val;
+}
+
+static _val_t _create_uint64_val(const char *name, uint64_t uint64_val) {
+    _val_t val;
+    val.type = _VAL_TYPE_UINT64;
+    mstrncpy(val.name, name, _VAL_MAX_NAME_LEN);
+    val.uint64_val = uint64_val;
+    return val;
+}
+
+static _val_t _create_string_val(const char *name, const char *string_val) {
+    _val_t val;
+    val.type = _VAL_TYPE_STRING;
+    mstrncpy(val.name, name, _VAL_MAX_NAME_LEN);
+    int n = strlen(string_val) + 1;
+    val.string_val = malloc(sizeof(char) * n);
+    mstrncpy(val.string_val, string_val, n);
+    return val;
+}
+
+static _val_t _create_data_val(const char *name, const char *data, int len) {
+    _val_t val;
+    val.type = _VAL_TYPE_DATA;
+    mstrncpy(val.name, name, _VAL_MAX_NAME_LEN);
+    val.data_val = malloc(len);
+    val.data_val_len = len;
+    memcpy(val.data_val, data, len);
+    return val;
+}
 
 void mdata_init(void) {
     vec_init(&_extension_handlers);
@@ -65,14 +106,15 @@ mdata_file_t *_load_mdata_file(mfile_t file) {
     }
 
     mdata_file_t *mdata_file = malloc(sizeof(mdata_file_t));
-    vec_init(&mdata_file->vals);
+    map_init(&mdata_file->vals_map);
+    vec_init(&mdata_file->vals_vec);
     int i = 0;
     while (i < file.data_len) {
         int type_len = 0;
         char type[32]; 
 
         int name_len = 0;
-        char name[_MDATA_VAL_MAX_NAME + 1];
+        char name[_VAL_MAX_NAME_LEN + 1];
 
         while (file.data[i] != ' ') {
             if (i >= file.data_len) assert(false);
@@ -89,7 +131,7 @@ mdata_file_t *_load_mdata_file(mfile_t file) {
         while (file.data[i] != ' ') {
             if (i >= file.data_len) assert(false);
             name[name_len++] = file.data[i++];
-            if (name_len >= _MDATA_VAL_MAX_NAME + 1) {
+            if (name_len >= _VAL_MAX_NAME_LEN + 1) {
                 assert(false);
             }
         }
@@ -98,8 +140,21 @@ mdata_file_t *_load_mdata_file(mfile_t file) {
         if (i >= file.data_len) assert(false);
         i++;
 
+        _val_t val;
+        memset(&val, 0, sizeof(val));
         if (strcmp(type, "int") == 0) {
-            while (file.data[i++] != '\n');
+            int int_val = 0;
+            while (file.data[i] != '\n') {
+                if (file.data[i] < '0' || file.data[i] > '9') {
+                    assert(false);
+                }
+
+                int_val *= 10;
+                int_val += file.data[i++] - '0';
+            }
+            i++;
+
+            val = _create_int_val(name, int_val);
         }
         else if (strcmp(type, "uint64") == 0) {
             while (file.data[i++] != '\n');
@@ -112,14 +167,26 @@ mdata_file_t *_load_mdata_file(mfile_t file) {
                 mstring_append_char(&string, file.data[i++]);
             }
             i++;
-            mdata_file_add_val_string(mdata_file, name, string.cstr, false);
+
+            val = _create_string_val(name, string.cstr);
+            mstring_deinit(&string);
         }
-        else if (strcmp(type, "bin_data") == 0) {
-            while (file.data[i++] != '\n');
+        else if (strcmp(type, "data") == 0) {
+            mstring_t data;
+            mstring_init(&data, "");
+            while (file.data[i] != '\n') {
+                mstring_append_char(&data, file.data[i++]);
+            }
+            i++;
+
+            val = _create_data_val(name, data.cstr, data.len);
+            mstring_deinit(&data);
         }
         else {
             assert(false);
         }
+
+        map_set(&mdata_file->vals_map, val.name, val);
     }
     assert(i == file.data_len);
 
@@ -129,10 +196,10 @@ mdata_file_t *_load_mdata_file(mfile_t file) {
 
 static void _delete_mdata_file(mdata_file_t *mdata_file) {
     free(mdata_file);
-} 
+}
 
 void mdata_add_extension_handler(const char *ext, bool (*mdata_file_creator)(mfile_t files, mdata_file_t *mdata_files, void *udata), bool (*mdata_file_handler)(const char *file_path, mdata_file_t *mdata_file, void *udata), void *udata) {
-    _mdata_extension_handler_t handler;
+    _ext_handler_t handler;
     vec_init(&handler.files);
     vec_init(&handler.file_load_times);
     vec_init(&handler.mdata_files);
@@ -167,28 +234,28 @@ void mdata_add_extension_handler(const char *ext, bool (*mdata_file_creator)(mfi
 
         mstring_t str; 
         mstring_init(&str, "");
-        for (int j = 0; j < mdata_file->vals.length; j++) {
-            _mdata_file_val_t file_val = mdata_file->vals.data[j];
+        for (int j = 0; j < mdata_file->vals_vec.length; j++) {
+            _val_t file_val = mdata_file->vals_vec.data[j];
             switch (file_val.type) {
-                case _MDATA_FILE_VAL_TYPE_INT:
+                case _VAL_TYPE_INT:
                     {
                         mstring_appendf(&str, "int %s %d\n", file_val.name, file_val.int_val);
                     }
                     break;
-                case _MDATA_FILE_VAL_TYPE_UINT64:
+                case _VAL_TYPE_UINT64:
                     {
                         mstring_appendf(&str, "uint64 %s %u\n", file_val.name, file_val.uint64_val);
                     }
                     break;
-                case _MDATA_FILE_VAL_TYPE_STRING:
+                case _VAL_TYPE_STRING:
                     {
                         mstring_appendf(&str, "string %s %s\n", file_val.name, file_val.string_val);
                     }
                     break;
-                case _MDATA_FILE_VAL_TYPE_BIN_DATA:
+                case _VAL_TYPE_DATA:
                     {
-                        char *encoding = base64_encode((const unsigned char*)file_val.data_val.data, file_val.data_val.len);
-                        mstring_appendf(&str, "bin_data %s %s\n", file_val.name, encoding);
+                        char *encoding = base64_encode((const unsigned char*)file_val.data_val, file_val.data_val_len);
+                        mstring_appendf(&str, "data %s %s\n", file_val.name, encoding);
                         free(encoding);
                     }
                     break;
@@ -203,142 +270,87 @@ void mdata_add_extension_handler(const char *ext, bool (*mdata_file_creator)(mfi
     vec_push(&_extension_handlers, handler);
 }
 
-static _mdata_file_val_t *_get_mdata_file_val(mdata_file_t *mdata_file, const char *field) {
-    for (int i = 0; i < mdata_file->vals.length; i++) {
-        _mdata_file_val_t *mdata_val = &mdata_file->vals.data[i];
-        if (strcmp(mdata_val->name, field) == 0) {
-            return mdata_val;
-        }
-    }
-    return NULL;
-}
-
-bool mdata_file_get_val_int(mdata_file_t *mdata_file, const char *field, int *val) {
-    _mdata_file_val_t *mdata_val = _get_mdata_file_val(mdata_file, field);
-    if (mdata_val && mdata_val->type == _MDATA_FILE_VAL_TYPE_INT) {
+bool mdata_file_get_int(mdata_file_t *mdata_file, const char *field, int *val) {
+    _val_t *mdata_val = map_get(&mdata_file->vals_map, field);
+    if (mdata_val && mdata_val->type == _VAL_TYPE_INT) {
         *val = mdata_val->int_val;
         return true;
     }
     return false;
 }
 
-bool mdata_file_get_val_uint64(mdata_file_t *mdata_file, const char *field, uint64_t *val) {
-    _mdata_file_val_t *mdata_val = _get_mdata_file_val(mdata_file, field);
-    if (mdata_val && mdata_val->type == _MDATA_FILE_VAL_TYPE_UINT64) {
+bool mdata_file_get_uint64(mdata_file_t *mdata_file, const char *field, uint64_t *val) {
+    _val_t *mdata_val = map_get(&mdata_file->vals_map, field);
+    if (mdata_val && mdata_val->type == _VAL_TYPE_UINT64) {
         *val = mdata_val->uint64_val;
         return true;
     }
     return false;
 }
 
-bool mdata_file_get_val_string(mdata_file_t *mdata_file, const char *field, const char **string) {
-    _mdata_file_val_t *mdata_val = _get_mdata_file_val(mdata_file, field);
-    if (mdata_val && mdata_val->type == _MDATA_FILE_VAL_TYPE_STRING) {
+bool mdata_file_get_string(mdata_file_t *mdata_file, const char *field, const char **string) {
+    _val_t *mdata_val = map_get(&mdata_file->vals_map, field);
+    if (mdata_val && mdata_val->type == _VAL_TYPE_STRING) {
         *string = mdata_val->string_val;
         return true;
     }
     return false;
 }
 
-bool mdata_file_get_val_binary_data(mdata_file_t *mdata_file, const char *field, char **data, int *data_len) {
-    _mdata_file_val_t *mdata_val = _get_mdata_file_val(mdata_file, field);
-    if (mdata_val && mdata_val->type == _MDATA_FILE_VAL_TYPE_BIN_DATA) {
-        *data = mdata_val->data_val.data;
-        *data_len = mdata_val->data_val.len;
+bool mdata_file_get_data(mdata_file_t *mdata_file, const char *field, char **data, int *data_len) {
+    _val_t *mdata_val = map_get(&mdata_file->vals_map, field);
+    if (mdata_val && mdata_val->type == _VAL_TYPE_DATA) {
+        *data = mdata_val->data_val;
+        *data_len = mdata_val->data_val_len;
         return true;
     }
     return false;
 }
 
-void mdata_file_add_val_int(mdata_file_t *mdata_file, const char *field, int int_val, bool user_set) {
-    _mdata_file_val_t *mdata_val = _get_mdata_file_val(mdata_file, field);
-    if (mdata_val) {
-        if (user_set && mdata_val->type == _MDATA_FILE_VAL_TYPE_INT) {
+void mdata_file_add_int(mdata_file_t *mdata_file, const char *field, int int_val, bool user_set) {
+    if (user_set) {
+        _val_t *val = map_get(&mdata_file->vals_map, field);
+        if (val && val->type == _VAL_TYPE_INT) {
+            vec_push(&mdata_file->vals_vec, *val);
             return;
         }
     }
-    else {
-        _mdata_file_val_t val;
-        memset(&val, 0, sizeof(val));
-        vec_push(&mdata_file->vals, val);
-        mdata_val = &vec_last(&mdata_file->vals);
-    }
 
-    mdata_val->type = _MDATA_FILE_VAL_TYPE_INT;
-    mdata_val->int_val = int_val;
-    strncpy(mdata_val->name, field, _MDATA_VAL_MAX_NAME);
-    mdata_val->name[_MDATA_VAL_MAX_NAME] = 0;
-    mdata_val->user_set = user_set;
+    _val_t val = _create_int_val(field, int_val);
+    vec_push(&mdata_file->vals_vec, val);
+    map_set(&mdata_file->vals_map, field, val);
 }
 
-void mdata_file_add_val_uint64(mdata_file_t *mdata_file, const char *field, uint64_t uint64_val, bool user_set) {
-    _mdata_file_val_t *mdata_val = _get_mdata_file_val(mdata_file, field);
-    if (mdata_val) {
-        if (user_set && mdata_val->type == _MDATA_FILE_VAL_TYPE_UINT64) {
+void mdata_file_add_uint64(mdata_file_t *mdata_file, const char *field, uint64_t uint64_val, bool user_set) {
+    if (user_set) {
+        _val_t *val = map_get(&mdata_file->vals_map, field);
+        if (val && val->type == _VAL_TYPE_UINT64) {
+            vec_push(&mdata_file->vals_vec, *val);
             return;
         }
     }
-    else {
-        _mdata_file_val_t val;
-        memset(&val, 0, sizeof(val));
-        vec_push(&mdata_file->vals, val);
-        mdata_val = &vec_last(&mdata_file->vals);
-    }
 
-    mdata_val->type = _MDATA_FILE_VAL_TYPE_UINT64;
-    mdata_val->uint64_val = uint64_val;
-    strncpy(mdata_val->name, field, _MDATA_VAL_MAX_NAME);
-    mdata_val->name[_MDATA_VAL_MAX_NAME] = 0;
-    mdata_val->user_set = user_set;
+    _val_t val = _create_uint64_val(field, uint64_val);
+    vec_push(&mdata_file->vals_vec, val);
+    map_set(&mdata_file->vals_map, field, val);
 }
 
-void mdata_file_add_val_string(mdata_file_t *mdata_file, const char *field, const char *string_val, bool user_set) {
-    _mdata_file_val_t *mdata_val = _get_mdata_file_val(mdata_file, field);
-    if (mdata_val) {
-        if (user_set && mdata_val->type == _MDATA_FILE_VAL_TYPE_STRING) {
+void mdata_file_add_string(mdata_file_t *mdata_file, const char *field, const char *string_val, bool user_set) {
+    if (user_set) {
+        _val_t *val = map_get(&mdata_file->vals_map, field);
+        if (val && val->type == _VAL_TYPE_STRING) {
+            vec_push(&mdata_file->vals_vec, *val);
             return;
         }
     }
-    else {
-        _mdata_file_val_t val;
-        memset(&val, 0, sizeof(val));
-        vec_push(&mdata_file->vals, val);
-        mdata_val = &vec_last(&mdata_file->vals);
-    }
 
-    mdata_val->type = _MDATA_FILE_VAL_TYPE_STRING;
-    mdata_val->string_val = malloc(sizeof(char)*(strlen(string_val) + 1));
-    strcpy(mdata_val->string_val, string_val);
-    strncpy(mdata_val->name, field, _MDATA_VAL_MAX_NAME);
-    mdata_val->name[_MDATA_VAL_MAX_NAME] = 0;
-    mdata_val->user_set = user_set;
+    _val_t val = _create_string_val(field, string_val);
+    vec_push(&mdata_file->vals_vec, val);
+    map_set(&mdata_file->vals_map, field, val);
 }
 
-void mdata_file_add_val_binary_data(mdata_file_t *mdata_file, const char *field, char *data, int data_len, bool compress) {
-    if (compress) {
-        struct data_stream stream;
-        data_stream_init(&stream);
-        data_stream_push(&stream, data, data_len);
-        data_stream_compress(&stream);
-
-        _mdata_file_val_t val;
-        val.type = _MDATA_FILE_VAL_TYPE_BIN_DATA;
-        val.data_val.data = stream.data;
-        val.data_val.len = stream.len;
-        strncpy(val.name, field, _MDATA_VAL_MAX_NAME);
-        val.name[_MDATA_VAL_MAX_NAME] = 0;
-        val.user_set = false;
-        vec_push(&mdata_file->vals, val);
-    }
-    else {
-        _mdata_file_val_t val;
-        val.type = _MDATA_FILE_VAL_TYPE_BIN_DATA;
-        val.data_val.data = malloc(data_len);
-        memcpy(val.data_val.data, data, data_len);
-        val.data_val.len = data_len;
-        strncpy(val.name, field, _MDATA_VAL_MAX_NAME);
-        val.name[_MDATA_VAL_MAX_NAME] = 0;
-        val.user_set = false;
-        vec_push(&mdata_file->vals, val);
-    }
+void mdata_file_add_data(mdata_file_t *mdata_file, const char *field, char *data, int data_len, bool compress) {
+    _val_t val = _create_data_val(field, data, data_len);
+    vec_push(&mdata_file->vals_vec, val);
+    map_set(&mdata_file->vals_map, field, val);
 }

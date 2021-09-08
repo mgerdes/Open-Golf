@@ -7558,7 +7558,7 @@ static bool _mdata_mscript_mdata_file_creator(int num_files, mfile_t *files, boo
         mdata_file_t *mdata_file = mdata_files[i];
         mscript_program_t *program = mscript->programs_array.data[i];
 
-        mdata_file_add_val_int(mdata_file, "version", 0, false);
+        mdata_file_add_int(mdata_file, "version", 0, false);
 
         mstring_t str;
         mstring_init(&str, "");
@@ -7789,7 +7789,7 @@ static bool _mdata_mscript_mdata_file_creator(int num_files, mfile_t *files, boo
             }
             mstring_appendf(&str, "\n");
         }
-        mdata_file_add_val_binary_data(mdata_file, "opcodes", str.cstr, str.len, false);
+        mdata_file_add_data(mdata_file, "opcodes", str.cstr, str.len, false);
         mstring_deinit(&str);
     }
 
