@@ -14,6 +14,7 @@
 #include "lightmaps.h"
 #include "log.h"
 #include "maths.h"
+#include "mlog.h"
 #include "profiler.h"
 #include "renderer.h"
 #include "stb_image.h"
@@ -1445,6 +1446,8 @@ void game_hit_player_ball(struct game *game, vec3 direction, float power, struct
     ed->physics.selected_collision_data_idx = -1;
     ed->physics.collision_data_array.length = 0;
     game_editor_set_last_hit(ed, ball->position, direction, power);
+
+    mlog_warning("HIT BALL\n");
 }
 
 struct physics_triangle physics_triangle_create(vec3 a, vec3 b, vec3 c, float cor, float friction, 

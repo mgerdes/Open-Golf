@@ -11,6 +11,8 @@
 #include "s7.h"
 #endif
 
+#include "mlog.h"
+
 static void entity_array_sort_idxs(struct editor_entity_array *entity_array) {
     for (int i = 0; i < entity_array->length; i++) {
         int smallest_idx = i;
@@ -3950,4 +3952,21 @@ void game_editor_push_ball_movement(struct game_editor *ed, int num_ticks) {
     }
     array_push(&ed->ball_movement.positions, ed->game->player_ball.draw_position); 
     array_push(&ed->ball_movement.num_ticks, num_ticks); 
+}
+
+void game_editor_draw_warnings(struct game_editor *ed) {
+    int entry_count = mlog_get_entry_count();
+
+    if (entry_count > 0) {
+        static bool warnings_window_open;
+        igSetNextWindowSize((ImVec2){300, 500}, ImGuiCond_FirstUseEver);
+        igSetNextWindowPos((ImVec2){10, 10}, ImGuiCond_FirstUseEver, (ImVec2){0, 0});
+        igBegin("Warnings", &warnings_window_open, ImGuiWindowFlags_None);
+
+        for (int i = 0; i < entry_count; i++) {
+            igText(mlog_get_entry(i));
+        }
+
+        igEnd();
+    }
 }

@@ -251,4 +251,6 @@ void game_editor_push_game_history_hit(struct game_editor *ed, float power, vec3
 void game_editor_push_ball_movement(struct game_editor *ed, int num_ticks);
 void game_editor_set_last_hit(struct game_editor *ed, vec3 start_position, vec3 direction, float power);
 
+void game_editor_draw_warnings(struct game_editor *ed);
+
 #endif

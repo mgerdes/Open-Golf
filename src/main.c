@@ -11,6 +11,7 @@
 #include "hotloader.h"
 #include "log.h"
 #include "mdata.h"
+#include "mlog.h"
 #include "profiler.h"
 #include "renderer.h"
 #include "sokol_app.h"
@@ -86,6 +87,7 @@ static void frame(void) {
         game.state = GAME_STATE_MAIN_MENU;
         main_menu_init(&main_menu);
         mdata_init();
+        mlog_init();
         profiler_pop_section();
 
         //{
@@ -149,6 +151,10 @@ static void frame(void) {
         else {
             game_update(&game, dt, inputs, &renderer, &game_editor);
             game_editor_update(&game_editor, dt, inputs, &renderer);
+        }
+
+        {
+            game_editor_draw_warnings(&game_editor);
         }
 
         if (game.state == GAME_STATE_HOLE_COMPLETE) {
