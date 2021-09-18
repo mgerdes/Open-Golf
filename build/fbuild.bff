@@ -1,315 +1,266 @@
-//
-// HTML5
-//
-
-.HTMLCompilerOptions = '%1 -o %2 -c -O3 -Isrc -Ilibs -DSOKOL_GLES3 -DNDEBUG -s USE_PTHREADS=1'
-
-Compiler('emcc')
-{
-    .Executable = '/Users/michaelgerdes/code/emsdk/upstream/emscripten/emcc'
-    .CompilerFamily = 'custom'
-}
-
-ObjectList('core-html-debug')
-{
-    .Compiler = 'emcc'
-    .CompilerFamily = 'custom'
-    .CompilerInputPath = { 'src/' }
-    .CompilerInputPattern = '*.c'
-    .CompilerOptions = '$HTMLCompilerOptions$'
-    .CompilerOutputPath = 'out/html-debug/core/'
-}
-
-ObjectList('cpp-libs-html-debug')
-{
-    .Compiler = 'emcc'
-    .CompilerFamily = 'custom'
-    .CompilerInputPath = { 'libs/' }
-    .CompilerInputPattern = '*.cpp'
-    .CompilerOptions = '$HTMLCompilerOptions$'
-    .CompilerOutputPath = 'out/html-debug/cpp-libs/'
-}
-
-ObjectList('c-libs-html-debug')
-{
-    .Compiler = 'emcc'
-    .CompilerFamily = 'custom'
-    .CompilerInputPath = { 'libs/' }
-    .CompilerInputPattern = '*.c'
-    .CompilerOptions = '$HTMLCompilerOptions$'
-    .CompilerOutputPath = 'out/html-debug/cpp-libs/'
-}
-
-Executable('minigolf-html-debug') 
-{
-    .Linker = '/Users/michaelgerdes/code/emsdk/upstream/emscripten/emcc'
-    .LinkerOutput = 'out/html-debug/minigolf.html'
-    .LinkerOptions = '%1 -o %2 --preload-file assets -s USE_WEBGL2=1 -s FULL_ES3=1 -s ERROR_ON_UNDEFINED_SYMBOLS=1 -s ALLOW_MEMORY_GROWTH=1 -s USE_PTHREADS=1 -s WASM_MEM_MAX=100Mb --preload-file assets --shell-file build/shell.html'
-    .Libraries = { 'core-html-debug', 'cpp-libs-html-debug', 'c-libs-html-debug' }
-}
-
-//
-// OSX
-//
-
-.OSXCompiler = '/usr/bin/clang'
-.OSXCompilerOptions = '%1 -o %2 -c -Isrc -Ilibs -Wall -Wno-unused-function -Wno-unused-variable -g -DSOKOL_GLCORE33 -DHOLE_EDITOR -DHOTLOADER_ACTIVE'
-
-ObjectList('core-osx-debug')
-{
-    .Compiler = '$OSXCompiler$'
-    .CompilerInputPath = { 'src/' }
-    .CompilerInputPattern = '*.c'
-    .CompilerOutputPath = 'out/osx-debug/core/'
-    .CompilerOptions = '-x objective-c ' + 
-                    '$OSXCompilerOptions$ '
-}
-
-ObjectList('cpp-libs-osx-debug')
-{
-    .Compiler = '$OSXCompiler$'
-    .CompilerInputPath = 'libs/'
-    .CompilerOutputPath = 'out/osx-debug/cpp-libs/'
-    .CompilerInputPattern = '*.cpp'
-    .CompilerOptions = '$OSXCompilerOptions$ ' +
-                    '-std=c++11'
-}
-
-ObjectList('c-libs-osx-debug')
-{
-    .Compiler = '/usr/bin/clang'
-    .CompilerInputPath = 'libs/'
-    .CompilerOutputPath = 'out/osx-debug/c-libs/'
-    .CompilerInputPattern = '*.c'
-    .CompilerOptions = '-x objective-c ' +
-                    '$OSXCompilerOptions$ '
-}
-
-Executable('minigolf-osx-debug') 
-{
-    .Linker = '/usr/bin/clang'
-    .LinkerOutput = 'out/osx-debug/minigolf'
-    .LinkerOptions = '-o %2 %1 -lm -lpthread -lstdc++ -framework Cocoa -framework CoreServices -framework OpenGL -framework AudioToolbox -g'
-    .Libraries = { 'core-osx-debug', 'cpp-libs-osx-debug', 'c-libs-osx-debug' }
-}
-
-XCodeProject('minigolf-xcode')
-{
-    .ProjectOutput = 'minigolf-xcode.xcodeproj/project.pbxproj'
-    .ProjectInputPaths = { 'src/', 'libs/' }
-    .DebugConfig = [ 
-        .Config = 'Debug' 
-        .Target = 'minigolf-osx-debug'
-    ]
-    .ProjectBasePath = './'
-    .ProjectConfigs = { .DebugConfig }
-}
-
 .VSBasePath = 'C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023'
 .WindowsSDKBasePath = 'C:\Program Files (x86)\Windows Kits\10\Lib\10.0.17763.0'
 .INCLUDE = 'src;libs;C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\include;;C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\atlmfc\include;;C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\VS\include;;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\ucrt;;;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\um;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\shared;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\winrt;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\cppwinrt;Include\um;'
 
+.Platform_win64 = [
+    .PlatformName = "win64"
 
-ObjectList('game-windows')
-{
-    .Compiler = '$VSBasePath$\bin\Hostx64\x64\cl.exe'
-    .CompilerInputPath = { 'src/' }
-    .CompilerInputPattern = '*.c'
-    .CompilerOutputPath = 'out/game-windows/'
+    .Compiler = "$VSBasePath$\bin\Hostx64\x64\cl.exe"
     .CompilerOptions = '"%1"'
-                + ' /Fo"%2"'
-                + ' /c'
-                + ' /nologo'
-                + ' /W3'
-                + ' /Od'
-                + ' /Z7'
-                + ' /D HOLE_EDITOR'
-                + ' /D WINDOWS_BUILD'
-                + ' /D _CONSOLE'
-                + ' /D SOKOL_GLCORE33'
-                + ' /D HOTLOADER_ACTIVE'
-                + ' /I src'
-                + ' /I libs'
-                + ' /I "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\include"'
-                + ' /I "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\atlmfc\include"'
-                + ' /I "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\VS\include"'
-                + ' /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\ucrt"'
-                + ' /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\um"'
-                + ' /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\shared"'
-                + ' /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\winrt"'
-                + ' /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\cppwinrt"'
-}
+                        + ' /Fo"%2"'
+                        + ' /c'
+                        + ' /nologo'
+                        + ' /W3'
+                        + ' /Z7'
+                        + ' /D HOLE_EDITOR'
+                        + ' /D WINDOWS_BUILD'
+                        + ' /D _CONSOLE'
+                        + ' /D SOKOL_GLCORE33'
+                        + ' /D HOTLOADER_ACTIVE'
+                        + ' /I src'
+                        + ' /I libs'
+                        + ' /I "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\include"'
+                        + ' /I "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\atlmfc\include"'
+                        + ' /I "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\VS\include"'
+                        + ' /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\ucrt"'
+                        + ' /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\um"'
+                        + ' /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\shared"'
+                        + ' /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\winrt"'
+                        + ' /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\cppwinrt"'
+    .CompilerOutputPath = "out/win64/"
 
-ObjectList('cpp-libs-windows')
-{
-    .Compiler = '$VSBasePath$\bin\Hostx64\x64\cl.exe'
-    .CompilerInputPath = { 'libs/' }
-    .CompilerInputPattern = '*.cpp'
-    .CompilerOutputPath = 'out/cpp-libs-windows/'
-    .CompilerOptions = '"%1"'
-                + ' /Fo"%2"'
-                + ' /c'
-                + ' /nologo'
-                + ' /W3'
-                + ' /Od'
-                + ' /Z7'
-                + ' /D HOLE_EDITOR'
-                + ' /D WINDOWS_BUILD'
-                + ' /D _CONSOLE'
-                + ' /D SOKOL_GLCORE33'
-                + ' /D HOTLOADER_ACTIVE'
-                + ' /I src'
-                + ' /I libs'
-                + ' /I "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\include"'
-                + ' /I "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\atlmfc\include"'
-                + ' /I "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\VS\include"'
-                + ' /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\ucrt"'
-                + ' /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\um"'
-                + ' /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\shared"'
-                + ' /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\winrt"'
-                + ' /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\cppwinrt"'
-}
-
-ObjectList('c-libs-windows')
-{
-    .Compiler = '$VSBasePath$\bin\Hostx64\x64\cl.exe'
-    .CompilerInputPath = { 'libs/' }
-    .CompilerInputPattern = '*.c'
-    .CompilerOutputPath = 'out/c-libs-windows/'
-    .CompilerOptions = '"%1"'
-                + ' /Fo"%2"'
-                + ' /c'
-                + ' /nologo'
-                + ' /W3'
-                + ' /Od'
-                + ' /Z7'
-                + ' /D HOLE_EDITOR'
-                + ' /D WINDOWS_BUILD'
-                + ' /D _CONSOLE'
-                + ' /D SOKOL_GLCORE33'
-                + ' /D HOTLOADER_ACTIVE'
-                + ' /I src'
-                + ' /I libs'
-                + ' /I "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\include"'
-                + ' /I "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\atlmfc\include"'
-                + ' /I "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\VS\include"'
-                + ' /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\ucrt"'
-                + ' /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\um"'
-                + ' /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\shared"'
-                + ' /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\winrt"'
-                + ' /I "C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\cppwinrt"'
-}
-
-Executable('minigolf-windows')
-{
-    .Linker = '$VSBasePath$\bin\Hostx64\x64\link.exe'
-    .LinkerOutput = 'out/minigolf.exe'
+    .Linker = "$VSBasePath$\bin\Hostx64\x64\link.exe"
     .LinkerOptions = '/OUT:"%2"'
-                + ' "%1"'
-                + ' /ignore:4049'
-                + ' /ignore:4217'
-                + ' /ignore:4098'
-                + ' /INCREMENTAL'
-                + ' /LIBPATH:"libs/GLFW"'
-                + ' /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\lib\x64"'
-                + ' /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\atlmfc\lib\x64"'
-                + ' /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\VS\lib\x64"'
-                + ' /LIBPATH:"C:\Program Files (x86)\Windows Kits\10\lib\10.0.17763.0\ucrt\x64"'
-                + ' /LIBPATH:"C:\Program Files (x86)\Windows Kits\10\lib\10.0.17763.0\um\x64"'
-                + ' /NOLOGO'
-                + ' /DEBUG'
-                + ' glfw3.lib'
-                + ' OpenGL32.lib'
-                + ' kernel32.lib'
-                + ' user32.lib'
-                + ' gdi32.lib'
-                + ' winspool.lib'
-                + ' comdlg32.lib'
-                + ' advapi32.lib'
-                + ' shell32.lib'
-                + ' ole32.lib'
-                + ' oleaut32.lib'
-                + ' uuid.lib'
-                + ' odbc32.lib'
-                + ' odbccp32.lib'
-                + ' /SUBSYSTEM:CONSOLE'
-                + ' /TLBID:1'
-                + ' /DYNAMICBASE'
-                + ' /NXCOMPAT'
-                + ' /MACHINE:X64'
-    .Libraries  = { 'game-windows', 'c-libs-windows', 'cpp-libs-windows' }
-}
+                        + ' "%1"'
+                        + ' /ignore:4049'
+                        + ' /ignore:4217'
+                        + ' /ignore:4098'
+                        + ' /INCREMENTAL'
+                        + ' /LIBPATH:"libs/GLFW"'
+                        + ' /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\lib\x64"'
+                        + ' /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\atlmfc\lib\x64"'
+                        + ' /LIBPATH:"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\VS\lib\x64"'
+                        + ' /LIBPATH:"C:\Program Files (x86)\Windows Kits\10\lib\10.0.17763.0\ucrt\x64"'
+                        + ' /LIBPATH:"C:\Program Files (x86)\Windows Kits\10\lib\10.0.17763.0\um\x64"'
+                        + ' /NOLOGO'
+                        + ' /DEBUG'
+                        + ' glfw3.lib'
+                        + ' OpenGL32.lib'
+                        + ' kernel32.lib'
+                        + ' user32.lib'
+                        + ' gdi32.lib'
+                        + ' winspool.lib'
+                        + ' comdlg32.lib'
+                        + ' advapi32.lib'
+                        + ' shell32.lib'
+                        + ' ole32.lib'
+                        + ' oleaut32.lib'
+                        + ' uuid.lib'
+                        + ' odbc32.lib'
+                        + ' odbccp32.lib'
+                        + ' /SUBSYSTEM:CONSOLE'
+                        + ' /TLBID:1'
+                        + ' /DYNAMICBASE'
+                        + ' /NXCOMPAT'
+                        + ' /MACHINE:X64'
 
-.ProjectCommon = 
-[
-    .ProjectBuildCommand = 'cd ^$(SolutionDir)..\..\ &amp; tools\FASTBuild\win32\FBuild.exe -ide -dist -cache ^$(ProjectName)'
-    .ProjectRebuildCommand = 'cd ^$(SolutionDir)..\..\ &amp; tools\FASTBuild\win32\FBuild.exe -ide -dist -cache -clean ^$(ProjectName)'
-    .LocalDebuggerCommand = 'out\minigolf.exe'
-    .LocalDebuggerWorkingDirectory = '^$(SolutionDir)..\..\'
+    .Config_debug = [
+        .ConfigName = "debug"
+        .CompilerOptions + ' /Od' 
+        .CompilerOutputPath + 'debug/'
+        .LinkerOutput = "$CompilerOutputPath$minigolf.exe"
+    ]
+
+    .Config_release = [
+        .ConfigName = "release"
+        .CompilerOptions + ' /O2'
+        .CompilerOutputPath + 'release/'
+        .LinkerOutput = "$CompilerOutputPath$minigolf.exe"
+    ]
+
+    .Configs = { .Config_debug, .Config_release }
 ]
 
-VCXProject('minigolf-windows-vs-proj')
-{
-    Using(.ProjectCommon)
-    .ProjectOutput = 'out/vs/minigolf-windows.vcxproj'
-    .DebugConfig = [
-    .Platform = 'x64'
-        .Config = 'Debug'
-        .Target = 'minigolf-windows'
+.Platform_osx = [
+    .PlatformName = "osx"
+
+    .Compiler = "/usr/bin/clang"
+    .CompilerOptions = '%1 -o %2 -c -Isrc -Wall -Wno-unused-function -Wno-unused-variable -g -DSOKOL_GLCORE33 -DHOLE_EDITOR -DHOTLOADER_ACTIVE'
+    .CompilerOutputPath = "out/osx/"
+
+    .Linker = "/usr/bin/clang"
+    .LinkerOptions = "%1 -o %2  -lm -lpthread -lstdc++ -framework Cocoa -framework CoreServices -framework OpenGL -framework AudioToolbox -g"
+
+    .Config_debug = [
+        .ConfigName = "debug"
+        .CompilerOptions + '' 
+        .CompilerOutputPath + 'debug/'
+        .LinkerOutput = "$CompilerOutputPath$minigolf"
     ]
-    .ProjectConfigs = { .DebugConfig }
+
+    .Configs = { .Config_debug, }
+]
+
+.Platforms = { .Platform_win64, .Platform_osx }
+
+.ObjectList_golf = [
+    .ObjectListName = "golf"
+    .Defines = { }
+    .ObjectCompilerOptions = ""
+    .CompilerInputPath = { "src/golf/" }
+    .CompilerInputPattern = { "*.c" }
+]
+
+.ObjectList_sokol = [
+    .ObjectListName = "sokol"
+    .Defines = { }
+    .ObjectCompilerOptions = " -ObjC"
+    .CompilerInputPath = { "src/3rd_party/sokol/" }
+    .CompilerInputPattern = { "*.c" }
+]
+
+.ObjectList_vec = [
+    .ObjectListName = "vec"
+    .Defines = { }
+    .ObjectCompilerOptions = ""
+    .CompilerInputPath = { "src/3rd_party/vec/" }
+    .CompilerInputPattern = { "*.c" }
+]
+
+.ObjectList_map = [
+    .ObjectListName = "map"
+    .Defines = { }
+    .ObjectCompilerOptions = ""
+    .CompilerInputPath = { "src/3rd_party/map/" }
+    .CompilerInputPattern = { "*.c" }
+]
+
+.ObjectList_lightmapper = [
+    .ObjectListName = "lightmapper"
+    .Defines = { }
+    .ObjectCompilerOptions = ""
+    .CompilerInputPath = { "src/3rd_party/lightmapper/" }
+    .CompilerInputPattern = { "*.c" }
+]
+
+.ObjectList_glad = [
+    .ObjectListName = "glad"
+    .Defines = { }
+    .ObjectCompilerOptions = ""
+    .CompilerInputPath = { "src/3rd_party/glad/" }
+    .CompilerInputPattern = { "*.c" }
+]
+
+.ObjectList_s7 = [
+    .ObjectListName = "s7"
+    .Defines = { }
+    .ObjectCompilerOptions = ""
+    .CompilerInputPath = { "src/3rd_party/s7/" }
+    .CompilerInputPattern = { "*.c" }
+]
+
+.ObjectList_tinyobj_loader_c = [
+    .ObjectListName = "tinyobj_loader_c"
+    .Defines = { }
+    .ObjectCompilerOptions = ""
+    .CompilerInputPath = { "src/3rd_party/tinyobj_loader_c/" }
+    .CompilerInputPattern = { "*.c" }
+]
+
+.ObjectList_mattiasgustavsson_libs = [
+    .ObjectListName = "mattiasgustavsson_libs"
+    .Defines = { }
+    .ObjectCompilerOptions = ""
+    .CompilerInputPath = { "src/3rd_party/mattiasgustavsson_libs/" }
+    .CompilerInputPattern = { "*.c" }
+]
+
+.ObjectList_stb = [
+    .ObjectListName = "stb"
+    .Defines = { }
+    .ObjectCompilerOptions = ""
+    .CompilerInputPath = { "src/3rd_party/stb/" }
+    .CompilerInputPattern = { "*.c" }
+]
+
+.ObjectList_miniz = [
+    .ObjectListName = "miniz"
+    .Defines = { }
+    .ObjectCompilerOptions = ""
+    .CompilerInputPath = { "src/3rd_party/miniz/" }
+    .CompilerInputPattern = { "*.c" }
+]
+
+.ObjectList_imgui = [
+    .ObjectListName = "imgui"
+    .Defines = { }
+    .ObjectCompilerOptions = ""
+    .CompilerInputPath = { "src/3rd_party/imgui/" }
+    .CompilerInputPattern = { "*.cpp" }
+]
+
+.ObjectList_cimgui = [
+    .ObjectListName = "cimgui"
+    .Defines = { }
+    .ObjectCompilerOptions = ""
+    .CompilerInputPath = { "src/3rd_party/cimgui/" }
+    .CompilerInputPattern = { "*.cpp" }
+]
+
+.ObjectLists = { 
+    .ObjectList_golf, 
+    .ObjectList_sokol,
+    .ObjectList_vec,
+    .ObjectList_map,
+    .ObjectList_lightmapper,
+    .ObjectList_glad,
+    .ObjectList_s7,
+    .ObjectList_tinyobj_loader_c,
+    .ObjectList_mattiasgustavsson_libs,
+    .ObjectList_stb,
+    .ObjectList_miniz,
+    .ObjectList_imgui,
+    .ObjectList_cimgui,
 }
 
-VCXProject('game-windows-vs-proj')
-{
-    Using(.ProjectCommon)
-    .ProjectOutput = 'out/vs/game-windows.vcxproj'
-    .DebugConfig = [
-    .Platform = 'x64'
-        .Config = 'Debug'
-        .Target = 'game-windows'
-    ]
-    .ProjectConfigs = { .DebugConfig }
-    .ProjectInputPaths = 'src'
-    .ProjectAllowedFileExtensions = { '*.c', '*.h' }
+function CreateObjectList(.Platform .Config .ObjectList) {
+    Using(.Platform)
+    Using(.Config)
+    Using(.ObjectList)
+    
+    ForEach(.Define in .Defines) {
+        .Platform_win64_name = "win64"
+        If (.PlatformName == .Platform_win64_name) {
+            ^CompilerOptions + " /D $Define$"
+        }
+
+        .Platform_osx_name = "osx"
+        If (.PlatformName == .Platform_osx_name) {
+            ^CompilerOptions + " -D$Define$"
+        }
+    }
+
+    .CompilerOptions + .ObjectCompilerOptions
+    .CompilerOutputPath + "$ObjectListName$/"
+
+    ObjectList("$ObjectListName$-$PlatformName$-$ConfigName$") {
+    }
 }
 
-VCXProject('c-libs-windows-vs-proj')
-{
-    Using(.ProjectCommon)
-    .ProjectOutput = 'out/vs/c-libs-windows.vcxproj'
-    .DebugConfig = [
-    .Platform = 'x64'
-        .Config = 'Debug'
-        .Target = 'c-libs-windows'
-    ]
-    .ProjectConfigs = { .DebugConfig }
-}
+ForEach(.Platform in .Platforms) {
+    Using(.Platform) 
 
-VCXProject('cpp-libs-windows-vs-proj')
-{
-    Using(.ProjectCommon)
-    .ProjectOutput = 'out/vs/cpp-libs-windows.vcxproj'
-    .DebugConfig = [
-    .Platform = 'x64'
-        .Config = 'Debug'
-        .Target = 'cpp-libs-windows'
-    ]
-    .ProjectConfigs = { .DebugConfig }
-}
+    ForEach(.Config in .Configs) {
+        Using(.Config)
+        .Libraries = { }
 
-VSSolution('minigolf-vs-sln')
-{
-    .SolutionVisualStudioVersion = '16.0.29509.3'
-    .Deps = [ .Projects     = { 'minigolf-windows-vs-proj' }
-    .Dependencies = { 'game-windows-vs-proj', 'c-libs-windows-vs-proj', 'cpp-libs-windows-vs-proj' } ]
-    .SolutionDependencies = { .Deps }
-    .SolutionOutput = 'out/vs/minigolf.sln'
-    .SolutionProjects = { 'minigolf-windows-vs-proj', 'game-windows-vs-proj', 'c-libs-windows-vs-proj', 'cpp-libs-windows-vs-proj' }
-    .DebugConfig = [
-        .Platform = 'x64'
-        .Config = 'Debug'
-    ]
-    .SolutionConfigs = { .DebugConfig }
-    .SolutionBuildProject = 'minigolf-windows-vs-proj'
+        ForEach(.ObjectList in .ObjectLists) {
+            Using(.ObjectList)
+            CreateObjectList(.Platform .Config .ObjectList)
+            ^Libraries + "$ObjectListName$-$PlatformName$-$ConfigName$"
+        }
+
+        Executable("minigolf-$PlatformName$-$ConfigName$") {
+        }
+    }
 }
