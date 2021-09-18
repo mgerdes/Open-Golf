@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "3rd_party/dbgtools/callstack.h"
+
 #include "mcommon.h"
 
 typedef struct _mlog_entry {
@@ -46,11 +48,27 @@ void mlog_note(const char *fmt, ...) {
     va_end(ap);
 }
 
+static void _test_print_callstack() {
+    void *addresses[256];
+    int i;
+    int num_addresses = callstack(0, addresses, 256);
+
+    callstack_symbol_t symbols[256];
+    char symbols_buffer[1024];
+    num_addresses = callstack_symbols( addresses, symbols, num_addresses, symbols_buffer, 1024 );
+
+    for (i = 0; i < num_addresses; i++) {
+        printf( "%3d) %-50s %s(%u)\n", i, symbols[i].function, symbols[i].file, symbols[i].line );
+    }
+}
+
 void mlog_warning(const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     _log(_mlog_level_warning, fmt, ap);
     va_end(ap);
+
+    _test_print_callstack();
 }
 
 void mlog_error(const char *fmt, ...) {

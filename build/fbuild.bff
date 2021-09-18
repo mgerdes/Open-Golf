@@ -89,7 +89,7 @@
     .CompilerOutputPath = "out/osx/"
 
     .Linker = "/usr/bin/clang"
-    .LinkerOptions = "%1 -o %2  -lm -lpthread -lstdc++ -framework Cocoa -framework CoreServices -framework OpenGL -framework AudioToolbox -g"
+    .LinkerOptions = "%1 -o %2  -lm -lpthread -lstdc++ -framework Cocoa -framework CoreServices -framework OpenGL -framework AudioToolbox -g -rdynamic"
 
     .Config_debug = [
         .ConfigName = "debug"
@@ -207,6 +207,14 @@
     .CompilerInputPattern = { "*.cpp" }
 ]
 
+.ObjectList_dbgtools = [
+    .ObjectListName = "dbgtools"
+    .Defines = { }
+    .ObjectCompilerOptions = ""
+    .CompilerInputPath = { "src/3rd_party/dbgtools/" }
+    .CompilerInputPattern = { "*.cpp" }
+]
+
 .ObjectLists = { 
     .ObjectList_golf, 
     .ObjectList_sokol,
@@ -221,6 +229,7 @@
     .ObjectList_miniz,
     .ObjectList_imgui,
     .ObjectList_cimgui,
+    .ObjectList_dbgtools,
 }
 
 function CreateObjectList(.Platform .Config .ObjectList) {
