@@ -85,11 +85,12 @@
     .PlatformName = "osx"
 
     .Compiler = "/usr/bin/clang"
-    .CompilerOptions = '%1 -o %2 -c -Isrc -Wall -Wno-unused-function -Wno-unused-variable -g -DSOKOL_GLCORE33 -DHOLE_EDITOR -DHOTLOADER_ACTIVE'
+    .CompilerOptions = '%1 -o %2 -c -Isrc -Wall -Wno-unused-function -Wno-unused-variable -g'
     .CompilerOutputPath = "out/osx/"
 
     .Linker = "/usr/bin/clang"
-    .LinkerOptions = "%1 -o %2  -lm -lpthread -lstdc++ -framework Cocoa -framework CoreServices -framework OpenGL -framework AudioToolbox -g -rdynamic"
+    //.LinkerOptions = "%1[0] -o %2  -lm -lpthread -lstdc++ -framework Cocoa -framework CoreServices -framework QuartzCore -framework Metal -framework MetalKit -framework AudioToolbox -g -rdynamic"
+    .LinkerOptions = "%1[0] -o %2  -lm -lpthread -lstdc++ -framework Cocoa -framework CoreServices -framework QuartzCore -framework OpenGL -framework AudioToolbox -g -rdynamic"
 
     .Config_debug = [
         .ConfigName = "debug"
@@ -105,7 +106,7 @@
 
 .ObjectList_golf = [
     .ObjectListName = "golf"
-    .Defines = { }
+    .Defines = { "SOKOL_GLCORE33" }
     .ObjectCompilerOptions = ""
     .CompilerInputPath = { "src/golf/" }
     .CompilerInputPattern = { "*.c" }
@@ -113,7 +114,7 @@
 
 .ObjectList_sokol = [
     .ObjectListName = "sokol"
-    .Defines = { }
+    .Defines = { "SOKOL_GLCORE33" }
     .ObjectCompilerOptions = " -ObjC"
     .CompilerInputPath = { "src/3rd_party/sokol/" }
     .CompilerInputPattern = { "*.c" }
@@ -232,6 +233,21 @@
     .ObjectList_dbgtools,
 }
 
+Compiler("osx-shader-shdc") {
+    .Executable = "tools/sokol-tools/osx/sokol-shdc"
+    .CompilerFamily = "custom"
+}
+
+ObjectList("osx-shaders") {
+    .Compiler = "osx-shader-shdc"
+    .CompilerOptions = "--input %1 --output %2 --slang metal_macos:metal_ios:glsl330"
+    .CompilerOutputPath = "src/golf/shaders/"
+    .CompilerOutputExtension = ".glsl.h"
+    .CompilerInputPath = "src/golf/shaders/"
+    .CompilerInputPattern = { "*.glsl" }
+    .CompilerInputPathRecurse = false
+}
+
 function CreateObjectList(.Platform .Config .ObjectList) {
     Using(.Platform)
     Using(.Config)
@@ -267,6 +283,12 @@ ForEach(.Platform in .Platforms) {
             Using(.ObjectList)
             CreateObjectList(.Platform .Config .ObjectList)
             ^Libraries + "$ObjectListName$-$PlatformName$-$ConfigName$"
+        }
+
+        .Platform_osx_name = "osx"
+        .Libraries2 = { }
+        If (.PlatformName == .Platform_osx_name) {
+            ^Libraries2 + "osx-shaders"
         }
 
         Executable("minigolf-$PlatformName$-$ConfigName$") {

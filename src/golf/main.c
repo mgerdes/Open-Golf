@@ -47,7 +47,11 @@ static void init(void) {
     if(!gladLoadGL()) { exit(-1); }
 #endif
     stm_setup();
-    sg_setup(&(sg_desc){ .buffer_pool_size = 2048, .image_pool_size = 2048 });
+    sg_setup(&(sg_desc){ 
+            .buffer_pool_size = 2048, 
+            .image_pool_size = 2048,
+            .context = sapp_sgcontext(),
+            });
     simgui_setup(&(simgui_desc_t) { .dpi_scale = sapp_dpi_scale() });
     saudio_setup(&(saudio_desc){ .sample_rate = 44100, .buffer_frames = 1024, .packet_frames = 64, .num_packets = 32, });
     memset(&inputs, 0, sizeof(inputs));

@@ -100,7 +100,7 @@ void lightmap_resize(struct lightmap *lightmap, int width, int height, int num_i
 void lightmap_update_image(struct lightmap *lightmap) {
     for (int i = 0; i < lightmap->images.length; i++) {
         struct lightmap_image *image = &lightmap->images.data[i];
-        sg_image_content content = {
+        sg_image_data content = {
             .subimage[0][0] = {
                 .ptr = image->data,
                 .size = sizeof(unsigned char) * lightmap->width * lightmap->height,
@@ -131,7 +131,8 @@ void lightmap_update_uvs_buffer(struct lightmap *lightmap, int num_elements) {
         lightmap->uvs_buf = sg_make_buffer(&desc);
     }
 
-    sg_update_buffer(lightmap->uvs_buf, lightmap->uvs.data, sizeof(vec2) * lightmap->uvs.length);
+    sg_update_buffer(lightmap->uvs_buf, 
+            &(sg_range) { lightmap->uvs.data, sizeof(vec2) * lightmap->uvs.length });
 }
 
 void lightmap_save_image(struct lightmap *lightmap, const char *filename) {
@@ -787,10 +788,14 @@ void terrain_model_update_buffers(struct terrain_model *model) {
     }
 
     model->num_elements = positions.length;
-    sg_update_buffer(model->positions_buf, positions.data, sizeof(vec3) * positions.length);
-    sg_update_buffer(model->normals_buf, normals.data, sizeof(vec3) * normals.length);
-    sg_update_buffer(model->texture_coords_buf, texture_coords.data, sizeof(vec2) * texture_coords.length);
-    sg_update_buffer(model->material_idxs_buf, material_idx.data, sizeof(float) * material_idx.length);
+    sg_update_buffer(model->positions_buf, 
+            &(sg_range) { positions.data, sizeof(vec3) * positions.length });
+    sg_update_buffer(model->normals_buf, 
+            &(sg_range) { normals.data, sizeof(vec3) * normals.length });
+    sg_update_buffer(model->texture_coords_buf, 
+            &(sg_range) { texture_coords.data, sizeof(vec2) * texture_coords.length });
+    sg_update_buffer(model->material_idxs_buf, 
+            &(sg_range) { material_idx.data, sizeof(float) * material_idx.length });
 
     vec_deinit(&positions);
     vec_deinit(&normals);

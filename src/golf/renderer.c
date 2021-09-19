@@ -24,25 +24,25 @@
 #include "golf/mdata.h"
 #include "golf/profiler.h"
 
-#include "golf/shaders/aim_icon.h"
-#include "golf/shaders/aim_helper.h"
-#include "golf/shaders/ball.h"
-#include "golf/shaders/cup.h"
-#include "golf/shaders/environment.h"
-#include "golf/shaders/fxaa.h"
-#include "golf/shaders/hole_editor_environment.h"
-#include "golf/shaders/hole_editor_terrain.h"
-#include "golf/shaders/hole_editor_water.h"
-#include "golf/shaders/occluded_ball.h"
-#include "golf/shaders/pass_through.h"
-#include "golf/shaders/single_color.h"
-#include "golf/shaders/terrain.h"
-#include "golf/shaders/texture.h"
-#include "golf/shaders/water.h"
-#include "golf/shaders/water_around_ball.h"
-#include "golf/shaders/water_ripple.h"
-#include "golf/shaders/ui.h"
-#include "golf/shaders/ui_single_color.h"
+#include "golf/shaders/aim_icon.glsl.h"
+#include "golf/shaders/aim_helper.glsl.h"
+#include "golf/shaders/ball.glsl.h"
+#include "golf/shaders/cup.glsl.h"
+#include "golf/shaders/environment.glsl.h"
+#include "golf/shaders/fxaa.glsl.h"
+#include "golf/shaders/hole_editor_environment.glsl.h"
+#include "golf/shaders/hole_editor_terrain.glsl.h"
+#include "golf/shaders/hole_editor_water.glsl.h"
+#include "golf/shaders/occluded_ball.glsl.h"
+#include "golf/shaders/pass_through.glsl.h"
+#include "golf/shaders/single_color.glsl.h"
+#include "golf/shaders/terrain.glsl.h"
+#include "golf/shaders/texture.glsl.h"
+#include "golf/shaders/water.glsl.h"
+#include "golf/shaders/water_around_ball.glsl.h"
+#include "golf/shaders/water_ripple.glsl.h"
+#include "golf/shaders/ui.glsl.h"
+#include "golf/shaders/ui_single_color.glsl.h"
 
 static bool load_shader(const char *shader_name, const sg_shader_desc *const_shader_desc, sg_shader *shader) {
 #if HOTLOADER_ACTIVE
@@ -98,7 +98,7 @@ static bool load_aim_icon_shader(mfile_t file, bool first_time, struct renderer 
     }
 
     sg_shader shader;
-    if (!load_shader("aim_icon", aim_icon_shader_desc(), &shader)) {
+    if (!load_shader("aim_icon", aim_icon_shader_desc(sg_query_backend()), &shader)) {
         return false;
     }
 
@@ -124,15 +124,17 @@ static bool load_aim_icon_shader(mfile_t file, bool first_time, struct renderer 
                     [ATTR_aim_icon_vs_alpha] = { .format = SG_VERTEXFORMAT_FLOAT, .buffer_index = 1 },
                 },
             },
-            .depth_stencil = {
-                .depth_compare_func = SG_COMPAREFUNC_LESS_EQUAL,
-                .depth_write_enabled = false,
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = false,
             },
-            .blend = {
-                .enabled = true,
-                .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
-                .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
-            },
+            .colors[0] = {
+                .blend = {
+                    .enabled = true,
+                    .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                    .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                },
+            }
         };
         renderer->sokol.aim_icon_pipeline = sg_make_pipeline(&aim_icon_pipeline_desc);
     }
@@ -146,7 +148,7 @@ static bool load_aim_helper_shader(mfile_t file, bool first_time, struct rendere
     }
 
     sg_shader shader;
-    if (!load_shader("aim_helper", aim_helper_shader_desc(), &shader)) {
+    if (!load_shader("aim_helper", aim_helper_shader_desc(sg_query_backend()), &shader)) {
         return false;
     }
 
@@ -172,15 +174,17 @@ static bool load_aim_helper_shader(mfile_t file, bool first_time, struct rendere
                     [ATTR_aim_helper_vs_texture_coord] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
                 },
             },
-            .depth_stencil = {
-                .depth_compare_func = SG_COMPAREFUNC_LESS_EQUAL,
-                .depth_write_enabled = false,
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = false,
             },
-            .blend = {
-                .enabled = true,
-                .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
-                .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
-            },
+            .colors[0] = {
+                .blend = {
+                    .enabled = true,
+                    .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                    .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                },
+            }
         };
         renderer->sokol.aim_helper_pipeline = sg_make_pipeline(&aim_helper_pipeline_desc);
     }
@@ -194,7 +198,7 @@ static bool load_ball_shader(mfile_t file, bool first_time, struct renderer *ren
     }
 
     sg_shader shader;
-    if (!load_shader("ball", ball_shader_desc(), &shader)) {
+    if (!load_shader("ball", ball_shader_desc(sg_query_backend()), &shader)) {
         return false;
     }
 
@@ -222,9 +226,9 @@ static bool load_ball_shader(mfile_t file, bool first_time, struct renderer *ren
                     [ATTR_ball_vs_texture_coord] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 2 },
                 },
             },
-            .depth_stencil = {
-                .depth_compare_func = SG_COMPAREFUNC_LESS_EQUAL,
-                .depth_write_enabled = true,
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = true,
             },
         };
         renderer->sokol.ball_pipeline[0] = sg_make_pipeline(&pipeline0_desc);
@@ -240,26 +244,28 @@ static bool load_ball_shader(mfile_t file, bool first_time, struct renderer *ren
                     [ATTR_ball_vs_texture_coord] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 2 },
                 },
             },
-            .depth_stencil = {
-                .depth_compare_func = SG_COMPAREFUNC_LESS_EQUAL,
-                .depth_write_enabled = true,
-                .stencil_front = {
-                    .fail_op = SG_STENCILOP_KEEP,
-                    .depth_fail_op = SG_STENCILOP_KEEP,
-                    .pass_op = SG_STENCILOP_KEEP,
-                    .compare_func = SG_COMPAREFUNC_EQUAL,
-                },
-                .stencil_back = {
-                    .fail_op = SG_STENCILOP_KEEP,
-                    .depth_fail_op = SG_STENCILOP_KEEP,
-                    .pass_op = SG_STENCILOP_KEEP,
-                    .compare_func = SG_COMPAREFUNC_EQUAL,
-                },
-                .stencil_enabled = true,
-                .stencil_read_mask = 255,
-                .stencil_write_mask = 255,
-                .stencil_ref = 255,
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = true,
             },
+            .stencil = {
+                .front = {
+                    .fail_op = SG_STENCILOP_KEEP,
+                    .depth_fail_op = SG_STENCILOP_KEEP,
+                    .pass_op = SG_STENCILOP_KEEP,
+                    .compare = SG_COMPAREFUNC_EQUAL,
+                },
+                .back = {
+                    .fail_op = SG_STENCILOP_KEEP,
+                    .depth_fail_op = SG_STENCILOP_KEEP,
+                    .pass_op = SG_STENCILOP_KEEP,
+                    .compare = SG_COMPAREFUNC_EQUAL,
+                },
+                .enabled = true,
+                .read_mask = 255,
+                .write_mask = 255,
+                .ref = 255,
+            }
         };
         renderer->sokol.ball_pipeline[1] = sg_make_pipeline(&pipeline1_desc);
     }
@@ -273,7 +279,7 @@ static bool load_hole_editor_environment_shader(mfile_t file, bool first_time, s
     }
 
     sg_shader shader;
-    if (!load_shader("hole_editor_environment", hole_editor_environment_shader_desc(), &shader)) {
+    if (!load_shader("hole_editor_environment", hole_editor_environment_shader_desc(sg_query_backend()), &shader)) {
         return false;
     }
 
@@ -305,9 +311,9 @@ static bool load_hole_editor_environment_shader(mfile_t file, bool first_time, s
                         = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 3 },
                 },
             },
-            .depth_stencil = {
-                .depth_compare_func = SG_COMPAREFUNC_LESS_EQUAL,
-                .depth_write_enabled = true,
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = true,
             },
         };
         renderer->sokol.hole_editor_environment_pipeline = sg_make_pipeline(&environment_pipeline_desc);
@@ -322,7 +328,7 @@ static bool load_hole_editor_terrain_shader(mfile_t file, bool first_time, struc
     }
 
     sg_shader shader;
-    if (!load_shader("hole_editor_terrain", hole_editor_terrain_shader_desc(), &shader)) {
+    if (!load_shader("hole_editor_terrain", hole_editor_terrain_shader_desc(sg_query_backend()), &shader)) {
         return false;
     }
 
@@ -356,9 +362,9 @@ static bool load_hole_editor_terrain_shader(mfile_t file, bool first_time, struc
                         = { .format = SG_VERTEXFORMAT_FLOAT, .buffer_index = 4 },
                 },
             },
-            .depth_stencil = {
-                .depth_compare_func = SG_COMPAREFUNC_LESS_EQUAL,
-                .depth_write_enabled = true,
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = true,
             },
         };
         renderer->sokol.hole_editor_terrain_pipeline = sg_make_pipeline(&terrain_pipeline_desc);
@@ -373,7 +379,7 @@ static bool load_hole_editor_water_shader(mfile_t file, bool first_time, struct 
     }
 
     sg_shader shader;
-    if (!load_shader("hole_editor_water", hole_editor_water_shader_desc(), &shader)) {
+    if (!load_shader("hole_editor_water", hole_editor_water_shader_desc(sg_query_backend()), &shader)) {
         return false;
     }
 
@@ -403,15 +409,17 @@ static bool load_hole_editor_water_shader(mfile_t file, bool first_time, struct 
                         = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 2 },
                 },
             },
-            .depth_stencil = {
-                .depth_compare_func = SG_COMPAREFUNC_LESS_EQUAL,
-                .depth_write_enabled = true,
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = true,
             },
-            .blend = {
-                .enabled = true,
-                .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
-                .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
-            },
+            .colors[0] = {
+                .blend = {
+                    .enabled = true,
+                    .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                    .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                },
+            }
         };
         renderer->sokol.hole_editor_water_pipeline = sg_make_pipeline(&pipeline_desc);
     }
@@ -425,7 +433,7 @@ static bool load_environment_shader(mfile_t file, bool first_time, struct render
     }
 
     sg_shader shader;
-    if (!load_shader("environment", environment_shader_desc(), &shader)) {
+    if (!load_shader("environment", environment_shader_desc(sg_query_backend()), &shader)) {
         return false;
     }
 
@@ -455,9 +463,9 @@ static bool load_environment_shader(mfile_t file, bool first_time, struct render
                         = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 2 },
                 },
             },
-            .depth_stencil = {
-                .depth_compare_func = SG_COMPAREFUNC_LESS_EQUAL,
-                .depth_write_enabled = true,
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = true,
             },
         };
         renderer->sokol.environment_pipeline = sg_make_pipeline(&environment_pipeline_desc);
@@ -472,7 +480,7 @@ static bool load_fxaa_shader(mfile_t file, bool first_time, struct renderer *ren
     }
 
     sg_shader shader;
-    if (!load_shader("fxaa", fxaa_shader_desc(), &shader)) {
+    if (!load_shader("fxaa", fxaa_shader_desc(sg_query_backend()), &shader)) {
         return false;
     }
 
@@ -511,7 +519,7 @@ static bool load_cup_shader(mfile_t file, bool first_time, struct renderer *rend
     }
 
     sg_shader shader;
-    if (!load_shader("cup", cup_shader_desc(), &shader)) {
+    if (!load_shader("cup", cup_shader_desc(sg_query_backend()), &shader)) {
         return false;
     }
 
@@ -537,25 +545,27 @@ static bool load_cup_shader(mfile_t file, bool first_time, struct renderer *rend
                     [ATTR_cup_vs_lightmap_uv] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
                 },
             },
-            .depth_stencil = {
-                .depth_compare_func = SG_COMPAREFUNC_LESS_EQUAL,
-                .depth_write_enabled = true,
-                .stencil_front = {
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = true,
+            },
+            .stencil = {
+                .front = {
                     .fail_op = SG_STENCILOP_KEEP,
                     .depth_fail_op = SG_STENCILOP_KEEP,
                     .pass_op = SG_STENCILOP_KEEP,
-                    .compare_func = SG_COMPAREFUNC_EQUAL,
+                    .compare = SG_COMPAREFUNC_EQUAL,
                 },
-                .stencil_back = {
+                .back = {
                     .fail_op = SG_STENCILOP_KEEP,
                     .depth_fail_op = SG_STENCILOP_KEEP,
                     .pass_op = SG_STENCILOP_KEEP,
-                    .compare_func = SG_COMPAREFUNC_EQUAL,
+                    .compare = SG_COMPAREFUNC_EQUAL,
                 },
-                .stencil_enabled = true,
-                .stencil_read_mask = 255,
-                .stencil_write_mask = 255,
-                .stencil_ref = 255,
+                .enabled = true,
+                .read_mask = 255,
+                .write_mask = 255,
+                .ref = 255,
             },
         };
         renderer->sokol.cup_pipeline[1] = sg_make_pipeline(&cup_pipeline1_desc);
@@ -570,7 +580,7 @@ static bool load_occluded_ball_shader(mfile_t file, bool first_time, struct rend
     }
 
     sg_shader shader;
-    if (!load_shader("occluded_ball", occluded_ball_shader_desc(), &shader)) {
+    if (!load_shader("occluded_ball", occluded_ball_shader_desc(sg_query_backend()), &shader)) {
         return false;
     }
 
@@ -596,17 +606,17 @@ static bool load_occluded_ball_shader(mfile_t file, bool first_time, struct rend
                     [ATTR_occluded_ball_vs_normal] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 1 },
                 },
             },
-            .depth_stencil = {
-                .depth_compare_func = SG_COMPAREFUNC_GREATER,
+            .depth = {
+                .compare = SG_COMPAREFUNC_GREATER,
             },
-            .rasterizer = {
-                .cull_mode = SG_CULLMODE_FRONT,
-            },
-            .blend = {
-                .enabled = true,
-                .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
-                .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
-            },
+            .cull_mode = SG_CULLMODE_FRONT,
+            .colors[0] = {
+                .blend = {
+                    .enabled = true,
+                    .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                    .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                },
+            }
         };
         renderer->sokol.occluded_ball_pipeline = sg_make_pipeline(&occluded_ball_pipeline);
     }
@@ -620,7 +630,7 @@ static bool load_pass_through_shader(mfile_t file, bool first_time, struct rende
     }
 
     sg_shader shader;
-    if (!load_shader("pass_through", pass_through_shader_desc(), &shader)) {
+    if (!load_shader("pass_through", pass_through_shader_desc(sg_query_backend()), &shader)) {
         return false;
     }
 
@@ -644,29 +654,33 @@ static bool load_pass_through_shader(mfile_t file, bool first_time, struct rende
                     [ATTR_pass_through_vs_position] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
                 },
             },
-            .depth_stencil = {
-                .depth_compare_func = SG_COMPAREFUNC_LESS_EQUAL,
-                .depth_write_enabled = false,
-                .stencil_front = {
-                    .fail_op = SG_STENCILOP_KEEP,
-                    .depth_fail_op = SG_STENCILOP_KEEP,
-                    .pass_op = SG_STENCILOP_REPLACE,
-                    .compare_func = SG_COMPAREFUNC_ALWAYS,
-                },
-                .stencil_back = {
-                    .fail_op = SG_STENCILOP_KEEP,
-                    .depth_fail_op = SG_STENCILOP_KEEP,
-                    .pass_op = SG_STENCILOP_REPLACE,
-                    .compare_func = SG_COMPAREFUNC_ALWAYS,
-                },
-                .stencil_enabled = true,
-                .stencil_write_mask = 255,
-                .stencil_ref = 255,
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = false,
             },
-            .blend = {
+            .stencil = {
+                .front = {
+                    .fail_op = SG_STENCILOP_KEEP,
+                    .depth_fail_op = SG_STENCILOP_KEEP,
+                    .pass_op = SG_STENCILOP_REPLACE,
+                    .compare = SG_COMPAREFUNC_ALWAYS,
+                },
+                .back = {
+                    .fail_op = SG_STENCILOP_KEEP,
+                    .depth_fail_op = SG_STENCILOP_KEEP,
+                    .pass_op = SG_STENCILOP_REPLACE,
+                    .compare = SG_COMPAREFUNC_ALWAYS,
+                },
                 .enabled = true,
-                .color_write_mask = SG_COLORMASK_NONE,
+                .write_mask = 255,
+                .ref = 255,
             },
+            .colors[0] = {
+                .write_mask = SG_COLORMASK_NONE,
+                .blend = {
+                    .enabled = true,
+                },
+            }
         };
         renderer->sokol.cup_pipeline[0] = sg_make_pipeline(&cup_pipeline0_desc);
     }
@@ -680,7 +694,7 @@ static bool load_single_color_shader(mfile_t file, bool first_time, struct rende
     }
 
     sg_shader shader;
-    if (!load_shader("single_color", single_color_shader_desc(), &shader)) {
+    if (!load_shader("single_color", single_color_shader_desc(sg_query_backend()), &shader)) {
         return false;
     }
 
@@ -708,15 +722,17 @@ static bool load_single_color_shader(mfile_t file, bool first_time, struct rende
                         = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 1 },
                 },
             },
-            .depth_stencil = {
-                .depth_compare_func = SG_COMPAREFUNC_LESS_EQUAL,
-                .depth_write_enabled = false,
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = false,
             },
-            .blend = {
-                .enabled = true,
-                .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
-                .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
-            },
+            .colors[0] = {
+                .blend = {
+                    .enabled = true,
+                    .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                    .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                },
+            }
         };
         renderer->sokol.physics_debug_pipeline = sg_make_pipeline(&physics_pipeline_desc);
     }
@@ -732,15 +748,17 @@ static bool load_single_color_shader(mfile_t file, bool first_time, struct rende
                         = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 1 },
                 },
             },
-            .depth_stencil = {
-                .depth_compare_func = SG_COMPAREFUNC_LESS_EQUAL,
-                .depth_write_enabled = true,
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = true,
             },
-            .blend = {
-                .enabled = true,
-                .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
-                .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
-            },
+            .colors[0] = {
+                .blend = {
+                    .enabled = true,
+                    .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                    .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                },
+            }
         };
         renderer->sokol.objects_pipeline = sg_make_pipeline(&objects_pipeline_desc);
     }
@@ -754,7 +772,7 @@ static bool load_terrain_shader(mfile_t file, bool first_time, struct renderer *
     }
 
     sg_shader shader;
-    if (!load_shader("terrain", terrain_shader_desc(), &shader)) {
+    if (!load_shader("terrain", terrain_shader_desc(sg_query_backend()), &shader)) {
         return false;
     }
 
@@ -783,13 +801,11 @@ static bool load_terrain_shader(mfile_t file, bool first_time, struct renderer *
                     [ATTR_terrain_vs_material_idx] = { .format = SG_VERTEXFORMAT_FLOAT, .buffer_index = 4 },
                 },
             },
-            .depth_stencil = {
-                .depth_compare_func = SG_COMPAREFUNC_LESS_EQUAL,
-                .depth_write_enabled = true,
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = true,
             },
-            .rasterizer = {
-                .cull_mode = SG_CULLMODE_FRONT,
-            },
+            .cull_mode = SG_CULLMODE_FRONT,
         };
         renderer->sokol.terrain_pipeline[0] = sg_make_pipeline(&terrain_pipeline_desc);
     }
@@ -806,18 +822,18 @@ static bool load_terrain_shader(mfile_t file, bool first_time, struct renderer *
                     [ATTR_terrain_vs_material_idx] = { .format = SG_VERTEXFORMAT_FLOAT, .buffer_index = 4 },
                 },
             },
-            .depth_stencil = {
-                .depth_compare_func = SG_COMPAREFUNC_LESS_EQUAL,
-                .depth_write_enabled = true,
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = true,
             },
-            .blend = {
-                .enabled = true,
-                .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
-                .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+            .colors[0] = {
+                .blend = {
+                    .enabled = true,
+                    .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                    .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                },
             },
-            .rasterizer = {
-                .cull_mode = SG_CULLMODE_BACK,
-            },
+            .cull_mode = SG_CULLMODE_BACK,
         };
         renderer->sokol.terrain_pipeline[1] = sg_make_pipeline(&terrain_pipeline_desc);
     }
@@ -831,7 +847,7 @@ static bool load_texture_shader(mfile_t file, bool first_time, struct renderer *
     }
 
     sg_shader shader;
-    if (!load_shader("texture", texture_shader_desc(), &shader)) {
+    if (!load_shader("texture", texture_shader_desc(sg_query_backend()), &shader)) {
         return false;
     }
 
@@ -869,7 +885,7 @@ static bool load_ui_shader(mfile_t file, bool first_time, struct renderer *rende
     }
 
     sg_shader shader;
-    if (!load_shader("ui", ui_shader_desc(), &shader)) {
+    if (!load_shader("ui", ui_shader_desc(sg_query_backend()), &shader)) {
         return false;
     }
 
@@ -894,11 +910,13 @@ static bool load_ui_shader(mfile_t file, bool first_time, struct renderer *rende
                     [ATTR_ui_vs_texture_coord] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
                 },
             },
-            .blend = {
-                .enabled = true,
-                .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
-                .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
-            },
+            .colors[0] = {
+                .blend = {
+                    .enabled = true,
+                    .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                    .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                },
+            }
         };
         renderer->sokol.ui_pipeline = sg_make_pipeline(&pipeline_desc);
     }
@@ -912,7 +930,7 @@ static bool load_ui_single_color_shader(mfile_t file, bool first_time, struct re
     }
 
     sg_shader shader;
-    if (!load_shader("ui_single_color", ui_single_color_shader_desc(), &shader)) {
+    if (!load_shader("ui_single_color", ui_single_color_shader_desc(sg_query_backend()), &shader)) {
         return false;
     }
 
@@ -936,15 +954,17 @@ static bool load_ui_single_color_shader(mfile_t file, bool first_time, struct re
                     [ATTR_ui_single_color_vs_position] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
                 },
             },
-            .depth_stencil = {
-                .depth_compare_func = SG_COMPAREFUNC_LESS_EQUAL,
-                .depth_write_enabled = false,
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = false,
             },
-            .blend = {
-                .enabled = true,
-                .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
-                .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
-            },
+            .colors[0] = {
+                .blend = {
+                    .enabled = true,
+                    .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                    .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                },
+            }
         };
         renderer->sokol.ui_single_color_pipeline = sg_make_pipeline(&ui_single_color_pipeline);
     }
@@ -958,7 +978,7 @@ static bool load_water_shader(mfile_t file, bool first_time, struct renderer *re
     }
 
     sg_shader shader;
-    if (!load_shader("water", water_shader_desc(), &shader)) {
+    if (!load_shader("water", water_shader_desc(sg_query_backend()), &shader)) {
         return false;
     }
 
@@ -984,31 +1004,35 @@ static bool load_water_shader(mfile_t file, bool first_time, struct renderer *re
                     [ATTR_water_vs_lightmap_uv] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 2 },
                 },
             },
-            .depth_stencil = {
-                .depth_compare_func = SG_COMPAREFUNC_LESS_EQUAL,
-                .depth_write_enabled = true,
-                .stencil_front = {
-                    .fail_op = SG_STENCILOP_KEEP,
-                    .depth_fail_op = SG_STENCILOP_REPLACE,
-                    .pass_op = SG_STENCILOP_REPLACE,
-                    .compare_func = SG_COMPAREFUNC_ALWAYS,
-                },
-                .stencil_back = {
-                    .fail_op = SG_STENCILOP_KEEP,
-                    .depth_fail_op = SG_STENCILOP_REPLACE,
-                    .pass_op = SG_STENCILOP_REPLACE,
-                    .compare_func = SG_COMPAREFUNC_ALWAYS,
-                },
-                .stencil_enabled = true,
-                .stencil_write_mask = 255,
-                .stencil_read_mask = 255,
-                .stencil_ref = 255,
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = true,
             },
-            .blend = {
+            .stencil = {
+                .front = {
+                    .fail_op = SG_STENCILOP_KEEP,
+                    .depth_fail_op = SG_STENCILOP_REPLACE,
+                    .pass_op = SG_STENCILOP_REPLACE,
+                    .compare = SG_COMPAREFUNC_ALWAYS,
+                },
+                .back = {
+                    .fail_op = SG_STENCILOP_KEEP,
+                    .depth_fail_op = SG_STENCILOP_REPLACE,
+                    .pass_op = SG_STENCILOP_REPLACE,
+                    .compare = SG_COMPAREFUNC_ALWAYS,
+                },
                 .enabled = true,
-                .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
-                .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                .write_mask = 255,
+                .read_mask = 255,
+                .ref = 255,
             },
+            .colors[0] = {
+                .blend = {
+                    .enabled = true,
+                    .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                    .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                },
+            }
         };
         renderer->sokol.water_pipeline = sg_make_pipeline(&water_pipeline_desc);
     }
@@ -1022,7 +1046,7 @@ static bool load_water_around_ball_shader(mfile_t file, bool first_time, struct 
     }
 
     sg_shader shader;
-    if (!load_shader("water_around_ball", water_around_ball_shader_desc(), &shader)) {
+    if (!load_shader("water_around_ball", water_around_ball_shader_desc(sg_query_backend()), &shader)) {
         return false;
     }
 
@@ -1047,31 +1071,35 @@ static bool load_water_around_ball_shader(mfile_t file, bool first_time, struct 
                     [ATTR_water_vs_texture_coord] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
                 },
             },
-            .depth_stencil = {
-                .depth_compare_func = SG_COMPAREFUNC_LESS_EQUAL,
-                .depth_write_enabled = false,
-                .stencil_front = {
-                    .fail_op = SG_STENCILOP_KEEP,
-                    .depth_fail_op = SG_STENCILOP_KEEP,
-                    .pass_op = SG_STENCILOP_KEEP,
-                    .compare_func = SG_COMPAREFUNC_EQUAL,
-                },
-                .stencil_back = {
-                    .fail_op = SG_STENCILOP_KEEP,
-                    .depth_fail_op = SG_STENCILOP_KEEP,
-                    .pass_op = SG_STENCILOP_KEEP,
-                    .compare_func = SG_COMPAREFUNC_EQUAL,
-                },
-                .stencil_enabled = true,
-                .stencil_write_mask = 255,
-                .stencil_read_mask = 255,
-                .stencil_ref = 255,
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = false,
             },
-            .blend = {
+            .stencil = {
+                .front = {
+                    .fail_op = SG_STENCILOP_KEEP,
+                    .depth_fail_op = SG_STENCILOP_KEEP,
+                    .pass_op = SG_STENCILOP_KEEP,
+                    .compare = SG_COMPAREFUNC_EQUAL,
+                },
+                .back = {
+                    .fail_op = SG_STENCILOP_KEEP,
+                    .depth_fail_op = SG_STENCILOP_KEEP,
+                    .pass_op = SG_STENCILOP_KEEP,
+                    .compare = SG_COMPAREFUNC_EQUAL,
+                },
                 .enabled = true,
-                .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
-                .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                .write_mask = 255,
+                .read_mask = 255,
+                .ref = 255,
             },
+            .colors[0] = {
+                .blend = {
+                    .enabled = true,
+                    .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                    .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                },
+            }
         };
         renderer->sokol.water_around_ball_pipeline = sg_make_pipeline(&water_around_ball_pipeline_desc);
     }
@@ -1085,7 +1113,7 @@ static bool load_water_ripple_shader(mfile_t file, bool first_time, struct rende
     }
 
     sg_shader shader;
-    if (!load_shader("water_ripple", water_ripple_shader_desc(), &shader)) {
+    if (!load_shader("water_ripple", water_ripple_shader_desc(sg_query_backend()), &shader)) {
         return false;
     }
 
@@ -1110,31 +1138,35 @@ static bool load_water_ripple_shader(mfile_t file, bool first_time, struct rende
                     [ATTR_water_vs_texture_coord] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
                 },
             },
-            .depth_stencil = {
-                .depth_compare_func = SG_COMPAREFUNC_LESS_EQUAL,
-                .depth_write_enabled = false,
-                .stencil_front = {
-                    .fail_op = SG_STENCILOP_KEEP,
-                    .depth_fail_op = SG_STENCILOP_KEEP,
-                    .pass_op = SG_STENCILOP_KEEP,
-                    .compare_func = SG_COMPAREFUNC_EQUAL,
-                },
-                .stencil_back = {
-                    .fail_op = SG_STENCILOP_KEEP,
-                    .depth_fail_op = SG_STENCILOP_KEEP,
-                    .pass_op = SG_STENCILOP_KEEP,
-                    .compare_func = SG_COMPAREFUNC_EQUAL,
-                },
-                .stencil_enabled = true,
-                .stencil_write_mask = 255,
-                .stencil_read_mask = 255,
-                .stencil_ref = 255,
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = false,
             },
-            .blend = {
+            .stencil = {
+                .front = {
+                    .fail_op = SG_STENCILOP_KEEP,
+                    .depth_fail_op = SG_STENCILOP_KEEP,
+                    .pass_op = SG_STENCILOP_KEEP,
+                    .compare = SG_COMPAREFUNC_EQUAL,
+                },
+                .back = {
+                    .fail_op = SG_STENCILOP_KEEP,
+                    .depth_fail_op = SG_STENCILOP_KEEP,
+                    .pass_op = SG_STENCILOP_KEEP,
+                    .compare = SG_COMPAREFUNC_EQUAL,
+                },
                 .enabled = true,
-                .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
-                .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                .write_mask = 255,
+                .read_mask = 255,
+                .ref = 255,
             },
+            .colors[0] = {
+                .blend = {
+                    .enabled = true,
+                    .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                    .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                },
+            }
         };
         renderer->sokol.water_ripple_pipeline = sg_make_pipeline(&water_ripple_pipeline_desc);
     }
@@ -1245,9 +1277,9 @@ static bool _mdata_texture_file_handler(const char *file_path, mdata_file_t *mda
         .mag_filter = filter,
         .wrap_u = SG_WRAP_REPEAT,
         .wrap_v = SG_WRAP_REPEAT,
-        .content.subimage[0][0] = {
+        .data.subimage[0][0] = {
             .ptr = data,
-            .size = sizeof(char)*x*y,
+            .size = 4*sizeof(char)*x*y,
         },
     };
 
@@ -1357,7 +1389,8 @@ void renderer_init(struct renderer *renderer) {
                     .size = 6*50*sizeof(vec3),
                     .type = SG_BUFFERTYPE_VERTEXBUFFER,
                     .usage = SG_USAGE_DYNAMIC,
-                    .content = NULL,
+                    .data.ptr = NULL,
+                    .data.size = 0,
                     .label = NULL,
                     }
                     );
@@ -1366,7 +1399,8 @@ void renderer_init(struct renderer *renderer) {
                     .size = 6*50*sizeof(float),
                     .type = SG_BUFFERTYPE_VERTEXBUFFER,
                     .usage = SG_USAGE_DYNAMIC,
-                    .content = NULL,
+                    .data.ptr = NULL,
+                    .data.size = 0,
                     .label = NULL,
                     }
                     );
@@ -1449,8 +1483,10 @@ void renderer_update_game_icon_buffer(struct renderer *renderer,
         alpha[6*i + 4] = alpha0;
         alpha[6*i + 5] = alpha1;
     }
-    sg_update_buffer(renderer->sokol.game_aim.positions_buf, positions, 6*50*sizeof(vec3));
-    sg_update_buffer(renderer->sokol.game_aim.alpha_buf, alpha, 6*50*sizeof(float));
+    sg_update_buffer(renderer->sokol.game_aim.positions_buf, 
+            &(sg_range) { positions, 6*50*sizeof(vec3) });
+    sg_update_buffer(renderer->sokol.game_aim.alpha_buf, 
+            &(sg_range) { alpha, 6*50*sizeof(float) });
     renderer->sokol.game_aim.num_points = 6*50;
     free(positions);
 }
@@ -1496,7 +1532,7 @@ void renderer_new_frame(struct renderer *renderer, float dt) {
         sg_pass_action action = {
             .colors[0] = {
                 .action = SG_ACTION_CLEAR,
-                .val = { 0.0f, 0.0f, 0.0f, 1.0f },
+                .value = { 0.0f, 0.0f, 0.0f, 1.0f },
             },
         };
         sg_begin_default_pass(&action, sapp_width(), sapp_height());
@@ -1513,7 +1549,7 @@ void renderer_end_frame(struct renderer *renderer) {
             },
             .depth = {
                 .action = SG_ACTION_CLEAR,
-                .val = 1.0f,
+                .value = 1.0f,
 
             },
         };
@@ -1562,9 +1598,9 @@ void renderer_draw_line(struct renderer *renderer, vec3 p0, vec3 p1, float size,
                     [ATTR_single_color_vs_normal] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 1 },
                 },
             },
-            .depth_stencil = {
-                .depth_compare_func = SG_COMPAREFUNC_LESS_EQUAL,
-                .depth_write_enabled = true,
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = true,
             },
         };
         pipeline = sg_make_pipeline(&pipeline_desc);
@@ -1582,13 +1618,15 @@ void renderer_draw_line(struct renderer *renderer, vec3 p0, vec3 p1, float size,
         .model_mat = mat4_transpose(mat4_box_to_line_transform(p0, p1, size)),
         .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
     };
-    sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params, &vs_params, sizeof(vs_params));
+    sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params, 
+            &(sg_range) { &vs_params, sizeof(vs_params) });
 
     single_color_fs_params_t fs_params = {
         .color = V4(color.x, color.y, color.z, color.w),
         .kd_scale = 0.0f,
     };
-    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params, &fs_params, sizeof(fs_params));
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params, 
+            &(sg_range) { &fs_params, sizeof(fs_params) });
 
     sg_draw(0, cube_model->num_points, 1);
 }
@@ -1629,7 +1667,8 @@ static void renderer_draw_text(struct renderer *renderer, struct font *font,
                         mat4_translation(V3(p.x, p.y, 0.0f)),
                         mat4_scale(V3(0.5f*sz.x, 0.5f*sz.y, 1.0f)))),
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params, &vs_params, sizeof(vs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params, 
+                &(sg_range) { &vs_params, sizeof(vs_params) });
 
         ui_fs_params_t fs_params = {
             .tex_x = x,
@@ -1639,7 +1678,8 @@ static void renderer_draw_text(struct renderer *renderer, struct font *font,
             .is_font = 1.0f,
             .color = color,
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params, &fs_params, sizeof(fs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params, 
+                &(sg_range) { &fs_params, sizeof(fs_params) });
 
         sg_draw(0, square_model->num_points, 1);
 
@@ -1664,7 +1704,8 @@ static void renderer_draw_ui_box(struct renderer *renderer, vec2 pos, vec2 size,
                         mat4_translation(V3(p.x, p.y, 0.0f)),
                         mat4_scale(V3(0.5f*sz.x, 0.5f*sz.y, 1.0f)))),
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params, &vs_params, sizeof(vs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params, 
+                &(sg_range) { &vs_params, sizeof(vs_params) });
 
         ui_fs_params_t fs_params = {
             .tex_x = 18.0f*tl.x,
@@ -1674,7 +1715,8 @@ static void renderer_draw_ui_box(struct renderer *renderer, vec2 pos, vec2 size,
             .is_font = 0.0f,
             .color = V4(0.0f, 1.0f, 1.0f, alpha),
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params, &fs_params, sizeof(fs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params, 
+                &(sg_range) { &fs_params, sizeof(fs_params) });
 
         sg_draw(0, square_model->num_points, 1);
     }
@@ -1691,7 +1733,8 @@ static void renderer_draw_ui_box(struct renderer *renderer, vec2 pos, vec2 size,
                         mat4_translation(V3(p.x, p.y, 0.0f)),
                         mat4_scale(V3(0.5f*sz.x, 0.5f*sz.y, 1.0f)))),
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params, &vs_params, sizeof(vs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params, 
+                &(sg_range) { &vs_params, sizeof(vs_params) });
 
         ui_fs_params_t fs_params = {
             .tex_x = 18.0f*bl.x,
@@ -1701,7 +1744,8 @@ static void renderer_draw_ui_box(struct renderer *renderer, vec2 pos, vec2 size,
             .is_font = 0.0f,
             .color = V4(0.0f, 1.0f, 1.0f, alpha),
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params, &fs_params, sizeof(fs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params, 
+                &(sg_range) { &fs_params, sizeof(fs_params) });
 
         sg_draw(0, square_model->num_points, 1);
     }
@@ -1718,7 +1762,8 @@ static void renderer_draw_ui_box(struct renderer *renderer, vec2 pos, vec2 size,
                         mat4_translation(V3(p.x, p.y, 0.0f)),
                         mat4_scale(V3(0.5f*sz.x, 0.5f*sz.y, 1.0f)))),
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params, &vs_params, sizeof(vs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params, 
+                &(sg_range) { &vs_params, sizeof(vs_params) });
 
         ui_fs_params_t fs_params = {
             .tex_x = 18.0f*br.x,
@@ -1728,7 +1773,8 @@ static void renderer_draw_ui_box(struct renderer *renderer, vec2 pos, vec2 size,
             .is_font = 0.0f,
             .color = V4(0.0f, 1.0f, 1.0f, alpha),
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params, &fs_params, sizeof(fs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params, 
+                &(sg_range) { &fs_params, sizeof(fs_params) });
 
         sg_draw(0, square_model->num_points, 1);
     }
@@ -1745,7 +1791,8 @@ static void renderer_draw_ui_box(struct renderer *renderer, vec2 pos, vec2 size,
                         mat4_translation(V3(p.x, p.y, 0.0f)),
                         mat4_scale(V3(0.5f*sz.x, 0.5f*sz.y, 1.0f)))),
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params, &vs_params, sizeof(vs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params, 
+                &(sg_range) { &vs_params, sizeof(vs_params) });
 
         ui_fs_params_t fs_params = {
             .tex_x = 18.0f*tr.x,
@@ -1755,7 +1802,8 @@ static void renderer_draw_ui_box(struct renderer *renderer, vec2 pos, vec2 size,
             .is_font = 0.0f,
             .color = V4(0.0f, 1.0f, 1.0f, alpha),
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params, &fs_params, sizeof(fs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params, 
+                &(sg_range) { &fs_params, sizeof(fs_params) });
 
         sg_draw(0, square_model->num_points, 1);
     }
@@ -1772,7 +1820,8 @@ static void renderer_draw_ui_box(struct renderer *renderer, vec2 pos, vec2 size,
                         mat4_translation(V3(p.x, p.y, 0.0f)),
                         mat4_scale(V3(0.5f*sz.x, 0.5f*sz.y, 1.0f)))),
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params, &vs_params, sizeof(vs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params, 
+                &(sg_range) { &vs_params, sizeof(vs_params) });
 
         ui_fs_params_t fs_params = {
             .tex_x = 18.0f*t.x,
@@ -1782,7 +1831,8 @@ static void renderer_draw_ui_box(struct renderer *renderer, vec2 pos, vec2 size,
             .is_font = 0.0f,
             .color = V4(0.0f, 1.0f, 1.0f, alpha),
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params, &fs_params, sizeof(fs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params, 
+                &(sg_range) { &fs_params, sizeof(fs_params) });
 
         sg_draw(0, square_model->num_points, 1);
     }
@@ -1799,7 +1849,8 @@ static void renderer_draw_ui_box(struct renderer *renderer, vec2 pos, vec2 size,
                         mat4_translation(V3(p.x, p.y, 0.0f)),
                         mat4_scale(V3(0.5f*sz.x, 0.5f*sz.y, 1.0f)))),
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params, &vs_params, sizeof(vs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params, 
+                &(sg_range) { &vs_params, sizeof(vs_params) });
 
         ui_fs_params_t fs_params = {
             .tex_x = 18.0f*b.x,
@@ -1809,7 +1860,8 @@ static void renderer_draw_ui_box(struct renderer *renderer, vec2 pos, vec2 size,
             .is_font = 0.0f,
             .color = V4(0.0f, 1.0f, 1.0f, alpha),
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params, &fs_params, sizeof(fs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params, 
+                &(sg_range) { &fs_params, sizeof(fs_params) });
 
         sg_draw(0, square_model->num_points, 1);
     }
@@ -1826,7 +1878,8 @@ static void renderer_draw_ui_box(struct renderer *renderer, vec2 pos, vec2 size,
                         mat4_translation(V3(p.x, p.y, 0.0f)),
                         mat4_scale(V3(0.5f*sz.x, 0.5f*sz.y, 1.0f)))),
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params, &vs_params, sizeof(vs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params, 
+                &(sg_range) { &vs_params, sizeof(vs_params) });
 
         ui_fs_params_t fs_params = {
             .tex_x = 18.0f*r.x,
@@ -1836,7 +1889,8 @@ static void renderer_draw_ui_box(struct renderer *renderer, vec2 pos, vec2 size,
             .is_font = 0.0f,
             .color = V4(0.0f, 1.0f, 1.0f, alpha),
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params, &fs_params, sizeof(fs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params, 
+                &(sg_range) { &fs_params, sizeof(fs_params) });
 
         sg_draw(0, square_model->num_points, 1);
     }
@@ -1853,7 +1907,8 @@ static void renderer_draw_ui_box(struct renderer *renderer, vec2 pos, vec2 size,
                         mat4_translation(V3(p.x, p.y, 0.0f)),
                         mat4_scale(V3(0.5f*sz.x, 0.5f*sz.y, 1.0f)))),
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params, &vs_params, sizeof(vs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params, 
+                &(sg_range) { &vs_params, sizeof(vs_params) });
 
         ui_fs_params_t fs_params = {
             .tex_x = 18.0f*l.x,
@@ -1863,7 +1918,8 @@ static void renderer_draw_ui_box(struct renderer *renderer, vec2 pos, vec2 size,
             .is_font = 0.0f,
             .color = V4(0.0f, 1.0f, 1.0f, alpha),
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params, &fs_params, sizeof(fs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params, 
+                &(sg_range) { &fs_params, sizeof(fs_params) });
 
         sg_draw(0, square_model->num_points, 1);
     }
@@ -1880,7 +1936,8 @@ static void renderer_draw_ui_box(struct renderer *renderer, vec2 pos, vec2 size,
                         mat4_translation(V3(p.x, p.y, 0.0f)),
                         mat4_scale(V3(0.5f*sz.x, 0.5f*sz.y, 1.0f)))),
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params, &vs_params, sizeof(vs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params, 
+                &(sg_range) { &vs_params, sizeof(vs_params) });
 
         ui_fs_params_t fs_params = {
             .tex_x = 18.0f*m.x,
@@ -1890,7 +1947,8 @@ static void renderer_draw_ui_box(struct renderer *renderer, vec2 pos, vec2 size,
             .is_font = 0.0f,
             .color = V4(0.0f, 1.0f, 1.0f, alpha),
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params, &fs_params, sizeof(fs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params, 
+                &(sg_range) { &fs_params, sizeof(fs_params) });
 
         sg_draw(0, square_model->num_points, 1);
     }
@@ -1924,7 +1982,7 @@ void renderer_draw_main_menu(struct renderer *renderer, struct main_menu *main_m
         sg_pass_action action = {
             .colors[0] = {
                 .action = SG_ACTION_DONTCARE,
-                .val = { 0.529f, 0.808f, 0.922f, 1.0f },
+                .value = { 0.529f, 0.808f, 0.922f, 1.0f },
             },
         };
         sg_begin_default_pass(&action, sapp_width(), sapp_height());
@@ -2025,7 +2083,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
         sg_pass_action game_pass_action = {
             .colors[0] = {
                 .action = SG_ACTION_CLEAR,
-                .val = { 0.529f, 0.808f, 0.922f, 1.0f },
+                .value = { 0.529f, 0.808f, 0.922f, 1.0f },
             },
         };
         sg_begin_pass(renderer->sokol.game_pass, &game_pass_action);
@@ -2055,13 +2113,15 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                     .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                     .model_mat = mat4_transpose(environment_entity_get_transform(entity)),
                 };
-                sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_environment_vs_params, &vs_params, sizeof(vs_params));
+                sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_environment_vs_params, 
+                        &(sg_range) { &vs_params, sizeof(vs_params) });
 
                 vec3 bp = game->player_ball.draw_position;
                 environment_fs_params_t fs_params = {
                     .ball_position = V4(bp.x, bp.y, bp.z, 1.0),
                 };
-                sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_environment_fs_params, &fs_params, sizeof(fs_params));
+                sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_environment_fs_params, 
+                        &(sg_range) { &fs_params, sizeof(fs_params) });
 
                 sg_draw(0, model->num_points, 1);
                 lightmap_uvs_offset += sizeof(vec2)*model->num_points;
@@ -2109,7 +2169,8 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                     .color1[3] = V4(c1[3].x, c1[3].y, c1[3].z, 1.0f),
                     .color1[4] = V4(c1[4].x, c1[4].y, c1[4].z, 1.0f),
                 };
-                sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_terrain_vs_params, &vs_params, sizeof(vs_params));
+                sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_terrain_vs_params, 
+                        &(sg_range) { &vs_params, sizeof(vs_params) });
 
                 vec3 ball_pos = game->player_ball.draw_position;
                 terrain_fs_params_t fs_params = {
@@ -2117,7 +2178,8 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                     .lightmap_t = 0.0f,
                     .opacity = 1.0f,
                 };
-                sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_terrain_fs_params, &fs_params, sizeof(fs_params));
+                sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_terrain_fs_params, 
+                        &(sg_range) { &fs_params, sizeof(fs_params) });
 
                 sg_draw(0, model->num_elements, 1);
             }
@@ -2195,7 +2257,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                         .color1[4] = V4(c1[4].x, c1[4].y, c1[4].z, 1.0f),
                     };
                     sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_terrain_vs_params, 
-                            &vs_params, sizeof(vs_params));
+                            &(sg_range) { &vs_params, sizeof(vs_params) });
 
                     vec3 ball_pos = game->player_ball.draw_position;
                     terrain_fs_params_t fs_params = {
@@ -2203,7 +2265,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                         .lightmap_t = static_lightmap_t,
                     };
                     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_terrain_fs_params, 
-                            &fs_params, sizeof(fs_params));
+                            &(sg_range) { &fs_params, sizeof(fs_params) });
 
                     sg_draw(0, static_model->num_elements, 1);
                 }
@@ -2264,7 +2326,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                         .color1[4] = V4(c1[4].x, c1[4].y, c1[4].z, 1.0f),
                     };
                     sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_terrain_vs_params, 
-                            &vs_params, sizeof(vs_params));
+                            &(sg_range) { &vs_params, sizeof(vs_params) });
 
                     vec3 ball_pos = game->player_ball.draw_position;
                     terrain_fs_params_t fs_params = {
@@ -2272,7 +2334,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                         .lightmap_t = moving_lightmap_t,
                     };
                     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_terrain_fs_params, 
-                            &fs_params, sizeof(fs_params));
+                            &(sg_range) { &fs_params, sizeof(fs_params) });
 
                     sg_draw(0, moving_model->num_elements, 1);
                 }
@@ -2302,12 +2364,14 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                 .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                 .model_mat = mat4_transpose(transform),
             };
-            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ball_vs_params, &vs_params, sizeof(vs_params));
+            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ball_vs_params, 
+                    &(sg_range) { &vs_params, sizeof(vs_params) });
 
             ball_fs_params_t fs_params = {
                 .color = V4(color.x, color.y, color.z, 1.0f),
             };
-            sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ball_fs_params, &fs_params, sizeof(fs_params));
+            sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ball_fs_params, 
+                    &(sg_range) { &fs_params, sizeof(fs_params) });
 
             sg_draw(0, model->num_points, 1);
         }
@@ -2330,7 +2394,8 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                 .model_mat = mat4_transpose(transform),
                 .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
             };
-            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_occluded_ball_vs_params, &vs_params, sizeof(vs_params));
+            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_occluded_ball_vs_params, 
+                    &(sg_range) { &vs_params, sizeof(vs_params) });
 
             vec3 bp = ball->draw_position;
             vec3 cp = renderer->cam_pos;
@@ -2338,7 +2403,8 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                 .ball_position = V4(bp.x, bp.y, bp.z, 0.0f),
                 .cam_position = V4(cp.x, cp.y, cp.z, 0.0f),
             };
-            sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_occluded_ball_fs_params, &fs_params, sizeof(fs_params));
+            sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_occluded_ball_fs_params, 
+                    &(sg_range) { &fs_params, sizeof(fs_params) });
 
             sg_draw(0, model->num_points, 1);
         }
@@ -2358,7 +2424,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                 .kd_scale = 0.0f,
             };
             sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params,
-                    &fs_params, sizeof(fs_params));
+                    &(sg_range) { &fs_params, sizeof(fs_params) });
 
             float size = 0.01f;
             for (int i = 0; i < game->physics.hole_triangles.length; i++) {
@@ -2371,7 +2437,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                     .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                 };
                 sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                        &vs_params, sizeof(vs_params));
+                        &(sg_range) { &vs_params, sizeof(vs_params) });
                 sg_draw(0, cube_model->num_points, 1);
 
                 vs_params = (single_color_vs_params_t) {
@@ -2379,7 +2445,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                         .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                 };
                 sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                        &vs_params, sizeof(vs_params));
+                        &(sg_range) { &vs_params, sizeof(vs_params) });
                 sg_draw(0, cube_model->num_points, 1);
 
                 vs_params = (single_color_vs_params_t) {
@@ -2387,7 +2453,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                         .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                 };
                 sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                        &vs_params, sizeof(vs_params));
+                        &(sg_range) { &vs_params, sizeof(vs_params) });
                 sg_draw(0, cube_model->num_points, 1);
             }
 
@@ -2401,7 +2467,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                     .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                 };
                 sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                        &vs_params, sizeof(vs_params));
+                        &(sg_range) { &vs_params, sizeof(vs_params) });
                 sg_draw(0, cube_model->num_points, 1);
 
                 vs_params = (single_color_vs_params_t) {
@@ -2409,7 +2475,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                         .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                 };
                 sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                        &vs_params, sizeof(vs_params));
+                        &(sg_range) { &vs_params, sizeof(vs_params) });
                 sg_draw(0, cube_model->num_points, 1);
 
                 vs_params = (single_color_vs_params_t) {
@@ -2417,7 +2483,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                         .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                 };
                 sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                        &vs_params, sizeof(vs_params));
+                        &(sg_range) { &vs_params, sizeof(vs_params) });
                 sg_draw(0, cube_model->num_points, 1);
             }
         }
@@ -2437,7 +2503,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                 .kd_scale = 0.0f,
             };
             sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params,
-                    &fs_params, sizeof(fs_params));
+                    &(sg_range) { &fs_params, sizeof(fs_params) });
 
             float r = ed->game->hole.cup_entity.radius;
             single_color_vs_params_t vs_params = {
@@ -2447,7 +2513,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                 .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
             };
             sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                    &vs_params, sizeof(vs_params));
+                    &(sg_range) { &vs_params, sizeof(vs_params) });
             sg_draw(0, sphere_model->num_points, 1);
         }
         if (ed->physics.debug_collisions) {
@@ -2473,14 +2539,14 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                         .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                     };
                     sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                            &vs_params, sizeof(vs_params));
+                            &(sg_range) { &vs_params, sizeof(vs_params) });
 
                     single_color_fs_params_t fs_params = {
                         .color = V4(1.0f, 1.0f, 1.0f, 1.0f),
                         .kd_scale = 0.0f,
                     };
                     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params,
-                            &fs_params, sizeof(fs_params));
+                            &(sg_range) { &fs_params, sizeof(fs_params) });
 
                     sg_draw(0, sphere_model->num_points, 1);
                 }
@@ -2503,14 +2569,14 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                                 .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                             };
                             sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                                    &vs_params, sizeof(vs_params));
+                                    &(sg_range) { &vs_params, sizeof(vs_params) });
 
                             single_color_fs_params_t fs_params = {
                                 .color = V4(1.0f, 0.0f, 0.0f, 1.0f),
                                 .kd_scale = 0.0f,
                             };
                             sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params,
-                                    &fs_params, sizeof(fs_params));
+                                    &(sg_range) { &fs_params, sizeof(fs_params) });
 
                             sg_draw(0, sphere_model->num_points, 1);
                         }
@@ -2528,7 +2594,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                                 .kd_scale = 0.0f,
                             };
                             sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params,
-                                    &fs_params, sizeof(fs_params));
+                                    &(sg_range) { &fs_params, sizeof(fs_params) });
 
                             single_color_vs_params_t vs_params = {
                                 .model_mat = mat4_transpose(
@@ -2537,7 +2603,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                                 .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                             };
                             sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                                    &vs_params, sizeof(vs_params));
+                                    &(sg_range) { &vs_params, sizeof(vs_params) });
                             sg_draw(0, cube_model->num_points, 1);
 
                             vs_params = (single_color_vs_params_t) {
@@ -2547,7 +2613,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                                     .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                             };
                             sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                                    &vs_params, sizeof(vs_params));
+                                    &(sg_range) { &vs_params, sizeof(vs_params) });
                             sg_draw(0, cube_model->num_points, 1);
 
                             vs_params = (single_color_vs_params_t) {
@@ -2557,7 +2623,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                                     .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                             };
                             sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                                    &vs_params, sizeof(vs_params));
+                                    &(sg_range) { &vs_params, sizeof(vs_params) });
                             sg_draw(0, cube_model->num_points, 1);
                         }
                     }
@@ -2585,7 +2651,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                     .kd_scale = 0.0f,
                 };
                 sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params,
-                        &fs_params, sizeof(fs_params));
+                        &(sg_range) { &fs_params, sizeof(fs_params) });
             }
 
             for (int i = 0; i <= num_cols; i++) {
@@ -2607,7 +2673,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                         .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                     };
                     sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                            &vs_params, sizeof(vs_params));
+                            &(sg_range) { &vs_params, sizeof(vs_params) });
                     sg_draw(0, cube_model->num_points, 1);
                 }
             }
@@ -2631,7 +2697,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                         .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                     };
                     sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                            &vs_params, sizeof(vs_params));
+                            &(sg_range) { &vs_params, sizeof(vs_params) });
                     sg_draw(0, cube_model->num_points, 1);
                 }
             }
@@ -2672,7 +2738,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                         .kd_scale = 0.0f,
                     };
                     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params,
-                            &fs_params, sizeof(fs_params));
+                            &(sg_range) { &fs_params, sizeof(fs_params) });
                 }
 
                 {
@@ -2684,7 +2750,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                         .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                     };
                     sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                            &vs_params, sizeof(vs_params));
+                            &(sg_range) { &vs_params, sizeof(vs_params) });
                     sg_draw(0, cube_model->num_points, 1);
                 }
 
@@ -2697,7 +2763,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                         .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                     };
                     sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                            &vs_params, sizeof(vs_params));
+                            &(sg_range) { &vs_params, sizeof(vs_params) });
                     sg_draw(0, cube_model->num_points, 1);
                 }
 
@@ -2710,7 +2776,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                         .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                     };
                     sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                            &vs_params, sizeof(vs_params));
+                            &(sg_range) { &vs_params, sizeof(vs_params) });
                     sg_draw(0, cube_model->num_points, 1);
                 }
 
@@ -2723,7 +2789,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                         .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                     };
                     sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                            &vs_params, sizeof(vs_params));
+                            &(sg_range) { &vs_params, sizeof(vs_params) });
                     sg_draw(0, cube_model->num_points, 1);
                 }
             }
@@ -2767,13 +2833,13 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                     .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                 };
                 sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_water_vs_params,
-                        &vs_params, sizeof(vs_params));
+                        &(sg_range) { &vs_params, sizeof(vs_params) });
 
                 water_fs_params_t fs_params = {
                     .t = game->drawing.water_t,
                 };
                 sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_water_fs_params,
-                        &fs_params, sizeof(fs_params));
+                        &(sg_range) { &fs_params, sizeof(fs_params) });
 
                 sg_draw(0, model->num_elements, 1);
             }
@@ -2804,13 +2870,13 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                                 mat4_rotation_x(-0.5f * MF_PI))),
                 };
                 sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_water_around_ball_vs_params,
-                        &vs_params, sizeof(vs_params));
+                        &(sg_range) { &vs_params, sizeof(vs_params) });
 
                 water_around_ball_fs_params_t fs_params = {
                     .t = t,
                 };
                 sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_water_around_ball_fs_params,
-                        &fs_params, sizeof(fs_params));
+                        &(sg_range) { &fs_params, sizeof(fs_params) });
 
                 sg_draw(0, model->num_points, 1);
             }
@@ -2855,14 +2921,14 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                                 mat4_rotation_x(-0.5f * MF_PI))),
                 };
                 sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_water_ripple_vs_params,
-                        &vs_params, sizeof(vs_params));
+                        &(sg_range) { &vs_params, sizeof(vs_params) });
 
                 water_ripple_fs_params_t fs_params = {
                     .t = t,
                     .uniform_color = color,
                 };
                 sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_water_ripple_fs_params,
-                        &fs_params, sizeof(fs_params));
+                        &(sg_range) { &fs_params, sizeof(fs_params) });
 
                 sg_draw(0, model->num_points, 1);
             }
@@ -2925,7 +2991,8 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
             aim_helper_vs_params_t vs_params = {
                 .mvp_mat = mat4_transpose(mat4_multiply(renderer->proj_view_mat, model_mat)),
             };
-            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_aim_helper_vs_params, &vs_params, sizeof(vs_params));
+            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_aim_helper_vs_params, 
+                    &(sg_range) { &vs_params, sizeof(vs_params) });
             aim_helper_fs_params_t fs_params = {
                 .color = V4(1.0f, 1.0f, 1.0f, 1.0f),
                 .texture_coord_offset = offset,
@@ -2934,7 +3001,8 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                 .length1 = l1,
                 .total_length = total_length,
             };
-            sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_aim_helper_fs_params, &fs_params, sizeof(fs_params));
+            sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_aim_helper_fs_params, 
+                    &(sg_range) { &fs_params, sizeof(fs_params) });
             sg_draw(0, model->num_points, 1);
 
             offset.x += 4.0f*l;
@@ -2969,7 +3037,8 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
             pass_through_vs_params_t vs_params = {
                 .mvp_mat = mat4_transpose(mat4_multiply_n(2, renderer->proj_view_mat, transform)),
             };
-            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_pass_through_vs_params, &vs_params, sizeof(vs_params));
+            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_pass_through_vs_params, 
+                    &(sg_range) { &vs_params, sizeof(vs_params) });
 
             sg_draw(0, model->num_points, 1);
         }
@@ -3026,7 +3095,8 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                 .color1[3] = V4(c1[3].x, c1[3].y, c1[3].z, 1.0f),
                 .color1[4] = V4(c1[4].x, c1[4].y, c1[4].z, 1.0f),
             };
-            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_terrain_vs_params, &vs_params, sizeof(vs_params));
+            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_terrain_vs_params, 
+                    &(sg_range) { &vs_params, sizeof(vs_params) });
 
             vec3 ball_pos = game->player_ball.draw_position;
             terrain_fs_params_t fs_params = {
@@ -3034,7 +3104,8 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                 .lightmap_t = 0.0f,
                 .opacity = 0.6f,
             };
-            sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_terrain_fs_params, &fs_params, sizeof(fs_params));
+            sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_terrain_fs_params, 
+                    &(sg_range) { &fs_params, sizeof(fs_params) });
 
             sg_draw(0, model->num_elements, 1);
         }
@@ -3046,7 +3117,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
             .colors[0] = { .action = SG_ACTION_DONTCARE },
             .depth = {
                 .action = SG_ACTION_CLEAR,
-                .val = 1.0f,
+                .value = 1.0f,
             },
             .stencil = {
                 .action = SG_ACTION_DONTCARE,
@@ -3072,7 +3143,8 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                 .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                 .model_mat = mat4_transpose(transform),
             };
-            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_cup_vs_params, &vs_params, sizeof(vs_params));
+            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_cup_vs_params, 
+                    &(sg_range) { &vs_params, sizeof(vs_params) });
 
             sg_draw(0, model->num_points, 1);
         }
@@ -3100,12 +3172,14 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                 .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                 .model_mat = mat4_transpose(transform),
             };
-            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ball_vs_params, &vs_params, sizeof(vs_params));
+            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ball_vs_params, 
+                    &(sg_range) { &vs_params, sizeof(vs_params) });
 
             ball_fs_params_t fs_params = {
                 .color = V4(color.x, color.y, color.z, 1.0f),
             };
-            sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ball_fs_params, &fs_params, sizeof(fs_params));
+            sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ball_fs_params, 
+                    &(sg_range) { &fs_params, sizeof(fs_params) });
 
             sg_draw(0, model->num_points, 1);
         }
@@ -3163,7 +3237,8 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                         mat4_translation(V3(1.0f, 1.0f, 0.0f))
                         )),
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_texture_vs_params, &vs_params, sizeof(vs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_texture_vs_params, 
+                &(sg_range) { &vs_params, sizeof(vs_params) });
         sg_draw(0, model->num_points, 1);
         sg_end_pass();
     }
@@ -3212,12 +3287,12 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                                 mat4_scale(V3(2.0f, 2.0f, 1.0f)))),
                 };
                 sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_single_color_vs_params, 
-                        &vs_params, sizeof(vs_params));
+                        &(sg_range) { &vs_params, sizeof(vs_params) });
                 ui_single_color_fs_params_t fs_params = {
                     .color = V4(1.0f, 1.0f, 1.0f, opacity),
                 };
                 sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_single_color_fs_params,
-                        &fs_params, sizeof(fs_params));
+                        &(sg_range) { &fs_params, sizeof(fs_params) });
                 sg_draw(0, square_model->num_points, 1);
             }
         }
@@ -3263,11 +3338,13 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                             mat4_rotation_z(aim_angle),
                             mat4_scale(V3(1.0f, scale, 1.0f)))),
             };
-            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_aim_icon_vs_params, &vs_params, sizeof(vs_params));
+            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_aim_icon_vs_params, 
+                    &(sg_range) { &vs_params, sizeof(vs_params) });
             aim_icon_fs_params_t fs_params = {
                 .color = color,
             };
-            sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_aim_icon_fs_params, &fs_params, sizeof(fs_params));
+            sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_aim_icon_fs_params, 
+                    &(sg_range) { &fs_params, sizeof(fs_params) });
             sg_draw(0, renderer->sokol.game_aim.num_points, 1);
         }
 
@@ -3586,12 +3663,12 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
                         mat4_scale(V3(1280.0f, 720.0f, 1.0f)))),
         };
         sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_single_color_vs_params, 
-                &vs_params, sizeof(vs_params));
+                &(sg_range) { &vs_params, sizeof(vs_params) });
         ui_single_color_fs_params_t fs_params = {
             .color = V4(1.0f, 1.0f, 1.0f, opacity),
         };
         sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_single_color_fs_params,
-                &fs_params, sizeof(fs_params));
+                &(sg_range) { &fs_params, sizeof(fs_params) });
         sg_draw(0, square_model->num_points, 1);
         sg_end_pass();
     }
@@ -3642,14 +3719,14 @@ static void renderer_hole_editor_draw_terrain_model(struct renderer *renderer,
         .color1[4] = V4(c1[4].x, c1[4].y, c1[4].z, 1.0f),
     };
     sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_hole_editor_terrain_vs_params, 
-            &vs_params, sizeof(vs_params));
+            &(sg_range) { &vs_params, sizeof(vs_params) });
 
     hole_editor_terrain_fs_params_t fs_params = {
         .draw_type = (float) draw_type,
         .lightmap_t = lightmap_t,
     };
     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_hole_editor_terrain_fs_params, 
-            &fs_params, sizeof(fs_params));
+            &(sg_range) { &fs_params, sizeof(fs_params) });
 
 
     // 0-3 draws Default, No AO, Only AO, Lightmap UVS
@@ -3679,7 +3756,7 @@ static void renderer_hole_editor_draw_terrain_model(struct renderer *renderer,
                 .lightmap_t = 0.0f,
             };
             sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_hole_editor_terrain_fs_params, 
-                    &fs_params, sizeof(fs_params));
+                    &(sg_range) { &fs_params, sizeof(fs_params) });
 
             if (face.num_points == 3) {
                 sg_draw(start_element, 3, 1);
@@ -3728,13 +3805,13 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                     .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                 };
                 sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_hole_editor_environment_vs_params, 
-                        &vs_params, sizeof(vs_params));
+                        &(sg_range) { &vs_params, sizeof(vs_params) });
 
                 hole_editor_environment_fs_params_t fs_params = {
                     .draw_type = (float) ce->drawing.terrain_entities.draw_type,
                 };
                 sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_hole_editor_environment_fs_params,
-                        &fs_params, sizeof(fs_params));
+                        &(sg_range) { &fs_params, sizeof(fs_params) });
 
                 sg_draw(0, model->num_points, 1);
                 lightmap_uvs_offset += sizeof(vec2)*model->num_points;
@@ -3856,14 +3933,14 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                     .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                 };
                 sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_hole_editor_water_vs_params,
-                        &vs_params, sizeof(vs_params));
+                        &(sg_range) { &vs_params, sizeof(vs_params) });
 
                 hole_editor_water_fs_params_t fs_params = {
                     .draw_type = (float)ce->drawing.terrain_entities.draw_type,
                     .t = t,
                 };
                 sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_hole_editor_water_fs_params,
-                        &fs_params, sizeof(fs_params));
+                        &(sg_range) { &fs_params, sizeof(fs_params) });
 
                 sg_draw(0, model->num_elements, 1);
             }
@@ -3927,14 +4004,14 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                         .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                     };
                     sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                            &vs_params, sizeof(vs_params));
+                            &(sg_range) { &vs_params, sizeof(vs_params) });
 
                     single_color_fs_params_t fs_params = {
                         .color = c,
                         .kd_scale = 0.0f,
                     };
                     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params,
-                            &fs_params, sizeof(fs_params));
+                            &(sg_range) { &fs_params, sizeof(fs_params) });
 
                     sg_draw(0, sphere_model->num_points, 1);
                 }
@@ -3976,14 +4053,14 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                             .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                         };
                         sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                                &vs_params, sizeof(vs_params));
+                                &(sg_range) { &vs_params, sizeof(vs_params) });
 
                         single_color_fs_params_t fs_params = {
                             .color = c,
                             .kd_scale = 0.0f,
                         };
                         sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params,
-                                &fs_params, sizeof(fs_params));
+                                &(sg_range) { &fs_params, sizeof(fs_params) });
 
                         sg_draw(buf_idx, num_elements, 1);
                     }
@@ -4039,14 +4116,14 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                             .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                         };
                         sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                                &vs_params, sizeof(vs_params));
+                                &(sg_range) { &vs_params, sizeof(vs_params) });
 
                         single_color_fs_params_t fs_params = {
                             .color = c,
                             .kd_scale = 0.0f,
                         };
                         sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params,
-                                &fs_params, sizeof(fs_params));
+                                &(sg_range) { &fs_params, sizeof(fs_params) });
 
                         sg_draw(0, cube_model->num_points, 1);
                     }
@@ -4115,14 +4192,14 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                             .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                         };
                         sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                                &vs_params, sizeof(vs_params));
+                                &(sg_range) { &vs_params, sizeof(vs_params) });
 
                         single_color_fs_params_t fs_params = {
                             .color = V4(1.0f, 1.0f, 1.0f, 0.3f),
                             .kd_scale = 0.0f,
                         };
                         sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params,
-                                &fs_params, sizeof(fs_params));
+                                &(sg_range) { &fs_params, sizeof(fs_params) });
 
                         sg_draw(0, num_elements, 1);
                     }
@@ -4185,14 +4262,14 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                             .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                         };
                         sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                                &vs_params, sizeof(vs_params));
+                                &(sg_range) { &vs_params, sizeof(vs_params) });
 
                         single_color_fs_params_t fs_params = {
                             .color = V4(1.0f, 1.0f, 1.0f, 0.3f),
                             .kd_scale = 0.0f,
                         };
                         sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params,
-                                &fs_params, sizeof(fs_params));
+                                &(sg_range) { &fs_params, sizeof(fs_params) });
 
                         sg_draw(0, num_elements, 1);
                     }
@@ -4213,13 +4290,13 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                         .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                     };
                     sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                            &vs_params, sizeof(vs_params));
+                            &(sg_range) { &vs_params, sizeof(vs_params) });
                     single_color_fs_params_t fs_params = {
                         .color = V4(0.2f, 0.7f, 0.9f, 1.0f),
                         .kd_scale = 1.0f,
                     };
                     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params,
-                            &fs_params, sizeof(fs_params));
+                            &(sg_range) { &fs_params, sizeof(fs_params) });
                     sg_draw(0, model->num_points, 1);
                 }
 
@@ -4239,13 +4316,13 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                         .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                     };
                     sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                            &vs_params, sizeof(vs_params));
+                            &(sg_range) { &vs_params, sizeof(vs_params) });
                     single_color_fs_params_t fs_params = {
                         .color = V4(1.0f, 1.0f, 0.0f, 1.0f),
                         .kd_scale = 1.0f,
                     };
                     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params,
-                            &fs_params, sizeof(fs_params));
+                            &(sg_range) { &fs_params, sizeof(fs_params) });
                     sg_draw(0, model->num_points, 1);
                 }
             }
@@ -4268,14 +4345,14 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                             .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                         };
                         sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                                &vs_params, sizeof(vs_params));
+                                &(sg_range) { &vs_params, sizeof(vs_params) });
 
                         single_color_fs_params_t fs_params = {
                             .color = V4(0.9f, 0.2f, 0.5f, 0.3f),
                             .kd_scale = 1.0f,
                         };
                         sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params,
-                                &fs_params, sizeof(fs_params));
+                                &(sg_range) { &fs_params, sizeof(fs_params) });
 
                         sg_draw(0, model->num_points, 1);
                     }
@@ -4298,14 +4375,14 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                             .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                         };
                         sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                                &vs_params, sizeof(vs_params));
+                                &(sg_range) { &vs_params, sizeof(vs_params) });
 
                         single_color_fs_params_t fs_params = {
                             .color = V4(0.2f, 0.9f, 0.5f, 1.0f),
                             .kd_scale = 1.0f,
                         };
                         sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params,
-                                &fs_params, sizeof(fs_params));
+                                &(sg_range) { &fs_params, sizeof(fs_params) });
 
                         sg_draw(0, model->num_points, 1);
                     }
@@ -4329,14 +4406,14 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                             .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                         };
                         sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                                &vs_params, sizeof(vs_params));
+                                &(sg_range) { &vs_params, sizeof(vs_params) });
 
                         single_color_fs_params_t fs_params = {
                             .color = V4(0.2f, 0.5f, 0.9f, 1.0f),
                             .kd_scale = 1.0f,
                         };
                         sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params,
-                                &fs_params, sizeof(fs_params));
+                                &(sg_range) { &fs_params, sizeof(fs_params) });
 
                         sg_draw(0, model->num_points, 1);
                     }
@@ -4375,7 +4452,8 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
             pass_through_vs_params_t vs_params = {
                 .mvp_mat = mat4_transpose(mat4_multiply_n(2, renderer->proj_view_mat, transform)),
             };
-            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_pass_through_vs_params, &vs_params, sizeof(vs_params));
+            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_pass_through_vs_params, 
+                    &(sg_range) { &vs_params, sizeof(vs_params) });
 
             sg_draw(0, model->num_points, 1);
         }
@@ -4389,7 +4467,7 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
             .colors[0] = { .action = SG_ACTION_DONTCARE },
             .depth = {
                 .action = SG_ACTION_CLEAR,
-                .val = 1.0f,
+                .value = 1.0f,
             },
             .stencil = {
                 .action = SG_ACTION_DONTCARE,
@@ -4417,7 +4495,8 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                 .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                 .model_mat = mat4_transpose(transform),
             };
-            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_cup_vs_params, &vs_params, sizeof(vs_params));
+            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_cup_vs_params, 
+                    &(sg_range) { &vs_params, sizeof(vs_params) });
 
             sg_draw(0, model->num_points, 1);
         }
@@ -4436,7 +4515,7 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                 },
                 .depth = {
                     .action = SG_ACTION_CLEAR,
-                    .val = 1.0f,
+                    .value = 1.0f,
                 },
             };
             sg_begin_pass(renderer->sokol.game_pass, &pass_action);
@@ -4477,14 +4556,14 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                             .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                         };
                         sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                                &vs_params, sizeof(vs_params));
+                                &(sg_range) { &vs_params, sizeof(vs_params) });
 
                         single_color_fs_params_t fs_params = {
                             .color = color,
                             .kd_scale = 0.5f,
                         };
                         sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params,
-                                &fs_params, sizeof(fs_params));
+                                &(sg_range) { &fs_params, sizeof(fs_params) });
 
                         sg_draw(0, cube_model->num_points, 1);
                     }
@@ -4507,7 +4586,7 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                             .proj_view_mat =  mat4_transpose(renderer->proj_view_mat), 
                         };
                         sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                                &vs_params, sizeof(vs_params));
+                                &(sg_range) { &vs_params, sizeof(vs_params) });
 
                         float kd_scale = 0.5f;
                         if (om->translate_mode.cone_hovered[i] || 
@@ -4519,7 +4598,7 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                             .kd_scale = kd_scale,
                         };
                         sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params,
-                                &fs_params, sizeof(fs_params));
+                                &(sg_range) { &fs_params, sizeof(fs_params) });
 
                         sg_draw(0, cone_model->num_points, 1);
                     }
@@ -4557,14 +4636,14 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                             .proj_view_mat = mat4_transpose(renderer->proj_view_mat),
                         };
                         sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_single_color_vs_params,
-                                &vs_params, sizeof(vs_params));
+                                &(sg_range) { &vs_params, sizeof(vs_params) });
 
                         single_color_fs_params_t fs_params = {
                             .color = color,
                             .kd_scale = 0.5f,
                         };
                         sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_single_color_fs_params,
-                                &fs_params, sizeof(fs_params));
+                                &(sg_range) { &fs_params, sizeof(fs_params) });
 
                         sg_draw(0, cube_model->num_points, 1);
                     }
@@ -4624,7 +4703,8 @@ void renderer_draw_hole_editor(struct renderer *renderer, struct game *game, str
                         mat4_translation(V3(1.0f, 1.0f, 0.0f))
                         )),
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_texture_vs_params, &vs_params, sizeof(vs_params));
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_texture_vs_params, 
+                &(sg_range) { &vs_params, sizeof(vs_params) });
         sg_draw(0, model->num_points, 1);
         sg_end_pass();
     }

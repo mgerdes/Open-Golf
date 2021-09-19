@@ -19,16 +19,16 @@ static void model_create_buffers(struct model *model) {
         .type = SG_BUFFERTYPE_VERTEXBUFFER,
     };
 
-    desc.size = sizeof(vec3) * model->num_points;
-    desc.content = model->positions;
+    desc.data.size = sizeof(vec3) * model->num_points;
+    desc.data.ptr = model->positions;
     model->positions_buf = sg_make_buffer(&desc);
 
-    desc.size = sizeof(vec3) * model->num_points;
-    desc.content = model->normals;
+    desc.data.size = sizeof(vec3) * model->num_points;
+    desc.data.ptr = model->normals;
     model->normals_buf = sg_make_buffer(&desc);
 
-    desc.size = sizeof(vec2) * model->num_points;
-    desc.content = model->texture_coords;
+    desc.data.size = sizeof(vec2) * model->num_points;
+    desc.data.ptr = model->texture_coords;
     model->texture_coords_buf = sg_make_buffer(&desc);
 }
 
@@ -60,9 +60,9 @@ static bool texture_create(mfile_t *file, struct texture *texture) {
         .mag_filter = filter,
         .wrap_u = SG_WRAP_REPEAT,
         .wrap_v = SG_WRAP_REPEAT,
-        .content.subimage[0][0] = {
+        .data.subimage[0][0] = {
             .ptr = tex_data,
-            .size = sizeof(char)*x*y,
+            .size = 4*sizeof(char)*x*y,
         },
     };
 

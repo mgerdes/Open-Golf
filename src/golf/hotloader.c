@@ -4,6 +4,7 @@
 
 #include "3rd_party/vec/vec.h"
 #include "golf/log.h"
+#include "golf/mlog.h"
 #include "golf/mfile.h"
 
 struct hotloader_file {
@@ -44,6 +45,9 @@ void hotloader_watch_file(const char *path, void *udata,
     mfile_t file = mfile(path);
 
     bool ret = callback(file, true, udata);
+    if (!ret) {
+        mlog_warning("Could not load file: %s", path);
+    }
     assert(ret);
     struct hotloader_file hotloader_file;
     hotloader_file.file = file;
