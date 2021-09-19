@@ -9521,7 +9521,7 @@ const char *StringForEnum(ProgressCategory::Enum category)
 
 } // namespace xatlas
 
-#include "maths.h"
+#include "golf/maths.h"
 #include <assert.h>
 
 extern "C" bool xatlas_wrapper_generate_lightmap_uvs(vec2 *lightmap_uv, vec3 *vertices, int num_vertices) {
