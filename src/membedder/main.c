@@ -7,7 +7,7 @@
 static mstring_t str;
 static int num_files = 0;
 
-static void _visit_file(cf_file_t *file, void *udata) {
+static void _visit_file_0(cf_file_t *file, void *udata) {
     if (file->is_dir) {
         return;
     }
@@ -24,18 +24,17 @@ static void _visit_file(cf_file_t *file, void *udata) {
     fseek(f, 0, SEEK_END);
     int num_bytes = ftell(f);
     fseek(f, 0, SEEK_SET);
-    char *bytes = (char *)malloc(num_bytes + 1);
-    bytes[num_bytes] = 0;
-    int ret = (int) fread(bytes, sizeof(char), num_bytes, f);
+    unsigned char *bytes = (char *)malloc(num_bytes);
+    int ret = (int) fread(bytes, sizeof(unsigned char), num_bytes, f);
     if (ret == -1) {
         assert(false);
     }
 
-    mstring_appendf(&str, "(_embedded_file_t) { .path = \"%s\", .data_len = %d, .data = { ", file->path, num_bytes);
+    mstring_appendf(&str, "static unsigned char _embedded_file_%d[] = { ", num_files);
     for (int i = 0; i < num_bytes; i++) {
         mstring_appendf(&str, "0x%X, ", bytes[i]);
     }
-    mstring_appendf(&str, "} },\n");
+    mstring_appendf(&str, "};");
 
     free(bytes);
     fclose(f);
@@ -43,15 +42,36 @@ static void _visit_file(cf_file_t *file, void *udata) {
     num_files++;
 }
 
+static void _visit_file_1(cf_file_t *file, void *udata) {
+    if (file->is_dir) {
+        return;
+    }
+
+    if (strcmp(file->ext, ".mdata") != 0) {
+        return;
+    }
+
+    mstring_appendf(&str, " { \"%s\", sizeof(_embedded_file_%d), _embedded_file_%d }, ", file->path, num_files, num_files);
+
+    num_files++;
+}
+
 int main(int argc, char **argv) {
     mstring_init(&str, "");
-    mstring_appendf(&str, "typedef struct _embedded_file { const char *path; int data_len, const char *data; } _embedded_file_t;\n");
+    mstring_appendf(&str, "typedef struct _embedded_file { const char *path; int data_len; const char *data; } _embedded_file_t;\n");
+
+    num_files = 0;
+    cf_traverse("data", _visit_file_0, NULL);
+
     mstring_appendf(&str, "static _embedded_file_t files[] = {\n");
-    cf_traverse("data", _visit_file, NULL);
+
+    num_files = 0;
+    cf_traverse("data", _visit_file_1, NULL);
+
     mstring_appendf(&str, "};\n");
     mstring_appendf(&str, "static int num_embedded_files = %d;\n", num_files);
 
-    FILE *f = fopen("membedded_files.h", "wb");
+    FILE *f = fopen("src/membedder/membedded_files.h", "wb");
     if (f) {
         fwrite(str.cstr, sizeof(char), str.len, f); 
         fclose(f);

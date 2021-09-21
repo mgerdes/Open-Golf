@@ -68,6 +68,7 @@ add_library(mcore STATIC
     src/mcore/mcommon.c
     src/mcore/mdata.c
     src/mcore/mfile.c
+    src/mcore/mimport.c
     src/mcore/mlog.c
     src/mcore/mscript.c
     src/mcore/mstring.c
