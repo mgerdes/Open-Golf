@@ -17,14 +17,7 @@ add_executable(minigolf
 	src/golf/lightmaps.c 
 	src/golf/log.c 
 	src/golf/main.c 
-	src/golf/maths.c 
-	src/golf/mcommon.c 
-	src/golf/mdata.c 
-	src/golf/mfile.c 
 	src/golf/minigolf.c 
-	src/golf/mlog.c 
-	src/golf/mscript.c 
-	src/golf/mstring.c 
 	src/golf/obj_converter.c 
 	src/golf/profiler.c 
 	src/golf/renderer.c 
@@ -36,6 +29,7 @@ target_compile_definitions(minigolf PRIVATE
     SOKOL_GLCORE33
 )
 target_link_libraries(minigolf PRIVATE 
+    mcore
     cimgui
     dbgtools
     glad
@@ -60,6 +54,25 @@ target_link_libraries(minigolf PRIVATE
     -lasound
 )
 
+add_executable(membedder
+    src/membedder/main.c
+)
+target_link_libraries(membedder PRIVATE 
+    mcore
+    cute_headers
+    vec
+)
+
+add_library(mcore STATIC
+    src/mcore/maths.c
+    src/mcore/mcommon.c
+    src/mcore/mdata.c
+    src/mcore/mfile.c
+    src/mcore/mlog.c
+    src/mcore/mscript.c
+    src/mcore/mstring.c
+)
+
 add_library(cimgui STATIC
     src/3rd_party/cimgui/cimgui.cpp
 )
@@ -68,6 +81,10 @@ target_compile_options(cimgui PRIVATE
 target_link_libraries(cimgui PRIVATE 
     imgui
     )
+
+add_library(cute_headers STATIC
+    src/3rd_party/cute_headers/impl.c
+)
 
 add_library(dbgtools STATIC
     src/3rd_party/dbgtools/callstack.cpp

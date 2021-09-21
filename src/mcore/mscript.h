@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-#include "golf/maths.h"
+#include "mcore/maths.h"
 
 #define MSCRIPT_MAX_SYMBOL_LEN 31
 #define MSCRIPT_MAX_FUNCTION_ARGS 32

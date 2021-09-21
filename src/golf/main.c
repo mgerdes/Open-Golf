@@ -10,6 +10,11 @@
 #include "3rd_party/sokol/sokol_imgui.h"
 #include "3rd_party/sokol/sokol_time.h"
 
+#include "mcore/mdata.h"
+#include "mcore/mlog.h"
+#include "mcore/mscript.h"
+#include "mcore/mfile.h"
+
 #include "golf/assets.h"
 #include "golf/audio.h"
 #include "golf/config.h"
@@ -17,8 +22,6 @@
 #include "golf/game_editor.h"
 #include "golf/hotloader.h"
 #include "golf/log.h"
-#include "golf/mdata.h"
-#include "golf/mlog.h"
 #include "golf/profiler.h"
 #include "golf/renderer.h"
 #include "golf/ui.h"
@@ -37,10 +40,6 @@ static struct game_editor game_editor;
 static struct main_menu main_menu;
 static struct button_inputs inputs;
 static uint64_t last_time;
-
-//#include "mscript.h"
-#include "mscript.h"
-#include "mfile.h"
 
 static void init(void) {
 #if defined(_WIN32)

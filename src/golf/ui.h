@@ -1,8 +1,9 @@
 #ifndef _UI_H
 #define _UI_H
 
-#include "controls.h"
-#include "maths.h"
+#include "mcore/maths.h"
+
+#include "golf/controls.h"
 
 struct ui_button {
     bool is_clicked, is_hovered;

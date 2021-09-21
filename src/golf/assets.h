@@ -3,8 +3,8 @@
 
 #include "3rd_party/sokol/sokol_gfx.h"
 
-#include "golf/mfile.h"
-#include "golf/maths.h"
+#include "mcore/mfile.h"
+#include "mcore/maths.h"
 
 struct model {
     char name[MFILE_MAX_NAME];

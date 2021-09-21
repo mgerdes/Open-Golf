@@ -10,6 +10,9 @@
 #include "3rd_party/stb/stb_image_write.h"
 #include "3rd_party/mattiasgustavsson_libs/thread.h"
 
+#include "mcore/maths.h"
+#include "mcore/mlog.h"
+
 #include "golf/assets.h"
 #include "golf/audio.h"
 #include "golf/config.h"
@@ -17,8 +20,6 @@
 #include "golf/hole.h"
 #include "golf/lightmaps.h"
 #include "golf/log.h"
-#include "golf/maths.h"
-#include "golf/mlog.h"
 #include "golf/profiler.h"
 #include "golf/renderer.h"
 

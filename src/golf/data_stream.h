@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-#include "golf/maths.h"
+#include "mcore/maths.h"
 
 struct data_stream {
     int max_len, len, pos;

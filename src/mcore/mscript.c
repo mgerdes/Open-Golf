@@ -7,13 +7,15 @@
 #include "3rd_party/vec/vec.h"
 #include "3rd_party/map/map.h"
 #include "3rd_party/sokol/sokol_time.h"
-#include "golf/mscript.h"
-#include "golf/mdata.h"
-#include "golf/mfile.h"
-#include "golf/mstring.h"
+
+#include "mcore/mscript.h"
+#include "mcore/mdata.h"
+#include "mcore/mfile.h"
+#include "mcore/mstring.h"
+#include "mcore/maths.h"
+
 #include "golf/hotloader.h"
 #include "golf/log.h"
-#include "golf/maths.h"
 
 struct _ms_stmt;
 typedef struct _ms_stmt _ms_stmt_t;

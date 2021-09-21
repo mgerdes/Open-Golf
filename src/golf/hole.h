@@ -7,10 +7,11 @@
 #include "3rd_party/sokol/sokol_app.h"
 #include "3rd_party/sokol/sokol_gfx.h"
 
+#include "mcore/mfile.h"
+#include "mcore/maths.h"
+
 #include "golf/assets.h"
 #include "golf/data_stream.h"
-#include "golf/mfile.h"
-#include "golf/maths.h"
 #include "golf/renderer.h"
 
 struct lightmap_image {

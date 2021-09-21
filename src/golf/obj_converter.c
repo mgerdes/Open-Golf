@@ -6,9 +6,10 @@
 #include "3rd_party/map/map.h"
 #include "3rd_party/tinyobj_loader_c/tinyobj_loader_c.h"
 
-#include "golf/mfile.h"
+#include "mcore/maths.h"
+#include "mcore/mfile.h"
+
 #include "golf/log.h"
-#include "golf/maths.h"
 
 void convert_objs(void) {
     vec_vec3_t colors;

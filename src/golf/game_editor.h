@@ -6,10 +6,11 @@
 #include "3rd_party/sokol/sokol_time.h"
 #include "3rd_party/vec/vec.h"
 
+#include "mcore/mfile.h"
+
 #include "golf/game_editor.h"
 #include "golf/assets.h"
 #include "golf/data_stream.h"
-#include "golf/mfile.h"
 #include "golf/game.h"
 #include "golf/lightmaps.h"
 #include "golf/renderer.h"

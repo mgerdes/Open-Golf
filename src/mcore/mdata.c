@@ -4,11 +4,11 @@
 
 #include "3rd_party/map/map.h"
 #include "3rd_party/vec/vec.h"
-#include "golf/mdata.h"
+#include "mcore/mdata.h"
+#include "mcore/mcommon.h"
+#include "mcore/mstring.h"
 #include "golf/data_stream.h"
 #include "golf/hotloader.h"
-#include "golf/mcommon.h"
-#include "golf/mstring.h"
 #include "golf/log.h"
 
 #define _VAL_MAX_NAME_LEN 32

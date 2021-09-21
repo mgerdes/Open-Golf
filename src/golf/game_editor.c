@@ -9,9 +9,10 @@
 #include "3rd_party/s7/s7.h"
 #endif
 
+#include "mcore/mlog.h"
+
 #include "golf/game_editor.h"
 #include "golf/profiler.h"
-#include "golf/mlog.h"
 
 static void entity_array_sort_idxs(vec_editor_entity_t *entity_array) {
     for (int i = 0; i < entity_array->length; i++) {

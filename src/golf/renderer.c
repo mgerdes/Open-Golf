@@ -13,15 +13,16 @@
 #include "3rd_party/sokol/sokol_imgui.h"
 #include "3rd_party/sokol/sokol_time.h"
 
+#include "mcore/mfile.h"
+#include "mcore/mdata.h"
+
 #include "golf/renderer.h"
 #include "golf/assets.h"
 #include "golf/config.h"
-#include "golf/mfile.h"
 #include "golf/game.h"
 #include "golf/game_editor.h"
 #include "golf/hotloader.h"
 #include "golf/log.h"
-#include "golf/mdata.h"
 #include "golf/profiler.h"
 
 #include "golf/shaders/aim_icon.glsl.h"

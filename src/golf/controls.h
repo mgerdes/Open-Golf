@@ -4,7 +4,8 @@
 #include <stdbool.h>
 
 #include "3rd_party/sokol/sokol_app.h"
-#include "golf/maths.h"
+
+#include "mcore/maths.h"
 
 struct button_inputs {
     bool button_down[SAPP_MAX_KEYCODES];

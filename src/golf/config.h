@@ -1,7 +1,7 @@
 #ifndef _CONFIG_H
 #define _CONFIG_H
 
-#include "golf/maths.h"
+#include "mcore/maths.h"
 
 void config_init(void);
 int config_get_int(const char *name);

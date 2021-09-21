@@ -5,9 +5,10 @@
 #include "3rd_party/xatlas/xatlas_wrapper.h"
 #include "3rd_party/mattiasgustavsson_libs/rnd.h"
 
+#include "mcore/maths.h"
+
 #include "golf/hole.h"
 #include "golf/data_stream.h"
-#include "golf/maths.h"
 #include "golf/profiler.h"
 
 void lightmap_init(struct lightmap *lightmap, int width, int height, int num_elements, int num_images) {
