@@ -1,8 +1,11 @@
-#include "mcommon.h"
-
+#include <stdio.h>
+#include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
+
+#include "mcommon.h"
 
 void mstrncpy(char *dest, const char *src, int n) {
     strncpy(dest, src, n);
@@ -205,4 +208,36 @@ char *mbase64_encode(const unsigned char *src, int len) {
     enc[size] = '\0';
 
     return enc;
+}
+
+bool mwrite_file(const char *path, unsigned char *data, int data_len) {
+    FILE *f = fopen(path, "wb");
+    if (!f) {
+        return false;
+    }
+
+    fwrite(data, sizeof(char), data_len, f);
+    fclose(f);
+    return true;
+}
+
+bool mread_file(const char *path, unsigned char **data, int *data_len) {
+    FILE *f = fopen(path, "rb");
+    if (!f) {
+        return false;
+    }
+
+    fseek(f, 0, SEEK_END);
+    *data_len = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    *data = malloc(*data_len);
+    int ret = (int) fread(*data, sizeof(unsigned char), *data_len, f);
+    if (ret == -1) {
+        fclose(f);
+        free(*data);
+        return false;
+    }
+    fclose(f);
+
+    return true;
 }

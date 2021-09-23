@@ -90,7 +90,6 @@ static void frame(void) {
         game_load_hole(&game, &game_editor, 0);
         game.state = GAME_STATE_MAIN_MENU;
         main_menu_init(&main_menu);
-        mdata_init();
         mlog_init();
         profiler_pop_section();
 

@@ -30,6 +30,7 @@ void mlog_init(void) {
 
 static void _log(enum _mlog_level level, const char *fmt, va_list arg) {
     vprintf(fmt, arg);
+    printf("\n");
     if (level == _mlog_level_warning) {
         if (_state.entry_count < 32) {
             _mlog_entry_t *entry = &_state.entries[_state.entry_count++];
@@ -48,6 +49,7 @@ void mlog_note(const char *fmt, ...) {
     va_end(ap);
 }
 
+#if 0
 static void _test_print_callstack() {
     void *addresses[256];
     int i;
@@ -61,6 +63,7 @@ static void _test_print_callstack() {
         printf( "%3d) %-50s %s(%u)\n", i, symbols[i].function, symbols[i].file, symbols[i].line );
     }
 }
+#endif
 
 void mlog_warning(const char *fmt, ...) {
     va_list ap;
@@ -68,7 +71,7 @@ void mlog_warning(const char *fmt, ...) {
     _log(_mlog_level_warning, fmt, ap);
     va_end(ap);
 
-    _test_print_callstack();
+    //_test_print_callstack();
 }
 
 void mlog_error(const char *fmt, ...) {

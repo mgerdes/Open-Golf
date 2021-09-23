@@ -2,6 +2,7 @@
 #include "3rd_party/vec/vec.h"
 
 #include "mcore/mcommon.h"
+#include "mcore/mimport.h"
 #include "mcore/mstring.h"
 
 static mstring_t str;
@@ -57,6 +58,8 @@ static void _visit_file_1(cf_file_t *file, void *udata) {
 }
 
 int main(int argc, char **argv) {
+    mimport_run();
+
     mstring_init(&str, "");
     mstring_appendf(&str, "typedef struct _embedded_file { const char *path; int data_len; const char *data; } _embedded_file_t;\n");
 

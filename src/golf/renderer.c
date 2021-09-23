@@ -1229,6 +1229,7 @@ static void create_font(struct font *font, mfile_t *file) {
     mfile_free_data(file);
 }
 
+/*
 static bool _mdata_texture_file_creator(mfile_t file, mdata_file_t *mdata_file, void *udata) {
     if (!mfile_load_data(&file)) {
         return false;
@@ -1241,7 +1242,9 @@ static bool _mdata_texture_file_creator(mfile_t file, mdata_file_t *mdata_file, 
     mfile_free_data(&file);
     return true;
 }
+*/
 
+/*
 static bool _mdata_texture_file_handler(const char *file_path, mdata_file_t *mdata_file, void *udata) {
     struct renderer *renderer = (struct renderer*) udata; 
 
@@ -1293,6 +1296,7 @@ static bool _mdata_texture_file_handler(const char *file_path, mdata_file_t *mda
 
     return true;
 }
+*/
 
 static mtexture_t *_renderer_get_texture(struct renderer *renderer, const char *path) {
     mtexture_t *texture = map_get(&renderer->texture_map, path);
@@ -1315,9 +1319,9 @@ void renderer_init(struct renderer *renderer) {
     renderer->game_fb_height = 720;
 
     map_init(&renderer->texture_map);
-    mdata_add_extension_handler(".png", _mdata_texture_file_creator, _mdata_texture_file_handler, renderer);
-    mdata_add_extension_handler(".bmp", _mdata_texture_file_creator, _mdata_texture_file_handler, renderer);
-    mdata_add_extension_handler(".jpg", _mdata_texture_file_creator, _mdata_texture_file_handler, renderer);
+    //mdata_add_extension_handler(".png", _mdata_texture_file_creator, _mdata_texture_file_handler, renderer);
+    //mdata_add_extension_handler(".bmp", _mdata_texture_file_creator, _mdata_texture_file_handler, renderer);
+    //mdata_add_extension_handler(".jpg", _mdata_texture_file_creator, _mdata_texture_file_handler, renderer);
 
     {
         sg_image_desc fxaa_image_desc = {

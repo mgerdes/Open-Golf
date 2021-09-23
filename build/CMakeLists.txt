@@ -61,6 +61,7 @@ target_link_libraries(membedder PRIVATE
     mcore
     cute_headers
     vec
+    map
 )
 
 add_library(mcore STATIC
