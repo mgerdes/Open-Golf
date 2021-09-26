@@ -11,10 +11,6 @@
 #include "golf/data_stream.h"
 #include "golf/log.h"
 
-#ifdef MEMBED_FILES
-#include "membedder/membedded_files.h"
-#endif
-
 typedef struct _mimporter {
     const char *ext;
     void (*callback)(mdatafile_t *file, void *udata);
@@ -23,6 +19,8 @@ typedef struct _mimporter {
 
 typedef map_t(_mimporter_t) _map_mimporter_t;
 static _map_mimporter_t _importers_map;
+static membedded_file_t *_embedded_files;
+static int _num_embedded_files;
 
 static void _create_texture_mdatafile(mdatafile_t *file, unsigned char *data, int data_len) {
     mdatafile_add_string(file, "filter", "linear", true);
@@ -88,7 +86,9 @@ static void _visit_file(cf_file_t *file, void *udata) {
     mdatafile_delete(mdatafile);
 }
 
-void mimport_init(void) {
+void mimport_init(int num_embedded_files, membedded_file_t *embedded_files) {
+    _num_embedded_files = num_embedded_files;
+    _embedded_files = embedded_files;
     map_init(&_importers_map);
     //mimport_run();
 }
@@ -99,28 +99,25 @@ void mimport_add_importer(const char *ext, void (*callback)(mdatafile_t *file, v
     importer.callback = callback;
     importer.udata = udata;
     map_set(&_importers_map, ext, importer);
-#ifdef MEMBED_FILES
-    for (int i = 0; i < _num_embedded_files; i++) {
-        if (strcmp(_embedded_files[i].ext, ext) == 0) {
-            mdatafile_t *mdatafile = mdatafile_load(_embedded_files[i].path);
-            callback(mdatafile, udata);
-            mdatafile_delete(mdatafile);
+    if (_embedded_files) {
+        for (int i = 0; i < _num_embedded_files; i++) {
+            if (strcmp(_embedded_files[i].ext, ext) == 0) {
+                mdatafile_t *mdatafile = mdatafile_load(_embedded_files[i].path);
+                callback(mdatafile, udata);
+                mdatafile_delete(mdatafile);
+            }
         }
     }
-#else
-    cf_traverse("data", _run_import, &importer);
-#endif
+    else {
+        cf_traverse("data", _run_import, &importer);
+    }
 }
 
-void mimport_run(bool always_run) {
+void mimport_run(void) {
     mlog_note("mimport_run");
-#ifdef MEMBED_FILES
-    if (always_run) {
+    if (!_embedded_files) {
         cf_traverse("data", _visit_file, NULL);
     }
-#else
-    cf_traverse("data", _visit_file, NULL);
-#endif
 }
 
 #define _VAL_MAX_NAME_LEN 32
@@ -194,19 +191,20 @@ mdatafile_t *mdatafile_load(const char *path) {
     unsigned char *data = NULL;
     int data_len = 0;
 
-#if MEMBED_FILES
-    for (int i = 0; i < _num_embedded_files; i++) {
-        if (strcmp(_embedded_files[i].path, mdatafile->name) == 0) {
-            data = _embedded_files[i].data;
-            data_len = _embedded_files[i].data_len;
-            break;
+    if (_embedded_files) {
+        for (int i = 0; i < _num_embedded_files; i++) {
+            if (strcmp(_embedded_files[i].path, mdatafile->name) == 0) {
+                data = (unsigned char*) _embedded_files[i].data;
+                data_len = _embedded_files[i].data_len;
+                break;
+            }
         }
     }
-#else
-    if (!mread_file(mdatafile->path, &data, &data_len)) {
-        return mdatafile;
+    else {
+        if (!mread_file(mdatafile->path, &data, &data_len)) {
+            return mdatafile;
+        }
     }
-#endif
 
     if (!data) {
         mlog_error("Unable to load data for mdatafile %s", mdatafile->path);
@@ -290,10 +288,11 @@ mdatafile_t *mdatafile_load(const char *path) {
         }
     }
 
-#if MEMBED_FILES
-#else
-    free(data);
-#endif
+    if (_embedded_files) {
+    }
+    else {
+        free(data);
+    }
     return mdatafile;
 }
 
@@ -342,7 +341,7 @@ void mdatafile_save(mdatafile_t *file) {
                 break;
         }
     }
-    mwrite_file(file->path, str.cstr, str.len);
+    mwrite_file(file->path, (unsigned char*) str.cstr, str.len);
     mstring_deinit(&str);
 }
 

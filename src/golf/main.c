@@ -25,6 +25,10 @@
 #include "golf/renderer.h"
 #include "golf/ui.h"
 
+#if MEMBED_FILES
+#include "membedder/membedded_files.h"
+#endif
+
 enum app_state {
     APP_MAIN_MENU,
     APP_SINGLE_SHOT_MENU,
@@ -79,7 +83,11 @@ static void frame(void) {
         inited = true;
         profiler_push_section("init");
         state = APP_MAIN_MENU;
-        mimport_init();
+#ifdef MEMBED_FILES
+        mimport_init(_num_embedded_files, _embedded_files);
+#else
+        mimport_init(0, NULL);
+#endif
         asset_store_init();
         config_init();
         audio_init();

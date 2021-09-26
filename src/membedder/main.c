@@ -26,7 +26,7 @@ static void _visit_file_0(cf_file_t *file, void *udata) {
     fseek(f, 0, SEEK_END);
     int num_bytes = ftell(f);
     fseek(f, 0, SEEK_SET);
-    unsigned char *bytes = (char *)malloc(num_bytes);
+    unsigned char *bytes = (unsigned char *)malloc(num_bytes);
     int ret = (int) fread(bytes, sizeof(unsigned char), num_bytes, f);
     if (ret == -1) {
         assert(false);
@@ -65,16 +65,15 @@ static void _visit_file_1(cf_file_t *file, void *udata) {
 }
 
 int main(int argc, char **argv) {
-    mimport_init();
-    mimport_run(true);
+    mimport_init(0, NULL);
+    mimport_run();
 
     mstring_init(&str, "");
-    mstring_appendf(&str, "typedef struct _embedded_file { const char *path; const char *ext; int data_len; const char *data; } _embedded_file_t;\n");
 
     num_files = 0;
     cf_traverse("data", _visit_file_0, NULL);
 
-    mstring_appendf(&str, "static _embedded_file_t _embedded_files[] = {\n");
+    mstring_appendf(&str, "static membedded_file_t _embedded_files[] = {\n");
 
     num_files = 0;
     cf_traverse("data", _visit_file_1, NULL);

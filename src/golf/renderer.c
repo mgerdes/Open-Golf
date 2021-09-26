@@ -1291,16 +1291,12 @@ void renderer_init(struct renderer *renderer) {
     mimport_add_importer(".png", _renderer_import_texture, renderer);
     mimport_add_importer(".bmp", _renderer_import_texture, renderer);
     mimport_add_importer(".jpg", _renderer_import_texture, renderer);
-    //mdata_add_extension_handler(".png", _mdata_texture_file_creator, _mdata_texture_file_handler, renderer);
-    //mdata_add_extension_handler(".bmp", _mdata_texture_file_creator, _mdata_texture_file_handler, renderer);
-    //mdata_add_extension_handler(".jpg", _mdata_texture_file_creator, _mdata_texture_file_handler, renderer);
 
     {
         sg_image_desc fxaa_image_desc = {
             .render_target = true,
             .width = renderer->game_fb_width,
             .height = renderer->game_fb_height,
-            .pixel_format = SG_PIXELFORMAT_RGBA8,
             .min_filter = SG_FILTER_LINEAR,
             .mag_filter = SG_FILTER_LINEAR,
         };
@@ -1315,7 +1311,6 @@ void renderer_init(struct renderer *renderer) {
             .render_target = true,
             .width = renderer->game_fb_width,
             .height = renderer->game_fb_height,
-            .pixel_format = SG_PIXELFORMAT_RGBA8,
             .min_filter = SG_FILTER_LINEAR,
             .mag_filter = SG_FILTER_LINEAR,
         };
@@ -1495,7 +1490,7 @@ void renderer_new_frame(struct renderer *renderer, float dt) {
                 renderer->cam_up);
         renderer->proj_view_mat = mat4_multiply(renderer->proj_mat, renderer->view_mat);
         renderer->ui_proj_mat = mat4_multiply_n(3,
-                mat4_orthographic_projection(0.0f, w_width, 0.0f, w_height, 0.0f, 1.0f),
+                mat4_orthographic_projection(0.0f, w_width, 0.0f, w_height, -1.0f, 1.0f),
                 mat4_translation(V3(0.5f*w_width - 0.5f*w_fb_width, 0.5f*w_height - 0.5f*w_fb_height, 0.0f)),
                 mat4_scale(V3(w_fb_width/fb_width, w_fb_height/fb_height, 1.0f))
                 );
@@ -3190,7 +3185,7 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
         struct model *model = asset_store_get_model("square");
         sg_pass_action game_pass_action = {
             .colors[0] = { .
-                action = SG_ACTION_DONTCARE ,
+                action = SG_ACTION_DONTCARE,
             },
         };
         sg_begin_default_pass(&game_pass_action, renderer->window_width, renderer->window_height);
@@ -3202,10 +3197,11 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
         };
         sg_apply_bindings(&bindings);
         texture_vs_params_t vs_params = {
-            .mvp_mat = mat4_transpose(mat4_multiply_n(4,
+            .mvp_mat = mat4_transpose(mat4_multiply_n(5,
                         renderer->ui_proj_mat,
                         mat4_scale(V3((float) renderer->game_fb_width, (float) renderer->game_fb_height, 1.0f)),
-                        mat4_scale(V3(0.5f, 0.5f, 1.0f)),
+                        mat4_translation(V3(0.0f, 1.0f, 0.0f)),
+                        mat4_scale(V3(0.5f, -0.5f, 1.0f)),
                         mat4_translation(V3(1.0f, 1.0f, 0.0f))
                         )),
         };
