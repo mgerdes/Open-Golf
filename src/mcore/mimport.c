@@ -112,9 +112,12 @@ void mimport_add_importer(const char *ext, void (*callback)(mdatafile_t *file, v
 #endif
 }
 
-void mimport_run(void) {
+void mimport_run(bool always_run) {
     mlog_note("mimport_run");
 #ifdef MEMBED_FILES
+    if (always_run) {
+        cf_traverse("data", _visit_file, NULL);
+    }
 #else
     cf_traverse("data", _visit_file, NULL);
 #endif
@@ -408,6 +411,18 @@ void mdatafile_add_data(mdatafile_t *file, const char *name, unsigned char *data
 
 const char *mdatafile_get_name(mdatafile_t *file) {
     return file->name;
+}
+
+bool mdatafile_get_string(mdatafile_t *file, const char *name, const char **string) {
+    _val_t val;
+    if (_find_val(&file->vals_vec, name, _VAL_TYPE_STRING, &val)) {
+        *string = val.string_val;
+        return true;
+    }
+    else {
+        *string = NULL;
+        return false;
+    }
 }
 
 bool mdatafile_get_data(mdatafile_t *file, const char *name, unsigned char **data, int *data_len) {

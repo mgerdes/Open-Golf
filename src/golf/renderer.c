@@ -1232,6 +1232,18 @@ void _renderer_import_texture(mdatafile_t *file, void *udata) {
     }
     
     sg_filter filter = SG_FILTER_LINEAR;
+    const char *filter_string = NULL;
+    if (mdatafile_get_string(file, "filter", &filter_string)) {
+        if (strcmp(filter_string, "linear") == 0) {
+            filter = SG_FILTER_LINEAR;
+        }
+        else if (strcmp(filter_string, "nearest") == 0) {
+            filter = SG_FILTER_NEAREST;
+        }
+        else {
+
+        }
+    }
     sg_image_desc img_desc = {
         .width = x,
         .height = y,

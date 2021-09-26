@@ -75,7 +75,7 @@ add_library(mcore STATIC
     src/mcore/mstring.c
 )
 target_compile_definitions(mcore PRIVATE
-    #MEMBED_FILES
+    MEMBED_FILES
 )
 
 add_library(cimgui STATIC
@@ -138,7 +138,7 @@ target_compile_definitions(sokol PRIVATE
 )
 target_link_libraries(sokol PRIVATE 
     cimgui
-    )
+)
 
 add_library(stb STATIC
     src/3rd_party/stb/impl.c

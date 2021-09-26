@@ -66,7 +66,7 @@ static void _visit_file_1(cf_file_t *file, void *udata) {
 
 int main(int argc, char **argv) {
     mimport_init();
-    mimport_run();
+    mimport_run(true);
 
     mstring_init(&str, "");
     mstring_appendf(&str, "typedef struct _embedded_file { const char *path; const char *ext; int data_len; const char *data; } _embedded_file_t;\n");
