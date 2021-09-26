@@ -6,6 +6,8 @@
 #include "3rd_party/mattiasgustavsson_libs/rnd.h"
 
 #include "mcore/maths.h"
+#include "mcore/mimport.h"
+#include "mcore/mlog.h"
 
 #include "golf/hole.h"
 #include "golf/data_stream.h"
@@ -134,10 +136,6 @@ void lightmap_update_uvs_buffer(struct lightmap *lightmap, int num_elements) {
 
     sg_update_buffer(lightmap->uvs_buf, 
             &(sg_range) { lightmap->uvs.data, sizeof(vec2) * lightmap->uvs.length });
-}
-
-void lightmap_save_image(struct lightmap *lightmap, const char *filename) {
-    stbi_write_png(filename, lightmap->width, lightmap->height, 1, lightmap->images.data[0].data, 0);
 }
 
 struct terrain_model_face create_terrain_model_face(int num_points, int mat_idx, int smooth_normal,
@@ -802,205 +800,6 @@ void terrain_model_update_buffers(struct terrain_model *model) {
     vec_deinit(&normals);
     vec_deinit(&texture_coords);
     vec_deinit(&material_idx);
-}
-
-void terrain_model_export(struct terrain_model *model, mfile_t *file) {
-    char sprintf_buffer[1024];
-    vec_char_t buffer;
-    vec_init(&buffer);
-
-    vec_pusharr(&buffer, "MODEL\n", 6);
-    vec_pusharr(&buffer, "1\n", 2);
-    for (int i = 0; i < MAX_NUM_TERRAIN_MODEL_MATERIALS; i++) {
-        vec3 c = model->materials[i].color0;
-        sprintf(sprintf_buffer, "%f %f %f\n", c.x, c.y, c.z);
-        vec_pusharr(&buffer, sprintf_buffer, (int) strlen(sprintf_buffer));
-    }
-
-    sprintf(sprintf_buffer, "%d\n", model->points.length);
-    vec_pusharr(&buffer, sprintf_buffer, (int) strlen(sprintf_buffer));
-    for (int i = 0; i < model->points.length; i++) {
-        vec3 p = model->points.data[i];
-        sprintf(sprintf_buffer, "%f %f %f\n", p.x, p.y, p.z);
-        vec_pusharr(&buffer, sprintf_buffer, (int) strlen(sprintf_buffer));
-    }
-
-    sprintf(sprintf_buffer, "%d\n", model->faces.length);
-    vec_pusharr(&buffer, sprintf_buffer, (int) strlen(sprintf_buffer));
-    for (int i = 0; i < model->faces.length; i++) {
-        struct terrain_model_face face = model->faces.data[i];
-        sprintf(sprintf_buffer, "%d %d %d %d %d %d\n", face.num_points, face.x, face.y, face.z,
-                face.w, face.mat_idx);
-        vec_pusharr(&buffer, sprintf_buffer, (int) strlen(sprintf_buffer));
-    }
-
-    mfile_set_data(file, buffer.data, buffer.length);
-    vec_deinit(&buffer);
-}
-
-bool terrain_model_import(struct terrain_model *model, mfile_t *file) {
-    if (!mfile_load_data(file)) {
-        return false;
-    }
-
-    bool is_error = false;
-    vec_vec3_t points;
-    vec_terrain_model_face_t faces; 
-    int n, line_num = 0;
-    char *line_buffer = NULL;
-    int line_buffer_len = 0;
-    vec3 color0[MAX_NUM_TERRAIN_MODEL_MATERIALS];
-    vec3 color1[MAX_NUM_TERRAIN_MODEL_MATERIALS];
-
-    vec_init(&points);
-    vec_init(&faces);
-
-    {
-        mfile_copy_line(file, &line_buffer, &line_buffer_len);
-        line_num++;
-        if (line_buffer[0] != 'M' || line_buffer[1] != 'O' || line_buffer[2] != 'D' || 
-                line_buffer[3] != 'E' || line_buffer[4] != 'L') {
-            printf("File must begin with MODEL\n");
-            is_error = true;
-            goto clean_up;
-        }
-    }
-
-    {
-        mfile_copy_line(file, &line_buffer, &line_buffer_len);
-        line_num++;
-    }
-
-    {
-        for (int i = 0; i < MAX_NUM_TERRAIN_MODEL_MATERIALS; i++) {
-            vec3 c;
-
-            mfile_copy_line(file, &line_buffer, &line_buffer_len);
-            line_num++;
-            n = sscanf(line_buffer, "%f %f %f", &c.x, &c.y, &c.z);
-            if (n != 3) {
-                printf("Invalid material on line: %d\n", line_num);
-                is_error = true;
-                goto clean_up;
-            }
-            color0[i] = c;
-
-            mfile_copy_line(file, &line_buffer, &line_buffer_len);
-            line_num++;
-            n = sscanf(line_buffer, "%f %f %f", &c.x, &c.y, &c.z);
-            if (n != 3) {
-                printf("Invalid material on line: %d\n", line_num);
-                is_error = true;
-                goto clean_up;
-            }
-            color1[i] = c;
-        }
-    }
-
-    {
-        mfile_copy_line(file, &line_buffer, &line_buffer_len);
-        line_num++;
-
-        int num_points;
-        n = sscanf(line_buffer, "%d", &num_points);
-        if (n != 1) {
-            printf("Invalid number of points on line: %d\n", line_num);
-            is_error = true;
-            goto clean_up;
-        }
-
-        for (int i = 0; i < num_points; i++) {
-            mfile_copy_line(file, &line_buffer, &line_buffer_len);
-            line_num++;
-            vec3 point;
-            n = sscanf(line_buffer, "%f %f %f", &point.x, &point.y, &point.z);
-            if (n != 3) {
-                printf("Invalid point on line: %d\n", line_num);
-                is_error = true;
-                goto clean_up;
-            }
-
-            vec_push(&points, point);
-        }
-    }
-
-    {
-        mfile_copy_line(file, &line_buffer, &line_buffer_len);
-        line_num++;
-
-        int num_faces;
-        n = sscanf(line_buffer, "%d", &num_faces);
-        if (n != 1) {
-            printf("Invalid number of faces on line: %d\n", line_num);
-            is_error = true;
-            goto clean_up;
-        }
-
-        for (int i = 0; i < num_faces; i++) {
-            struct terrain_model_face face;
-
-            mfile_copy_line(file, &line_buffer, &line_buffer_len);
-            line_num++;
-            n = sscanf(line_buffer, "%d", &face.num_points);
-            if (n != 1) {
-                printf("Expected face num points on line: %d\n", line_num); 
-                is_error = true;
-                goto clean_up;
-            }
-
-            mfile_copy_line(file, &line_buffer, &line_buffer_len);
-            line_num++;
-            n = sscanf(line_buffer, "%d %d", &face.mat_idx, &face.smooth_normal);
-            if (n != 2) {
-                printf("Expected face mat idx and smooth normal on line: %d\n", line_num); 
-                is_error = true;
-                goto clean_up;
-            }
-
-            mfile_copy_line(file, &line_buffer, &line_buffer_len);
-            line_num++;
-            n = sscanf(line_buffer, "%d %d %d %d", &face.x, &face.y, &face.z, &face.w);
-            if (n != 4) {
-                printf("Expected face point indexes on line: %d\n", line_num); 
-                is_error = true;
-                goto clean_up;
-            }
-
-            mfile_copy_line(file, &line_buffer, &line_buffer_len);
-            line_num++;
-            n = sscanf(line_buffer, "%f %f %f %f %f %f %f %f", 
-                    &face.texture_coords[0].x, &face.texture_coords[0].y,
-                    &face.texture_coords[1].x, &face.texture_coords[1].y,
-                    &face.texture_coords[2].x, &face.texture_coords[2].y,
-                    &face.texture_coords[3].x, &face.texture_coords[3].y);
-            if (n != 8) {
-                printf("Expected face point texture coords on line: %d\n", line_num); 
-                is_error = true;
-                goto clean_up;
-            }
-
-            vec_push(&faces, face);
-        }
-    }
-
-    for (int i = 0; i < MAX_NUM_TERRAIN_MODEL_MATERIALS; i++) {
-        model->materials[i].color0 = color0[i];
-        model->materials[i].color1 = color1[i];
-    }
-    model->points.length = 0;
-    model->faces.length = 0;
-    for (int i = 0; i < points.length; i++) {
-        terrain_model_add_point(model, points.data[i], -1);
-    }
-    for (int i = 0; i < faces.length; i++) {
-        terrain_model_add_face(model, faces.data[i], -1);
-    }
-
-clean_up:
-    vec_deinit(&points);
-    vec_deinit(&faces);
-    mfile_free_data(file);
-    return is_error;
 }
 
 void terrain_model_make_square(struct terrain_model *model) {
@@ -1867,6 +1666,8 @@ static void hole_deserialize_39(struct hole *hole, struct data_stream *stream, b
         vec3 scale = deserialize_vec3(stream);
         quat orientation = deserialize_quat(stream);
         char *model_name = deserialize_string(stream);
+        char model_path[1024];
+        snprintf(model_path, 1024, "data/models/%s", model_name);
 
         struct environment_entity *environment;
         if (i < hole->environment_entities.length) {
@@ -1877,14 +1678,14 @@ static void hole_deserialize_39(struct hole *hole, struct data_stream *stream, b
             memset(&blank_entity, 0, sizeof(blank_entity));
             vec_push(&hole->environment_entities, blank_entity);
             environment = &hole->environment_entities.data[i];
-            environment_entity_init(environment, model_name);
+            environment_entity_init(environment, model_path);
         }
 
         environment->is_tiled = is_tiled;
         environment->position = position;
         environment->scale = scale;
         environment->orientation = orientation;
-        environment->model = asset_store_get_model(model_name);
+        environment->model = asset_store_get_model(model_path);
 
         free(model_name);
     }
@@ -2030,28 +1831,34 @@ void hole_reset(struct hole *hole) {
     hole->camera_zone_entities.length = 0;
 }
 
-void hole_load(struct hole *hole, mfile_t *file) {
-    if (!mfile_load_data(file)) {
-        return;
+void hole_load(struct hole *hole, const char *filepath) {
+    mdatafile_t *file = mdatafile_load(filepath);
+    unsigned char *data;
+    int data_len;
+    if (!mdatafile_get_data(file, "data", &data, &data_len)) {
+        mlog_error("Missing data property in mdatafile %s", filepath); 
     }
-    strncpy(hole->filepath, file->path, MFILE_MAX_PATH);
+
+    strncpy(hole->filepath, filepath, MFILE_MAX_PATH);
     hole->filepath[MFILE_MAX_PATH - 1] = 0;
     struct data_stream stream;
     data_stream_init(&stream);
-    data_stream_push(&stream, file->data, file->data_len);
+    data_stream_push(&stream, data, data_len);
     data_stream_decompress(&stream);
     hole_deserialize(hole, &stream, true);
-    mfile_free_data(file);
     data_stream_deinit(&stream);
+    mdatafile_delete(file);
 }
 
-void hole_save(struct hole *hole, mfile_t *file) {
+void hole_save(struct hole *hole, const char *filepath) {
+    /*
     struct data_stream stream;
     data_stream_init(&stream);
     hole_serialize(hole, &stream, true);
     data_stream_compress(&stream);
     mfile_set_data(file, stream.data, stream.len);
     data_stream_deinit(&stream);
+    */
 }
 
 int hole_add_camera_zone_entity(struct hole *hole) {

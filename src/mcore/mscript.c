@@ -9,12 +9,10 @@
 #include "3rd_party/sokol/sokol_time.h"
 
 #include "mcore/mscript.h"
-#include "mcore/mdata.h"
 #include "mcore/mfile.h"
 #include "mcore/mstring.h"
 #include "mcore/maths.h"
 
-#include "golf/hotloader.h"
 #include "golf/log.h"
 
 struct _ms_stmt;

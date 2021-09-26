@@ -58,6 +58,7 @@ static void _visit_file_1(cf_file_t *file, void *udata) {
 }
 
 int main(int argc, char **argv) {
+    mimport_init();
     mimport_run();
 
     mstring_init(&str, "");

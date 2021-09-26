@@ -10,7 +10,7 @@
 #include "3rd_party/sokol/sokol_imgui.h"
 #include "3rd_party/sokol/sokol_time.h"
 
-#include "mcore/mdata.h"
+#include "mcore/mimport.h"
 #include "mcore/mlog.h"
 #include "mcore/mscript.h"
 #include "mcore/mfile.h"
@@ -20,7 +20,6 @@
 #include "golf/config.h"
 #include "golf/game.h"
 #include "golf/game_editor.h"
-#include "golf/hotloader.h"
 #include "golf/log.h"
 #include "golf/profiler.h"
 #include "golf/renderer.h"
@@ -80,18 +79,19 @@ static void frame(void) {
         inited = true;
         profiler_push_section("init");
         state = APP_MAIN_MENU;
-        hotloader_init();
+        mimport_init();
         asset_store_init();
         config_init();
         audio_init();
         renderer_init(&renderer);
         game_editor_init(&game_editor, &game, &renderer);
         game_init(&game, &game_editor, &renderer);
-        game_load_hole(&game, &game_editor, 0);
-        game.state = GAME_STATE_MAIN_MENU;
         main_menu_init(&main_menu);
         mlog_init();
         profiler_pop_section();
+
+        game_load_hole(&game, &game_editor, 0);
+        game.state = GAME_STATE_MAIN_MENU;
 
         //{
             //tests_run();
@@ -116,8 +116,6 @@ static void frame(void) {
             }
         }
     }
-
-    hotloader_update();
 
     //
     // Controls

@@ -1863,8 +1863,8 @@ static void hole_editor_update(struct game_editor *ed, float dt,
                 igInputText("Path", ce->file.path, MFILE_MAX_PATH, 0, NULL, NULL);
                 if (igButton("Save", (ImVec2){0, 0})) {
                     mfile_t file = mfile(ce->file.path);
-                    hole_save(ce->hole, &file);
-                    hole_load(ce->hole, &file);
+                    //hole_save(ce->hole, &file);
+                    //hole_load(ce->hole, &file);
                     igCloseCurrentPopup();
                 }
                 igEndPopup();
@@ -1895,7 +1895,7 @@ static void hole_editor_update(struct game_editor *ed, float dt,
 
                         mfile_t file = mfile(ce->file.path);
                         hole_reset(ce->hole);
-                        hole_load(ce->hole, &file);
+                        //hole_load(ce->hole, &file);
                         igCloseCurrentPopup();
                     }
                 }
@@ -1925,8 +1925,8 @@ static void hole_editor_update(struct game_editor *ed, float dt,
                         }
                         else {
                             mfile_t file = mfile(ce->file.path);
-                            hole_save(ce->hole, &file);
-                            hole_load(ce->hole, &file);
+                            //hole_save(ce->hole, &file);
+                            //hole_load(ce->hole, &file);
                         }
                     }
                     if (igMenuItemBool("Save As", NULL, false, true)) {

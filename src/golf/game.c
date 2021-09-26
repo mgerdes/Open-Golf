@@ -272,10 +272,9 @@ void game_load_hole(struct game *game, struct game_editor *ed, int hole_num) {
 
     game->cur_hole = hole_num;
     char filename[MFILE_MAX_PATH + 1];
-    snprintf(filename, MFILE_MAX_PATH, "assets/holes/hole%d.hole", hole_num + 1);
+    snprintf(filename, MFILE_MAX_PATH, "data/holes/hole%d.hole", hole_num + 1);
     filename[MFILE_MAX_PATH] = 0;
-    mfile_t file = mfile(filename);
-    hole_load(&game->hole, &file);
+    hole_load(&game->hole, filename);
     hole_update_buffers(&game->hole);
 
     load_hole_thread = thread_create0(thread_proc_game_load_hole, game, NULL, THREAD_STACK_SIZE_DEFAULT); 
@@ -1076,7 +1075,7 @@ static void game_update_player_ball(struct game *game, float dt, struct renderer
     //
     if (game->audio.start_ball_impact_sound && game->audio.time_since_ball_impact_sound > 0.1f) {
         game->audio.time_since_ball_impact_sound = 0.0f;
-        audio_start_sound("ball_impact", "footstep_grass_004.ogg", 1.0f, false, true);
+        audio_start_sound("ball_impact", "data/audio/footstep_grass_004.ogg", 1.0f, false, true);
     }
     game->audio.time_since_ball_impact_sound += dt;
     game->audio.start_ball_impact_sound = false;
@@ -1085,7 +1084,7 @@ static void game_update_player_ball(struct game *game, float dt, struct renderer
     // Update Water Effects
     //
     if (player_ball->time_out_of_water < 0.1f) {
-        audio_start_sound("ball_in_water", "in_water.ogg", 0.1f, true, false);
+        audio_start_sound("ball_in_water", "data/audio/in_water.ogg", 0.1f, true, false);
     }
     else {
         audio_stop_sound("ball_in_water", 0.2f);
@@ -1390,7 +1389,7 @@ void game_update(struct game *game, float dt, struct button_inputs button_inputs
                 game->state = GAME_STATE_WAITING_FOR_AIM;
                 player_ball->stroke_num++;
                 player_ball->is_out_of_bounds = false;
-                audio_start_sound("ball_out_of_bounds", "error_008.ogg", 1.0f, false, true);
+                audio_start_sound("ball_out_of_bounds", "data/audio/error_008.ogg", 1.0f, false, true);
             }
         }
         if (player_ball->is_in_cup) {
@@ -1406,7 +1405,7 @@ void game_update(struct game *game, float dt, struct button_inputs button_inputs
             player_ball->is_in_cup = false;
             player_ball->velocity = V3(0.0f, 0.0f, 0.0f);
             player_ball->position = V3(1000.0f, -1000.f, 1000.0f);
-            audio_start_sound("ball_in_hole", "confirmation_002.ogg", 1.0f, false, true);
+            audio_start_sound("ball_in_hole", "data/audio/confirmation_002.ogg", 1.0f, false, true);
         }
     }
 
@@ -1443,7 +1442,7 @@ void game_hit_player_ball(struct game *game, vec3 direction, float power, struct
     game->cam.azimuth_angle_before_hit = game->cam.azimuth_angle;
     ed->game->state = GAME_STATE_SIMULATING_BALL;
     game->physics.tick_idx = 0;
-    audio_start_sound("hit_ball", "impactPlank_medium_000.ogg", 1.0f, false, true);
+    audio_start_sound("hit_ball", "data/audio/impactPlank_medium_000.ogg", 1.0f, false, true);
 
     ed->physics.selected_collision_data_idx = -1;
     ed->physics.collision_data_array.length = 0;

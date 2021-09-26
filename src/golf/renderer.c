@@ -13,15 +13,15 @@
 #include "3rd_party/sokol/sokol_imgui.h"
 #include "3rd_party/sokol/sokol_time.h"
 
-#include "mcore/mfile.h"
-#include "mcore/mdata.h"
+#include "mcore/mcommon.h"
+#include "mcore/mimport.h"
+#include "mcore/mlog.h"
 
 #include "golf/renderer.h"
 #include "golf/assets.h"
 #include "golf/config.h"
 #include "golf/game.h"
 #include "golf/game_editor.h"
-#include "golf/hotloader.h"
 #include "golf/log.h"
 #include "golf/profiler.h"
 
@@ -77,27 +77,7 @@ static bool load_shader(const char *shader_name, const sg_shader_desc *const_sha
     return true;
 }
 
-static bool should_load_shader(mfile_t file, bool first_time) {
-    // This can be called with either the bare shader files, in the src/shaders/bare/ folder, or normal shader 
-    // files in the src/shaders/ folder. If it's called with a bare shader file it should only load if it's not
-    // the first time. If it's called with a normal shader file it should only load if it is the first time.
-    // If you update a normal shader file you have to recompile the bare shader files to get the shader resource
-    // reloaded.
-    bool is_bare = strstr(file.path, "src/shaders/bare/") == file.path;
-    if (is_bare && first_time) {
-        return false;
-    }
-    if (!is_bare && !first_time) {
-        return false;
-    }
-    return true;
-}
-
-static bool load_aim_icon_shader(mfile_t file, bool first_time, struct renderer *renderer) {
-    if (!should_load_shader(file, first_time)) {
-        return true;
-    }
-
+static bool load_aim_icon_shader(bool first_time, struct renderer *renderer) {
     sg_shader shader;
     if (!load_shader("aim_icon", aim_icon_shader_desc(sg_query_backend()), &shader)) {
         return false;
@@ -143,11 +123,7 @@ static bool load_aim_icon_shader(mfile_t file, bool first_time, struct renderer 
     return true;
 }
 
-static bool load_aim_helper_shader(mfile_t file, bool first_time, struct renderer *renderer) {
-    if (!should_load_shader(file, first_time)) {
-        return true;
-    }
-
+static bool load_aim_helper_shader(bool first_time, struct renderer *renderer) {
     sg_shader shader;
     if (!load_shader("aim_helper", aim_helper_shader_desc(sg_query_backend()), &shader)) {
         return false;
@@ -193,11 +169,7 @@ static bool load_aim_helper_shader(mfile_t file, bool first_time, struct rendere
     return true;
 }
 
-static bool load_ball_shader(mfile_t file, bool first_time, struct renderer *renderer) {
-    if (!should_load_shader(file, first_time)) {
-        return true;
-    }
-
+static bool load_ball_shader(bool first_time, struct renderer *renderer) {
     sg_shader shader;
     if (!load_shader("ball", ball_shader_desc(sg_query_backend()), &shader)) {
         return false;
@@ -274,11 +246,7 @@ static bool load_ball_shader(mfile_t file, bool first_time, struct renderer *ren
     return true;
 }
 
-static bool load_hole_editor_environment_shader(mfile_t file, bool first_time, struct renderer *renderer) {
-    if (!should_load_shader(file, first_time)) {
-        return true;
-    }
-
+static bool load_hole_editor_environment_shader(bool first_time, struct renderer *renderer) {
     sg_shader shader;
     if (!load_shader("hole_editor_environment", hole_editor_environment_shader_desc(sg_query_backend()), &shader)) {
         return false;
@@ -323,11 +291,7 @@ static bool load_hole_editor_environment_shader(mfile_t file, bool first_time, s
     return true;
 }
 
-static bool load_hole_editor_terrain_shader(mfile_t file, bool first_time, struct renderer *renderer) {
-    if (!should_load_shader(file, first_time)) {
-        return true;
-    }
-
+static bool load_hole_editor_terrain_shader(bool first_time, struct renderer *renderer) {
     sg_shader shader;
     if (!load_shader("hole_editor_terrain", hole_editor_terrain_shader_desc(sg_query_backend()), &shader)) {
         return false;
@@ -374,11 +338,7 @@ static bool load_hole_editor_terrain_shader(mfile_t file, bool first_time, struc
     return true;
 }
 
-static bool load_hole_editor_water_shader(mfile_t file, bool first_time, struct renderer *renderer) {
-    if (!should_load_shader(file, first_time)) {
-        return true;
-    }
-
+static bool load_hole_editor_water_shader(bool first_time, struct renderer *renderer) {
     sg_shader shader;
     if (!load_shader("hole_editor_water", hole_editor_water_shader_desc(sg_query_backend()), &shader)) {
         return false;
@@ -428,11 +388,7 @@ static bool load_hole_editor_water_shader(mfile_t file, bool first_time, struct 
     return true;
 }
 
-static bool load_environment_shader(mfile_t file, bool first_time, struct renderer *renderer) {
-    if (!should_load_shader(file, first_time)) {
-        return true;
-    }
-
+static bool load_environment_shader(bool first_time, struct renderer *renderer) {
     sg_shader shader;
     if (!load_shader("environment", environment_shader_desc(sg_query_backend()), &shader)) {
         return false;
@@ -475,11 +431,7 @@ static bool load_environment_shader(mfile_t file, bool first_time, struct render
     return true;
 }
 
-static bool load_fxaa_shader(mfile_t file, bool first_time, struct renderer *renderer) {
-    if (!should_load_shader(file, first_time)) {
-        return true;
-    }
-
+static bool load_fxaa_shader(bool first_time, struct renderer *renderer) {
     sg_shader shader;
     if (!load_shader("fxaa", fxaa_shader_desc(sg_query_backend()), &shader)) {
         return false;
@@ -514,11 +466,7 @@ static bool load_fxaa_shader(mfile_t file, bool first_time, struct renderer *ren
     return true;
 }
 
-static bool load_cup_shader(mfile_t file, bool first_time, struct renderer *renderer) {
-    if (!should_load_shader(file, first_time)) {
-        return true;
-    }
-
+static bool load_cup_shader(bool first_time, struct renderer *renderer) {
     sg_shader shader;
     if (!load_shader("cup", cup_shader_desc(sg_query_backend()), &shader)) {
         return false;
@@ -575,11 +523,7 @@ static bool load_cup_shader(mfile_t file, bool first_time, struct renderer *rend
     return true;
 }
 
-static bool load_occluded_ball_shader(mfile_t file, bool first_time, struct renderer *renderer) {
-    if (!should_load_shader(file, first_time)) {
-        return true;
-    }
-
+static bool load_occluded_ball_shader(bool first_time, struct renderer *renderer) {
     sg_shader shader;
     if (!load_shader("occluded_ball", occluded_ball_shader_desc(sg_query_backend()), &shader)) {
         return false;
@@ -625,11 +569,7 @@ static bool load_occluded_ball_shader(mfile_t file, bool first_time, struct rend
     return true;
 }
 
-static bool load_pass_through_shader(mfile_t file, bool first_time, struct renderer *renderer) {
-    if (!should_load_shader(file, first_time)) {
-        return true;
-    }
-
+static bool load_pass_through_shader(bool first_time, struct renderer *renderer) {
     sg_shader shader;
     if (!load_shader("pass_through", pass_through_shader_desc(sg_query_backend()), &shader)) {
         return false;
@@ -689,11 +629,7 @@ static bool load_pass_through_shader(mfile_t file, bool first_time, struct rende
     return true;
 }
 
-static bool load_single_color_shader(mfile_t file, bool first_time, struct renderer *renderer) {
-    if (!should_load_shader(file, first_time)) {
-        return true;
-    }
-
+static bool load_single_color_shader(bool first_time, struct renderer *renderer) {
     sg_shader shader;
     if (!load_shader("single_color", single_color_shader_desc(sg_query_backend()), &shader)) {
         return false;
@@ -767,11 +703,7 @@ static bool load_single_color_shader(mfile_t file, bool first_time, struct rende
     return true;
 }
 
-static bool load_terrain_shader(mfile_t file, bool first_time, struct renderer *renderer) {
-    if (!should_load_shader(file, first_time)) {
-        return true;
-    }
-
+static bool load_terrain_shader(bool first_time, struct renderer *renderer) {
     sg_shader shader;
     if (!load_shader("terrain", terrain_shader_desc(sg_query_backend()), &shader)) {
         return false;
@@ -842,11 +774,7 @@ static bool load_terrain_shader(mfile_t file, bool first_time, struct renderer *
     return true;
 }
 
-static bool load_texture_shader(mfile_t file, bool first_time, struct renderer *renderer) {
-    if (!should_load_shader(file, first_time)) {
-        return true;
-    }
-
+static bool load_texture_shader(bool first_time, struct renderer *renderer) {
     sg_shader shader;
     if (!load_shader("texture", texture_shader_desc(sg_query_backend()), &shader)) {
         return false;
@@ -880,11 +808,7 @@ static bool load_texture_shader(mfile_t file, bool first_time, struct renderer *
     return true;
 }
 
-static bool load_ui_shader(mfile_t file, bool first_time, struct renderer *renderer) {
-    if (!should_load_shader(file, first_time)) {
-        return true;
-    }
-
+static bool load_ui_shader(bool first_time, struct renderer *renderer) {
     sg_shader shader;
     if (!load_shader("ui", ui_shader_desc(sg_query_backend()), &shader)) {
         return false;
@@ -925,11 +849,7 @@ static bool load_ui_shader(mfile_t file, bool first_time, struct renderer *rende
     return true;
 }
 
-static bool load_ui_single_color_shader(mfile_t file, bool first_time, struct renderer *renderer) {
-    if (!should_load_shader(file, first_time)) {
-        return true;
-    }
-
+static bool load_ui_single_color_shader(bool first_time, struct renderer *renderer) {
     sg_shader shader;
     if (!load_shader("ui_single_color", ui_single_color_shader_desc(sg_query_backend()), &shader)) {
         return false;
@@ -973,11 +893,7 @@ static bool load_ui_single_color_shader(mfile_t file, bool first_time, struct re
     return true;
 }
 
-static bool load_water_shader(mfile_t file, bool first_time, struct renderer *renderer) {
-    if (!should_load_shader(file, first_time)) {
-        return true;
-    }
-
+static bool load_water_shader(bool first_time, struct renderer *renderer) {
     sg_shader shader;
     if (!load_shader("water", water_shader_desc(sg_query_backend()), &shader)) {
         return false;
@@ -1041,11 +957,7 @@ static bool load_water_shader(mfile_t file, bool first_time, struct renderer *re
     return true;
 }
 
-static bool load_water_around_ball_shader(mfile_t file, bool first_time, struct renderer *renderer) {
-    if (!should_load_shader(file, first_time)) {
-        return true;
-    }
-
+static bool load_water_around_ball_shader(bool first_time, struct renderer *renderer) {
     sg_shader shader;
     if (!load_shader("water_around_ball", water_around_ball_shader_desc(sg_query_backend()), &shader)) {
         return false;
@@ -1108,11 +1020,7 @@ static bool load_water_around_ball_shader(mfile_t file, bool first_time, struct 
     return true;
 }
 
-static bool load_water_ripple_shader(mfile_t file, bool first_time, struct renderer *renderer) {
-    if (!should_load_shader(file, first_time)) {
-        return true;
-    }
-
+static bool load_water_ripple_shader(bool first_time, struct renderer *renderer) {
     sg_shader shader;
     if (!load_shader("water_ripple", water_ripple_shader_desc(sg_query_backend()), &shader)) {
         return false;
@@ -1176,12 +1084,14 @@ static bool load_water_ripple_shader(mfile_t file, bool first_time, struct rende
 }
 
 static void renderer_watch_shader(const char *name, struct renderer *renderer, 
-        bool (*callback)(mfile_t file, bool first_time, struct renderer *udata)) {
-    char shader_filename[MFILE_MAX_PATH+1];
-    snprintf(shader_filename, MFILE_MAX_PATH, "src/golf/shaders/%s.glsl", name);
-    shader_filename[MFILE_MAX_PATH] = 0;
-    hotloader_watch_file(shader_filename, renderer, 
-            (bool (*)(mfile_t file, bool first_time, void *udata))callback);
+        bool (*callback)(bool first_time, struct renderer *udata)) {
+    //char shader_filename[MFILE_MAX_PATH+1];
+    //snprintf(shader_filename, MFILE_MAX_PATH, "src/golf/shaders/%s.glsl", name);
+    //shader_filename[MFILE_MAX_PATH] = 0;
+    //hotloader_watch_file(shader_filename, renderer, 
+            //(bool (*)(mfile_t file, bool first_time, void *udata))callback);
+
+    callback(true, renderer);
 
 #if HOTLOADER_ACTIVE
     char bare_fs_filename[MFILE_MAX_PATH+1];
@@ -1204,12 +1114,18 @@ static int get_font_file_property(const char *line_buffer, const char *prop) {
     return atoi(str + strlen(prop) + 1);
 }
 
-static void create_font(struct font *font, mfile_t *file) {
-    mfile_load_data(file);
+static void create_font(struct font *font, const char *font_path) {
+    mdatafile_t *file = mdatafile_load(font_path);
+    unsigned char *data;
+    int data_len;
+    if (!mdatafile_get_data(file, "data", &data, &data_len)) {
+        mlog_error("Missing data property in font mdatafile");  
+    }
 
-    char *line_buffer = NULL;
-    int line_buffer_len = 0;
-    while (mfile_copy_line(file, &line_buffer, &line_buffer_len)) {
+    char *str = (char*)data;
+    int line_buffer_len = 1024;
+    char *line_buffer = malloc(line_buffer_len);;
+    while (mstr_copy_line(&str, &line_buffer, &line_buffer_len)) {
         if (strstr(line_buffer, "char") != line_buffer || strstr(line_buffer, "chars") == line_buffer) {
             continue;
         }
@@ -1226,7 +1142,7 @@ static void create_font(struct font *font, mfile_t *file) {
         font->chars[id].xadvance = get_font_file_property(line_buffer, "xadvance");
     }
 
-    mfile_free_data(file);
+    mdatafile_delete(file);
 }
 
 /*
@@ -1298,6 +1214,47 @@ static bool _mdata_texture_file_handler(const char *file_path, mdata_file_t *mda
 }
 */
 
+void _renderer_import_texture(mdatafile_t *file, void *udata) {
+    struct renderer *renderer = (struct renderer*) udata;
+
+    unsigned char *tex_data;
+    int tex_data_len;
+    if (!mdatafile_get_data(file, "data", &tex_data, &tex_data_len)) {
+        mlog_error("Missing data field for texture  mdatafile");
+    }
+
+    int x, y, n;
+    int force_channels = 4;
+    stbi_set_flip_vertically_on_load(0);
+    unsigned char *data = stbi_load_from_memory((unsigned char*) tex_data, tex_data_len, &x, &y, &n, force_channels);
+    if (!data) {
+        mlog_error("STB Failed to load image");
+    }
+    
+    sg_filter filter = SG_FILTER_LINEAR;
+    sg_image_desc img_desc = {
+        .width = x,
+        .height = y,
+        .pixel_format = SG_PIXELFORMAT_RGBA8,
+        .min_filter = filter,
+        .mag_filter = filter,
+        .wrap_u = SG_WRAP_REPEAT,
+        .wrap_v = SG_WRAP_REPEAT,
+        .data.subimage[0][0] = {
+            .ptr = data,
+            .size = 4*sizeof(char)*x*y,
+        },
+    };
+
+    mtexture_t texture;
+    texture.data = data;
+    texture.width = x;
+    texture.height = y;
+    texture.sg_image = sg_make_image(&img_desc);
+    map_set(&renderer->texture_map, mdatafile_get_name(file), texture);
+    free(data);
+}
+
 static mtexture_t *_renderer_get_texture(struct renderer *renderer, const char *path) {
     mtexture_t *texture = map_get(&renderer->texture_map, path);
     if (!texture) {
@@ -1319,6 +1276,9 @@ void renderer_init(struct renderer *renderer) {
     renderer->game_fb_height = 720;
 
     map_init(&renderer->texture_map);
+    mimport_add_importer(".png", _renderer_import_texture, renderer);
+    mimport_add_importer(".bmp", _renderer_import_texture, renderer);
+    mimport_add_importer(".jpg", _renderer_import_texture, renderer);
     //mdata_add_extension_handler(".png", _mdata_texture_file_creator, _mdata_texture_file_handler, renderer);
     //mdata_add_extension_handler(".bmp", _mdata_texture_file_creator, _mdata_texture_file_handler, renderer);
     //mdata_add_extension_handler(".jpg", _mdata_texture_file_creator, _mdata_texture_file_handler, renderer);
@@ -1413,14 +1373,9 @@ void renderer_init(struct renderer *renderer) {
     }
 
     {
-        mfile_t small_font_file = mfile("assets/font/font_small.fnt");
-        create_font(&renderer->small_font, &small_font_file);
-
-        mfile_t medium_font_file = mfile("assets/font/font_medium.fnt");
-        create_font(&renderer->medium_font, &medium_font_file);
-
-        mfile_t large_font_file = mfile("assets/font/font_large.fnt");
-        create_font(&renderer->large_font, &large_font_file);
+        create_font(&renderer->small_font, "data/font/font_small.fnt");
+        create_font(&renderer->medium_font, "data/font/font_medium.fnt");
+        create_font(&renderer->large_font, "data/font/font_large.fnt");
     }
 
     profiler_pop_section();

@@ -28,29 +28,7 @@ void mlog_init(void) {
     _state.entry_count = 0;
 }
 
-static void _log(enum _mlog_level level, const char *fmt, va_list arg) {
-    vprintf(fmt, arg);
-    printf("\n");
-    if (level == _mlog_level_warning) {
-        if (_state.entry_count < 32) {
-            _mlog_entry_t *entry = &_state.entries[_state.entry_count++];
-            vsnprintf(entry->msg, 1024, fmt, arg);
-        }
-    }
-    else if (level == _mlog_level_error) {
-        assert(false);
-    }
-}
-
-void mlog_note(const char *fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
-    _log(_mlog_level_note, fmt, ap);
-    va_end(ap);
-}
-
-#if 0
-static void _test_print_callstack() {
+static void _print_callstack() {
     void *addresses[256];
     int i;
     int num_addresses = callstack(0, addresses, 256);
@@ -63,15 +41,35 @@ static void _test_print_callstack() {
         printf( "%3d) %-50s %s(%u)\n", i, symbols[i].function, symbols[i].file, symbols[i].line );
     }
 }
-#endif
+
+static void _log(enum _mlog_level level, const char *fmt, va_list arg) {
+    vprintf(fmt, arg);
+    printf("\n");
+    if (level == _mlog_level_warning) {
+        _print_callstack();
+        if (_state.entry_count < 32) {
+            _mlog_entry_t *entry = &_state.entries[_state.entry_count++];
+            vsnprintf(entry->msg, 1024, fmt, arg);
+        }
+    }
+    else if (level == _mlog_level_error) {
+        _print_callstack();
+        assert(false);
+    }
+}
+
+void mlog_note(const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    _log(_mlog_level_note, fmt, ap);
+    va_end(ap);
+}
 
 void mlog_warning(const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     _log(_mlog_level_warning, fmt, ap);
     va_end(ap);
-
-    //_test_print_callstack();
 }
 
 void mlog_error(const char *fmt, ...) {

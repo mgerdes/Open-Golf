@@ -27,7 +27,7 @@ static const char _b64_table[] = {
   '4', '5', '6', '7', '8', '9', '+', '/'
 };
 
-static void _b64_buf_resize(char** buf, int *buf_size, int new_size) {
+static void _buf_resize(char** buf, int *buf_size, int new_size) {
     if (new_size > *buf_size) {
         while (*buf_size < new_size) *buf_size = (*buf_size + 1) * 2;
         *buf = realloc(*buf, *buf_size);
@@ -77,7 +77,7 @@ unsigned char *mbase64_decode(const char *src, int len, int *out_dec_len) {
             buf[2] = ((tmp[2] & 0x3) << 6) + tmp[3];
 
             // write decoded buffer to `dec'
-            _b64_buf_resize((char**)&dec, &dec_size, size + 3);
+            _buf_resize((char**)&dec, &dec_size, size + 3);
             if (dec != NULL){
                 for (i = 0; i < 3; ++i) {
                     dec[size++] = buf[i];
@@ -115,7 +115,7 @@ unsigned char *mbase64_decode(const char *src, int len, int *out_dec_len) {
         buf[2] = ((tmp[2] & 0x3) << 6) + tmp[3];
 
         // write remainer decoded buffer to `dec'
-        _b64_buf_resize((char**)&dec, &dec_size, size + (i - 1));
+        _buf_resize((char**)&dec, &dec_size, size + (i - 1));
         if (dec != NULL){
             for (j = 0; (j < i - 1); ++j) {
                 dec[size++] = buf[j];
@@ -126,7 +126,7 @@ unsigned char *mbase64_decode(const char *src, int len, int *out_dec_len) {
     }
 
     // Make sure we have enough space to add '\0' character at end.
-    _b64_buf_resize((char**)&dec, &dec_size, size + 1);
+    _buf_resize((char**)&dec, &dec_size, size + 1);
     if (dec != NULL){
         dec[size] = '\0';
     } else {
@@ -166,7 +166,7 @@ char *mbase64_encode(const unsigned char *src, int len) {
             // then translate each encoded buffer
             // part by index from the base 64 index table
             // into `enc' unsigned char array
-            _b64_buf_resize(&enc, &enc_size, size + 4);
+            _buf_resize(&enc, &enc_size, size + 4);
             for (i = 0; i < 4; ++i) {
                 enc[size++] = _b64_table[buf[i]];
             }
@@ -191,20 +191,20 @@ char *mbase64_encode(const unsigned char *src, int len) {
 
         // perform same write to `enc` with new allocation
         for (j = 0; (j < i + 1); ++j) {
-            _b64_buf_resize(&enc, &enc_size, size + 1);
+            _buf_resize(&enc, &enc_size, size + 1);
             enc[size++] = _b64_table[buf[j]];
         }
 
         // while there is still a remainder
         // append `=' to `enc'
         while ((i++ < 3)) {
-            _b64_buf_resize(&enc, &enc_size, size + 1);
+            _buf_resize(&enc, &enc_size, size + 1);
             enc[size++] = '=';
         }
     }
 
     // Make sure we have enough space to add '\0' character at end.
-    _b64_buf_resize(&enc, &enc_size, size + 1);
+    _buf_resize(&enc, &enc_size, size + 1);
     enc[size] = '\0';
 
     return enc;
@@ -238,6 +238,43 @@ bool mread_file(const char *path, unsigned char **data, int *data_len) {
         return false;
     }
     fclose(f);
+
+    return true;
+}
+
+bool mstr_copy_line(char **str, char **line_buffer, int *line_buffer_cap) {
+    char c0 = (*str)[0];
+    if (!c0) {
+        return false;
+    }
+
+    int i = 0;
+    while (true) {
+        char c = (*str)[i];
+        if (c == '\n' || !c) {
+            break;
+        }
+
+        if (i == *line_buffer_cap) {
+            _buf_resize(line_buffer, line_buffer_cap, i + 1);
+        }
+        (*line_buffer)[i] = c;
+        i++;
+    }
+    if (i > 0 && (*line_buffer)[i - 1] == '\r') {
+        (*line_buffer)[i - 1] = 0;
+    }
+
+    // Allocate room for the null character if needed.
+    if (i == *line_buffer_cap) {
+        _buf_resize(line_buffer, line_buffer_cap, i + 1);
+    }
+    (*line_buffer)[i] = 0;
+    *str += i;
+    // Skip over the new line character if we need to
+    if ((*str)[i]) {
+        *str += 1;
+    }
 
     return true;
 }

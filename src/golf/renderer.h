@@ -6,7 +6,6 @@
 #include "3rd_party/map/map.h"
 #include "3rd_party/sokol/sokol_gfx.h"
 
-#include "mcore/mfile.h"
 #include "mcore/maths.h"
 
 #include "golf/assets.h"

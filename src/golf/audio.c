@@ -2,6 +2,8 @@
 #include "3rd_party/stb/stb_vorbis.h"
 
 #include "mcore/mfile.h"
+#include "mcore/mimport.h"
+#include "mcore/mlog.h"
 
 #include "golf/audio.h"
 
@@ -19,27 +21,30 @@ struct audio_sound {
 typedef map_t(struct audio_sound) map_audio_sound_t;
 map_audio_sound_t audio_sound_map;
 
+static void _import_audio(mdatafile_t *file, void *udata) {
+    unsigned char *data;
+    int data_len;
+    if (!mdatafile_get_data(file, "data", &data, &data_len)) {
+        mlog_error("Missing data field for audio mdatafile");   
+    }
+
+    int err;
+    stb_vorbis *stream = stb_vorbis_open_memory(data, data_len, &err, NULL);
+    assert(stream && !err);
+    stb_vorbis_seek(stream, 0);
+    map_set(&streams_map, mdatafile_get_name(file), stream);
+}
+
 void audio_init(void) {
     map_init(&streams_map);
     map_init(&audio_sound_map);
-
-	mdir_t dir;
-	mdir_init(&dir, "assets/audio", false);
-    for (int i = 0; i < dir.num_files; i++) {
-        mfile_t f = dir.files[i];
-        mfile_load_data(&f);
-        int err;
-        stb_vorbis *stream = stb_vorbis_open_memory((unsigned char*)f.data, f.data_len, &err, NULL);
-        assert(stream && !err);
-        stb_vorbis_seek(stream, 0);
-        map_set(&streams_map, f.name, stream);
-    }
-    mdir_deinit(&dir);
+    mimport_add_importer(".ogg", _import_audio, NULL);
 }
 
 void audio_start_sound(const char *name, const char *filename, float volume, bool repeat, bool force) {
     stb_vorbis **stb_stream = map_get(&streams_map, filename);
     if (!stb_stream) {
+        mlog_warning("Unable to find audio stream %s", filename);
         return;
     }
 

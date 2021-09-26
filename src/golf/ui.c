@@ -23,7 +23,7 @@ void ui_button_update(struct ui_button *button, struct button_inputs inputs) {
     button->is_hovered = point_in_button(inputs.mouse_pos, button);
     button->is_clicked = button->is_hovered && inputs.mouse_clicked[SAPP_MOUSEBUTTON_LEFT];
     if (button->is_clicked) {
-        audio_start_sound("button_click", "drop_003.ogg", 1.0f, false, true);
+        audio_start_sound("button_click", "data/audio/drop_003.ogg", 1.0f, false, true);
     }
 }
 

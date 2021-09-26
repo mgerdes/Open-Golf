@@ -13,7 +13,6 @@ add_executable(minigolf
 	src/golf/game.c 
 	src/golf/game_editor.c 
 	src/golf/hole.c 
-	src/golf/hotloader.c 
 	src/golf/lightmaps.c 
 	src/golf/log.c 
 	src/golf/main.c 
@@ -31,6 +30,7 @@ target_compile_definitions(minigolf PRIVATE
 target_link_libraries(minigolf PRIVATE 
     mcore
     cimgui
+    cute_headers
     dbgtools
     glad
     imgui
@@ -60,6 +60,7 @@ add_executable(membedder
 target_link_libraries(membedder PRIVATE 
     mcore
     cute_headers
+    dbgtools
     vec
     map
 )
@@ -67,7 +68,6 @@ target_link_libraries(membedder PRIVATE
 add_library(mcore STATIC
     src/mcore/maths.c
     src/mcore/mcommon.c
-    src/mcore/mdata.c
     src/mcore/mfile.c
     src/mcore/mimport.c
     src/mcore/mlog.c

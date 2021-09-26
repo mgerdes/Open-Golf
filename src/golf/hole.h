@@ -35,7 +35,6 @@ void lightmap_deinit(struct lightmap *lightmap);
 void lightmap_resize(struct lightmap *lightmap, int width, int height, int num_images);
 void lightmap_update_image(struct lightmap *lightmap);
 void lightmap_update_uvs_buffer(struct lightmap *lightmap, int num_elements);
-void lightmap_save_image(struct lightmap *lightmap, const char *filename);
 
 struct terrain_model_material {
     vec3 color0, color1;
@@ -90,8 +89,6 @@ struct terrain_model_face terrain_model_get_face(struct terrain_model *model, in
 int terrain_model_get_face_idx(struct terrain_model *model, struct terrain_model_face *face);
 void terrain_model_delete_face(struct terrain_model *model, int face_idx);
 void terrain_model_update_buffers(struct terrain_model *model);
-void terrain_model_export(struct terrain_model *model, mfile_t *file);
-bool terrain_model_import(struct terrain_model *model, mfile_t *file);
 void terrain_model_make_square(struct terrain_model *model);
 void terrain_model_generate_triangle_data(struct terrain_model *model,
         vec_vec3_t *positions, vec_vec3_t *normals, vec_vec2_t *texture_coords,
@@ -230,8 +227,8 @@ struct hole {
 
 void hole_init(struct hole *hole);
 void hole_reset(struct hole *hole);
-void hole_load(struct hole *hole, mfile_t *file);
-void hole_save(struct hole *hole, mfile_t *file);
+void hole_load(struct hole *hole, const char *filepath);
+void hole_save(struct hole *hole, const char *filepath);
 void hole_serialize(struct hole *hole, struct data_stream *stream, bool include_lightmaps);
 void hole_deserialize(struct hole *hole, struct data_stream *stream, bool include_lightmaps);
 int hole_add_camera_zone_entity(struct hole *hole);

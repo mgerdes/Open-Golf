@@ -8,7 +8,9 @@
 #include "3rd_party/stb/stb_image.h"
 #include "3rd_party/map/map.h"
 
-#include "mcore/mfile.h"
+#include "mcore/mcommon.h"
+#include "mcore/mimport.h"
+#include "mcore/mlog.h"
 
 #include "golf/profiler.h"
 
@@ -33,56 +35,10 @@ static void model_create_buffers(struct model *model) {
     model->texture_coords_buf = sg_make_buffer(&desc);
 }
 
-//
-// Texture asset
-//
-static bool texture_create(mfile_t *file, struct texture *texture) {
-    int x, y, n;
-    int force_channels = 4;
-    stbi_set_flip_vertically_on_load(0);
-    if (!mfile_load_data(file)) {
-        return false;
-    }
-    unsigned char *tex_data = stbi_load_from_memory((unsigned char*) file->data, file->data_len, &x, &y, &n,
-            force_channels);
-    mfile_free_data(file);
-    assert(tex_data);
-
-    sg_filter filter = SG_FILTER_LINEAR;
-    if (strcmp(file->name, "UIpackSheet_transparent.png") == 0) {
-        filter = SG_FILTER_NEAREST;
-    }
-
-    sg_image_desc img_desc = {
-        .width = x,
-        .height = y,
-        .pixel_format = SG_PIXELFORMAT_RGBA8,
-        .min_filter = filter,
-        .mag_filter = filter,
-        .wrap_u = SG_WRAP_REPEAT,
-        .wrap_v = SG_WRAP_REPEAT,
-        .data.subimage[0][0] = {
-            .ptr = tex_data,
-            .size = 4*sizeof(char)*x*y,
-        },
-    };
-
-    strcpy(texture->name, file->name);
-    texture->data = tex_data;
-    texture->width = x;
-    texture->height = y;
-    texture->image = sg_make_image(&img_desc);
-    return true;
-}
-
 typedef map_t(struct model) map_model_t;
-typedef map_t(struct texture) map_texture_t;
-typedef map_t(struct shader) map_shader_t;
 
 struct asset_store {
     map_model_t models;
-    map_texture_t textures;
-    map_shader_t shaders;
 };
 static struct asset_store *_store = NULL;
 
@@ -271,114 +227,110 @@ static void init_models(void) {
         model_create_buffers(&model);
         map_set(&_store->models, name, model);
     }
+}
 
-	mdir_t dir;
-    mdir_init(&dir, "assets/models", false);
-    for (int i = 0; i < dir.num_files; i++) {
-        mfile_t file = dir.files[i];
-        if (strcmp(file.ext, ".model") != 0) {
-            continue;
-        }
-        if (!mfile_load_data(&file)) {
-            continue;
-        }
-
-        int line_buffer_len = 1024;
-        char *line_buffer = malloc(line_buffer_len);
-
-        mfile_copy_line(&file, &line_buffer, &line_buffer_len); 
-        char model_name[MFILE_MAX_NAME];
-        strcpy(model_name, line_buffer);
-
-        mfile_copy_line(&file, &line_buffer, &line_buffer_len);
-        int num_materials = atoi(line_buffer);
-
-        for (int j = 0; j < num_materials; j++) {
-            mfile_copy_line(&file, &line_buffer, &line_buffer_len);
-            float vals[9];
-            line_parse_floats(line_buffer, vals, 9);
-
-            mfile_copy_line(&file, &line_buffer, &line_buffer_len);
-        }
-
-        mfile_copy_line(&file, &line_buffer, &line_buffer_len);
-        int num_shapes = atoi(line_buffer);
-        assert(num_shapes == 1);
-
-        mfile_copy_line(&file, &line_buffer, &line_buffer_len);
-        int num_points = atoi(line_buffer);
-        vec3 *positions = malloc(sizeof(vec3) * num_points);
-        vec3 *normals = malloc(sizeof(vec3) * num_points);
-        vec2 *texture_coords = malloc(sizeof(vec2) * num_points);
-        for (int j = 0; j < num_points; j++) {
-            mfile_copy_line(&file, &line_buffer, &line_buffer_len);
-
-            float vals[11];
-            line_parse_floats(line_buffer, vals, 11);
-            positions[j] = V3(vals[0], vals[1], vals[2]);
-            normals[j] = V3(vals[3], vals[4], vals[5]);
-            texture_coords[j] = V2(vals[6], vals[7]);
-        }
-
-        struct model model;
-        strcpy(model.name, model_name);
-        model.num_points = num_points;
-        model.positions = positions;
-        model.normals = normals;
-        model.texture_coords = texture_coords;
-        model_create_buffers(&model);
-        map_set(&_store->models, model_name, model);
-
-        mfile_free_data(&file);
+static void _import_model(mdatafile_t *file, void *udata) {
+    unsigned char *data;
+    int data_len;
+    if (!mdatafile_get_data(file, "data", &data, &data_len)) {
+        mlog_error("Missing data field for model mdatafile");   
     }
-    for (int i = 0; i < dir.num_files; i++) {
-        mfile_t file = dir.files[i];
-        if (strcmp(file.ext, ".terrain_model") != 0) {
-            continue;
-        }
-        if (!mfile_load_data(&file)) {
-            continue;
-        }
 
-        vec_vec3_t positions, normals;
-        vec_vec2_t texture_coords;
-        vec_init(&positions);
-        vec_init(&normals);
-        vec_init(&texture_coords);
+    char *str = (char*) data;
+    int line_buffer_len = 1024;
+    char *line_buffer = malloc(line_buffer_len);
 
-        char *line_buf = NULL;
-        int line_buf_len = 0;
-        while (mfile_copy_line(&file, &line_buf, &line_buf_len)) {
-            vec3 p, n;
-            vec2 tc;
-            if(sscanf(line_buf, "%f %f %f %f %f %f %f %f",
-                        &p.x, &p.y, &p.z, &n.x, &n.y, &n.z, &tc.x, &tc.y) == 8) {
-                vec_push(&positions, p);
-                vec_push(&normals, n);
-                vec_push(&texture_coords, tc);
-            }
-        }
-        free(line_buf);
+    mstr_copy_line(&str, &line_buffer, &line_buffer_len); 
+    char model_name[1024];
+    strcpy(model_name, line_buffer);
 
-        struct model model;
-        strcpy(model.name, file.name);
-        model.num_points = positions.length;
-        model.positions = malloc(sizeof(vec3) * model.num_points);
-        model.normals = malloc(sizeof(vec3) * model.num_points);
-        model.texture_coords = malloc(sizeof(vec2) * model.num_points);
-        memcpy(model.positions, positions.data, sizeof(vec3) * model.num_points);
-        memcpy(model.normals, normals.data, sizeof(vec3) * model.num_points);
-        memcpy(model.texture_coords, texture_coords.data, sizeof(vec2) * model.num_points);
-        model_create_buffers(&model);
-        map_set(&_store->models, file.name, model);
+    mstr_copy_line(&str, &line_buffer, &line_buffer_len);
+    int num_materials = atoi(line_buffer);
 
-        vec_deinit(&positions);
-        vec_deinit(&normals);
-        vec_deinit(&texture_coords);
+    for (int j = 0; j < num_materials; j++) {
+        mstr_copy_line(&str, &line_buffer, &line_buffer_len);
+        float vals[9];
+        line_parse_floats(line_buffer, vals, 9);
 
-        mfile_free_data(&file);
+        mstr_copy_line(&str, &line_buffer, &line_buffer_len);
     }
-    mdir_deinit(&dir);
+
+    mstr_copy_line(&str, &line_buffer, &line_buffer_len);
+    int num_shapes = atoi(line_buffer);
+    assert(num_shapes == 1);
+
+    mstr_copy_line(&str, &line_buffer, &line_buffer_len);
+    int num_points = atoi(line_buffer);
+    vec3 *positions = malloc(sizeof(vec3) * num_points);
+    vec3 *normals = malloc(sizeof(vec3) * num_points);
+    vec2 *texture_coords = malloc(sizeof(vec2) * num_points);
+    for (int j = 0; j < num_points; j++) {
+        mstr_copy_line(&str, &line_buffer, &line_buffer_len);
+
+        float vals[11];
+        line_parse_floats(line_buffer, vals, 11);
+        positions[j] = V3(vals[0], vals[1], vals[2]);
+        normals[j] = V3(vals[3], vals[4], vals[5]);
+        texture_coords[j] = V2(vals[6], vals[7]);
+    }
+
+    free(line_buffer);
+
+    struct model model;
+    strcpy(model.name, model_name);
+    model.num_points = num_points;
+    model.positions = positions;
+    model.normals = normals;
+    model.texture_coords = texture_coords;
+    model_create_buffers(&model);
+    map_set(&_store->models, model_name, model);
+}
+
+static void _import_terrain_model(mdatafile_t *file, void *udata) {
+    unsigned char *data;
+    int data_len;
+    if (!mdatafile_get_data(file, "data", &data, &data_len)) {
+        mlog_error("Missing data field for terrain_model mdatafile");   
+    }
+
+    char *str = (char*) data;
+    int line_buf_len = 1024;
+    char *line_buf = malloc(line_buf_len);
+
+    vec_vec3_t positions, normals;
+    vec_vec2_t texture_coords;
+    vec_init(&positions);
+    vec_init(&normals);
+    vec_init(&texture_coords);
+
+    while (mstr_copy_line(&str, &line_buf, &line_buf_len)) {
+        vec3 p, n;
+        vec2 tc;
+        if(sscanf(line_buf, "%f %f %f %f %f %f %f %f",
+                    &p.x, &p.y, &p.z, &n.x, &n.y, &n.z, &tc.x, &tc.y) == 8) {
+            vec_push(&positions, p);
+            vec_push(&normals, n);
+            vec_push(&texture_coords, tc);
+        }
+    }
+    free(line_buf);
+
+    const char *name = mdatafile_get_name(file);
+    struct model model;
+    strcpy(model.name, name);
+    model.num_points = positions.length;
+    model.positions = malloc(sizeof(vec3) * model.num_points);
+    model.normals = malloc(sizeof(vec3) * model.num_points);
+    model.texture_coords = malloc(sizeof(vec2) * model.num_points);
+    memcpy(model.positions, positions.data, sizeof(vec3) * model.num_points);
+    memcpy(model.normals, normals.data, sizeof(vec3) * model.num_points);
+    memcpy(model.texture_coords, texture_coords.data, sizeof(vec2) * model.num_points);
+    model_create_buffers(&model);
+    map_set(&_store->models, name, model);
+
+    vec_deinit(&positions);
+    vec_deinit(&normals);
+    vec_deinit(&texture_coords);
 }
 
 void asset_store_init(void) {
@@ -392,26 +344,8 @@ void asset_store_init(void) {
         map_init(&_store->models);
         init_models();
     }
-
-    //
-    // Init textures
-    //
-    {
-        map_init(&_store->textures);
-
-		mdir_t dir;
-		mdir_init(&dir, "assets/textures", false);
-        for (int i = 0; i < dir.num_files; i++) {
-            mfile_t file = dir.files[i];
-
-            struct texture texture;
-            bool ret = texture_create(&file, &texture);
-            assert(ret);
-
-            map_set(&_store->textures, texture.name, texture);
-        }
-		mdir_deinit(&dir);
-    }
+    mimport_add_importer(".model", _import_model, NULL);
+    mimport_add_importer(".terrain_model", _import_terrain_model, NULL);
 
     profiler_pop_section();
 }
@@ -423,13 +357,10 @@ struct model *asset_store_get_model(const char *name) {
     }
     else {
         model = map_get(&_store->models, "cube");
-        assert(model);
+        if (!model) {
+            mlog_error("Could not cube model");
+        }
+        mlog_warning("Could not find model %s. Using cube model instead.", name);
         return model;
     }
-}
-
-struct texture *asset_store_get_texture(const char *name) {
-    struct texture *texture = map_get(&_store->textures, name);
-    assert(texture);
-    return texture;
 }
