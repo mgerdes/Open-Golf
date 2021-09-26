@@ -28,8 +28,11 @@ static void _import_audio(mdatafile_t *file, void *udata) {
         mlog_error("Missing data field for audio mdatafile");   
     }
 
+    unsigned char *data_copy = malloc(data_len);
+    memcpy(data_copy, data, data_len);
+
     int err;
-    stb_vorbis *stream = stb_vorbis_open_memory(data, data_len, &err, NULL);
+    stb_vorbis *stream = stb_vorbis_open_memory(data_copy, data_len, &err, NULL);
     assert(stream && !err);
     stb_vorbis_seek(stream, 0);
     map_set(&streams_map, mdatafile_get_name(file), stream);
