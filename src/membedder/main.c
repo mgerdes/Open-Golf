@@ -2,6 +2,7 @@
 #include "3rd_party/vec/vec.h"
 
 #include "mcore/mcommon.h"
+#include "mcore/mfile.h"
 #include "mcore/mimport.h"
 #include "mcore/mstring.h"
 
@@ -35,7 +36,7 @@ static void _visit_file_0(cf_file_t *file, void *udata) {
     for (int i = 0; i < num_bytes; i++) {
         mstring_appendf(&str, "0x%X, ", bytes[i]);
     }
-    mstring_appendf(&str, "};");
+    mstring_appendf(&str, "};\n");
 
     free(bytes);
     fclose(f);
@@ -52,7 +53,13 @@ static void _visit_file_1(cf_file_t *file, void *udata) {
         return;
     }
 
-    mstring_appendf(&str, " { \"%s\", sizeof(_embedded_file_%d), _embedded_file_%d }, ", file->path, num_files, num_files);
+    char base_filepath[1024];
+    snprintf(base_filepath, 1024, "%s", file->path);
+    int filepath_len = strlen(file->path);
+    base_filepath[filepath_len - 6] = 0;
+    mfile_t base_file = mfile(base_filepath);
+
+    mstring_appendf(&str, " { \"%s\", \"%s\", sizeof(_embedded_file_%d), _embedded_file_%d }, ", base_file.path, base_file.ext, num_files, num_files);
 
     num_files++;
 }
@@ -62,18 +69,18 @@ int main(int argc, char **argv) {
     mimport_run();
 
     mstring_init(&str, "");
-    mstring_appendf(&str, "typedef struct _embedded_file { const char *path; int data_len; const char *data; } _embedded_file_t;\n");
+    mstring_appendf(&str, "typedef struct _embedded_file { const char *path; const char *ext; int data_len; const char *data; } _embedded_file_t;\n");
 
     num_files = 0;
     cf_traverse("data", _visit_file_0, NULL);
 
-    mstring_appendf(&str, "static _embedded_file_t files[] = {\n");
+    mstring_appendf(&str, "static _embedded_file_t _embedded_files[] = {\n");
 
     num_files = 0;
     cf_traverse("data", _visit_file_1, NULL);
 
     mstring_appendf(&str, "};\n");
-    mstring_appendf(&str, "static int num_embedded_files = %d;\n", num_files);
+    mstring_appendf(&str, "static int _num_embedded_files = %d;\n", num_files);
 
     FILE *f = fopen("src/membedder/membedded_files.h", "wb");
     if (f) {

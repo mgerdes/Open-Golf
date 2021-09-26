@@ -11,6 +11,10 @@
 #include "golf/data_stream.h"
 #include "golf/log.h"
 
+#ifdef MEMBED_FILES
+#include "membedder/membedded_files.h"
+#endif
+
 typedef struct _mimporter {
     const char *ext;
     void (*callback)(mdatafile_t *file, void *udata);
@@ -95,12 +99,25 @@ void mimport_add_importer(const char *ext, void (*callback)(mdatafile_t *file, v
     importer.callback = callback;
     importer.udata = udata;
     map_set(&_importers_map, ext, importer);
+#ifdef MEMBED_FILES
+    for (int i = 0; i < _num_embedded_files; i++) {
+        if (strcmp(_embedded_files[i].ext, ext) == 0) {
+            mdatafile_t *mdatafile = mdatafile_load(_embedded_files[i].path);
+            callback(mdatafile, udata);
+            mdatafile_delete(mdatafile);
+        }
+    }
+#else
     cf_traverse("data", _run_import, &importer);
+#endif
 }
 
 void mimport_run(void) {
     mlog_note("mimport_run");
+#ifdef MEMBED_FILES
+#else
     cf_traverse("data", _visit_file, NULL);
+#endif
 }
 
 #define _VAL_MAX_NAME_LEN 32
@@ -171,10 +188,25 @@ mdatafile_t *mdatafile_load(const char *path) {
 
     snprintf(mdatafile->name, 1024, "%s", path);
     snprintf(mdatafile->path, 1024, "%s.mdata", path);
-    unsigned char *data;
-    int data_len;
+    unsigned char *data = NULL;
+    int data_len = 0;
+
+#if MEMBED_FILES
+    for (int i = 0; i < _num_embedded_files; i++) {
+        if (strcmp(_embedded_files[i].path, mdatafile->name) == 0) {
+            data = _embedded_files[i].data;
+            data_len = _embedded_files[i].data_len;
+            break;
+        }
+    }
+#else
     if (!mread_file(mdatafile->path, &data, &data_len)) {
         return mdatafile;
+    }
+#endif
+
+    if (!data) {
+        mlog_error("Unable to load data for mdatafile %s", mdatafile->path);
     }
 
     int i = 0;
@@ -255,7 +287,10 @@ mdatafile_t *mdatafile_load(const char *path) {
         }
     }
 
+#if MEMBED_FILES
+#else
     free(data);
+#endif
     return mdatafile;
 }
 

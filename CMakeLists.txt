@@ -52,7 +52,7 @@ target_link_libraries(minigolf PRIVATE
     -lpthread
     -lm
     -lasound
-)
+    )
 
 add_executable(membedder
     src/membedder/main.c
@@ -73,6 +73,9 @@ add_library(mcore STATIC
     src/mcore/mlog.c
     src/mcore/mscript.c
     src/mcore/mstring.c
+)
+target_compile_definitions(mcore PRIVATE
+    #MEMBED_FILES
 )
 
 add_library(cimgui STATIC
@@ -155,4 +158,4 @@ add_library(xatlas STATIC
 target_compile_options(xatlas PRIVATE 
     -std=c++11)
 
-include_directories(../src)
+include_directories(src)
