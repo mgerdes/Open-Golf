@@ -1,9 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
 
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/out)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/out)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/out)
-
 project(minigolf)
 
 add_executable(minigolf
@@ -80,10 +76,11 @@ target_link_libraries(membedder PRIVATE
     dbgtools
     vec
     map)
-file(GLOB_RECURSE DATA_FILES CONFIGURE_DEPENDS "data/*")
+file(GLOB_RECURSE DATA_FILES CONFIGURE_DEPENDS "${CMAKE_SRC_DIR}/data/*")
 add_custom_command(
-    OUTPUT src/membedder/membedded_files.h
+    OUTPUT ${CMAKE_SOURCE_DIR}/src/membedder/membedded_files.h
     COMMAND membedder 
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     DEPENDS ${DATA_FILES})
 
 add_library(mcore STATIC

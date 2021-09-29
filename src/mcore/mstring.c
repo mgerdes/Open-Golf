@@ -78,3 +78,13 @@ void mstring_appendf(mstring_t *str, const char *format, ...) {
     va_end(args);
     str->len += len;
 }
+
+void mstring_pop(mstring_t *str, int n) {
+    if (str->len > n) {
+        str->len -= n;
+    }
+    else {
+        str->len = 0;
+    }
+    str->cstr[str->len] = 0;
+}
