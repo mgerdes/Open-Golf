@@ -1,3 +1,4 @@
+#define SOKOL_WIN32_FORCE_MAIN
 #define SOKOL_WIN32_NO_GL_LOADER
 #define SOKOL_IMPL
 #include "3rd_party/sokol/sokol_app.h"

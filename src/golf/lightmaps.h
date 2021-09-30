@@ -1,4 +1,4 @@
-#if defined(_WIN32)
+#if defined(_WIN32) && 0
 #ifndef _LIGHTMAPS_H
 #define _LIGHTMAPS_H
 

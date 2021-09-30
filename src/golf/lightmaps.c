@@ -1,4 +1,4 @@
-#if defined(_WIN32)
+#if defined(_WIN32) && 0
 #define _CRT_NO_SECURE_WARNINGS
 
 #include "lightmaps.h"

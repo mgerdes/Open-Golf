@@ -41,7 +41,10 @@ set(GOLF_BASE_LIBRARIES
     xatlas)
 target_compile_definitions(minigolf PRIVATE
     MEMBED_FILES)
-if(CMAKE_SYSTEM_NAME STREQUAL Darwin)
+if(CMAKE_SYSTEM_NAME STREQUAL Windows)
+    target_link_libraries(minigolf PRIVATE
+        ${GOLF_BASE_LIBRARIES})
+elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
     target_link_libraries(minigolf PRIVATE
         ${GOLF_BASE_LIBRARIES}
         "-framework Cocoa"
@@ -74,7 +77,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
         MACOSX_BUNDLE_SHORT_VERSION_STRING 0.0.0)
 endif()
 
-if (CMAKE_SYSTEM_NAME STREQUAL Darwin OR CMAKE_SYSTEM_NAME STREQUAL Linux)
+if (CMAKE_SYSTEM_NAME STREQUAL Windows OR CMAKE_SYSTEM_NAME STREQUAL Darwin OR CMAKE_SYSTEM_NAME STREQUAL Linux)
     add_executable(membedder
         src/membedder/main.c)
     target_link_libraries(membedder PRIVATE 
@@ -143,7 +146,10 @@ add_library(miniz STATIC
 
 add_library(sokol STATIC
     src/3rd_party/sokol/impl.c)
-if(CMAKE_SYSTEM_NAME STREQUAL Darwin)
+if(CMAKE_SYSTEM_NAME STREQUAL Windows)
+    target_compile_definitions(sokol PUBLIC
+        SOKOL_GLCORE33)
+elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
     target_compile_options(sokol PRIVATE 
         -x objective-c)
     target_compile_definitions(sokol PUBLIC
