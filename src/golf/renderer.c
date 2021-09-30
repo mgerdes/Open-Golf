@@ -1284,8 +1284,8 @@ void renderer_init(struct renderer *renderer) {
     renderer->cam_dir = V3(1.0f, 0.0f, 0.0f);
     renderer->cam_azimuth_angle = 0.0f * (float)M_PI;
     renderer->cam_inclination_angle = 0.64f * (float)M_PI;
-    renderer->game_fb_width = 1280;
-    renderer->game_fb_height = 720;
+    renderer->game_fb_width = sapp_width();
+    renderer->game_fb_height = sapp_height();
 
     map_init(&renderer->texture_map);
     mimport_add_importer(".png", _renderer_import_texture, renderer);
@@ -1297,6 +1297,7 @@ void renderer_init(struct renderer *renderer) {
             .render_target = true,
             .width = renderer->game_fb_width,
             .height = renderer->game_fb_height,
+            .pixel_format = SG_PIXELFORMAT_RGBA8,
             .min_filter = SG_FILTER_LINEAR,
             .mag_filter = SG_FILTER_LINEAR,
         };
@@ -1311,6 +1312,7 @@ void renderer_init(struct renderer *renderer) {
             .render_target = true,
             .width = renderer->game_fb_width,
             .height = renderer->game_fb_height,
+            .pixel_format = SG_PIXELFORMAT_RGBA8,
             .min_filter = SG_FILTER_LINEAR,
             .mag_filter = SG_FILTER_LINEAR,
         };
@@ -1462,6 +1464,7 @@ void renderer_new_frame(struct renderer *renderer, float dt) {
     profiler_push_section("renderer_new_frame");
     renderer->window_width = sapp_width();
     renderer->window_height = sapp_height();
+    //printf("new_frame: %d, %d\n", renderer->window_width, renderer->window_height);
     vec3 cam_dir;
     {
         float theta = renderer->cam_inclination_angle;
@@ -1490,7 +1493,7 @@ void renderer_new_frame(struct renderer *renderer, float dt) {
                 renderer->cam_up);
         renderer->proj_view_mat = mat4_multiply(renderer->proj_mat, renderer->view_mat);
         renderer->ui_proj_mat = mat4_multiply_n(3,
-                mat4_orthographic_projection(0.0f, w_width, 0.0f, w_height, -1.0f, 1.0f),
+                mat4_orthographic_projection(0.0f, w_width, 0.0f, w_height, 0.0f, 1.0f),
                 mat4_translation(V3(0.5f*w_width - 0.5f*w_fb_width, 0.5f*w_height - 0.5f*w_fb_height, 0.0f)),
                 mat4_scale(V3(w_fb_width/fb_width, w_fb_height/fb_height, 1.0f))
                 );
@@ -3197,11 +3200,10 @@ void renderer_draw_game(struct renderer *renderer, struct game *game, struct gam
         };
         sg_apply_bindings(&bindings);
         texture_vs_params_t vs_params = {
-            .mvp_mat = mat4_transpose(mat4_multiply_n(5,
+            .mvp_mat = mat4_transpose(mat4_multiply_n(4,
                         renderer->ui_proj_mat,
                         mat4_scale(V3((float) renderer->game_fb_width, (float) renderer->game_fb_height, 1.0f)),
-                        mat4_translation(V3(0.0f, 1.0f, 0.0f)),
-                        mat4_scale(V3(0.5f, -0.5f, 1.0f)),
+                        mat4_scale(V3(0.5f, 0.5f, 1.0f)),
                         mat4_translation(V3(1.0f, 1.0f, 0.0f))
                         )),
         };

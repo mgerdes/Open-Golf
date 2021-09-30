@@ -27,6 +27,7 @@ static void _create_texture_mdatafile(mdatafile_t *file, unsigned char *data, in
     mdatafile_add_data(file, "data", data, data_len);
 }
 
+#if 0
 static void _shader_mdatafile_add_bare_shaders(mdatafile_t *file, const char *base_name, const char *fs_name, const char *vs_name, const char *ext) {
 	mstring_t fs_bare_name;
 	mstring_initf(&fs_bare_name, "%s_%s.%s", base_name, fs_name, ext);
@@ -77,6 +78,7 @@ static void _create_shader_mdatafile(const char *file_path, const char *file_nam
 	}
 	mstring_deinit(&cmd);
 }
+#endif
 
 static void _create_default_mdatafile(mdatafile_t *file, unsigned char *data, int data_len) {
     mdatafile_add_data(file, "data", data, data_len);
@@ -114,16 +116,17 @@ static void _visit_file(cf_file_t *file, void *udata) {
             (strcmp(file->ext, ".jpg") == 0)) {
         _create_texture_mdatafile(mdatafile, data, data_len);
     }
-	else if ((strcmp(file->ext, ".glsl") == 0)) {
-		_create_shader_mdatafile(file->path, file->name, mdatafile, data, data_len);
-	}
+	//else if ((strcmp(file->ext, ".glsl") == 0)) {
+		//_create_shader_mdatafile(file->path, file->name, mdatafile, data, data_len);
+	//}
     else if ((strcmp(file->ext, ".cfg") == 0) ||
             (strcmp(file->ext, ".mscript") == 0) ||
             (strcmp(file->ext, ".ogg") == 0) ||
             (strcmp(file->ext, ".fnt") == 0) ||
             (strcmp(file->ext, ".terrain_model") == 0) ||
             (strcmp(file->ext, ".hole") == 0) ||
-            (strcmp(file->ext, ".model") == 0)) {
+            (strcmp(file->ext, ".model") == 0) ||
+            (strcmp(file->ext, ".glsl") == 0)) {
         _create_default_mdatafile(mdatafile, data, data_len);
     }
     else {

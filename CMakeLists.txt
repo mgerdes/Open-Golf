@@ -33,7 +33,7 @@ set(GOLF_BASE_LIBRARIES
     map
     mattiasgustavsson_libs
     miniz
-    s7
+    #s7
     sokol
     stb
     tinyobj_loader_c
@@ -42,46 +42,54 @@ set(GOLF_BASE_LIBRARIES
 target_compile_definitions(minigolf PRIVATE
     MEMBED_FILES)
 if(CMAKE_SYSTEM_NAME STREQUAL Darwin)
-    target_compile_definitions(minigolf PRIVATE
-        SOKOL_METAL)
-    target_link_libraries(minigolf
+    target_link_libraries(minigolf PRIVATE
         ${GOLF_BASE_LIBRARIES}
-        "-framework QuartzCore"
         "-framework Cocoa"
-        "-framework MetalKit"
-        "-framework Metal"
+        "-framework QuartzCore"
+        "-framework OpenGL"
         "-framework AudioToolbox")
-else()
-    if (CMAKE_SYSTEM_NAME STREQUAL Linux)
-        target_compile_definitions(minigolf PRIVATE
-            SOKOL_GLCORE33)
-        target_link_libraries(minigolf PRIVATE 
-            ${GOLF_BASE_LIBRARIES}
-            -lX11
-            -lXcursor
-            -lXi
-            -lGL
-            -ldl
-            -lpthread
-            -lm
-            -lasound)
-    endif()
+elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
+    target_link_libraries(minigolf PRIVATE 
+        ${GOLF_BASE_LIBRARIES}
+        -lX11
+        -lXcursor
+        -lXi
+        -lGL
+        -ldl
+        -lpthread
+        -lm
+        -lasound)
+elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
+    target_link_libraries(minigolf PRIVATE
+        ${GOLF_BASE_LIBRARIES}
+        "-framework Foundation"
+        "-framework UIKit"
+        "-framework OpenGLES"
+        "-framework GLKit"
+        "-framework AudioToolbox"
+        "-framework AVFoundation")
+    set_target_properties(minigolf PROPERTIES
+        MACOSX_BUNDLE_GUI_IDENTIFIER me.mgerdes.golf
+        MACOSX_BUNDLE_BUNDLE_VERSION 0.0.0
+        MACOSX_BUNDLE_SHORT_VERSION_STRING 0.0.0)
 endif()
 
-add_executable(membedder
-    src/membedder/main.c)
-target_link_libraries(membedder PRIVATE 
-    mcore
-    cute_headers
-    dbgtools
-    vec
-    map)
-file(GLOB_RECURSE DATA_FILES CONFIGURE_DEPENDS "${CMAKE_SRC_DIR}/data/*")
-add_custom_command(
-    OUTPUT ${CMAKE_SOURCE_DIR}/src/membedder/membedded_files.h
-    COMMAND membedder 
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    DEPENDS ${DATA_FILES})
+if (CMAKE_SYSTEM_NAME STREQUAL Darwin OR CMAKE_SYSTEM_NAME STREQUAL Linux)
+    add_executable(membedder
+        src/membedder/main.c)
+    target_link_libraries(membedder PRIVATE 
+        mcore
+        cute_headers
+        dbgtools
+        vec
+        map)
+    file(GLOB_RECURSE DATA_FILES CONFIGURE_DEPENDS "${CMAKE_SRC_DIR}/data/*")
+    add_custom_command(
+        OUTPUT ${CMAKE_SOURCE_DIR}/src/membedder/membedded_files.h
+        COMMAND membedder 
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        DEPENDS ${DATA_FILES})
+endif()
 
 add_library(mcore STATIC
     src/mcore/maths.c
@@ -130,20 +138,24 @@ add_library(mattiasgustavsson_libs STATIC
 add_library(miniz STATIC
     src/3rd_party/miniz/miniz.c)
 
-add_library(s7 STATIC
-    src/3rd_party/s7/s7.c)
+#add_library(s7 STATIC
+#src/3rd_party/s7/s7.c)
 
 add_library(sokol STATIC
     src/3rd_party/sokol/impl.c)
 if(CMAKE_SYSTEM_NAME STREQUAL Darwin)
-    target_compile_options(sokol PRIVATE -x objective-c)
-    target_compile_definitions(sokol PRIVATE
-        SOKOL_METAL)
-else()
-    if (CMAKE_SYSTEM_NAME STREQUAL Linux)
-        target_compile_definitions(sokol PRIVATE
-            SOKOL_GLCORE33)
-    endif()
+    target_compile_options(sokol PRIVATE 
+        -x objective-c)
+    target_compile_definitions(sokol PUBLIC
+        SOKOL_GLCORE33)
+elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
+    target_compile_options(sokol PRIVATE 
+        -x objective-c)
+    target_compile_definitions(sokol PUBLIC
+        SOKOL_GLES3)
+elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
+    target_compile_definitions(sokol PUBLIC
+        SOKOL_GLCORE33)
 endif()
 target_link_libraries(sokol PRIVATE 
     cimgui)

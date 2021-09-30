@@ -240,7 +240,10 @@ static void event(const sapp_event *event) {
 
     if (event->type == SAPP_EVENTTYPE_MOUSE_DOWN ||
             event->type == SAPP_EVENTTYPE_MOUSE_UP ||
-            event->type == SAPP_EVENTTYPE_MOUSE_MOVE) {
+            event->type == SAPP_EVENTTYPE_MOUSE_MOVE ||
+            event->type == SAPP_EVENTTYPE_TOUCHES_BEGAN ||
+            event->type == SAPP_EVENTTYPE_TOUCHES_ENDED ||
+            event->type == SAPP_EVENTTYPE_TOUCHES_MOVED) {
         float fb_width = (float) renderer.game_fb_width;
         float fb_height = (float) renderer.game_fb_height;
         float w_width = (float) renderer.window_width;
@@ -252,12 +255,21 @@ static void event(const sapp_event *event) {
             w_fb_width = (fb_width/fb_height)*w_fb_height;
         }
         vec2 mp = V2(event->mouse_x, w_height - event->mouse_y);
+        if (event->num_touches > 0) {
+            sapp_touchpoint tp = event->touches[0];
+            mp.x = tp.pos_x;
+            mp.y = w_height - tp.pos_y;
+        }
         mp.x = mp.x - (0.5f*w_width - 0.5f*w_fb_width);
         mp.y = mp.y - (0.5f*w_height - 0.5f*w_fb_height);
         mp.x = mp.x*(fb_width/w_fb_width);
         mp.y = mp.y*(fb_height/w_fb_height);
         inputs.mouse_pos = mp;
         inputs.window_mouse_pos = V2(event->mouse_x, event->mouse_y);
+        if (event->num_touches > 0) {
+            sapp_touchpoint tp = event->touches[0];
+            inputs.window_mouse_pos = V2(tp.pos_x, tp.pos_y);
+        }
     }
 
     if (event->type == SAPP_EVENTTYPE_KEY_DOWN) {
@@ -267,15 +279,17 @@ static void event(const sapp_event *event) {
         inputs.button_down[event->key_code] = false;
         inputs.button_clicked[event->key_code] = true;
     }
-    else if (event->type == SAPP_EVENTTYPE_MOUSE_DOWN) {
-        if (!inputs.mouse_down[event->mouse_button] && event->mouse_button == SAPP_MOUSEBUTTON_LEFT) {
+    else if (event->type == SAPP_EVENTTYPE_MOUSE_DOWN ||
+            event->type == SAPP_EVENTTYPE_TOUCHES_BEGAN) {
+        if (!inputs.mouse_down[SAPP_MOUSEBUTTON_LEFT] && SAPP_MOUSEBUTTON_LEFT == SAPP_MOUSEBUTTON_LEFT) {
             inputs.mouse_down_pos = inputs.mouse_pos;
         }
-        inputs.mouse_down[event->mouse_button] = true;
+        inputs.mouse_down[SAPP_MOUSEBUTTON_LEFT] = true;
     }
-    else if (event->type == SAPP_EVENTTYPE_MOUSE_UP) {
-        inputs.mouse_down[event->mouse_button] = false;
-        inputs.mouse_clicked[event->mouse_button] = true;
+    else if (event->type == SAPP_EVENTTYPE_MOUSE_UP ||
+            event->type == SAPP_EVENTTYPE_TOUCHES_ENDED) {
+        inputs.mouse_down[SAPP_MOUSEBUTTON_LEFT] = false;
+        inputs.mouse_clicked[SAPP_MOUSEBUTTON_LEFT] = true;
     }
 }
 
