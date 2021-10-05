@@ -1,10 +1,10 @@
 #include <assert.h>
 #include <stdbool.h>
 
-#include "3rd_party/cute_headers/cute_files.h"
 #include "3rd_party/map/map.h"
 #include "3rd_party/vec/vec.h"
 #include "mcore/mcommon.h"
+#include "mcore/mfile.h"
 #include "mcore/mimport.h"
 #include "mcore/mlog.h"
 #include "mcore/mstring.h"
@@ -21,10 +21,11 @@ typedef map_t(_mimporter_t) _map_mimporter_t;
 static _map_mimporter_t _importers_map;
 static membedded_file_t *_embedded_files;
 static int _num_embedded_files;
+static mdir_t _data_dir;
 
-static void _create_texture_mdatafile(mdatafile_t *file, unsigned char *data, int data_len) {
-    mdatafile_add_string(file, "filter", "linear", true);
-    mdatafile_add_data(file, "data", data, data_len);
+static void _create_texture_mdatafile(mfile_t *file, mdatafile_t *mdatafile) {
+    mdatafile_add_string(mdatafile, "filter", "linear", true);
+    mdatafile_add_data(mdatafile, "data", file->data, file->data_len);
 }
 
 #if 0
@@ -80,73 +81,15 @@ static void _create_shader_mdatafile(const char *file_path, const char *file_nam
 }
 #endif
 
-static void _create_default_mdatafile(mdatafile_t *file, unsigned char *data, int data_len) {
-    mdatafile_add_data(file, "data", data, data_len);
-}
-
-static void _run_import(cf_file_t *file, void *udata) {
-    _mimporter_t *importer = (_mimporter_t*)udata;
-    if (strcmp(file->ext, importer->ext) != 0) {
-        return ;
-    }
-
-    mdatafile_t *mdatafile = mdatafile_load(file->path);
-    importer->callback(mdatafile, importer->udata);
-    mdatafile_delete(mdatafile);
-}
-
-static void _visit_file(cf_file_t *file, void *udata) {
-    if (strcmp(file->ext, ".mdata") == 0) {
-        return;
-    }
-
-    mlog_note("Importing file %s", file->path);
-
-    unsigned char *data;
-    int data_len;
-    if (!mread_file(file->path, &data, &data_len)) {
-        mlog_error("Could not load file %s.", file->path);
-    }
-
-    mdatafile_t *mdatafile = mdatafile_load(file->path);
-    mdatafile_cache_old_vals(mdatafile);
-
-    if ((strcmp(file->ext, ".png") == 0) ||
-            (strcmp(file->ext, ".bmp") == 0) ||
-            (strcmp(file->ext, ".jpg") == 0)) {
-        _create_texture_mdatafile(mdatafile, data, data_len);
-    }
-	//else if ((strcmp(file->ext, ".glsl") == 0)) {
-		//_create_shader_mdatafile(file->path, file->name, mdatafile, data, data_len);
-	//}
-    else if ((strcmp(file->ext, ".cfg") == 0) ||
-            (strcmp(file->ext, ".mscript") == 0) ||
-            (strcmp(file->ext, ".ogg") == 0) ||
-            (strcmp(file->ext, ".fnt") == 0) ||
-            (strcmp(file->ext, ".terrain_model") == 0) ||
-            (strcmp(file->ext, ".hole") == 0) ||
-            (strcmp(file->ext, ".model") == 0) ||
-            (strcmp(file->ext, ".glsl") == 0)) {
-        _create_default_mdatafile(mdatafile, data, data_len);
-    }
-    else {
-        mlog_warning("Don't know how to create mdatafile for %s", file->path);
-    }
-
-    _mimporter_t *importer = map_get(&_importers_map, file->ext);
-    if (importer) {
-        (*importer->callback)(mdatafile, importer->udata);
-    }
-
-    free(data);
-    mdatafile_save(mdatafile);
-    mdatafile_delete(mdatafile);
+static void _create_default_mdatafile(mfile_t *file, mdatafile_t *mdatafile) {
+    mdatafile_add_data(mdatafile, "data", file->data, file->data_len);
 }
 
 void mimport_init(int num_embedded_files, membedded_file_t *embedded_files) {
     _num_embedded_files = num_embedded_files;
     _embedded_files = embedded_files;
     map_init(&_importers_map);
+    mdir_init(&_data_dir, "data", true);
     //mimport_run();
 }
 
@@ -166,14 +109,80 @@ void mimport_add_importer(const char *ext, void (*callback)(mdatafile_t *file, v
         }
     }
     else {
-        cf_traverse("data", _run_import, &importer);
+        for (int i = 0; i < _data_dir.num_files; i++) {
+            mfile_t file = _data_dir.files[i];
+            if (strcmp(file.ext, ext) != 0) {
+                continue;
+            }
+
+            mdatafile_t *mdatafile = mdatafile_load(file.path);
+            callback(mdatafile, udata);
+            mdatafile_delete(mdatafile);
+        }
     }
 }
 
 void mimport_run(void) {
-    mlog_note("mimport_run");
     if (!_embedded_files) {
-        cf_traverse("data", _visit_file, NULL);
+        int num_files_imported = 0;
+
+        for (int i = 0; i < _data_dir.num_files; i++) {
+            mfile_t file = _data_dir.files[i];
+            if (strcmp(file.ext, ".mdata") == 0) {
+                continue;
+            }
+
+            // Check if we need to update the .mdata file
+            mfiletime_t file_time;
+            mfile_get_time(&file, &file_time);
+
+            char mdatafile_path[1024];
+            snprintf(mdatafile_path, 1024, "%s.mdata", file.path);
+            mfile_t mdatafile_file = mfile(mdatafile_path);
+            mfiletime_t mdatafile_file_time;
+            mfile_get_time(&mdatafile_file, &mdatafile_file_time);
+
+            if (mfiletime_cmp(file_time, mdatafile_file_time) < 0) {
+                continue;
+            }
+
+            num_files_imported++;
+            mlog_note("Importing %s", file.path);
+            if (!mfile_load_data(&file)) {
+                mlog_error("Could not load file %s", file.path);
+            }
+
+            mdatafile_t *mdatafile = mdatafile_load(file.path);
+            mdatafile_cache_old_vals(mdatafile);
+
+            if ((strcmp(file.ext, ".png") == 0) ||
+                    (strcmp(file.ext, ".bmp") == 0) || 
+                    (strcmp(file.ext, ".jpg") == 0)) {
+                _create_texture_mdatafile(&file, mdatafile);
+            }
+            //else if ((strcmp(file->ext, ".glsl") == 0)) {
+                //_create_shader_mdatafile(&*file, mdatafile);
+            //}
+            else if ((strcmp(file.ext, ".cfg") == 0) ||
+                    (strcmp(file.ext, ".mscript") == 0) ||
+                    (strcmp(file.ext, ".ogg") == 0) ||
+                    (strcmp(file.ext, ".fnt") == 0) ||
+                    (strcmp(file.ext, ".terrain_model") == 0) ||
+                    (strcmp(file.ext, ".hole") == 0) ||
+                    (strcmp(file.ext, ".model") == 0) ||
+                    (strcmp(file.ext, ".glsl") == 0)) {
+                _create_default_mdatafile(&file, mdatafile);
+            }
+            else {
+                mlog_warning("Unknown file type in data folder %s", file.ext); 
+            }
+
+            mdatafile_save(mdatafile);
+            mdatafile_delete(mdatafile);
+            mfile_free_data(&file);
+        }
+
+        mlog_note("Imported %d files", num_files_imported);
     }
 }
 
@@ -207,6 +216,7 @@ typedef struct mdatafile {
     _vec_val_t vals_vec;
     bool has_cached_vals;
     _vec_val_t cached_vals_vec;
+    mfiletime_t filetime;
 } mdatafile_t;
 
 static _val_t _create_int_val(const char *name, int int_val) {
@@ -221,7 +231,7 @@ static _val_t _create_string_val(const char *name, const char *string_val) {
     _val_t val;
     val.type = _VAL_TYPE_STRING;
     mstrncpy(val.name, name, _VAL_MAX_NAME_LEN);
-    int n = strlen(string_val) + 1;
+    int n = (int) strlen(string_val) + 1;
     val.string_val = malloc(sizeof(char) * n);
     mstrncpy(val.string_val, string_val, n);
     return val;
@@ -265,6 +275,11 @@ mdatafile_t *mdatafile_load(const char *path) {
 
     if (!data) {
         mlog_error("Unable to load data for mdatafile %s", mdatafile->path);
+    }
+
+    {
+        mfile_t file = mfile(mdatafile->path);
+        mfile_get_time(&file, &mdatafile->filetime);
     }
 
     int i = 0;
@@ -493,4 +508,8 @@ bool mdatafile_get_data(mdatafile_t *file, const char *name, unsigned char **dat
         *data_len = 0;
         return false;
     }
+}
+
+mfiletime_t mdatafile_get_filetime(mdatafile_t *file) {
+    return file->filetime;
 }

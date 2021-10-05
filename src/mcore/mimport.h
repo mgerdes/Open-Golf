@@ -1,6 +1,8 @@
 #ifndef _MIMPORT_H
 #define _MIMPORT_H
 
+#include "mcore/mfile.h"
+
 struct mdatafile;
 typedef struct mdatafile mdatafile_t;
 
@@ -20,6 +22,7 @@ void mdatafile_add_string(mdatafile_t *file, const char *name, const char *strin
 void mdatafile_add_data(mdatafile_t *file, const char *name, unsigned char *data, int data_len);
 bool mdatafile_get_string(mdatafile_t *file, const char *name, const char **string);
 bool mdatafile_get_data(mdatafile_t *file, const char *name, unsigned char **data, int *data_len);
+mfiletime_t mdatafile_get_filetime(mdatafile_t *file);
 
 void mimport_init(int num_embedded_files, membedded_file_t *embedded_files);
 void mimport_add_importer(const char *ext, void (*callback)(mdatafile_t *file, void *udata), void *udata);
