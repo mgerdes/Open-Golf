@@ -1,0 +1,19 @@
+g ui_sprite_square
+
+v -1 -1 0
+v 1 -1 0 
+v 1 1 0
+v -1 1 0
+
+vn 0 0 1
+vn 0 0 1
+vn 0 0 1
+vn 0 0 1
+
+vt 0 0
+vt 1 0
+vt 1 1
+vt 0 1
+
+f 1 2 3
+f 1 3 4

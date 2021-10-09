@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.12)
 
 project(minigolf)
+set(CMAKE_BUILD_TYPE Debug)
 
 add_executable(minigolf
 	src/golf/assets.c 
@@ -27,12 +28,14 @@ set(GOLF_BASE_LIBRARIES
     cimgui
     cute_headers
     dbgtools
+    fast_obj
     glad
     imgui
     lightmapper
     map
     mattiasgustavsson_libs
     miniz
+    parson
     #s7
     sokol
     stb
@@ -72,6 +75,50 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
         "-framework AudioToolbox"
         "-framework AVFoundation")
     set_target_properties(minigolf PROPERTIES
+        MACOSX_BUNDLE_GUI_IDENTIFIER me.mgerdes.golf
+        MACOSX_BUNDLE_BUNDLE_VERSION 0.0.0
+        MACOSX_BUNDLE_SHORT_VERSION_STRING 0.0.0)
+    set(CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM RMF5MGUCT2 CACHE INTERNAL "")
+endif()
+
+add_executable(minigolf2
+    src/golf2/debug_console.c
+    src/golf2/game.c
+    src/golf2/inputs.c
+    src/golf2/main.c
+    src/golf2/renderer.c
+    src/golf2/ui.c)
+if(CMAKE_SYSTEM_NAME STREQUAL Windows)
+    target_link_libraries(minigolf2 PRIVATE
+        ${GOLF_BASE_LIBRARIES})
+elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
+    target_link_libraries(minigolf2 PRIVATE
+        ${GOLF_BASE_LIBRARIES}
+        "-framework Cocoa"
+        "-framework QuartzCore"
+        "-framework OpenGL"
+        "-framework AudioToolbox")
+elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
+    target_link_libraries(minigolf2 PRIVATE 
+        ${GOLF_BASE_LIBRARIES}
+        -lX11
+        -lXcursor
+        -lXi
+        -lGL
+        -ldl
+        -lpthread
+        -lm
+        -lasound)
+elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
+    target_link_libraries(minigolf2 PRIVATE
+        ${GOLF_BASE_LIBRARIES}
+        "-framework Foundation"
+        "-framework UIKit"
+        "-framework OpenGLES"
+        "-framework GLKit"
+        "-framework AudioToolbox"
+        "-framework AVFoundation")
+    set_target_properties(minigolf2 PROPERTIES
         MACOSX_BUNDLE_GUI_IDENTIFIER me.mgerdes.golf
         MACOSX_BUNDLE_BUNDLE_VERSION 0.0.0
         MACOSX_BUNDLE_SHORT_VERSION_STRING 0.0.0)
@@ -119,6 +166,9 @@ add_library(dbgtools STATIC
 target_compile_options(dbgtools PRIVATE 
     -std=c++11)
 
+add_library(fast_obj STATIC
+    src/3rd_party/fast_obj/fast_obj.c)
+
 add_library(glad STATIC
     src/3rd_party/glad/glad.c)
 
@@ -141,6 +191,9 @@ add_library(mattiasgustavsson_libs STATIC
 
 add_library(miniz STATIC
     src/3rd_party/miniz/miniz.c)
+
+add_library(parson STATIC
+    src/3rd_party/parson/parson.c)
 
 #add_library(s7 STATIC
 #src/3rd_party/s7/s7.c)

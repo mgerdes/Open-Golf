@@ -28,7 +28,6 @@ static void _create_texture_mdatafile(mfile_t *file, mdatafile_t *mdatafile) {
     mdatafile_add_data(mdatafile, "data", file->data, file->data_len);
 }
 
-#if 0
 static void _shader_mdatafile_add_bare_shaders(mdatafile_t *file, const char *base_name, const char *fs_name, const char *vs_name, const char *ext) {
 	mstring_t fs_bare_name;
 	mstring_initf(&fs_bare_name, "%s_%s.%s", base_name, fs_name, ext);
@@ -53,33 +52,32 @@ static void _shader_mdatafile_add_bare_shaders(mdatafile_t *file, const char *ba
 	mstring_deinit(&vs_bare_name);
 }
 
-static void _create_shader_mdatafile(const char *file_path, const char *file_name, mdatafile_t *file, unsigned char *data, int data_len) {
+static void _create_shader_mdatafile(mfile_t *file, mdatafile_t *mdatafile) {
+    const char *slangs = "glsl330:glsl300es";
 	int ret;
 	mstring_t cmd;
 	//mstring_initf(&cmd, "tools\\sokol-tools\\win32\\sokol-shdc.exe --input %s --output src/golf/shaders/%s.h --slang glsl330:glsl300es:metal_macos:metal_ios:metal_sim", file_path, file_name);
-	mstring_initf(&cmd, "tools/sokol-tools/osx/sokol-shdc --input %s --output src/golf/shaders/%s.h --slang glsl330:glsl300es:metal_macos:metal_ios:metal_sim", file_path, file_name);
+	//mstring_initf(&cmd, "tools/sokol-tools/osx/sokol-shdc --input %s --output src/golf/shaders/%s.h --slang glsl330:glsl300es:metal_macos:metal_ios:metal_sim", file_path, file_name);
+	mstring_initf(&cmd, "tools/sokol-tools/linux/sokol-shdc --input %s --output src/golf2/shaders/%s.h --slang %s", file->path, file->name, slangs);
 	ret = system(cmd.cstr);
 	mstring_deinit(&cmd);
 
 	//mstring_initf(&cmd, "tools\\sokol-tools\\win32\\sokol-shdc.exe --input %s --output out/temp/bare --slang glsl330:glsl300es:metal_macos:metal_ios:metal_sim --format bare", file_path, file_name);
-	mstring_initf(&cmd, "tools/sokol-tools/osx/sokol-shdc --input %s --output out/temp/bare --slang glsl330:glsl300es:metal_macos:metal_ios:metal_sim --format bare", file_path, file_name);
+	//mstring_initf(&cmd, "tools/sokol-tools/osx/sokol-shdc --input %s --output out/temp/bare --slang glsl330:glsl300es:metal_macos:metal_ios:metal_sim --format bare", file_path, file_name);
+	mstring_initf(&cmd, "tools/sokol-tools/linux/sokol-shdc --input %s --output out/temp/bare --slang %s --format bare", file->path, slangs);
 	ret = system(cmd.cstr);
 	if (ret == 0) {
 		mstring_t base_bare_name;
-		mstring_initf(&base_bare_name, "out/temp/bare_%s", file_name);
+		mstring_initf(&base_bare_name, "out/temp/bare_%s", file->name);
 		mstring_pop(&base_bare_name, 5);
 
-		_shader_mdatafile_add_bare_shaders(file, base_bare_name.cstr, "glsl300es_fs", "glsl300es_vs", "glsl");
-		_shader_mdatafile_add_bare_shaders(file, base_bare_name.cstr, "glsl330_fs", "glsl330_vs", "glsl");
-		_shader_mdatafile_add_bare_shaders(file, base_bare_name.cstr, "metal_ios_fs", "metal_ios_vs", "metal");
-		_shader_mdatafile_add_bare_shaders(file, base_bare_name.cstr, "metal_macos_fs", "metal_macos_vs", "metal");
-		_shader_mdatafile_add_bare_shaders(file, base_bare_name.cstr, "metal_sim_fs", "metal_sim_vs", "metal");
+		_shader_mdatafile_add_bare_shaders(mdatafile, base_bare_name.cstr, "glsl300es_fs", "glsl300es_vs", "glsl");
+		_shader_mdatafile_add_bare_shaders(mdatafile, base_bare_name.cstr, "glsl330_fs", "glsl330_vs", "glsl");
 
 		mstring_deinit(&base_bare_name);
 	}
 	mstring_deinit(&cmd);
 }
-#endif
 
 static void _create_default_mdatafile(mfile_t *file, mdatafile_t *mdatafile) {
     mdatafile_add_data(mdatafile, "data", file->data, file->data_len);
@@ -90,7 +88,7 @@ void mimport_init(int num_embedded_files, membedded_file_t *embedded_files) {
     _embedded_files = embedded_files;
     map_init(&_importers_map);
     mdir_init(&_data_dir, "data", true);
-    //mimport_run();
+    mimport_run();
 }
 
 void mimport_add_importer(const char *ext, void (*callback)(mdatafile_t *file, void *udata), void *udata) {
@@ -136,8 +134,8 @@ void mimport_run(void) {
             mfiletime_t file_time;
             mfile_get_time(&file, &file_time);
 
-            char mdatafile_path[1024];
-            snprintf(mdatafile_path, 1024, "%s.mdata", file.path);
+            char mdatafile_path[1030];
+            snprintf(mdatafile_path, 1030, "%s.mdata", file.path);
             mfile_t mdatafile_file = mfile(mdatafile_path);
             mfiletime_t mdatafile_file_time;
             mfile_get_time(&mdatafile_file, &mdatafile_file_time);
@@ -160,9 +158,9 @@ void mimport_run(void) {
                     (strcmp(file.ext, ".jpg") == 0)) {
                 _create_texture_mdatafile(&file, mdatafile);
             }
-            //else if ((strcmp(file->ext, ".glsl") == 0)) {
-                //_create_shader_mdatafile(&*file, mdatafile);
-            //}
+            else if ((strcmp(file.ext, ".glsl") == 0)) {
+                _create_shader_mdatafile(&file, mdatafile);
+            }
             else if ((strcmp(file.ext, ".cfg") == 0) ||
                     (strcmp(file.ext, ".mscript") == 0) ||
                     (strcmp(file.ext, ".ogg") == 0) ||
@@ -170,7 +168,8 @@ void mimport_run(void) {
                     (strcmp(file.ext, ".terrain_model") == 0) ||
                     (strcmp(file.ext, ".hole") == 0) ||
                     (strcmp(file.ext, ".model") == 0) ||
-                    (strcmp(file.ext, ".glsl") == 0)) {
+                    (strcmp(file.ext, ".ui_menu") == 0) ||
+                    (strcmp(file.ext, ".obj") == 0)) {
                 _create_default_mdatafile(&file, mdatafile);
             }
             else {

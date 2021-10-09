@@ -1,0 +1,16 @@
+[
+    {
+        "type": "sprite",
+        "name": "background",
+        "pos": [250, 740],
+        "size": [400, 400]
+    },
+    {
+        "type": "button",
+        "name": "start_button",
+        "text": "START",
+        "pos": [250, 520],
+        "size": [200, 55],
+        "down_text_offset": [0, -10]
+    }
+]

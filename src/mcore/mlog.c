@@ -43,8 +43,15 @@ static void _print_callstack() {
 }
 
 static void _log(enum _mlog_level level, const char *fmt, va_list arg) {
+    if (level == _mlog_level_warning) {
+        printf("WARNING: ");
+    }
+    else if (level == _mlog_level_error) {
+        printf("ERROR: ");
+    }
     vprintf(fmt, arg);
     printf("\n");
+    /*
     if (level == _mlog_level_warning) {
         _print_callstack();
         if (_state.entry_count < 32) {
@@ -54,6 +61,10 @@ static void _log(enum _mlog_level level, const char *fmt, va_list arg) {
     }
     else if (level == _mlog_level_error) {
         _print_callstack();
+        assert(false);
+    }
+    */
+    if (level == _mlog_level_error) {
         assert(false);
     }
 }
