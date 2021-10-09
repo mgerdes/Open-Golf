@@ -6,6 +6,7 @@
 #include "mcore/maths.h"
 #include "mcore/mimport.h"
 #include "mcore/mlog.h"
+#include "golf2/renderer.h"
 
 typedef enum _ui_entity_type {
     _UI_ENTITY_SPRITE,
@@ -65,9 +66,11 @@ typedef struct _ui_menu {
     _map_ui_entity_t entity_map; 
 } _ui_menu_t;
 
+typedef vec_t(_ui_menu_t) _vec_ui_menu_t;
 typedef map_t(_ui_menu_t) _map_ui_menu_t;
 
 typedef struct _ui {
+    _vec_ui_menu_t ui_menu_vec;
     _map_ui_menu_t ui_menu_map;
 } _ui_t;
 
@@ -128,6 +131,7 @@ void _ui_menu_import(mdatafile_t *file, void *udata) {
 }
 
 void golf_ui_init(void) {
+    vec_init(&_ui.ui_menu_vec);
     map_init(&_ui.ui_menu_map);
     mimport_add_importer(".ui_menu", _ui_menu_import, NULL);
 }
@@ -135,6 +139,19 @@ void golf_ui_init(void) {
 void golf_ui_update(float dt) {
 }
 
-void golf_ui_draw(void) {
-}
+//
+// DRAWING
+//
 
+#include "3rd_party/sokol/sokol_gfx.h"
+
+void golf_ui_draw(void) {
+    {
+        sg_pipeline *ui_sprites_pipeline = (sg_pipeline*)golf_renderer_get_pipeline("ui_sprites");
+        if (!ui_sprites_pipeline) {
+            mlog_error("Unable to find 'ui_sprites_pipeline'");
+        }
+
+        sg_apply_pipeline(*ui_sprites_pipeline);
+    }
+}

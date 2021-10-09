@@ -19,16 +19,12 @@ typedef struct _model {
 } _model_t;
 
 typedef map_t(_model_t) _map_model_t;
+typedef map_t(sg_shader) _map_sg_shader_t;
+typedef map_t(sg_pipeline) _map_sg_pipeline_t;
 
 typedef struct _renderer {
-    struct {
-        sg_shader ui_sprite_shader;
-    } shaders;
-
-    struct {
-        sg_pipeline ui_sprite_pipeline;
-    } pipelines;
-
+    _map_sg_shader_t shaders_map;
+    _map_sg_pipeline_t pipelines_map;
     _map_model_t models_map;
 } _renderer_t;
 
@@ -80,8 +76,9 @@ static void _ui_sprite_shader_import(mdatafile_t *file, void *udata) {
         mlog_warning("Unable to load shader %s", mdatafile_get_name(file));
         return;
     }
+    map_set(&_renderer.shaders_map, mdatafile_get_name(file), shader);
 
-    _renderer.pipelines.ui_sprite_pipeline = sg_make_pipeline(&(sg_pipeline_desc){
+    sg_pipeline pipeline = sg_make_pipeline(&(sg_pipeline_desc){
         .shader = shader,
         .layout = {
             .attrs = {
@@ -97,7 +94,7 @@ static void _ui_sprite_shader_import(mdatafile_t *file, void *udata) {
             },
         },
     });
-    _renderer.shaders.ui_sprite_shader = shader;
+    map_set(&_renderer.pipelines_map, "ui_sprites", pipeline);
 }
 
 static void _shader_import(mdatafile_t *file, void *udata) {
@@ -229,6 +226,8 @@ static void _model_obj_import(mdatafile_t *file, void *udata) {
 }
 
 void golf_renderer_init(void) {
+    map_init(&_renderer.shaders_map);
+    map_init(&_renderer.pipelines_map);
     map_init(&_renderer.models_map);
     mimport_add_importer(".obj" , _model_obj_import, NULL);
     mimport_add_importer(".glsl" , _shader_import, NULL);
@@ -236,4 +235,8 @@ void golf_renderer_init(void) {
 
 void golf_renderer_draw(void) {
     golf_ui_draw();
+}
+
+void *golf_renderer_get_pipeline(const char *name) {
+    return map_get(&_renderer.pipelines_map, name);
 }
