@@ -1,6 +1,7 @@
 #include "golf2/renderer.h"
 
 #include "3rd_party/fast_obj/fast_obj.h"
+#include "3rd_party/parson/parson.h"
 #include "3rd_party/stb/stb_image.h"
 #include "3rd_party/stb/stb_image_write.h"
 #include "3rd_party/sokol/sokol_app.h"
@@ -303,13 +304,13 @@ static void _font_load_size(golf_renderer_font_t *font, mdatafile_t *file, int i
         mlog_warning("Cannot find property %s on font mdatafile", char_data_name);
     }
 
-    font->image_size[index] = bitmap_size;
-    font->sg_image[index] = sg_make_image(&(sg_image_desc) {
+    font->sizes[index].image_size = bitmap_size;
+    font->sizes[index].sg_image = sg_make_image(&(sg_image_desc) {
         .width = bitmap_size,
         .height = bitmap_size,
         .pixel_format = SG_PIXELFORMAT_RGBA8,
-        .min_filter = SG_FILTER_NEAREST,
-        .mag_filter = SG_FILTER_NEAREST,
+        .min_filter = SG_FILTER_LINEAR,
+        .mag_filter = SG_FILTER_LINEAR,
         .wrap_u = SG_WRAP_CLAMP_TO_EDGE,
         .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
         .data.subimage[0][0] = {
@@ -317,6 +318,29 @@ static void _font_load_size(golf_renderer_font_t *font, mdatafile_t *file, int i
             .size = 4*sizeof(char)*x*y,
         },
     });
+
+    JSON_Value *val = json_parse_string(char_data);
+    JSON_Array *array = json_value_get_array(val);
+    for (int i = 0; i < json_array_get_count(array); i++) {
+        JSON_Array *char_data = json_array_get_array(array, i);
+        int c = (int)json_array_get_number(char_data, 0);
+        int x0 = (int)json_array_get_number(char_data, 1);
+        int y0 = (int)json_array_get_number(char_data, 2);
+        int x1 = (int)json_array_get_number(char_data, 3);
+        int y1 = (int)json_array_get_number(char_data, 4);
+        float xoff = (float)json_array_get_number(char_data, 5);
+        float yoff = (float)json_array_get_number(char_data, 6);
+        float xadvance = (float)json_array_get_number(char_data, 7);
+        if (c >= 0 && c < 256) {
+            font->sizes[index].chars[c].x0 = x0;
+            font->sizes[index].chars[c].y0 = y0;
+            font->sizes[index].chars[c].x1 = x1;
+            font->sizes[index].chars[c].y1 = y1;
+            font->sizes[index].chars[c].xoff = xoff;
+            font->sizes[index].chars[c].yoff = yoff;
+            font->sizes[index].chars[c].xadvance = xadvance;
+        }
+    }
 }
 
 static void _font_import(mdatafile_t *file, void *udata) {
@@ -431,10 +455,23 @@ static void _draw_ui_sprite_atlas(golf_ui_sprite_atlas_t sprite) {
 }
 
 static void _draw_ui_text(golf_ui_text_t text) {
-    float px = text.pos.x;
-    float py = text.pos.y;
+    golf_renderer_font_t *font = _renderer_get_font(text.font);
+    float xpos = text.pos.x;
+    float ypos = text.pos.y;
     int i = 0;
+
     while (text.text[i]) {
+        char c = text.text[i];
+        float x0 = xpos + font->sizes[0].chars[c].xoff;
+        float y0 = ypos + font->sizes[0].chars[c].yoff;
+        float x1 = x0 + font->sizes[0].chars[c].x1 - font->sizes[0].chars[c].x0;
+        float y1 = y0 + font->sizes[0].chars[c].y1 - font->sizes[0].chars[c].y0;
+
+        float u0 = font->sizes[0].chars[c].x0 / font->sizes[0].image_size;
+        float v0 = font->sizes[0].chars[c].y0 / font->sizes[0].image_size;
+        float u1 = font->sizes[0].chars[c].x1 / font->sizes[0].image_size;
+        float v1 = font->sizes[0].chars[c].y1 / font->sizes[0].image_size;
+
         i++;
     }
 }

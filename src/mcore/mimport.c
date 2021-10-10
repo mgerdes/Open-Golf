@@ -100,11 +100,15 @@ static void _font_mdatafile_add_size(mfile_t *file, mdatafile_t *mdatafile,
     mdatafile_add_data(mdatafile, bitmap_name, bmp.data, bmp.length);
 
     mstring_t str;
-    mstring_init(&str, "");
+    mstring_init(&str, "[");
     for (int i = 32; i < 126; i++) {
         stbtt_bakedchar c = cdata[i - 32];
-        mstring_appendf(&str, "%c %d %d %d %d %.3f %.3f %.3f\n", (char)i, c.x0, c.y0, c.x1, c.y1, c.xoff, c.yoff, c.xadvance);
+        mstring_appendf(&str, "[%d, %d, %d, %d, %d, %.3f, %.3f, %.3f]", i, c.x0, c.y0, c.x1, c.y1, c.xoff, c.yoff, c.xadvance);
+        if (i < 125) {
+            mstring_append_cstr(&str, ", ");
+        }
     }
+    mstring_append_cstr(&str, "]");
     mdatafile_add_data(mdatafile, char_data_name, str.cstr, str.len);
 
     mstring_deinit(&str);

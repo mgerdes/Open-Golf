@@ -24,8 +24,14 @@ typedef struct golf_renderer_model {
 } golf_renderer_model_t;
 
 typedef struct golf_renderer_font {
-    sg_image sg_image[3];
-    int image_size[3];
+    struct {
+        sg_image sg_image;
+        int image_size;
+        struct {
+            int x0, y0, x1, y1;
+            float xoff, yoff, xadvance;
+        } chars[256];
+    } sizes[3];
 } golf_renderer_font_t;
 
 typedef map_t(golf_renderer_model_t) map_golf_renderer_model_t;
