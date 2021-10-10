@@ -131,9 +131,16 @@ void _ui_menu_import(mdatafile_t *file, void *udata) {
             }
         }
     }
-    //json_value_free(val);
+    menu.json_val = val;
 
-    map_set(&ui.ui_menu_map, mdatafile_get_name(file), menu);
+    const char *name = mdatafile_get_name(file);
+    golf_ui_menu_t *existing_menu = map_get(&ui.ui_menu_map, name);
+    if (existing_menu) {
+        json_value_free(existing_menu->json_val);
+        vec_deinit(&existing_menu->entity_vec);
+    }
+
+    map_set(&ui.ui_menu_map, name, menu);
 }
 
 golf_ui_t *golf_ui_get(void) {

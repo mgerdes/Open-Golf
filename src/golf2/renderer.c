@@ -354,9 +354,14 @@ static void _font_import(mdatafile_t *file, void *udata) {
 }
 
 static golf_renderer_font_t *_renderer_get_font(const char *path) {
+    static const char *fallback_font_path = "data/font/SourceSans3-Bold.ttf";
     golf_renderer_font_t *font = map_get(&renderer.fonts_map, path);
     if (!font) {
-        mlog_error("Cannot find font %s", path);
+        font = map_get(&renderer.fonts_map, fallback_font_path);
+        mlog_warning("Cannot find font %s. Falling back to %s", path, fallback_font_path);
+        if (!font) {
+            mlog_error("Cannot find fallback font %s", fallback_font_path);
+        }
     }
     return font;
 }

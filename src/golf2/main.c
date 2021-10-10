@@ -40,11 +40,12 @@ static void cleanup(void) {
 static void frame(void) {
     static bool inited = false;
     static uint64_t last_time = 0;
+    static float time_since_import = 0.0f;
 
     float dt = (float) stm_sec(stm_laptime(&last_time));
     if (!inited) {
-        mimport_init(0, NULL);
         mlog_init();
+        mimport_init(0, NULL);
 
         golf_inputs_init();
         golf_debug_console_init();
@@ -65,6 +66,14 @@ static void frame(void) {
         sg_end_pass();
 
         simgui_new_frame(sapp_width(), sapp_height(), dt);
+    }
+
+    {
+        time_since_import += dt;
+        if (time_since_import > 1.0f) {
+            time_since_import = 0.0f;
+            mimport_run();
+        }
     }
 
     {

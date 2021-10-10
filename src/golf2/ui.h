@@ -69,6 +69,7 @@ golf_ui_entity_t golf_ui_sprite_atlas_entity(const char *name, vec2 pos, vec2 si
 golf_ui_entity_t golf_ui_text_entity(const char *text, const char *font, vec2 pos, float size);
 
 typedef struct golf_ui_menu {
+    void *json_val;
     vec_golf_ui_entity_t entity_vec; 
 } golf_ui_menu_t;
 

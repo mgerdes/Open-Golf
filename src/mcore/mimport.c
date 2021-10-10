@@ -222,12 +222,15 @@ void mimport_run(void) {
                 mlog_warning("Unknown file type in data folder %s", file.ext); 
             }
 
+            _mimporter_t *importer = map_get(&_importers_map, file.ext);
+            if (importer) {
+                importer->callback(mdatafile, importer->udata);
+            }
+
             mdatafile_save(mdatafile);
             mdatafile_delete(mdatafile);
             mfile_free_data(&file);
         }
-
-        mlog_note("Imported %d files", num_files_imported);
     }
 }
 

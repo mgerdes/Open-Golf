@@ -2,7 +2,7 @@
     {
         "type": "sprite_atlas",
         "name": "background",
-        "pos": [250, 740],
+        "pos": [300, 400],
         "size": [400, 400],
         "texture": "data/textures/UIpackSheet_transparent.png",
         "tile_screen_size": 40,
