@@ -90,7 +90,7 @@ static void _font_mdatafile_add_size(mfile_t *file, mdatafile_t *mdatafile,
         const char *bitmap_size_name, const char *bitmap_name, const char *char_data_name, int font_size, int bitmap_size) {
     unsigned char *bitmap = malloc(bitmap_size * bitmap_size);
     stbtt_bakedchar cdata[96];
-    stbtt_BakeFontBitmap(file->data, 0, 16, bitmap, bitmap_size, bitmap_size, 32, 96, cdata);
+    stbtt_BakeFontBitmap(file->data, 0, font_size, bitmap, bitmap_size, bitmap_size, 32, 95, cdata);
 
     mdatafile_add_int(mdatafile, bitmap_size_name, bitmap_size, false);
 
@@ -113,7 +113,7 @@ static void _font_mdatafile_add_size(mfile_t *file, mdatafile_t *mdatafile,
 }
 
 static void _create_font_mdatafile(mfile_t *file, mdatafile_t *mdatafile) {
-    _font_mdatafile_add_size(file, mdatafile, "small_bitmap_size", "small_bitmap", "small_char_data", 16, 256);
+    _font_mdatafile_add_size(file, mdatafile, "small_bitmap_size", "small_bitmap", "small_char_data", 16, 128);
     _font_mdatafile_add_size(file, mdatafile, "medium_bitmap_size", "medium_bitmap", "medium_char_data", 32, 256);
     _font_mdatafile_add_size(file, mdatafile, "large_bitmap_size", "large_bitmap", "large_char_data", 64, 512);
 }

@@ -4,8 +4,32 @@
 #include "3rd_party/cimgui/cimgui.h"
 #include "mcore/maths.h"
 #include "golf2/inputs.h"
+#include "golf2/renderer.h"
 
 void golf_debug_console_init() {
+}
+
+static void _debug_console_main_tab() {
+    igText("Frame Rate: %0.3f\n", igGetIO()->Framerate);
+    igText("Mouse Pos: <%0.3f, %0.3f>\n", golf_inputs_window_mouse_pos().x, golf_inputs_window_mouse_pos().y);
+}
+
+static void _debug_console_renderer_tab() {
+    golf_renderer_t *renderer = golf_renderer_get();
+    if (igCollapsingHeaderTreeNodeFlags("Fonts", ImGuiTreeNodeFlags_None)) {
+        const char *key;
+        map_iter_t iter = map_iter(&renderer->fonts_map);
+
+        while ((key = map_next(&renderer->fonts_map, &iter))) {
+            golf_renderer_font_t *font = map_get(&renderer->fonts_map, key);
+            if (igCollapsingHeaderTreeNodeFlags(key, ImGuiTreeNodeFlags_None)) {
+                for (int i = 0; i < 3; i++) {
+                    igText("Image Size: %d", font->image_size[i]);
+                    igImage((ImTextureID)(intptr_t)font->sg_image[i].id, (ImVec2){font->image_size[i], font->image_size[i]}, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
+                }
+            }
+        }
+    }
 }
 
 void golf_debug_console_update(float dt) {
@@ -17,9 +41,19 @@ void golf_debug_console_update(float dt) {
     if (debug_console_open) {
         igSetNextWindowSize((ImVec2){500, 500}, ImGuiCond_FirstUseEver);
         igSetNextWindowPos((ImVec2){5, 5}, ImGuiCond_FirstUseEver, (ImVec2){0, 0});
-        igBegin("Debug Console", &debug_console_open, ImGuiWindowFlags_None);
-        igText("Frame Rate: %0.3f\n", igGetIO()->Framerate);
-        igText("Mouse Pos: <%0.3f, %0.3f>\n", golf_inputs_window_mouse_pos().x, golf_inputs_window_mouse_pos().y);
-        igEnd();
+        if (igBegin("Debug Console", &debug_console_open, ImGuiWindowFlags_None)) {
+            if (igBeginTabBar("##Tabs", ImGuiTabBarFlags_None)) {
+                if (igBeginTabItem("Main", NULL, ImGuiTabItemFlags_None)) {
+                    _debug_console_main_tab();
+                    igEndTabItem();
+                }
+                if (igBeginTabItem("Renderer", NULL, ImGuiTabItemFlags_None)) {
+                    _debug_console_renderer_tab();
+                    igEndTabItem();
+                }
+                igEndTabBar();
+            }
+            igEnd();
+        }
     }
 }

@@ -49,6 +49,16 @@ golf_ui_entity_t golf_ui_sprite_atlas_entity(const char *name, vec2 pos, vec2 si
     return entity;
 }
 
+golf_ui_entity_t golf_ui_text_entity(const char *text, const char *font, vec2 pos, float size) {
+    golf_ui_entity_t entity;
+    entity.type = GOLF_UI_ENTITY_TEXT;
+    entity.text.text = text;
+    entity.text.font = font;
+    entity.text.pos = pos;
+    entity.text.size = size;
+    return entity;
+}
+
 vec2 _parse_json_array_vec2(JSON_Array *array) {
     return V2((float)json_array_get_number(array, 0),
             (float)json_array_get_number(array, 1));
@@ -105,6 +115,15 @@ void _ui_menu_import(mdatafile_t *file, void *udata) {
                 golf_ui_entity_t entity = golf_ui_sprite_atlas_entity(name, pos, size, texture, 
                         tile_screen_size, tile_size, tile_padding, 
                         tile_top, tile_mid, tile_bot); 
+                vec_push(&menu.entity_vec, entity);
+            }
+            else if (strcmp(type, "text") == 0) {
+                const char *text = json_object_get_string(object, "text");
+                const char *font = json_object_get_string(object, "font");
+                vec2 pos = _parse_json_array_vec2(json_object_get_array(object, "pos"));
+                float size = (float)json_object_get_number(object, "size");
+
+                golf_ui_entity_t entity = golf_ui_text_entity(text, font, pos, size);
                 vec_push(&menu.entity_vec, entity);
             }
             else {

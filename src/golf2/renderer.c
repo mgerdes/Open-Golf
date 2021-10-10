@@ -326,6 +326,7 @@ static void _font_import(mdatafile_t *file, void *udata) {
     _font_load_size(&font, file, 0, "small_bitmap_size", "small_bitmap", "small_char_data");
     _font_load_size(&font, file, 1, "medium_bitmap_size", "medium_bitmap", "medium_char_data");
     _font_load_size(&font, file, 2, "large_bitmap_size", "large_bitmap", "large_char_data");
+    map_set(&renderer.fonts_map, mdatafile_get_name(file), font);
 }
 
 static golf_renderer_font_t *_renderer_get_font(const char *path) {
@@ -429,6 +430,15 @@ static void _draw_ui_sprite_atlas(golf_ui_sprite_atlas_t sprite) {
     }
 }
 
+static void _draw_ui_text(golf_ui_text_t text) {
+    float px = text.pos.x;
+    float py = text.pos.y;
+    int i = 0;
+    while (text.text[i]) {
+        i++;
+    }
+}
+
 void golf_renderer_draw(void) {
     {
         float fb_width = (float) 1280;
@@ -481,6 +491,9 @@ void golf_renderer_draw(void) {
                     break;
                 case GOLF_UI_ENTITY_SPRITE_ATLAS:
                     _draw_ui_sprite_atlas(entity.sprite_atlas);
+                    break;
+                case GOLF_UI_ENTITY_TEXT:
+                    _draw_ui_text(entity.text);
                     break;
             }
         }
