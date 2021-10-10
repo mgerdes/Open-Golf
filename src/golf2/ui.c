@@ -8,41 +8,11 @@
 #include "mcore/mlog.h"
 #include "golf2/renderer.h"
 
-typedef enum _ui_entity_type {
-    _UI_ENTITY_SPRITE,
-    _UI_ENTITY_BUTTON,
-} _ui_entity_type_t;
+static golf_ui_t ui;
 
-typedef struct _ui_button {
-    const char *name;
-    const char *text;
-    vec2 pos;
-    vec2 size;
-
-    bool is_clicked;
-    bool is_hovered;
-} _ui_button_t;
-
-typedef struct _ui_sprite {
-    const char *name;
-    vec2 pos;
-    vec2 size;
-} _ui_sprite_t;
-
-typedef struct _ui_entity {
-    _ui_entity_type_t type;
-    union {
-        _ui_button_t button;
-        _ui_sprite_t sprite;
-    };
-} _ui_entity_t;
-
-typedef vec_t(_ui_entity_t) _vec_ui_entity_t;
-typedef map_t(_ui_entity_t) _map_ui_entity_t;
-
-_ui_entity_t _ui_button_entity(const char *name, const char *text, vec2 pos, vec2 size) {
-    _ui_entity_t entity;
-    entity.type = _UI_ENTITY_BUTTON;
+golf_ui_entity_t golf_ui_button_entity(const char *name, const char *text, vec2 pos, vec2 size) {
+    golf_ui_entity_t entity;
+    entity.type = GOLF_UI_ENTITY_BUTTON;
     entity.button.name = name;
     entity.button.text = text;
     entity.button.pos = pos;
@@ -52,29 +22,40 @@ _ui_entity_t _ui_button_entity(const char *name, const char *text, vec2 pos, vec
     return entity;
 }
 
-_ui_entity_t _ui_sprite_entity(const char *name, vec2 pos, vec2 size) {
-    _ui_entity_t entity;
-    entity.type = _UI_ENTITY_SPRITE;
+golf_ui_entity_t golf_ui_sprite_entity(const char *name, vec2 pos, vec2 size) {
+    golf_ui_entity_t entity;
+    entity.type = GOLF_UI_ENTITY_SPRITE;
     entity.sprite.name = name;
     entity.sprite.pos = pos;
     entity.sprite.size = size;
     return entity;
 }
 
-typedef struct _ui_menu {
-    _vec_ui_entity_t entity_vec; 
-    _map_ui_entity_t entity_map; 
-} _ui_menu_t;
-
-typedef vec_t(_ui_menu_t) _vec_ui_menu_t;
-typedef map_t(_ui_menu_t) _map_ui_menu_t;
-
-typedef struct _ui {
-    _vec_ui_menu_t ui_menu_vec;
-    _map_ui_menu_t ui_menu_map;
-} _ui_t;
-
-static _ui_t _ui;
+golf_ui_entity_t golf_ui_sprite_atlas_entity(const char *name, vec2 pos, vec2 size, const char *texture,
+        float tile_screen_size, float tile_size, float tile_padding,
+        vec2 tile_top_left, vec2 tile_top, vec2 tile_top_right, 
+        vec2 tile_left, vec2 tile_middle, vec2 tile_right,
+        vec2 tile_bot_left, vec2 tile_bot, vec2 tile_bot_right) {
+    golf_ui_entity_t entity;
+    entity.type = GOLF_UI_ENTITY_SPRITE_ATLAS;
+    entity.sprite_atlas.name = name;
+    entity.sprite_atlas.pos = pos;
+    entity.sprite_atlas.size = size;
+    entity.sprite_atlas.texture = texture;
+    entity.sprite_atlas.tile_screen_size = tile_screen_size;
+    entity.sprite_atlas.tile_size = tile_size;
+    entity.sprite_atlas.tile_padding = tile_padding;
+    entity.sprite_atlas.tile_top_left = tile_top_left;
+    entity.sprite_atlas.tile_top = tile_top;
+    entity.sprite_atlas.tile_top_right = tile_top_right;
+    entity.sprite_atlas.tile_left = tile_left;
+    entity.sprite_atlas.tile_middle = tile_middle;
+    entity.sprite_atlas.tile_right = tile_right;
+    entity.sprite_atlas.tile_bot_left = tile_bot_left;
+    entity.sprite_atlas.tile_bot = tile_bot;
+    entity.sprite_atlas.tile_bot_right = tile_bot_right;
+    return entity;
+}
 
 vec2 _parse_json_array_vec2(JSON_Array *array) {
     return V2((float)json_array_get_number(array, 0),
@@ -89,9 +70,8 @@ void _ui_menu_import(mdatafile_t *file, void *udata) {
         return;
     }
 
-    _ui_menu_t menu;
+    golf_ui_menu_t menu;
     vec_init(&menu.entity_vec);
-    map_init(&menu.entity_map);
 
     JSON_Value *val = json_parse_string(data);
     JSON_Array *array = json_value_get_array(val);
@@ -107,51 +87,61 @@ void _ui_menu_import(mdatafile_t *file, void *udata) {
                 vec2 pos = _parse_json_array_vec2(json_object_get_array(object, "pos"));
                 vec2 size = _parse_json_array_vec2(json_object_get_array(object, "size"));
 
-                _ui_entity_t entity = _ui_button_entity(name, text, pos, size);
+                golf_ui_entity_t entity = golf_ui_button_entity(name, text, pos, size);
                 vec_push(&menu.entity_vec, entity);
-                map_set(&menu.entity_map, name, entity);
             }
             else if (strcmp(type, "sprite") == 0) {
                 const char *name = json_object_get_string(object, "name");
                 vec2 pos = _parse_json_array_vec2(json_object_get_array(object, "pos"));
                 vec2 size = _parse_json_array_vec2(json_object_get_array(object, "size"));
 
-                _ui_entity_t entity = _ui_sprite_entity(name, pos, size);
+                golf_ui_entity_t entity = golf_ui_sprite_entity(name, pos, size);
                 vec_push(&menu.entity_vec, entity);
-                map_set(&menu.entity_map, name, entity);
+            }
+            else if (strcmp(type, "sprite_atlas") == 0) {
+                const char *name = json_object_get_string(object, "name");
+                vec2 pos = _parse_json_array_vec2(json_object_get_array(object, "pos"));
+                vec2 size = _parse_json_array_vec2(json_object_get_array(object, "size"));
+                const char *texture = json_object_get_string(object, "texture");
+                float tile_screen_size = (float)json_object_get_number(object, "tile_screen_size");
+                float tile_size = (float)json_object_get_number(object, "tile_size");
+                float tile_padding = (float)json_object_get_number(object, "tile_padding");
+                vec2 tile_top_left = _parse_json_array_vec2(json_object_get_array(object, "tile_top_left"));
+                vec2 tile_top = _parse_json_array_vec2(json_object_get_array(object, "tile_top"));
+                vec2 tile_top_right = _parse_json_array_vec2(json_object_get_array(object, "tile_top_right"));
+                vec2 tile_left = _parse_json_array_vec2(json_object_get_array(object, "tile_left"));
+                vec2 tile_middle = _parse_json_array_vec2(json_object_get_array(object, "tile_middle"));
+                vec2 tile_right = _parse_json_array_vec2(json_object_get_array(object, "tile_right"));
+                vec2 tile_bot_left = _parse_json_array_vec2(json_object_get_array(object, "tile_bot_left"));
+                vec2 tile_bot = _parse_json_array_vec2(json_object_get_array(object, "tile_bot"));
+                vec2 tile_bot_right = _parse_json_array_vec2(json_object_get_array(object, "tile_bot_right"));
+
+                golf_ui_entity_t entity = golf_ui_sprite_atlas_entity(name, pos, size, texture, 
+                        tile_screen_size, tile_size, tile_padding, 
+                        tile_top_left, tile_top, tile_top_right, 
+                        tile_left, tile_middle, tile_right, 
+                        tile_bot_left, tile_bot, tile_bot_right);
+                vec_push(&menu.entity_vec, entity);
             }
             else {
                 mlog_warning("Invalid ui entity type %s", type);
             }
         }
     }
-    json_value_free(val);
+    //json_value_free(val);
 
-    map_set(&_ui.ui_menu_map, mdatafile_get_name(file), menu);
+    map_set(&ui.ui_menu_map, mdatafile_get_name(file), menu);
+}
+
+golf_ui_t *golf_ui_get(void) {
+    return &ui;
 }
 
 void golf_ui_init(void) {
-    vec_init(&_ui.ui_menu_vec);
-    map_init(&_ui.ui_menu_map);
+    vec_init(&ui.ui_menu_vec);
+    map_init(&ui.ui_menu_map);
     mimport_add_importer(".ui_menu", _ui_menu_import, NULL);
 }
 
 void golf_ui_update(float dt) {
-}
-
-//
-// DRAWING
-//
-
-#include "3rd_party/sokol/sokol_gfx.h"
-
-void golf_ui_draw(void) {
-    {
-        sg_pipeline *ui_sprites_pipeline = (sg_pipeline*)golf_renderer_get_pipeline("ui_sprites");
-        if (!ui_sprites_pipeline) {
-            mlog_error("Unable to find 'ui_sprites_pipeline'");
-        }
-
-        sg_apply_pipeline(*ui_sprites_pipeline);
-    }
 }

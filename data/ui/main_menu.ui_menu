@@ -1,9 +1,22 @@
 [
     {
-        "type": "sprite",
+        "type": "sprite_atlas",
         "name": "background",
         "pos": [250, 740],
-        "size": [400, 400]
+        "size": [400, 400],
+        "texture": "data/textures/UIpackSheet_transparent.png",
+        "tile_screen_size": 40,
+        "tile_size": 16,
+        "tile_padding": 2,
+        "tile_top_left": [13, 13],
+        "tile_top": [14, 13],
+        "tile_top_right": [15, 13],
+        "tile_left": [13, 14],
+        "tile_middle": [14, 14],
+        "tile_right": [15, 14],
+        "tile_bot_left": [13, 15],
+        "tile_bot": [14, 15],
+        "tile_bot_right": [15, 15]
     },
     {
         "type": "button",

@@ -1,6 +1,9 @@
 #include "golf2/renderer.h"
 
 #include "3rd_party/fast_obj/fast_obj.h"
+#include "3rd_party/stb/stb_image.h"
+#include "3rd_party/stb/stb_image_write.h"
+#include "3rd_party/sokol/sokol_app.h"
 #include "3rd_party/sokol/sokol_gfx.h"
 #include "mcore/maths.h"
 #include "mcore/mimport.h"
@@ -8,27 +11,7 @@
 #include "golf2/shaders/ui_sprite.glsl.h"
 #include "golf2/ui.h"
 
-typedef struct _model {
-    char name[1024];
-    vec_vec3_t positions;
-    vec_vec2_t texcoords;
-    vec_vec3_t normals;
-    sg_buffer positions_buf;
-    sg_buffer normals_buf;
-    sg_buffer texcoords_buf;
-} _model_t;
-
-typedef map_t(_model_t) _map_model_t;
-typedef map_t(sg_shader) _map_sg_shader_t;
-typedef map_t(sg_pipeline) _map_sg_pipeline_t;
-
-typedef struct _renderer {
-    _map_sg_shader_t shaders_map;
-    _map_sg_pipeline_t pipelines_map;
-    _map_model_t models_map;
-} _renderer_t;
-
-static _renderer_t _renderer;
+static golf_renderer_t renderer;
 
 static bool _load_shader(mdatafile_t *file, const sg_shader_desc *const_shader_desc, sg_shader *shader) {
 #if SOKOL_GLCORE33
@@ -76,7 +59,7 @@ static void _ui_sprite_shader_import(mdatafile_t *file, void *udata) {
         mlog_warning("Unable to load shader %s", mdatafile_get_name(file));
         return;
     }
-    map_set(&_renderer.shaders_map, mdatafile_get_name(file), shader);
+    map_set(&renderer.shaders_map, mdatafile_get_name(file), shader);
 
     sg_pipeline pipeline = sg_make_pipeline(&(sg_pipeline_desc){
         .shader = shader,
@@ -94,7 +77,7 @@ static void _ui_sprite_shader_import(mdatafile_t *file, void *udata) {
             },
         },
     });
-    map_set(&_renderer.pipelines_map, "ui_sprites", pipeline);
+    map_set(&renderer.pipelines_map, "ui_sprites", pipeline);
 }
 
 static void _shader_import(mdatafile_t *file, void *udata) {
@@ -105,6 +88,66 @@ static void _shader_import(mdatafile_t *file, void *udata) {
     else {
         mlog_warning("No importer for shader %s", name);
     }
+}
+
+static void _texture_import(mdatafile_t *file, void *udata) {
+    const char *name = mdatafile_get_name(file);
+
+    unsigned char *tex_data;
+    int tex_data_len;
+    if (!mdatafile_get_data(file, "data", &tex_data, &tex_data_len)) {
+        mlog_error("Missing data field for texture mdatafile");
+    }
+
+    int x, y, n;
+    int force_channels = 4;
+    stbi_set_flip_vertically_on_load(0);
+    unsigned char *data = stbi_load_from_memory((unsigned char*) tex_data, tex_data_len, &x, &y, &n, force_channels);
+    if (!data) {
+        mlog_error("STB Failed to load image");
+    }
+    
+    sg_filter filter = SG_FILTER_LINEAR;
+    const char *filter_string = NULL;
+    if (mdatafile_get_string(file, "filter", &filter_string)) {
+        if (strcmp(filter_string, "linear") == 0) {
+            filter = SG_FILTER_LINEAR;
+        }
+        else if (strcmp(filter_string, "nearest") == 0) {
+            filter = SG_FILTER_NEAREST;
+        }
+        else {
+
+        }
+    }
+    sg_image_desc img_desc = {
+        .width = x,
+        .height = y,
+        .pixel_format = SG_PIXELFORMAT_RGBA8,
+        .min_filter = filter,
+        .mag_filter = filter,
+        .wrap_u = SG_WRAP_REPEAT,
+        .wrap_v = SG_WRAP_REPEAT,
+        .data.subimage[0][0] = {
+            .ptr = data,
+            .size = 4*sizeof(char)*x*y,
+        },
+    };
+
+    golf_renderer_texture_t texture;
+    texture.data = data;
+    texture.width = x;
+    texture.height = y;
+    texture.sg_image = sg_make_image(&img_desc);
+    map_set(&renderer.textures_map, name, texture);
+}
+
+static golf_renderer_texture_t *_renderer_get_texture(const char *path) {
+    golf_renderer_texture_t *texture = map_get(&renderer.textures_map, path);
+    if (!texture) {
+        mlog_error("Could not find textures %s", path);
+    }
+    return texture;
 }
 
 typedef struct _fast_obj_file {
@@ -152,22 +195,22 @@ static unsigned long _fast_obj_file_size(void *file, void *user_data) {
     return fast_obj_file->data_len;
 }
 
-static void _model_generate_buffers(_model_t *model) {
+static void _model_generate_buffers(golf_renderer_model_t *model) {
     sg_buffer_desc desc = {
         .type = SG_BUFFERTYPE_VERTEXBUFFER,
     };
 
     desc.data.size = sizeof(vec3) * model->positions.length;
     desc.data.ptr = model->positions.data;
-    model->positions_buf = sg_make_buffer(&desc);
+    model->sg_positions_buf = sg_make_buffer(&desc);
 
     desc.data.size = sizeof(vec2) * model->texcoords.length;
     desc.data.ptr = model->texcoords.data;
-    model->texcoords_buf = sg_make_buffer(&desc);
+    model->sg_texcoords_buf = sg_make_buffer(&desc);
 
     desc.data.size = sizeof(vec3) * model->normals.length;
     desc.data.ptr = model->normals.data;
-    model->normals_buf = sg_make_buffer(&desc);
+    model->sg_normals_buf = sg_make_buffer(&desc);
 }
 
 static void _model_obj_import(mdatafile_t *file, void *udata) {
@@ -179,7 +222,7 @@ static void _model_obj_import(mdatafile_t *file, void *udata) {
     callbacks.file_read = _fast_obj_file_read;
     callbacks.file_size = _fast_obj_file_size;
 
-    _model_t model;
+    golf_renderer_model_t model;
     snprintf(model.name, 1024, "%s", name);
     vec_init(&model.positions);
     vec_init(&model.texcoords);
@@ -222,21 +265,132 @@ static void _model_obj_import(mdatafile_t *file, void *udata) {
     }
     fast_obj_destroy(m);
     _model_generate_buffers(&model);
-    map_set(&_renderer.models_map, model.name, model);
+    map_set(&renderer.models_map, model.name, model);
+}
+
+static golf_renderer_model_t *_renderer_get_model(const char *path) {
+    golf_renderer_model_t *model = map_get(&renderer.models_map, path);
+    if (!model) {
+        mlog_error("Cannot find model %s", path);
+    }
+    return model;
+}
+
+golf_renderer_t *golf_renderer_get(void) {
+    return &renderer;
 }
 
 void golf_renderer_init(void) {
-    map_init(&_renderer.shaders_map);
-    map_init(&_renderer.pipelines_map);
-    map_init(&_renderer.models_map);
+    map_init(&renderer.shaders_map);
+    map_init(&renderer.pipelines_map);
+    map_init(&renderer.models_map);
     mimport_add_importer(".obj" , _model_obj_import, NULL);
     mimport_add_importer(".glsl" , _shader_import, NULL);
+    mimport_add_importer(".png" , _texture_import, NULL);
+    mimport_add_importer(".bmp" , _texture_import, NULL);
+    mimport_add_importer(".jpg" , _texture_import, NULL);
+}
+
+static void _draw_ui_sprite_atlas(golf_ui_sprite_atlas_t sprite) {
+    golf_renderer_model_t *square_model = _renderer_get_model("data/models/ui_sprite_square.obj");
+
+    {
+        sg_bindings bindings = {
+            .vertex_buffers[0] = square_model->sg_positions_buf,
+            .vertex_buffers[1] = square_model->sg_texcoords_buf,
+            .fs_images[SLOT_ui_sprite_texture] = _renderer_get_texture(sprite.texture)->sg_image,
+        };
+        sg_apply_bindings(&bindings);
+    }
+
+    {
+        float px = sprite.pos.x - (0.5f * sprite.size.x - 0.5f * sprite.tile_screen_size);
+        float py = sprite.pos.y + (0.5f * sprite.size.y - 0.5f * sprite.tile_screen_size);
+        float sx = 0.5f * sprite.tile_screen_size;
+        float sy = 0.5f * sprite.tile_screen_size;
+
+        ui_sprite_vs_params_t vs_params = {
+            .mvp_mat = mat4_transpose(mat4_multiply_n(3,
+                        renderer.ui_proj_mat,
+                        mat4_translation(V3(px, py, 0.0f)),
+                        mat4_scale(V3(sx, sy, 1.0))))
+
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_sprite_vs_params,
+                &(sg_range) { &vs_params, sizeof(vs_params) } );
+
+        ui_sprite_fs_params_t fs_params = {
+            .tex_x = (sprite.tile_size + sprite.tile_padding) * sprite.tile_top_left.x,
+            .tex_y = (sprite.tile_size + sprite.tile_padding) * sprite.tile_top_left.y + sprite.tile_size,
+            .tex_dx = sprite.tile_size, 
+            .tex_dy = -sprite.tile_size,
+            .is_font = 0.0f,
+            .color = V4(0.0f, 1.0f, 1.0f, 1.0f),
+
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_sprite_fs_params,
+                &(sg_range) { &fs_params, sizeof(fs_params) });
+
+        sg_draw(0, square_model->positions.length, 1);
+    }
 }
 
 void golf_renderer_draw(void) {
-    golf_ui_draw();
-}
+    {
+        float fb_width = (float) 1280;
+        float fb_height = (float) 720;
+        float w_width = (float) sapp_width();
+        float w_height = (float) sapp_height();
+        float w_fb_width = w_width;
+        float w_fb_height = (fb_height/fb_width)*w_fb_width;
+        if (w_fb_height > w_height) {
+            w_fb_height = w_height;
+            w_fb_width = (fb_width/fb_height)*w_fb_height;
+        }
+        renderer.ui_proj_mat = mat4_multiply_n(3,
+                mat4_orthographic_projection(0.0f, w_width, 0.0f, w_height, 0.0f, 1.0f),
+                mat4_translation(V3(0.5f*w_width - 0.5f*w_fb_width, 0.5f*w_height - 0.5f*w_fb_height, 0.0f)),
+                mat4_scale(V3(w_fb_width/fb_width, w_fb_height/fb_height, 1.0f))
+                );
+    }
 
-void *golf_renderer_get_pipeline(const char *name) {
-    return map_get(&_renderer.pipelines_map, name);
+    {
+        sg_pass_action action = {
+            .colors[0] = {
+                .action = SG_ACTION_DONTCARE,
+                .value = { 0.529f, 0.808f, 0.922f, 1.0f },
+            },
+        };
+        sg_begin_default_pass(&action, sapp_width(), sapp_height());
+
+        golf_ui_t *ui = golf_ui_get();
+
+        golf_ui_menu_t *main_menu = map_get(&ui->ui_menu_map, "data/ui/main_menu.ui_menu");
+        if (!main_menu) {
+            mlog_error("Could not find main_menu ui_menu");
+        }
+
+        sg_pipeline *ui_sprites_pipeline = map_get(&renderer.pipelines_map, "ui_sprites");
+        if (!ui_sprites_pipeline) {
+            mlog_error("Could not fine ui_sprites pipeline");
+        }
+        sg_apply_pipeline(*ui_sprites_pipeline);
+
+        golf_renderer_model_t *square_model = _renderer_get_model("data/models/ui_sprite_square.obj");
+
+        for (int i = 0; i < main_menu->entity_vec.length; i++) {
+            golf_ui_entity_t entity = main_menu->entity_vec.data[i];
+            switch (entity.type) {
+                case GOLF_UI_ENTITY_SPRITE:
+                    break;
+                case GOLF_UI_ENTITY_BUTTON:
+                    break;
+                case GOLF_UI_ENTITY_SPRITE_ATLAS:
+                    _draw_ui_sprite_atlas(entity.sprite_atlas);
+                    break;
+            }
+        }
+
+        sg_end_pass();
+    }
 }
