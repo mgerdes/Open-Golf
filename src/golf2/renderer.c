@@ -456,21 +456,77 @@ static void _draw_ui_sprite_atlas(golf_ui_sprite_atlas_t sprite) {
 
 static void _draw_ui_text(golf_ui_text_t text) {
     golf_renderer_font_t *font = _renderer_get_font(text.font);
-    float xpos = text.pos.x;
-    float ypos = text.pos.y;
+    float cur_x = text.pos.x;
+    float cur_y = text.pos.y;
     int i = 0;
+
+    golf_renderer_model_t *square_model = _renderer_get_model("data/models/ui_sprite_square.obj");
+    int sz = 2;
+
+    {
+        sg_bindings bindings = {
+            .vertex_buffers[ATTR_ui_sprite_vs_position] = square_model->sg_positions_buf,
+            .vertex_buffers[ATTR_ui_sprite_vs_texture_coord] = square_model->sg_texcoords_buf,
+            .fs_images[SLOT_ui_sprite_texture] = font->sizes[sz].sg_image,
+        };
+        sg_apply_bindings(&bindings);
+    }
 
     while (text.text[i]) {
         char c = text.text[i];
-        float x0 = xpos + font->sizes[0].chars[c].xoff;
-        float y0 = ypos + font->sizes[0].chars[c].yoff;
-        float x1 = x0 + font->sizes[0].chars[c].x1 - font->sizes[0].chars[c].x0;
-        float y1 = y0 + font->sizes[0].chars[c].y1 - font->sizes[0].chars[c].y0;
 
-        float u0 = font->sizes[0].chars[c].x0 / font->sizes[0].image_size;
-        float v0 = font->sizes[0].chars[c].y0 / font->sizes[0].image_size;
-        float u1 = font->sizes[0].chars[c].x1 / font->sizes[0].image_size;
-        float v1 = font->sizes[0].chars[c].y1 / font->sizes[0].image_size;
+        int x0 = font->sizes[sz].chars[c].x0;
+        int x1 = font->sizes[sz].chars[c].x1;
+        int y0 = font->sizes[sz].chars[c].y0;
+        int y1 = font->sizes[sz].chars[c].y1;
+        float xoff = font->sizes[sz].chars[c].xoff;
+        float yoff = font->sizes[sz].chars[c].yoff;
+        float xadvance = font->sizes[sz].chars[c].xadvance;
+
+        int round_x = floor((cur_x + xoff) + 0.5f);
+        int round_y = floor((cur_y - yoff) + 0.5f);
+
+        float qx0 = round_x; 
+        float qy0 = round_y;
+        float qx1 = round_x + x1 - x0;
+        float qy1 = round_y - (y1 - y0);
+
+        vec3 translate;
+        translate.x = qx0 + 0.5f * (qx1 - qx0);
+        translate.y = qy0 + 0.5f * (qy1 - qy0);
+        translate.z = 0.0f;
+
+        vec3 scale;
+        scale.x = 0.5f * (qx1 - qx0);
+        scale.y = 0.5f * (qy1 - qy0);
+        scale.z = 1.0f;
+
+        ui_sprite_vs_params_t vs_params = {
+            .mvp_mat = mat4_transpose(mat4_multiply_n(3,
+                        renderer.ui_proj_mat,
+                        mat4_translation(translate),
+                        mat4_scale(scale)))
+
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_sprite_vs_params,
+                &(sg_range) { &vs_params, sizeof(vs_params) } );
+
+        ui_sprite_fs_params_t fs_params = {
+            .tex_x = x0,
+            .tex_y = y0, 
+            .tex_dx = x1 - x0, 
+            .tex_dy = y1 - y0,
+            .is_font = 1.0f,
+            .color = V4(0.6f, 0.6f, 0.6f, 1.0f),
+
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_sprite_fs_params,
+                &(sg_range) { &fs_params, sizeof(fs_params) });
+
+        sg_draw(0, square_model->positions.length, 1);
+        
+
+        cur_x += font->sizes[sz].chars[c].xadvance;
 
         i++;
     }

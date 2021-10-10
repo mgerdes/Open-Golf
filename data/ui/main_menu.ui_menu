@@ -15,8 +15,8 @@
     {
         "type": "text",
         "text": "MINIGOLF",
-        "font": "data/font/FantasqueSansMono-Bold.ttf",
-        "pos": [250, 700],
+        "font": "data/font/FiraSans-Bold.ttf",
+        "pos": [250, 600],
         "size": 32
     },
     {
