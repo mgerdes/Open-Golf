@@ -2,6 +2,8 @@
 #include <stdbool.h>
 
 #include "3rd_party/map/map.h"
+#include "3rd_party/stb/stb_image_write.h"
+#include "3rd_party/stb/stb_truetype.h"
 #include "3rd_party/vec/vec.h"
 #include "mcore/mcommon.h"
 #include "mcore/mfile.h"
@@ -77,6 +79,43 @@ static void _create_shader_mdatafile(mfile_t *file, mdatafile_t *mdatafile) {
 		mstring_deinit(&base_bare_name);
 	}
 	mstring_deinit(&cmd);
+}
+
+void _stbi_write_func(void *context, void *data, int size) {
+    vec_char_t *bmp = (vec_char_t*)context;
+    vec_pusharr(bmp, (char*)data, size);
+}
+
+static void _font_mdatafile_add_size(mfile_t *file, mdatafile_t *mdatafile, 
+        const char *bitmap_size_name, const char *bitmap_name, const char *char_data_name, int font_size, int bitmap_size) {
+    unsigned char *bitmap = malloc(bitmap_size * bitmap_size);
+    stbtt_bakedchar cdata[96];
+    stbtt_BakeFontBitmap(file->data, 0, 16, bitmap, bitmap_size, bitmap_size, 32, 96, cdata);
+
+    mdatafile_add_int(mdatafile, bitmap_size_name, bitmap_size, false);
+
+    vec_char_t bmp;
+    vec_init(&bmp);
+    stbi_write_bmp_to_func(_stbi_write_func, &bmp, bitmap_size, bitmap_size, 1, bitmap);
+    mdatafile_add_data(mdatafile, bitmap_name, bmp.data, bmp.length);
+
+    mstring_t str;
+    mstring_init(&str, "");
+    for (int i = 32; i < 126; i++) {
+        stbtt_bakedchar c = cdata[i - 32];
+        mstring_appendf(&str, "%c %d %d %d %d %.3f %.3f %.3f\n", (char)i, c.x0, c.y0, c.x1, c.y1, c.xoff, c.yoff, c.xadvance);
+    }
+    mdatafile_add_data(mdatafile, char_data_name, str.cstr, str.len);
+
+    mstring_deinit(&str);
+    vec_deinit(&bmp);
+    free(bitmap);
+}
+
+static void _create_font_mdatafile(mfile_t *file, mdatafile_t *mdatafile) {
+    _font_mdatafile_add_size(file, mdatafile, "small_bitmap_size", "small_bitmap", "small_char_data", 16, 256);
+    _font_mdatafile_add_size(file, mdatafile, "medium_bitmap_size", "medium_bitmap", "medium_char_data", 32, 256);
+    _font_mdatafile_add_size(file, mdatafile, "large_bitmap_size", "large_bitmap", "large_char_data", 64, 512);
 }
 
 static void _create_default_mdatafile(mfile_t *file, mdatafile_t *mdatafile) {
@@ -160,6 +199,9 @@ void mimport_run(void) {
             }
             else if ((strcmp(file.ext, ".glsl") == 0)) {
                 _create_shader_mdatafile(&file, mdatafile);
+            }
+            else if ((strcmp(file.ext, ".ttf") == 0)) {
+                _create_font_mdatafile(&file, mdatafile);
             }
             else if ((strcmp(file.ext, ".cfg") == 0) ||
                     (strcmp(file.ext, ".mscript") == 0) ||
@@ -481,6 +523,18 @@ void mdatafile_add_data(mdatafile_t *file, const char *name, unsigned char *data
 
 const char *mdatafile_get_name(mdatafile_t *file) {
     return file->name;
+}
+
+bool mdatafile_get_int(mdatafile_t *file, const char *name, int *int_val) {
+    _val_t val;
+    if (_find_val(&file->vals_vec, name, _VAL_TYPE_INT, &val)) {
+        *int_val = val.int_val;
+        return true;
+    }
+    else {
+        *int_val = 0;
+        return false;
+    }
 }
 
 bool mdatafile_get_string(mdatafile_t *file, const char *name, const char **string) {

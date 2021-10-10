@@ -276,6 +276,66 @@ static golf_renderer_model_t *_renderer_get_model(const char *path) {
     return model;
 }
 
+static void _font_load_size(golf_renderer_font_t *font, mdatafile_t *file, int index,
+        const char *bitmap_size_name, const char *bitmap_name, const char *char_data_name) {
+    int bitmap_size;
+    if (!mdatafile_get_int(file, bitmap_size_name, &bitmap_size)) {
+        mlog_warning("Cannot find property %s on font mdatafile", bitmap_size_name);
+    }
+
+    unsigned char *bitmap_data;
+    int bitmap_data_len;
+    if (!mdatafile_get_data(file, bitmap_name, &bitmap_data, &bitmap_data_len)) {
+        mlog_warning("Cannot find property %s on font mdatafile", bitmap_name);
+    }
+
+    int x, y, n;
+    int force_channels = 4;
+    stbi_set_flip_vertically_on_load(0);
+    unsigned char *data = stbi_load_from_memory((unsigned char*) bitmap_data, bitmap_data_len, &x, &y, &n, force_channels);
+    if (!data) {
+        mlog_error("STB Failed to load image");
+    }
+
+    unsigned char *char_data;
+    int char_data_len;
+    if (!mdatafile_get_data(file, char_data_name, &char_data, &char_data_len)) {
+        mlog_warning("Cannot find property %s on font mdatafile", char_data_name);
+    }
+
+    font->image_size[index] = bitmap_size;
+    font->sg_image[index] = sg_make_image(&(sg_image_desc) {
+        .width = bitmap_size,
+        .height = bitmap_size,
+        .pixel_format = SG_PIXELFORMAT_RGBA8,
+        .min_filter = SG_FILTER_NEAREST,
+        .mag_filter = SG_FILTER_NEAREST,
+        .wrap_u = SG_WRAP_CLAMP_TO_EDGE,
+        .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
+        .data.subimage[0][0] = {
+            .ptr = data,
+            .size = 4*sizeof(char)*x*y,
+        },
+    });
+}
+
+static void _font_import(mdatafile_t *file, void *udata) {
+    const char *name = mdatafile_get_name(file);
+
+    golf_renderer_font_t font;
+    _font_load_size(&font, file, 0, "small_bitmap_size", "small_bitmap", "small_char_data");
+    _font_load_size(&font, file, 1, "medium_bitmap_size", "medium_bitmap", "medium_char_data");
+    _font_load_size(&font, file, 2, "large_bitmap_size", "large_bitmap", "large_char_data");
+}
+
+static golf_renderer_font_t *_renderer_get_font(const char *path) {
+    golf_renderer_font_t *font = map_get(&renderer.fonts_map, path);
+    if (!font) {
+        mlog_error("Cannot find font %s", path);
+    }
+    return font;
+}
+
 golf_renderer_t *golf_renderer_get(void) {
     return &renderer;
 }
@@ -284,11 +344,14 @@ void golf_renderer_init(void) {
     map_init(&renderer.shaders_map);
     map_init(&renderer.pipelines_map);
     map_init(&renderer.models_map);
+    map_init(&renderer.textures_map);
+    map_init(&renderer.fonts_map);
     mimport_add_importer(".obj" , _model_obj_import, NULL);
     mimport_add_importer(".glsl" , _shader_import, NULL);
     mimport_add_importer(".png" , _texture_import, NULL);
     mimport_add_importer(".bmp" , _texture_import, NULL);
     mimport_add_importer(".jpg" , _texture_import, NULL);
+    mimport_add_importer(".ttf" , _font_import, NULL);
 }
 
 static void _draw_ui_sprite_atlas(golf_ui_sprite_atlas_t sprite) {
@@ -296,8 +359,8 @@ static void _draw_ui_sprite_atlas(golf_ui_sprite_atlas_t sprite) {
 
     {
         sg_bindings bindings = {
-            .vertex_buffers[0] = square_model->sg_positions_buf,
-            .vertex_buffers[1] = square_model->sg_texcoords_buf,
+            .vertex_buffers[ATTR_ui_sprite_vs_position] = square_model->sg_positions_buf,
+            .vertex_buffers[ATTR_ui_sprite_vs_texture_coord] = square_model->sg_texcoords_buf,
             .fs_images[SLOT_ui_sprite_texture] = _renderer_get_texture(sprite.texture)->sg_image,
         };
         sg_apply_bindings(&bindings);
@@ -320,8 +383,39 @@ static void _draw_ui_sprite_atlas(golf_ui_sprite_atlas_t sprite) {
                 &(sg_range) { &vs_params, sizeof(vs_params) } );
 
         ui_sprite_fs_params_t fs_params = {
-            .tex_x = (sprite.tile_size + sprite.tile_padding) * sprite.tile_top_left.x,
-            .tex_y = (sprite.tile_size + sprite.tile_padding) * sprite.tile_top_left.y + sprite.tile_size,
+            .tex_x = (sprite.tile_size + sprite.tile_padding) * sprite.tile_top.x,
+            .tex_y = (sprite.tile_size + sprite.tile_padding) * sprite.tile_top.y + sprite.tile_size,
+            .tex_dx = sprite.tile_size, 
+            .tex_dy = -sprite.tile_size,
+            .is_font = 0.0f,
+            .color = V4(0.0f, 1.0f, 1.0f, 1.0f),
+
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_sprite_fs_params,
+                &(sg_range) { &fs_params, sizeof(fs_params) });
+
+        sg_draw(0, square_model->positions.length, 1);
+    }
+
+    {
+        float px = sprite.pos.x;
+        float py = sprite.pos.y;
+        float sx = 0.5f * (sprite.size.x - sprite.tile_screen_size);
+        float sy = 0.5f * (sprite.size.y - sprite.tile_screen_size);
+
+        ui_sprite_vs_params_t vs_params = {
+            .mvp_mat = mat4_transpose(mat4_multiply_n(3,
+                        renderer.ui_proj_mat,
+                        mat4_translation(V3(px, py, 0.0f)),
+                        mat4_scale(V3(sx, sy, 1.0))))
+
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_sprite_vs_params,
+                &(sg_range) { &vs_params, sizeof(vs_params) } );
+
+        ui_sprite_fs_params_t fs_params = {
+            .tex_x = (sprite.tile_size + sprite.tile_padding) * (sprite.tile_mid.x + 1),
+            .tex_y = (sprite.tile_size + sprite.tile_padding) * sprite.tile_mid.y + sprite.tile_size,
             .tex_dx = sprite.tile_size, 
             .tex_dy = -sprite.tile_size,
             .is_font = 0.0f,

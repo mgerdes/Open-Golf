@@ -35,15 +35,9 @@ typedef struct golf_ui_sprite_atlas {
     float tile_screen_size;
     float tile_size;
     float tile_padding;
-    vec2 tile_top_left;
     vec2 tile_top;
-    vec2 tile_top_right;
-    vec2 tile_left;
-    vec2 tile_middle;
-    vec2 tile_right;
-    vec2 tile_bot_left;
+    vec2 tile_mid;
     vec2 tile_bot;
-    vec2 tile_bot_right;
 } golf_ui_sprite_atlas_t;
 
 typedef struct golf_ui_entity {
@@ -62,9 +56,7 @@ golf_ui_entity_t golf_ui_button_entity(const char *name, const char *text, vec2 
 golf_ui_entity_t golf_ui_sprite_entity(const char *name, vec2 pos, vec2 size);
 golf_ui_entity_t golf_ui_sprite_atlas_entity(const char *name, vec2 pos, vec2 size, const char *texture,
         float tile_screen_size, float tile_size, float tile_padding,
-        vec2 tile_top_left, vec2 tile_top, vec2 tile_top_right, 
-        vec2 tile_left, vec2 tile_middle, vec2 tile_right,
-        vec2 tile_bot_left, vec2 tile_bot, vec2 tile_bot_right);
+        vec2 tile_top, vec2 tile_mid, vec2 tile_bot); 
 
 typedef struct golf_ui_menu {
     vec_golf_ui_entity_t entity_vec; 

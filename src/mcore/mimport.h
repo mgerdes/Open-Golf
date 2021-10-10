@@ -20,6 +20,7 @@ void mdatafile_cache_old_vals(mdatafile_t *file);
 void mdatafile_add_int(mdatafile_t *file, const char *name, int val, bool user_set);
 void mdatafile_add_string(mdatafile_t *file, const char *name, const char *string, bool user_set);
 void mdatafile_add_data(mdatafile_t *file, const char *name, unsigned char *data, int data_len);
+bool mdatafile_get_int(mdatafile_t *file, const char *name, int *int_val);
 bool mdatafile_get_string(mdatafile_t *file, const char *name, const char **string);
 bool mdatafile_get_data(mdatafile_t *file, const char *name, unsigned char **data, int *data_len);
 mfiletime_t mdatafile_get_filetime(mdatafile_t *file);

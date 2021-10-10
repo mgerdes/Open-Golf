@@ -23,8 +23,14 @@ typedef struct golf_renderer_model {
     sg_buffer sg_texcoords_buf;
 } golf_renderer_model_t;
 
+typedef struct golf_renderer_font {
+    sg_image sg_image[3];
+    int image_size[3];
+} golf_renderer_font_t;
+
 typedef map_t(golf_renderer_model_t) map_golf_renderer_model_t;
 typedef map_t(golf_renderer_texture_t) map_golf_renderer_texture_t;
+typedef map_t(golf_renderer_font_t) map_golf_renderer_font_t;
 typedef map_t(sg_shader) map_sg_shader_t;
 typedef map_t(sg_pipeline) map_sg_pipeline_t;
 
@@ -33,6 +39,7 @@ typedef struct golf_renderer {
     map_sg_pipeline_t pipelines_map;
     map_golf_renderer_model_t models_map;
     map_golf_renderer_texture_t textures_map;
+    map_golf_renderer_font_t fonts_map;
 
     mat4 ui_proj_mat;
 } golf_renderer_t;

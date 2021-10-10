@@ -53,3 +53,4 @@ minigolf.worker.js
 *.fdb
 src/membedder/membedded_files.h
 Makefile
+.vscode

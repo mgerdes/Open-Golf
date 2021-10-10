@@ -150,6 +150,8 @@ add_library(mcore STATIC
     src/mcore/mlog.c
     src/mcore/mscript.c
     src/mcore/mstring.c)
+target_link_libraries(mcore PRIVATE
+    stb)
 
 add_library(cimgui STATIC
     src/3rd_party/cimgui/cimgui.cpp)

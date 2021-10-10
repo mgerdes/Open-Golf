@@ -33,9 +33,7 @@ golf_ui_entity_t golf_ui_sprite_entity(const char *name, vec2 pos, vec2 size) {
 
 golf_ui_entity_t golf_ui_sprite_atlas_entity(const char *name, vec2 pos, vec2 size, const char *texture,
         float tile_screen_size, float tile_size, float tile_padding,
-        vec2 tile_top_left, vec2 tile_top, vec2 tile_top_right, 
-        vec2 tile_left, vec2 tile_middle, vec2 tile_right,
-        vec2 tile_bot_left, vec2 tile_bot, vec2 tile_bot_right) {
+        vec2 tile_top, vec2 tile_mid, vec2 tile_bot) {
     golf_ui_entity_t entity;
     entity.type = GOLF_UI_ENTITY_SPRITE_ATLAS;
     entity.sprite_atlas.name = name;
@@ -45,15 +43,9 @@ golf_ui_entity_t golf_ui_sprite_atlas_entity(const char *name, vec2 pos, vec2 si
     entity.sprite_atlas.tile_screen_size = tile_screen_size;
     entity.sprite_atlas.tile_size = tile_size;
     entity.sprite_atlas.tile_padding = tile_padding;
-    entity.sprite_atlas.tile_top_left = tile_top_left;
     entity.sprite_atlas.tile_top = tile_top;
-    entity.sprite_atlas.tile_top_right = tile_top_right;
-    entity.sprite_atlas.tile_left = tile_left;
-    entity.sprite_atlas.tile_middle = tile_middle;
-    entity.sprite_atlas.tile_right = tile_right;
-    entity.sprite_atlas.tile_bot_left = tile_bot_left;
+    entity.sprite_atlas.tile_mid = tile_mid;
     entity.sprite_atlas.tile_bot = tile_bot;
-    entity.sprite_atlas.tile_bot_right = tile_bot_right;
     return entity;
 }
 
@@ -106,21 +98,13 @@ void _ui_menu_import(mdatafile_t *file, void *udata) {
                 float tile_screen_size = (float)json_object_get_number(object, "tile_screen_size");
                 float tile_size = (float)json_object_get_number(object, "tile_size");
                 float tile_padding = (float)json_object_get_number(object, "tile_padding");
-                vec2 tile_top_left = _parse_json_array_vec2(json_object_get_array(object, "tile_top_left"));
                 vec2 tile_top = _parse_json_array_vec2(json_object_get_array(object, "tile_top"));
-                vec2 tile_top_right = _parse_json_array_vec2(json_object_get_array(object, "tile_top_right"));
-                vec2 tile_left = _parse_json_array_vec2(json_object_get_array(object, "tile_left"));
-                vec2 tile_middle = _parse_json_array_vec2(json_object_get_array(object, "tile_middle"));
-                vec2 tile_right = _parse_json_array_vec2(json_object_get_array(object, "tile_right"));
-                vec2 tile_bot_left = _parse_json_array_vec2(json_object_get_array(object, "tile_bot_left"));
+                vec2 tile_mid = _parse_json_array_vec2(json_object_get_array(object, "tile_mid"));
                 vec2 tile_bot = _parse_json_array_vec2(json_object_get_array(object, "tile_bot"));
-                vec2 tile_bot_right = _parse_json_array_vec2(json_object_get_array(object, "tile_bot_right"));
 
                 golf_ui_entity_t entity = golf_ui_sprite_atlas_entity(name, pos, size, texture, 
                         tile_screen_size, tile_size, tile_padding, 
-                        tile_top_left, tile_top, tile_top_right, 
-                        tile_left, tile_middle, tile_right, 
-                        tile_bot_left, tile_bot, tile_bot_right);
+                        tile_top, tile_mid, tile_bot); 
                 vec_push(&menu.entity_vec, entity);
             }
             else {
