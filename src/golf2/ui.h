@@ -9,8 +9,19 @@ typedef enum golf_ui_entity_type {
     GOLF_UI_ENTITY_SPRITE,
     GOLF_UI_ENTITY_SPRITE_ATLAS,
     GOLF_UI_ENTITY_BUTTON,
+    GOLF_UI_ENTITY_BUTTON_SPRITE_ATLAS,
     GOLF_UI_ENTITY_TEXT,
 } golf_ui_entity_type_t;
+
+typedef struct golf_ui_text {
+    const char *text;
+    const char *font;
+    vec2 pos;
+    float size;
+    const char *horizontal_alignment;
+    const char *vertical_alignment;
+    vec4 color;
+} golf_ui_text_t;
 
 typedef struct golf_ui_button {
     const char *name;
@@ -41,17 +52,25 @@ typedef struct golf_ui_sprite_atlas {
     vec2 tile_bot;
 } golf_ui_sprite_atlas_t;
 
-typedef struct golf_ui_text {
-    const char *text;
-    const char *font;
+typedef struct golf_ui_button_sprite_atlas {
+    const char *name;
+    const char *texture;
     vec2 pos;
-    float size;
-} golf_ui_text_t;
+    vec2 size;
+    vec2 down_text_delta;
+    golf_ui_text_t text;
+    golf_ui_sprite_atlas_t up_sprite_atlas;
+    golf_ui_sprite_atlas_t down_sprite_atlas;
+
+    bool is_clicked;
+    bool is_hovered;
+} golf_ui_button_sprite_atlas_t;
 
 typedef struct golf_ui_entity {
     golf_ui_entity_type_t type;
     union {
         golf_ui_button_t button;
+        golf_ui_button_sprite_atlas_t button_sprite_atlas;
         golf_ui_sprite_t sprite;
         golf_ui_sprite_atlas_t sprite_atlas;
         golf_ui_text_t text;
@@ -66,7 +85,8 @@ golf_ui_entity_t golf_ui_sprite_entity(const char *name, vec2 pos, vec2 size);
 golf_ui_entity_t golf_ui_sprite_atlas_entity(const char *name, vec2 pos, vec2 size, const char *texture,
         float tile_screen_size, float tile_size, float tile_padding,
         vec2 tile_top, vec2 tile_mid, vec2 tile_bot); 
-golf_ui_entity_t golf_ui_text_entity(const char *text, const char *font, vec2 pos, float size);
+golf_ui_entity_t golf_ui_text_entity(const char *text, const char *font, vec2 pos, float size, const char *horizontal_alignment, const char *vertical_alignment, vec4 color);
+golf_ui_entity_t golf_ui_button_sprite_atlas_entity(const char *name, vec2 pos, vec2 size, vec2 down_text_delta, golf_ui_entity_t text, golf_ui_entity_t up_sprite_atlas, golf_ui_entity_t down_sprite_atlas);
 
 typedef struct golf_ui_menu {
     void *json_val;
@@ -84,6 +104,7 @@ typedef struct golf_ui {
 golf_ui_t *golf_ui_get(void);
 void golf_ui_init(void);
 void golf_ui_update(float dt);
-void golf_ui_draw(void);
+
+bool golf_ui_get_button_state(const char *name, bool *is_down, bool *is_clicked);
 
 #endif

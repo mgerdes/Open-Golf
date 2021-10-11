@@ -27,6 +27,9 @@ typedef struct golf_renderer_font {
     struct {
         sg_image sg_image;
         int image_size;
+        int font_size;
+        int ascent;
+        int descent;
         struct {
             int x0, y0, x1, y1;
             float xoff, yoff, xadvance;

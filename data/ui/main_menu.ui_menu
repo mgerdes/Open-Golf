@@ -2,7 +2,7 @@
     {
         "type": "sprite_atlas",
         "name": "background",
-        "pos": [300, 400],
+        "pos": [300, 420],
         "size": [400, 400],
         "texture": "data/textures/UIpackSheet_transparent.png",
         "tile_screen_size": 40,
@@ -14,17 +14,63 @@
     },
     {
         "type": "text",
-        "text": "MINIGOLF",
+        "text": "OPEN GOLF",
         "font": "data/font/FiraSans-Bold.ttf",
-        "pos": [250, 600],
-        "size": 32
+        "pos": [300, 540],
+        "size": 64,
+        "horizontal_alignment": "center",
+        "vertical_alignment": "center",
+        "color": [0.4, 0.3, 1.0, 1.0]
     },
     {
-        "type": "button",
+        "type": "text",
+        "text": "A and D to rotate the camera.",
+        "font": "data/font/FiraSans-Bold.ttf",
+        "pos": [120, 270],
+        "size": 16,
+        "horizontal_alignment": "left",
+        "vertical_alignment": "center",
+        "color": [0.4, 0.3, 1.0, 1.0]
+    },
+    {
+        "type": "text",
+        "text": "TAB to view the scorecard.",
+        "font": "data/font/FiraSans-Bold.ttf",
+        "pos": [120, 250],
+        "size": 16,
+        "horizontal_alignment": "left",
+        "vertical_alignment": "center",
+        "color": [0.4, 0.3, 1.0, 1.0]
+    },
+    {
+        "type": "text",
+        "text": "Controls:",
+        "font": "data/font/FiraSans-Bold.ttf",
+        "pos": [120, 300],
+        "size": 32,
+        "horizontal_alignment": "left",
+        "vertical_alignment": "center",
+        "color": [0.4, 0.3, 1.0, 1.0]
+    },
+    {
+        "type": "button_sprite_atlas",
         "name": "start_button",
-        "text": "START",
-        "pos": [250, 520],
+        "pos": [300, 450],
         "size": [200, 55],
-        "down_text_offset": [0, -10]
+        "text": "START",
+        "text_size": 32,
+        "text_color": [1.0, 1.0, 0.5, 1.0],
+        "font": "data/font/FiraSans-Bold.ttf",
+        "down_text_delta": [0, -5],
+        "texture": "data/textures/UIpackSheet_transparent.png",
+        "tile_screen_size": 40,
+        "tile_size": 16,
+        "tile_padding": 2,
+        "up_tile_top": [18, 2],
+        "up_tile_mid": [18, 3],
+        "up_tile_bot": [18, 4],
+        "down_tile_top": [18, 2],
+        "down_tile_mid": [18, 3],
+        "down_tile_bot": [21, 4]
     }
 ]

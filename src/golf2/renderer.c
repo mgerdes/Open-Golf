@@ -9,6 +9,7 @@
 #include "mcore/maths.h"
 #include "mcore/mimport.h"
 #include "mcore/mlog.h"
+#include "mcore/mstring.h"
 #include "golf2/shaders/ui_sprite.glsl.h"
 #include "golf2/ui.h"
 
@@ -144,9 +145,14 @@ static void _texture_import(mdatafile_t *file, void *udata) {
 }
 
 static golf_renderer_texture_t *_renderer_get_texture(const char *path) {
+    static const char *fallback_texture_path = "data/textures/fallback.png";
     golf_renderer_texture_t *texture = map_get(&renderer.textures_map, path);
     if (!texture) {
-        mlog_error("Could not find textures %s", path);
+        texture = map_get(&renderer.textures_map, fallback_texture_path);
+        mlog_warning("Could not find texture %s. Falling back to %s", path, fallback_texture_path);
+        if (!texture) {
+            mlog_error("Cannot find fallback texture %s", fallback_texture_path);
+        }
     }
     return texture;
 }
@@ -277,17 +283,56 @@ static golf_renderer_model_t *_renderer_get_model(const char *path) {
     return model;
 }
 
-static void _font_load_size(golf_renderer_font_t *font, mdatafile_t *file, int index,
-        const char *bitmap_size_name, const char *bitmap_name, const char *char_data_name) {
+static void _font_load_size(golf_renderer_font_t *font, mdatafile_t *file, int index, const char *size_name) {
     int bitmap_size;
-    if (!mdatafile_get_int(file, bitmap_size_name, &bitmap_size)) {
-        mlog_warning("Cannot find property %s on font mdatafile", bitmap_size_name);
+    {
+        mstring_t bitmap_size_name;
+        mstring_initf(&bitmap_size_name, "%s_bitmap_size", size_name);
+        if (!mdatafile_get_int(file, bitmap_size_name.cstr, &bitmap_size)) {
+            mlog_warning("Cannot find property %s on font mdatafile", bitmap_size_name.cstr);
+        }
+        mstring_deinit(&bitmap_size_name);
+    }
+
+    int font_size;
+    {
+        mstring_t font_size_name;
+        mstring_initf(&font_size_name, "%s_font_size", size_name);
+        if (!mdatafile_get_int(file, font_size_name.cstr, &font_size)) {
+            mlog_warning("Cannot find property %s on font mdatafile", font_size_name.cstr);
+        }
+        mstring_deinit(&font_size_name);
+    }
+
+    int ascent;
+    {
+        mstring_t ascent_name;
+        mstring_initf(&ascent_name, "%s_ascent", size_name);
+        if (!mdatafile_get_int(file, ascent_name.cstr, &ascent)) {
+            mlog_warning("Cannot find property %s on font mdatafile", ascent_name.cstr);
+        }
+        mstring_deinit(&ascent_name);
+    }
+
+    int descent;
+    {
+        mstring_t descent_name;
+        mstring_initf(&descent_name, "%s_descent", size_name);
+        if (!mdatafile_get_int(file, descent_name.cstr, &descent)) {
+            mlog_warning("Cannot find property %s on font mdatafile", descent_name.cstr);
+        }
+        mstring_deinit(&descent_name);
     }
 
     unsigned char *bitmap_data;
     int bitmap_data_len;
-    if (!mdatafile_get_data(file, bitmap_name, &bitmap_data, &bitmap_data_len)) {
-        mlog_warning("Cannot find property %s on font mdatafile", bitmap_name);
+    {
+        mstring_t bitmap_data_name;
+        mstring_initf(&bitmap_data_name, "%s_bitmap_data", size_name);
+        if (!mdatafile_get_data(file, bitmap_data_name.cstr, &bitmap_data, &bitmap_data_len)) {
+            mlog_warning("Cannot find property %s on font mdatafile", bitmap_data_name.cstr);
+        }
+        mstring_deinit(&bitmap_data_name);
     }
 
     int x, y, n;
@@ -300,10 +345,18 @@ static void _font_load_size(golf_renderer_font_t *font, mdatafile_t *file, int i
 
     unsigned char *char_data;
     int char_data_len;
-    if (!mdatafile_get_data(file, char_data_name, &char_data, &char_data_len)) {
-        mlog_warning("Cannot find property %s on font mdatafile", char_data_name);
+    {
+        mstring_t char_data_name;
+        mstring_initf(&char_data_name, "%s_char_data", size_name);
+        if (!mdatafile_get_data(file, char_data_name.cstr, &char_data, &char_data_len)) {
+            mlog_warning("Cannot find property %s on font mdatafile", char_data_name.cstr);
+        }
+        mstring_deinit(&char_data_name);
     }
 
+    font->sizes[index].ascent = ascent;
+    font->sizes[index].descent = descent;
+    font->sizes[index].font_size = font_size;
     font->sizes[index].image_size = bitmap_size;
     font->sizes[index].sg_image = sg_make_image(&(sg_image_desc) {
         .width = bitmap_size,
@@ -347,9 +400,9 @@ static void _font_import(mdatafile_t *file, void *udata) {
     const char *name = mdatafile_get_name(file);
 
     golf_renderer_font_t font;
-    _font_load_size(&font, file, 0, "small_bitmap_size", "small_bitmap", "small_char_data");
-    _font_load_size(&font, file, 1, "medium_bitmap_size", "medium_bitmap", "medium_char_data");
-    _font_load_size(&font, file, 2, "large_bitmap_size", "large_bitmap", "large_char_data");
+    _font_load_size(&font, file, 0, "small");
+    _font_load_size(&font, file, 1, "medium");
+    _font_load_size(&font, file, 2, "large");
     map_set(&renderer.fonts_map, mdatafile_get_name(file), font);
 }
 
@@ -384,6 +437,56 @@ void golf_renderer_init(void) {
     mimport_add_importer(".ttf" , _font_import, NULL);
 }
 
+static void _draw_ui_sprite_atlas_section(golf_ui_sprite_atlas_t sprite, int x, int y) {
+    golf_renderer_model_t *square_model = _renderer_get_model("data/models/ui_sprite_square.obj");
+    float px = sprite.pos.x + x * (0.5f * sprite.size.x - 0.5f * sprite.tile_screen_size);
+    float py = sprite.pos.y + y * (0.5f * sprite.size.y - 0.5f * sprite.tile_screen_size);
+
+    float sx = 0.5f * sprite.tile_screen_size;
+    float sy = 0.5f * sprite.tile_screen_size;
+    if (x == 0) {
+        sx = 0.5f*sprite.size.x - 2.0f;
+    }
+    if (y == 0) {
+        sy = 0.5f*sprite.size.y - 2.0f;
+    }
+
+    vec2 tile = V2(0, 0);
+    if (y == -1) {
+        tile = sprite.tile_bot;
+    }
+    else if (y == 0) {
+        tile = sprite.tile_mid;
+    } 
+    else if (y == 1) {
+        tile = sprite.tile_top;
+    }
+
+    ui_sprite_vs_params_t vs_params = {
+        .mvp_mat = mat4_transpose(mat4_multiply_n(3,
+                    renderer.ui_proj_mat,
+                    mat4_translation(V3(px, py, 0.0f)),
+                    mat4_scale(V3(sx, sy, 1.0))))
+
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_sprite_vs_params,
+            &(sg_range) { &vs_params, sizeof(vs_params) } );
+
+    ui_sprite_fs_params_t fs_params = {
+        .tex_x = (sprite.tile_size + sprite.tile_padding) * (tile.x + x + 1),
+        .tex_y = (sprite.tile_size + sprite.tile_padding) * tile.y + sprite.tile_size,
+        .tex_dx = sprite.tile_size, 
+        .tex_dy = -sprite.tile_size,
+        .is_font = 0.0f,
+        .color = V4(0.0f, 1.0f, 1.0f, 1.0f),
+
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_sprite_fs_params,
+            &(sg_range) { &fs_params, sizeof(fs_params) });
+
+    sg_draw(0, square_model->positions.length, 1);
+}
+
 static void _draw_ui_sprite_atlas(golf_ui_sprite_atlas_t sprite) {
     golf_renderer_model_t *square_model = _renderer_get_model("data/models/ui_sprite_square.obj");
 
@@ -396,67 +499,15 @@ static void _draw_ui_sprite_atlas(golf_ui_sprite_atlas_t sprite) {
         sg_apply_bindings(&bindings);
     }
 
-    {
-        float px = sprite.pos.x - (0.5f * sprite.size.x - 0.5f * sprite.tile_screen_size);
-        float py = sprite.pos.y + (0.5f * sprite.size.y - 0.5f * sprite.tile_screen_size);
-        float sx = 0.5f * sprite.tile_screen_size;
-        float sy = 0.5f * sprite.tile_screen_size;
-
-        ui_sprite_vs_params_t vs_params = {
-            .mvp_mat = mat4_transpose(mat4_multiply_n(3,
-                        renderer.ui_proj_mat,
-                        mat4_translation(V3(px, py, 0.0f)),
-                        mat4_scale(V3(sx, sy, 1.0))))
-
-        };
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_sprite_vs_params,
-                &(sg_range) { &vs_params, sizeof(vs_params) } );
-
-        ui_sprite_fs_params_t fs_params = {
-            .tex_x = (sprite.tile_size + sprite.tile_padding) * sprite.tile_top.x,
-            .tex_y = (sprite.tile_size + sprite.tile_padding) * sprite.tile_top.y + sprite.tile_size,
-            .tex_dx = sprite.tile_size, 
-            .tex_dy = -sprite.tile_size,
-            .is_font = 0.0f,
-            .color = V4(0.0f, 1.0f, 1.0f, 1.0f),
-
-        };
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_sprite_fs_params,
-                &(sg_range) { &fs_params, sizeof(fs_params) });
-
-        sg_draw(0, square_model->positions.length, 1);
-    }
-
-    {
-        float px = sprite.pos.x;
-        float py = sprite.pos.y;
-        float sx = 0.5f * (sprite.size.x - sprite.tile_screen_size);
-        float sy = 0.5f * (sprite.size.y - sprite.tile_screen_size);
-
-        ui_sprite_vs_params_t vs_params = {
-            .mvp_mat = mat4_transpose(mat4_multiply_n(3,
-                        renderer.ui_proj_mat,
-                        mat4_translation(V3(px, py, 0.0f)),
-                        mat4_scale(V3(sx, sy, 1.0))))
-
-        };
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_sprite_vs_params,
-                &(sg_range) { &vs_params, sizeof(vs_params) } );
-
-        ui_sprite_fs_params_t fs_params = {
-            .tex_x = (sprite.tile_size + sprite.tile_padding) * (sprite.tile_mid.x + 1),
-            .tex_y = (sprite.tile_size + sprite.tile_padding) * sprite.tile_mid.y + sprite.tile_size,
-            .tex_dx = sprite.tile_size, 
-            .tex_dy = -sprite.tile_size,
-            .is_font = 0.0f,
-            .color = V4(0.0f, 1.0f, 1.0f, 1.0f),
-
-        };
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_sprite_fs_params,
-                &(sg_range) { &fs_params, sizeof(fs_params) });
-
-        sg_draw(0, square_model->positions.length, 1);
-    }
+    _draw_ui_sprite_atlas_section(sprite, 0, 0);
+    _draw_ui_sprite_atlas_section(sprite, 0, -1);
+    _draw_ui_sprite_atlas_section(sprite, 0, 1);
+    _draw_ui_sprite_atlas_section(sprite, -1, 0);
+    _draw_ui_sprite_atlas_section(sprite, 1, 0);
+    _draw_ui_sprite_atlas_section(sprite, -1, -1);
+    _draw_ui_sprite_atlas_section(sprite, 1, -1);
+    _draw_ui_sprite_atlas_section(sprite, -1, 1);
+    _draw_ui_sprite_atlas_section(sprite, 1, 1);
 }
 
 static void _draw_ui_text(golf_ui_text_t text) {
@@ -466,27 +517,67 @@ static void _draw_ui_text(golf_ui_text_t text) {
     int i = 0;
 
     golf_renderer_model_t *square_model = _renderer_get_model("data/models/ui_sprite_square.obj");
-    int sz = 2;
+
+    int sz_idx = 0;
+    for (int idx = 1; idx < 3; idx++) {
+        if (fabsf(font->sizes[idx].font_size - text.size) <
+                fabsf(font->sizes[sz_idx].font_size - text.size)) {
+            sz_idx = idx;
+        }
+    }
+    float sz_scale = text.size / font->sizes[sz_idx].font_size;
 
     {
         sg_bindings bindings = {
             .vertex_buffers[ATTR_ui_sprite_vs_position] = square_model->sg_positions_buf,
             .vertex_buffers[ATTR_ui_sprite_vs_texture_coord] = square_model->sg_texcoords_buf,
-            .fs_images[SLOT_ui_sprite_texture] = font->sizes[sz].sg_image,
+            .fs_images[SLOT_ui_sprite_texture] = font->sizes[sz_idx].sg_image,
         };
         sg_apply_bindings(&bindings);
     }
 
+    float width = 0.0f;
+    while (text.text[i]) {
+        char c = text.text[i];
+        width += sz_scale * font->sizes[sz_idx].chars[c].xadvance;
+        i++;
+    }
+
+    if (strcmp(text.horizontal_alignment, "center") == 0) {
+        cur_x -= 0.5f * width;
+    }
+    else if (strcmp(text.horizontal_alignment, "left") == 0) {
+    }
+    else if (strcmp(text.horizontal_alignment, "right") == 0) {
+        cur_x -= width;
+    }
+    else {
+        mlog_warning("Invalid text horizontal_alignment %s", text.horizontal_alignment);
+    }
+
+    if (strcmp(text.vertical_alignment, "center") == 0) {
+        cur_y -= 0.5f * (font->sizes[sz_idx].ascent + font->sizes[sz_idx].descent);
+    }
+    else if (strcmp(text.vertical_alignment, "top") == 0) {
+    }
+    else if (strcmp(text.vertical_alignment, "bottom") == 0) {
+        cur_y -= (font->sizes[sz_idx].ascent + font->sizes[sz_idx].descent);
+    }
+    else {
+        mlog_warning("Invalid text vertical_alignment %s", text.vertical_alignment);
+    }
+
+    i = 0;
     while (text.text[i]) {
         char c = text.text[i];
 
-        int x0 = font->sizes[sz].chars[c].x0;
-        int x1 = font->sizes[sz].chars[c].x1;
-        int y0 = font->sizes[sz].chars[c].y0;
-        int y1 = font->sizes[sz].chars[c].y1;
-        float xoff = font->sizes[sz].chars[c].xoff;
-        float yoff = font->sizes[sz].chars[c].yoff;
-        float xadvance = font->sizes[sz].chars[c].xadvance;
+        int x0 = font->sizes[sz_idx].chars[c].x0;
+        int x1 = font->sizes[sz_idx].chars[c].x1;
+        int y0 = font->sizes[sz_idx].chars[c].y0;
+        int y1 = font->sizes[sz_idx].chars[c].y1;
+        float xoff = font->sizes[sz_idx].chars[c].xoff;
+        float yoff = font->sizes[sz_idx].chars[c].yoff;
+        float xadvance = font->sizes[sz_idx].chars[c].xadvance;
 
         int round_x = floor((cur_x + xoff) + 0.5f);
         int round_y = floor((cur_y - yoff) + 0.5f);
@@ -502,8 +593,8 @@ static void _draw_ui_text(golf_ui_text_t text) {
         translate.z = 0.0f;
 
         vec3 scale;
-        scale.x = 0.5f * (qx1 - qx0);
-        scale.y = 0.5f * (qy1 - qy0);
+        scale.x = sz_scale * 0.5f * (qx1 - qx0);
+        scale.y = sz_scale * 0.5f * (qy1 - qy0);
         scale.z = 1.0f;
 
         ui_sprite_vs_params_t vs_params = {
@@ -522,7 +613,7 @@ static void _draw_ui_text(golf_ui_text_t text) {
             .tex_dx = x1 - x0, 
             .tex_dy = y1 - y0,
             .is_font = 1.0f,
-            .color = V4(0.6f, 0.6f, 0.6f, 1.0f),
+            .color = text.color,
 
         };
         sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_sprite_fs_params,
@@ -530,11 +621,20 @@ static void _draw_ui_text(golf_ui_text_t text) {
 
         sg_draw(0, square_model->positions.length, 1);
         
-
-        cur_x += font->sizes[sz].chars[c].xadvance;
+        cur_x += sz_scale * font->sizes[sz_idx].chars[c].xadvance;
 
         i++;
     }
+}
+
+static void _draw_ui_button_sprite_atlas(golf_ui_button_sprite_atlas_t button) {
+    if (button.is_hovered) {
+        _draw_ui_sprite_atlas(button.down_sprite_atlas);
+    }
+    else {
+        _draw_ui_sprite_atlas(button.up_sprite_atlas);
+    }
+    _draw_ui_text(button.text);
 }
 
 void golf_renderer_draw(void) {
@@ -586,6 +686,9 @@ void golf_renderer_draw(void) {
                 case GOLF_UI_ENTITY_SPRITE:
                     break;
                 case GOLF_UI_ENTITY_BUTTON:
+                    break;
+                case GOLF_UI_ENTITY_BUTTON_SPRITE_ATLAS:
+                    _draw_ui_button_sprite_atlas(entity.button_sprite_atlas);
                     break;
                 case GOLF_UI_ENTITY_SPRITE_ATLAS:
                     _draw_ui_sprite_atlas(entity.sprite_atlas);

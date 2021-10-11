@@ -87,39 +87,84 @@ void _stbi_write_func(void *context, void *data, int size) {
 }
 
 static void _font_mdatafile_add_size(mfile_t *file, mdatafile_t *mdatafile, 
-        const char *bitmap_size_name, const char *bitmap_name, const char *char_data_name, int font_size, int bitmap_size) {
+        const char *size_name, int font_size, int bitmap_size) {
     unsigned char *bitmap = malloc(bitmap_size * bitmap_size);
     stbtt_bakedchar cdata[96];
     stbtt_BakeFontBitmap(file->data, 0, font_size, bitmap, bitmap_size, bitmap_size, 32, 95, cdata);
 
-    mdatafile_add_int(mdatafile, bitmap_size_name, bitmap_size, false);
-
-    vec_char_t bmp;
-    vec_init(&bmp);
-    stbi_write_bmp_to_func(_stbi_write_func, &bmp, bitmap_size, bitmap_size, 1, bitmap);
-    mdatafile_add_data(mdatafile, bitmap_name, bmp.data, bmp.length);
-
-    mstring_t str;
-    mstring_init(&str, "[");
-    for (int i = 32; i < 126; i++) {
-        stbtt_bakedchar c = cdata[i - 32];
-        mstring_appendf(&str, "[%d, %d, %d, %d, %d, %.3f, %.3f, %.3f]", i, c.x0, c.y0, c.x1, c.y1, c.xoff, c.yoff, c.xadvance);
-        if (i < 125) {
-            mstring_append_cstr(&str, ", ");
-        }
+    float ascent, descent, linegap;
+    stbtt_GetScaledFontVMetrics(file->data, 0, font_size, &ascent, &descent, &linegap);
+    {
+        mstring_t ascent_name;
+        mstring_initf(&ascent_name, "%s_ascent", size_name);
+        mdatafile_add_int(mdatafile, ascent_name.cstr, (int)ascent, false);
+        mstring_deinit(&ascent_name);
     }
-    mstring_append_cstr(&str, "]");
-    mdatafile_add_data(mdatafile, char_data_name, str.cstr, str.len);
 
-    mstring_deinit(&str);
-    vec_deinit(&bmp);
+    {
+        mstring_t descent_name;
+        mstring_initf(&descent_name, "%s_descent", size_name);
+        mdatafile_add_int(mdatafile, descent_name.cstr, (int)descent, false);
+        mstring_deinit(&descent_name);
+    }
+
+    {
+        mstring_t linegap_name;
+        mstring_initf(&linegap_name, "%s_linegap", size_name);
+        mdatafile_add_int(mdatafile, linegap_name.cstr, (int)linegap, false);
+        mstring_deinit(&linegap_name);
+    }
+
+    {
+        mstring_t bitmap_size_name;
+        mstring_initf(&bitmap_size_name, "%s_bitmap_size", size_name);
+        mdatafile_add_int(mdatafile, bitmap_size_name.cstr, bitmap_size, false);
+        mstring_deinit(&bitmap_size_name);
+    }
+
+    {
+        mstring_t font_size_name;
+        mstring_initf(&font_size_name, "%s_font_size", size_name);
+        mdatafile_add_int(mdatafile, font_size_name.cstr, font_size, false);
+        mstring_deinit(&font_size_name);
+    }
+
+    {
+        vec_char_t bmp;
+        vec_init(&bmp);
+        stbi_write_bmp_to_func(_stbi_write_func, &bmp, bitmap_size, bitmap_size, 1, bitmap);
+        mstring_t bitmap_data_name;
+        mstring_initf(&bitmap_data_name, "%s_bitmap_data", size_name);
+        mdatafile_add_data(mdatafile, bitmap_data_name.cstr, bmp.data, bmp.length);
+        mstring_deinit(&bitmap_data_name);
+        vec_deinit(&bmp);
+    }
+
+    {
+        mstring_t str;
+        mstring_init(&str, "[");
+        for (int i = 32; i < 126; i++) {
+            stbtt_bakedchar c = cdata[i - 32];
+            mstring_appendf(&str, "[%d, %d, %d, %d, %d, %.3f, %.3f, %.3f]", i, c.x0, c.y0, c.x1, c.y1, c.xoff, c.yoff, c.xadvance);
+            if (i < 125) {
+                mstring_append_cstr(&str, ", ");
+            }
+        }
+        mstring_append_cstr(&str, "]");
+        mstring_t char_data_name;
+        mstring_initf(&char_data_name, "%s_char_data", size_name);
+        mdatafile_add_data(mdatafile, char_data_name.cstr, str.cstr, str.len);
+        mstring_deinit(&char_data_name);
+        mstring_deinit(&str);
+    }
+
     free(bitmap);
 }
 
 static void _create_font_mdatafile(mfile_t *file, mdatafile_t *mdatafile) {
-    _font_mdatafile_add_size(file, mdatafile, "small_bitmap_size", "small_bitmap", "small_char_data", 16, 128);
-    _font_mdatafile_add_size(file, mdatafile, "medium_bitmap_size", "medium_bitmap", "medium_char_data", 32, 256);
-    _font_mdatafile_add_size(file, mdatafile, "large_bitmap_size", "large_bitmap", "large_char_data", 64, 512);
+    _font_mdatafile_add_size(file, mdatafile, "small", 16, 128);
+    _font_mdatafile_add_size(file, mdatafile, "medium", 32, 256);
+    _font_mdatafile_add_size(file, mdatafile, "large", 64, 512);
 }
 
 static void _create_default_mdatafile(mfile_t *file, mdatafile_t *mdatafile) {
@@ -366,6 +411,11 @@ mdatafile_t *mdatafile_load(const char *path) {
         memset(&val, 0, sizeof(val));
         if (strcmp(type, "int") == 0) {
             int int_val = 0;
+            bool is_neg = false;
+            if (data[i] == '-') {
+                is_neg = true;
+                i++;
+            }
             while (data[i] != '\n') {
                 if (data[i] < '0' || data[i] > '9') {
                     assert(false);
@@ -376,6 +426,9 @@ mdatafile_t *mdatafile_load(const char *path) {
             }
             i++;
 
+            if (is_neg) {
+                int_val *= -1;
+            }
             mdatafile_add_int(mdatafile, name, int_val, false);
         }
         else if (strcmp(type, "string") == 0) {
