@@ -90,10 +90,10 @@ static void _font_mdatafile_add_size(mfile_t *file, mdatafile_t *mdatafile,
         const char *size_name, int font_size, int bitmap_size) {
     unsigned char *bitmap = malloc(bitmap_size * bitmap_size);
     stbtt_bakedchar cdata[96];
-    stbtt_BakeFontBitmap(file->data, 0, font_size, bitmap, bitmap_size, bitmap_size, 32, 95, cdata);
+    stbtt_BakeFontBitmap(file->data, 0, -font_size, bitmap, bitmap_size, bitmap_size, 32, 95, cdata);
 
     float ascent, descent, linegap;
-    stbtt_GetScaledFontVMetrics(file->data, 0, font_size, &ascent, &descent, &linegap);
+    stbtt_GetScaledFontVMetrics(file->data, 0, -font_size, &ascent, &descent, &linegap);
     {
         mstring_t ascent_name;
         mstring_initf(&ascent_name, "%s_ascent", size_name);

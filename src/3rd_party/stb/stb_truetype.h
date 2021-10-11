@@ -3826,7 +3826,8 @@ static int stbtt_BakeFontBitmap_internal(unsigned char *data, int offset,  // fo
    x=y=1;
    bottom_y = 1;
 
-   scale = stbtt_ScaleForPixelHeight(&f, pixel_height);
+  scale = pixel_height > 0 ? stbtt_ScaleForPixelHeight(&f, pixel_height) : stbtt_ScaleForMappingEmToPixels(&f, -pixel_height);
+   //scale = stbtt_ScaleForPixelHeight(&f, pixel_height);
 
    for (i=0; i < num_chars; ++i) {
       int advance, lsb, x0,y0,x1,y1,gw,gh;
