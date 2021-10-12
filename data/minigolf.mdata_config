@@ -1,0 +1,14 @@
+{
+    "properties": [
+        {
+            "type": "int",
+            "name": "game_num_holes",
+            "val": 6
+        },
+        {
+            "type": "int",
+            "name": "game_hole_1_par",
+            "val": 4
+        }
+    ]
+}

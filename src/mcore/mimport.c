@@ -2,10 +2,12 @@
 #include <stdbool.h>
 
 #include "3rd_party/map/map.h"
+#include "3rd_party/parson/parson.h"
 #include "3rd_party/stb/stb_image_write.h"
 #include "3rd_party/stb/stb_truetype.h"
 #include "3rd_party/vec/vec.h"
 #include "mcore/mcommon.h"
+#include "mcore/mdata.h"
 #include "mcore/mfile.h"
 #include "mcore/mimport.h"
 #include "mcore/mlog.h"
@@ -19,10 +21,43 @@ typedef struct _mimporter {
     void *udata;
 } _mimporter_t;
 
+#define _VAL_MAX_NAME_LEN 32
+
+enum _val_type {
+    _VAL_TYPE_INT,
+    _VAL_TYPE_STRING,
+    _VAL_TYPE_DATA,
+};
+
+typedef struct _val {
+    enum _val_type type;
+    union {
+        int int_val;
+        struct {
+            unsigned char *data_val;
+            int data_val_len;
+        };
+        char *string_val;
+    };
+    char name[_VAL_MAX_NAME_LEN];
+    bool user_set;
+} _val_t;
+
+typedef vec_t(_val_t) _vec_val_t;
+
+typedef struct mdatafile {
+    char name[1024];
+    char path[1024];
+    _vec_val_t vals_vec;
+    bool has_cached_vals;
+    _vec_val_t cached_vals_vec;
+    mfiletime_t filetime;
+
+    JSON_Value *json_val;
+} mdatafile_t;
+
 typedef map_t(_mimporter_t) _map_mimporter_t;
 static _map_mimporter_t _importers_map;
-static membedded_file_t *_embedded_files;
-static int _num_embedded_files;
 static mdir_t _data_dir;
 
 static void _create_texture_mdatafile(mfile_t *file, mdatafile_t *mdatafile) {
@@ -172,8 +207,6 @@ static void _create_default_mdatafile(mfile_t *file, mdatafile_t *mdatafile) {
 }
 
 void mimport_init(int num_embedded_files, membedded_file_t *embedded_files) {
-    _num_embedded_files = num_embedded_files;
-    _embedded_files = embedded_files;
     map_init(&_importers_map);
     mdir_init(&_data_dir, "data", true);
     mimport_run();
@@ -185,132 +218,93 @@ void mimport_add_importer(const char *ext, void (*callback)(mdatafile_t *file, v
     importer.callback = callback;
     importer.udata = udata;
     map_set(&_importers_map, ext, importer);
-    if (_embedded_files) {
-        for (int i = 0; i < _num_embedded_files; i++) {
-            if (strcmp(_embedded_files[i].ext, ext) == 0) {
-                mdatafile_t *mdatafile = mdatafile_load(_embedded_files[i].path);
-                callback(mdatafile, udata);
-                mdatafile_delete(mdatafile);
-            }
+    for (int i = 0; i < _data_dir.num_files; i++) {
+        mfile_t file = _data_dir.files[i];
+        if (strcmp(file.ext, ext) != 0) {
+            continue;
         }
-    }
-    else {
-        for (int i = 0; i < _data_dir.num_files; i++) {
-            mfile_t file = _data_dir.files[i];
-            if (strcmp(file.ext, ext) != 0) {
-                continue;
-            }
 
-            mdatafile_t *mdatafile = mdatafile_load(file.path);
-            callback(mdatafile, udata);
-            mdatafile_delete(mdatafile);
-        }
+        mdatafile_t *mdatafile = mdatafile_load(file.path);
+        callback(mdatafile, udata);
+        mdatafile_delete(mdatafile);
     }
 }
 
 void mimport_run(void) {
-    if (!_embedded_files) {
-        int num_files_imported = 0;
+    int num_files_imported = 0;
 
-        for (int i = 0; i < _data_dir.num_files; i++) {
-            mfile_t file = _data_dir.files[i];
-            if (strcmp(file.ext, ".mdata") == 0) {
-                continue;
-            }
-
-            // Check if we need to update the .mdata file
-            mfiletime_t file_time;
-            mfile_get_time(&file, &file_time);
-
-            char mdatafile_path[1030];
-            snprintf(mdatafile_path, 1030, "%s.mdata", file.path);
-            mfile_t mdatafile_file = mfile(mdatafile_path);
-            mfiletime_t mdatafile_file_time;
-            mfile_get_time(&mdatafile_file, &mdatafile_file_time);
-
-            if (mfiletime_cmp(file_time, mdatafile_file_time) < 0) {
-                continue;
-            }
-
-            num_files_imported++;
-            mlog_note("Importing %s", file.path);
-            if (!mfile_load_data(&file)) {
-                mlog_error("Could not load file %s", file.path);
-            }
-
-            mdatafile_t *mdatafile = mdatafile_load(file.path);
-            mdatafile_cache_old_vals(mdatafile);
-
-            if ((strcmp(file.ext, ".png") == 0) ||
-                    (strcmp(file.ext, ".bmp") == 0) || 
-                    (strcmp(file.ext, ".jpg") == 0)) {
-                _create_texture_mdatafile(&file, mdatafile);
-            }
-            else if ((strcmp(file.ext, ".glsl") == 0)) {
-                _create_shader_mdatafile(&file, mdatafile);
-            }
-            else if ((strcmp(file.ext, ".ttf") == 0)) {
-                _create_font_mdatafile(&file, mdatafile);
-            }
-            else if ((strcmp(file.ext, ".cfg") == 0) ||
-                    (strcmp(file.ext, ".mscript") == 0) ||
-                    (strcmp(file.ext, ".ogg") == 0) ||
-                    (strcmp(file.ext, ".fnt") == 0) ||
-                    (strcmp(file.ext, ".terrain_model") == 0) ||
-                    (strcmp(file.ext, ".hole") == 0) ||
-                    (strcmp(file.ext, ".model") == 0) ||
-                    (strcmp(file.ext, ".ui_menu") == 0) ||
-                    (strcmp(file.ext, ".obj") == 0)) {
-                _create_default_mdatafile(&file, mdatafile);
-            }
-            else {
-                mlog_warning("Unknown file type in data folder %s", file.ext); 
-            }
-
-            _mimporter_t *importer = map_get(&_importers_map, file.ext);
-            if (importer) {
-                importer->callback(mdatafile, importer->udata);
-            }
-
-            mdatafile_save(mdatafile);
-            mdatafile_delete(mdatafile);
-            mfile_free_data(&file);
+    for (int i = 0; i < _data_dir.num_files; i++) {
+        mfile_t file = _data_dir.files[i];
+        if ((strcmp(file.ext, ".mdata") == 0) ||
+                (strcmp(file.ext, ".mdata_texture") == 0) ||
+                (strcmp(file.ext, ".mdata_shader") == 0) ||
+                (strcmp(file.ext, ".mdata_config") == 0) ||
+                (strcmp(file.ext, ".mdata_font") == 0)) {
+            continue;
         }
+
+        // Check if we need to update the .mdata file
+        mfiletime_t file_time;
+        mfile_get_time(&file, &file_time);
+
+        char mdatafile_path[1030];
+        snprintf(mdatafile_path, 1030, "%s.mdata", file.path);
+        mfile_t mdatafile_file = mfile(mdatafile_path);
+        mfiletime_t mdatafile_file_time;
+        mfile_get_time(&mdatafile_file, &mdatafile_file_time);
+
+        //if (mfiletime_cmp(file_time, mdatafile_file_time) < 0) {
+        //continue;
+        //}
+
+        num_files_imported++;
+        mlog_note("Importing %s", file.path);
+        if (!mfile_load_data(&file)) {
+            mlog_error("Could not load file %s", file.path);
+        }
+
+        mdatafile_t *mdatafile = mdatafile_load(file.path);
+        mdatafile_cache_old_vals(mdatafile);
+
+        if ((strcmp(file.ext, ".png") == 0) ||
+                (strcmp(file.ext, ".bmp") == 0) || 
+                (strcmp(file.ext, ".jpg") == 0)) {
+            mdata_texture_import(&file);
+            _create_texture_mdatafile(&file, mdatafile);
+        }
+        else if ((strcmp(file.ext, ".glsl") == 0)) {
+            mdata_shader_import(&file);
+            _create_shader_mdatafile(&file, mdatafile);
+        }
+        else if ((strcmp(file.ext, ".ttf") == 0)) {
+            mdata_font_import(&file);
+            _create_font_mdatafile(&file, mdatafile);
+        }
+        else if ((strcmp(file.ext, ".cfg") == 0) ||
+                (strcmp(file.ext, ".mscript") == 0) ||
+                (strcmp(file.ext, ".ogg") == 0) ||
+                (strcmp(file.ext, ".fnt") == 0) ||
+                (strcmp(file.ext, ".terrain_model") == 0) ||
+                (strcmp(file.ext, ".hole") == 0) ||
+                (strcmp(file.ext, ".model") == 0) ||
+                (strcmp(file.ext, ".ui_menu") == 0) ||
+                (strcmp(file.ext, ".obj") == 0)) {
+            _create_default_mdatafile(&file, mdatafile);
+        }
+        else {
+            mlog_warning("Unknown file type in data folder %s", file.ext); 
+        }
+
+        _mimporter_t *importer = map_get(&_importers_map, file.ext);
+        if (importer) {
+            importer->callback(mdatafile, importer->udata);
+        }
+
+        mdatafile_save(mdatafile);
+        mdatafile_delete(mdatafile);
+        mfile_free_data(&file);
     }
 }
-
-#define _VAL_MAX_NAME_LEN 32
-
-enum _val_type {
-    _VAL_TYPE_INT,
-    _VAL_TYPE_STRING,
-    _VAL_TYPE_DATA,
-};
-
-typedef struct _val {
-    enum _val_type type;
-    union {
-        int int_val;
-        struct {
-            unsigned char *data_val;
-            int data_val_len;
-        };
-        char *string_val;
-    };
-    char name[_VAL_MAX_NAME_LEN];
-    bool user_set;
-} _val_t;
-
-typedef vec_t(_val_t) _vec_val_t;
-
-typedef struct mdatafile {
-    char name[1024];
-    char path[1024];
-    _vec_val_t vals_vec;
-    bool has_cached_vals;
-    _vec_val_t cached_vals_vec;
-    mfiletime_t filetime;
-} mdatafile_t;
 
 static _val_t _create_int_val(const char *name, int int_val) {
     _val_t val;
@@ -351,19 +345,8 @@ mdatafile_t *mdatafile_load(const char *path) {
     unsigned char *data = NULL;
     int data_len = 0;
 
-    if (_embedded_files) {
-        for (int i = 0; i < _num_embedded_files; i++) {
-            if (strcmp(_embedded_files[i].path, mdatafile->name) == 0) {
-                data = (unsigned char*) _embedded_files[i].data;
-                data_len = _embedded_files[i].data_len;
-                break;
-            }
-        }
-    }
-    else {
-        if (!mread_file(mdatafile->path, &data, &data_len)) {
-            return mdatafile;
-        }
+    if (!mread_file(mdatafile->path, &data, &data_len)) {
+        return mdatafile;
     }
 
     if (!data) {
@@ -461,11 +444,7 @@ mdatafile_t *mdatafile_load(const char *path) {
         }
     }
 
-    if (_embedded_files) {
-    }
-    else {
-        free(data);
-    }
+    free(data);
     return mdatafile;
 }
 

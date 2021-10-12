@@ -46,6 +46,7 @@ static void frame(void) {
     if (!inited) {
         mlog_init();
         mimport_init(0, NULL);
+        exit(0);
 
         golf_inputs_init();
         golf_debug_console_init();
