@@ -151,6 +151,19 @@ add_library(mcore STATIC
     src/mcore/mlog.c
     src/mcore/mscript.c
     src/mcore/mstring.c)
+if(CMAKE_SYSTEM_NAME STREQUAL Windows)
+    target_compile_definitions(mcore PUBLIC
+        MARS_PLATFORM_WIN32)
+elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
+    target_compile_definitions(mcore PUBLIC
+        MARS_PLATFORM_MACOS)
+elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
+    target_compile_definitions(mcore PUBLIC
+        MARS_PLATFORM_LINUX)
+elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
+    target_compile_definitions(mcore PUBLIC
+        MARS_PLATFORM_IOS)
+endif()
 target_link_libraries(mcore PRIVATE
     parson
     stb)
