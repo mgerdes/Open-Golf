@@ -1,0 +1,1 @@
+{"vertices":[{"position":[-1,-1,0],"texcoord":[0,0],"normal":[0,0,1]},{"position":[1,-1,0],"texcoord":[1,0],"normal":[0,0,1]},{"position":[1,1,0],"texcoord":[1,1],"normal":[0,0,1]},{"position":[-1,-1,0],"texcoord":[0,0],"normal":[0,0,1]},{"position":[1,1,0],"texcoord":[1,1],"normal":[0,0,1]},{"position":[-1,1,0],"texcoord":[0,1],"normal":[0,0,1]}]}

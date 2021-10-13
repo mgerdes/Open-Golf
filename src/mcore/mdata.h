@@ -1,6 +1,7 @@
 #ifndef _MCORE_MDATA_H
 #define _MCORE_MDATA_H
 
+#include "mcore/maths.h"
 #include "mcore/mfile.h"
 
 //
@@ -10,7 +11,8 @@
 typedef struct mdata_texture_t {
     void *json_val;
     const char *filter;
-    const unsigned char *data;
+    unsigned char *data;
+    int data_len;
 } mdata_texture_t;
 
 void mdata_texture_import(mfile_t *file);
@@ -35,8 +37,12 @@ void mdata_config_free(mdata_config_t *data);
 
 typedef struct mdata_shader {
     void *json_val;
-    const char *glsl300es_fs, *glsl300es_vs; 
-    const char *glsl330_fs, *glsl330_vs; 
+    struct {
+        const char *fs, *vs;
+    } glsl300es;
+    struct {
+        const char *fs, *vs;
+    } glsl330;
 } mdata_shader_t;
 
 void mdata_shader_import(mfile_t *file);
@@ -54,9 +60,10 @@ typedef struct mdata_font_atlas_char_data {
 
 typedef struct mdata_font_atlas {
     int bmp_size;
+    int bmp_data_len;
     unsigned char *bmp_data;
     float ascent, descent, linegap, font_size;
-    mdata_font_atlas_char_data_t char_data[96];
+    mdata_font_atlas_char_data_t char_data[256];
 } mdata_font_atlas_t;
 
 typedef struct mdata_font {
@@ -65,7 +72,22 @@ typedef struct mdata_font {
 } mdata_font_t;
 
 void mdata_font_import(mfile_t *file);
-mdata_texture_t *mdata_font_load(const char *path);
-void mdata_font_free(mdata_texture_t *data);
+mdata_font_t *mdata_font_load(const char *path);
+void mdata_font_free(mdata_font_t *data);
+
+//
+// MODEL
+//
+
+typedef struct mdata_model {
+    void *json_val;
+    vec_vec3_t positions;
+    vec_vec2_t texcoords;
+    vec_vec3_t normals;
+} mdata_model_t;
+
+void mdata_model_import(mfile_t *file);
+mdata_model_t *mdata_model_load(const char *path);
+void mdata_model_free(mdata_model_t *data);
 
 #endif

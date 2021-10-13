@@ -165,6 +165,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
         MARS_PLATFORM_IOS)
 endif()
 target_link_libraries(mcore PRIVATE
+    fast_obj
     parson
     stb)
 

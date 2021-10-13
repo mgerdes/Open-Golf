@@ -239,6 +239,7 @@ void mimport_run(void) {
                 (strcmp(file.ext, ".mdata_texture") == 0) ||
                 (strcmp(file.ext, ".mdata_shader") == 0) ||
                 (strcmp(file.ext, ".mdata_config") == 0) ||
+                (strcmp(file.ext, ".mdata_model") == 0) ||
                 (strcmp(file.ext, ".mdata_font") == 0)) {
             continue;
         }
@@ -279,6 +280,10 @@ void mimport_run(void) {
         else if ((strcmp(file.ext, ".ttf") == 0)) {
             mdata_font_import(&file);
             _create_font_mdatafile(&file, mdatafile);
+        }
+        else if((strcmp(file.ext, ".obj") == 0)) {
+            mdata_model_import(&file);
+            _create_default_mdatafile(&file, mdatafile);
         }
         else if ((strcmp(file.ext, ".cfg") == 0) ||
                 (strcmp(file.ext, ".mscript") == 0) ||
