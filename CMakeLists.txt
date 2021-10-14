@@ -78,7 +78,7 @@ add_library(mcore STATIC
     src/mcore/mstring.c)
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
     target_compile_definitions(mcore PUBLIC
-        MARS_PLATFORM_WIN32)
+        MARS_PLATFORM_WINDOWS)
 elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
     target_compile_definitions(mcore PUBLIC
         MARS_PLATFORM_MACOS)
