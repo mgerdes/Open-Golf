@@ -1,0 +1,19 @@
+{
+	"properties": [
+		{
+			"type": "vec2",
+			"name": "background_pos",
+			"val": [10, 10]
+		},
+		{
+			"type": "vec2",
+			"name": "background_size",
+			"val": [10, 10]
+		},
+		{
+			"type": "string",
+			"name": "main_text",
+			"val": "GOLF"
+		}
+	]
+}

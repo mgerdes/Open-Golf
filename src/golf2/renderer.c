@@ -2,10 +2,7 @@
 
 #include <assert.h>
 
-#include "3rd_party/fast_obj/fast_obj.h"
-#include "3rd_party/parson/parson.h"
 #include "3rd_party/stb/stb_image.h"
-#include "3rd_party/stb/stb_image_write.h"
 #include "3rd_party/sokol/sokol_app.h"
 #include "3rd_party/sokol/sokol_gfx.h"
 #include "mcore/maths.h"
@@ -18,7 +15,7 @@
 
 static golf_renderer_t renderer;
 
-static void _load_shader_base(const char *path, mdata_shader_t *shader_data, const sg_shader_desc *const_shader_desc, sg_shader *shader) {
+static void _load_shader_make_sg_shader(const char *path, mdata_shader_t *shader_data, const sg_shader_desc *const_shader_desc, sg_shader *shader) {
     const char *fs = NULL, *vs = NULL;
 #if SOKOL_GLCORE33
     fs = shader_data->glsl330.fs;
@@ -40,7 +37,7 @@ static void _load_shader_base(const char *path, mdata_shader_t *shader_data, con
 
 static void _load_shader_ui_sprite(const char *path, mdata_shader_t *shader_data) {
     sg_shader shader;
-    _load_shader_base(path, shader_data, ui_sprite_shader_desc(sg_query_backend()), &shader);
+    _load_shader_make_sg_shader(path, shader_data, ui_sprite_shader_desc(sg_query_backend()), &shader);
     map_set(&renderer.shaders_map, path, shader);
 
     sg_pipeline pipeline = sg_make_pipeline(&(sg_pipeline_desc){
@@ -139,8 +136,8 @@ static void _load_font_atlas(const char *path, mdata_font_atlas_t *atlas, sg_ima
     }
 
     *atlas_image = sg_make_image(&(sg_image_desc) {
-        .width = bitmap_size,
-        .height = bitmap_size,
+        .width = atlas->bmp_size,
+        .height = atlas->bmp_size,
         .pixel_format = SG_PIXELFORMAT_RGBA8,
         .min_filter = SG_FILTER_LINEAR,
         .mag_filter = SG_FILTER_LINEAR,
@@ -151,16 +148,19 @@ static void _load_font_atlas(const char *path, mdata_font_atlas_t *atlas, sg_ima
             .size = 4*sizeof(char)*x*y,
         },
     });
+
+	free(data);
 }
 
 static bool _load_font(const char *path, mdata_t data) {
     assert(data.type == MDATA_FONT);
-    mdata_font *font_data = data->font;
+    mdata_font_t *font_data = data.font;
 
     golf_renderer_font_t font;
-    _load_font_atlas(path, &font_data->atlases[0], &font->atlas_images[0]);
-    _load_font_atlas(path, &font_data->atlases[1], &font->atlas_images[1]);
-    _load_font_atlas(path, &font_data->atlases[2], &font->atlas_images[2]);
+	font.font_data = font_data;
+    _load_font_atlas(path, &font_data->atlases[0], &font.atlas_images[0]);
+    _load_font_atlas(path, &font_data->atlases[1], &font.atlas_images[1]);
+    _load_font_atlas(path, &font_data->atlases[2], &font.atlas_images[2]);
     map_set(&renderer.fonts_map, path, font);
 }
 
@@ -170,10 +170,97 @@ static bool _unload_font(const char *path, mdata_t data) {
 
 static bool _load_model(const char *path, mdata_t data) {
     assert(data.type == MDATA_MODEL);
+	mdata_model_t *model_data = data.model;
+
+	golf_renderer_model_t model;
+	model.model_data = model_data;
+
+	{
+		sg_buffer_desc desc = {
+			.type = SG_BUFFERTYPE_VERTEXBUFFER,
+		};
+
+		desc.data.size = sizeof(vec3) * model_data->positions.length;
+		desc.data.ptr = model_data->positions.data;
+		model.sg_positions_buf = sg_make_buffer(&desc);
+
+		desc.data.size = sizeof(vec3) * model_data->normals.length;
+		desc.data.ptr = model_data->normals.data;
+		model.sg_normals_buf = sg_make_buffer(&desc);
+
+		desc.data.size = sizeof(vec2) * model_data->texcoords.length;
+		desc.data.ptr = model_data->texcoords.data;
+		model.sg_texcoords_buf = sg_make_buffer(&desc);
+	}
+
+	map_set(&renderer.models_map, path, model);
 }
 
 static bool _unload_model(const char *path, mdata_t data) {
     assert(data.type == MDATA_MODEL);
+}
+
+static bool _load_ui_pixel_pack(const char *path, mdata_t data) {
+    assert(data.type == MDATA_UI_PIXEL_PACK);
+	mdata_ui_pixel_pack_t *ui_pixel_pack_data = data.ui_pixel_pack;
+
+	golf_renderer_texture_t *texture = map_get(&renderer.textures_map, ui_pixel_pack_data->texture);
+	if (!texture) {
+		mlog_warning("Texture %s must be loaded to load ui pixel pack %s", ui_pixel_pack_data->texture, path);
+		return false;
+	}
+
+	float s = ui_pixel_pack_data->tile_size;
+	float p = ui_pixel_pack_data->tile_padding;
+	float w = texture->width;
+	float h = texture->height;
+
+	golf_renderer_ui_pixel_pack_t ui_pixel_pack;
+	ui_pixel_pack.texture = ui_pixel_pack_data->texture;
+	map_init(&ui_pixel_pack.squares);
+	map_init(&ui_pixel_pack.icons);
+
+	for (int i = 0; i < ui_pixel_pack_data->squares.length; i++) {
+		mdata_ui_pixel_pack_square_t square_data = ui_pixel_pack_data->squares.data[i];
+
+		golf_renderer_ui_pixel_pack_square_t square; 
+		square.tl.uv0 = V2(((s + p) * square_data.tl.x) / w, 		((s + p) * square_data.tl.y) / h);
+		square.tl.uv1 = V2(((s + p) * square_data.tl.x + s) / w, 	((s + p) * square_data.tl.y + s) / h);
+		square.tm.uv0 = V2(((s + p) * square_data.tm.x) / w, 		((s + p) * square_data.tm.y) / h);
+		square.tm.uv1 = V2(((s + p) * square_data.tm.x + s) / w, 	((s + p) * square_data.tm.y + s) / h);
+		square.tr.uv0 = V2(((s + p) * square_data.tr.x) / w, 		((s + p) * square_data.tr.y) / h);
+		square.tr.uv1 = V2(((s + p) * square_data.tr.x + s) / w, 	((s + p) * square_data.tr.y + s) / h);
+
+		square.ml.uv0 = V2(((s + p) * square_data.ml.x) / w, 		((s + p) * square_data.ml.y) / h);
+		square.ml.uv1 = V2(((s + p) * square_data.ml.x + s) / w, 	((s + p) * square_data.ml.y + s) / h);
+		square.mm.uv0 = V2(((s + p) * square_data.mm.x) / w, 		((s + p) * square_data.mm.y) / h);
+		square.mm.uv1 = V2(((s + p) * square_data.mm.x + s) / w, 	((s + p) * square_data.mm.y + s) / h);
+		square.mr.uv0 = V2(((s + p) * square_data.mr.x) / w, 		((s + p) * square_data.mr.y) / h);
+		square.mr.uv1 = V2(((s + p) * square_data.mr.x + s) / w, 	((s + p) * square_data.mr.y + s) / h);
+
+		square.bl.uv0 = V2(((s + p) * square_data.bl.x) / w, 		((s + p) * square_data.bl.y) / h);
+		square.bl.uv1 = V2(((s + p) * square_data.bl.x + s) / w, 	((s + p) * square_data.bl.y + s) / h);
+		square.bm.uv0 = V2(((s + p) * square_data.bm.x) / w, 		((s + p) * square_data.bm.y) / h);
+		square.bm.uv1 = V2(((s + p) * square_data.bm.x + s) / w, 	((s + p) * square_data.bm.y + s) / h);
+		square.br.uv0 = V2(((s + p) * square_data.br.x) / w, 		((s + p) * square_data.br.y) / h);
+		square.br.uv1 = V2(((s + p) * square_data.br.x + s) / w, 	((s + p) * square_data.br.y + s) / h);
+
+		map_set(&ui_pixel_pack.squares, square_data.name, square);
+	}
+
+	for (int i = 0; i < ui_pixel_pack_data->icons.length; i++) {
+		mdata_ui_pixel_pack_icon_t icon_data = ui_pixel_pack_data->icons.data[i];
+		golf_renderer_ui_pixel_pack_icon_t icon;
+		icon.uv0 = V2(((s + p) * icon_data.x) / w, 		((s + p) * icon_data.y) / h);
+		icon.uv1 = V2(((s + p) * icon_data.x + s) / w, 	((s + p) * icon_data.y + s) / h);
+		map_set(&ui_pixel_pack.icons, icon_data.name, icon);
+	}
+
+	map_set(&renderer.ui_pixel_packs_map, path, ui_pixel_pack);
+}
+
+static bool _unload_ui_pixel_pack(const char *path, mdata_t data) {
+
 }
 
 golf_renderer_t *golf_renderer_get(void) {
@@ -186,38 +273,13 @@ void golf_renderer_init(void) {
     map_init(&renderer.textures_map);
     map_init(&renderer.fonts_map);
     map_init(&renderer.models_map);
+	map_init(&renderer.ui_pixel_packs_map);
 
-    {
-        mdata_loader_t loader;
-        loader.type = MDATA_SHADER;
-        loader.load = _load_shader;
-        loader.unload = _unload_shader;
-        mdata_add_loader(loader);
-    }
-
-    {
-        mdata_loader_t loader;
-        loader.type = MDATA_TEXTURE;
-        loader.load = _load_texture;
-        loader.unload = _unload_texture;
-        mdata_add_loader(loader);
-    }
-
-    {
-        mdata_loader_t loader;
-        loader.type = MDATA_FONT;
-        loader.load = _load_font;
-        loader.unload = _unload_font;
-        mdata_add_loader(loader);
-    }
-
-    {
-        mdata_loader_t loader;
-        loader.type = MDATA_MODEL;
-        loader.load = _load_model;
-        loader.unload = _unload_model;
-        mdata_add_loader(loader);
-    }
+	mdata_add_loader(MDATA_SHADER, _load_shader, _unload_shader);
+	mdata_add_loader(MDATA_TEXTURE, _load_texture, _unload_texture);
+	mdata_add_loader(MDATA_FONT, _load_font, _unload_font);
+	mdata_add_loader(MDATA_MODEL, _load_model, _unload_model);
+	mdata_add_loader(MDATA_UI_PIXEL_PACK, _load_ui_pixel_pack, _unload_ui_pixel_pack);
 }
 
 void golf_renderer_draw(void) {

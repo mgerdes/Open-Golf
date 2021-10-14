@@ -24,6 +24,7 @@ set(GOLF_BASE_LIBRARIES
     xatlas)
 
 add_executable(minigolf2
+    src/golf2/config.c
     src/golf2/debug_console.c
     src/golf2/game.c
     src/golf2/inputs.c

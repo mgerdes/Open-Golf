@@ -10,7 +10,6 @@
 //
 
 typedef struct mdata_texture_t {
-	int load_count;
     void *json_val;
     const char *filter;
     unsigned char *data;
@@ -25,9 +24,32 @@ void mdata_texture_free(mdata_texture_t *data);
 // CONFIG
 //
 
+typedef enum mdata_config_property_type {
+    MDATA_CONFIG_PROPERTY_STRING,
+    MDATA_CONFIG_PROPERTY_NUMBER,
+    MDATA_CONFIG_PROPERTY_VEC2,
+    MDATA_CONFIG_PROPERTY_VEC3,
+    MDATA_CONFIG_PROPERTY_VEC4,
+} mdata_config_property_type_t;
+
+typedef struct mdata_config_property {
+    mdata_config_property_type_t type; 
+    const char *name;
+    union {
+        const char *string_val;
+        float number_val;
+        vec2 vec2_val;
+        vec3 vec3_val;
+        vec4 vec4_val;
+    };
+} mdata_config_property_t;
+
+typedef vec_t(mdata_config_property_t) vec_mdata_config_property_t;
+typedef map_t(mdata_config_property_t) map_mdata_config_property_t;
+
 typedef struct mdata_config {
-	int load_count;
     void *json_val;
+	vec_mdata_config_property_t properties;
 } mdata_config_t;
 
 void mdata_config_import(mfile_t *file);
@@ -39,7 +61,6 @@ void mdata_config_free(mdata_config_t *data);
 //
 
 typedef struct mdata_shader {
-	int load_count;
     void *json_val;
     struct {
         const char *fs, *vs;
@@ -71,7 +92,6 @@ typedef struct mdata_font_atlas {
 } mdata_font_atlas_t;
 
 typedef struct mdata_font {
-    int load_count;
     void *json_val;
     mdata_font_atlas_t atlases[3];
 } mdata_font_t;
@@ -85,7 +105,6 @@ void mdata_font_free(mdata_font_t *data);
 //
 
 typedef struct mdata_model {
-	int load_count;
     void *json_val;
     vec_vec3_t positions;
     vec_vec2_t texcoords;
@@ -97,6 +116,41 @@ mdata_model_t *mdata_model_load(const char *path);
 void mdata_model_free(mdata_model_t *data);
 
 //
+// UI PIXEL PACK
+//
+
+typedef struct mdata_ui_pixel_pack_square {
+	const char *name;
+	vec2 tl, tm, tr;
+	vec2 ml, mm, mr;
+	vec2 bl, bm, br;
+} mdata_ui_pixel_pack_square_t;
+
+typedef vec_t(mdata_ui_pixel_pack_square_t) vec_mdata_ui_pixel_pack_square_t;
+
+typedef struct mdata_ui_pixel_pack_icon {
+	const char *name;
+	int x, y;
+} mdata_ui_pixel_pack_icon_t;
+
+typedef vec_t(mdata_ui_pixel_pack_icon_t) vec_mdata_ui_pixel_pack_icon_t;
+
+typedef struct mdata_ui_pixel_pack {
+	void *json_val;
+	const char *texture;
+	int tile_size;
+	int tile_padding;
+	vec_mdata_ui_pixel_pack_square_t squares;
+	vec_mdata_ui_pixel_pack_icon_t icons;
+} mdata_ui_pixel_pack_t;
+
+typedef map_t(mdata_ui_pixel_pack_t*) map_mdata_ui_pixel_pack_t;
+
+void mdata_ui_pixel_pack_import(mfile_t *file);
+mdata_ui_pixel_pack_t *mdata_ui_pixel_pack_load(const char *path);
+void mdata_ui_pixel_pack_free(mdata_ui_pixel_pack_t *data);
+
+//
 // MDATA
 //
 
@@ -106,6 +160,7 @@ typedef enum mdata_type {
 	MDATA_FONT,
 	MDATA_MODEL,
 	MDATA_CONFIG,
+	MDATA_UI_PIXEL_PACK,
 } mdata_type_t;
 
 typedef struct mdata {
@@ -118,6 +173,7 @@ typedef struct mdata {
 		mdata_font_t *font;
 		mdata_model_t *model;
 		mdata_config_t *config;
+		mdata_ui_pixel_pack_t *ui_pixel_pack;
 	};
 } mdata_t;
 
@@ -133,7 +189,7 @@ typedef vec_t(mdata_loader_t) vec_mdata_loader_t;
 
 void mdata_init(void);
 void mdata_run_import(void);
-void mdata_add_loader(mdata_loader_t loader);
+void mdata_add_loader(mdata_type_t type, bool(*load)(const char *path, mdata_t data), bool(*unload)(const char *path, mdata_t data));
 void mdata_load_file(const char *path);
 void mdata_unload_file(const char *path);
 

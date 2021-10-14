@@ -9,6 +9,7 @@
 #include "3rd_party/sokol/sokol_time.h"
 #include "mcore/mdata.h"
 #include "mcore/mlog.h"
+#include "golf2/config.h"
 #include "golf2/debug_console.h"
 #include "golf2/game.h"
 #include "golf2/inputs.h"
@@ -48,6 +49,7 @@ static void frame(void) {
         mdata_init();
         mdata_run_import();
 
+        golf_config_init();
         golf_inputs_init();
         golf_debug_console_init();
         golf_game_init();
@@ -57,8 +59,13 @@ static void frame(void) {
 
         mdata_load_file("data/shaders/ui_sprite.glsl");
         mdata_load_file("data/textures/UIpackSheet_transparent.png");
-
-        exit(0);
+        mdata_load_file("data/textures/UIpackSheet_transparent.ui_pixel_pack");
+        mdata_load_file("data/font/FantasqueSansMono-Bold.ttf");
+        mdata_load_file("data/font/FiraSans-Bold.ttf");
+        mdata_load_file("data/font/SourceSans3-Bold.ttf");
+        mdata_load_file("data/font/DroidSerif-Bold.ttf");
+        mdata_load_file("data/models/ui_sprite_square.obj");
+        mdata_load_file("data/config/ui/main_menu.cfg");
     }
 
     {
@@ -78,7 +85,7 @@ static void frame(void) {
         time_since_import += dt;
         if (time_since_import > 1.0f) {
             time_since_import = 0.0f;
-            mdata_run_import();
+            //mdata_run_import();
         }
     }
 
