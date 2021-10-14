@@ -532,7 +532,7 @@ mdata_model_t *mdata_model_load(const char *path) {
     for (int i = 0; i < json_array_get_count(vertices); i++) {
         JSON_Object *vertex_obj = json_array_get_object(vertices, i);
         JSON_Array *position_array = json_object_get_array(vertex_obj, "position");
-        JSON_Array *texturecoord_array = json_object_get_array(vertex_obj, "texturecoord");
+        JSON_Array *texturecoord_array = json_object_get_array(vertex_obj, "texcoord");
         JSON_Array *normal_array = json_object_get_array(vertex_obj, "normal");
 
         vec3 p = V3(json_array_get_number(position_array, 0), 
