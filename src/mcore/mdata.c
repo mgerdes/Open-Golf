@@ -27,7 +27,7 @@ static void _mdata_json_object_set_data(JSON_Object *obj, const char *name, unsi
 void mdata_texture_import(mfile_t *file) {
     mdata_texture_t *existing_data = mdata_texture_load(file->path);
 
-    JSON_Value *val = json_value_init_object();
+	JSON_Value *val = json_value_init_object();
     JSON_Object *obj = json_value_get_object(val);
 
     json_object_set_string(obj, "filter", "linear");
@@ -39,7 +39,7 @@ void mdata_texture_import(mfile_t *file) {
     }
 
     mstring_t mdata_texture_file_path;
-    mstring_initf(&mdata_texture_file_path, "%s.mdata_texture", file->path);
+    mstring_initf(&mdata_texture_file_path, "%s.mdata", file->path);
     json_serialize_to_file_pretty(val, mdata_texture_file_path.cstr);
     mstring_deinit(&mdata_texture_file_path);
     json_value_free(val);
@@ -49,7 +49,7 @@ mdata_texture_t *mdata_texture_load(const char *path) {
     mfile_t mdata_file;
     {
         mstring_t mdata_file_path;
-        mstring_initf(&mdata_file_path, "%s.mdata_texture", path);
+        mstring_initf(&mdata_file_path, "%s.mdata", path);
         mdata_file = mfile(mdata_file_path.cstr);
         mstring_deinit(&mdata_file_path);
     }
@@ -89,26 +89,24 @@ static JSON_Value *_mdata_shader_import_bare(const char *base_name, const char *
     {
         mstring_t fs_bare_name;
         mstring_initf(&fs_bare_name, "%s_%s_fs.glsl", base_name, name);
-        unsigned char *fs_data;
-        int fs_data_len;
-        if (!mread_file(fs_bare_name.cstr, &fs_data, &fs_data_len)) {
+        mfile_t fs_file = mfile(fs_bare_name.cstr);
+        if (!mfile_load_data(&fs_file)) {
             mlog_error("Failed to read file %s", fs_bare_name.cstr);
         }
-        _mdata_json_object_set_data(obj, "fs", fs_data, fs_data_len);
-        free(fs_data);
+        json_object_set_string(obj, "fs", fs_file.data);
+        mfile_free_data(&fs_file);
         mstring_deinit(&fs_bare_name);
     }
 
     {
         mstring_t vs_bare_name;
         mstring_initf(&vs_bare_name, "%s_%s_vs.glsl", base_name, name);
-        unsigned char *vs_data;
-        int vs_data_len;
-        if (!mread_file(vs_bare_name.cstr, &vs_data, &vs_data_len)) {
+        mfile_t vs_file = mfile(vs_bare_name.cstr);
+        if (!mfile_load_data(&vs_file)) {
             mlog_error("Failed to read file %s", vs_bare_name.cstr);
         }
-        _mdata_json_object_set_data(obj, "vs", vs_data, vs_data_len);
-        free(vs_data);
+        json_object_set_string(obj, "vs", vs_file.data);
+        mfile_free_data(&vs_file);
         mstring_deinit(&vs_bare_name);
     }
 
@@ -125,6 +123,7 @@ void mdata_shader_import(mfile_t *file) {
 #if MARS_PLATFORM_LINUX
         mstring_initf(&cmd, "tools/sokol-tools/linux/sokol-shdc --input %s --output src/golf2/shaders/%s.h --slang %s", file->path, file->name, slangs);
 #elif MARS_PLATFORM_WINDOWS
+        mstring_initf(&cmd, "tools\\sokol-tools\\win32\\sokol-shdc --input %s --output src/golf2/shaders/%s.h --slang %s", file->path, file->name, slangs);
 #elif MARS_PLATFORM_MACOS
 #endif
         int ret = system(cmd.cstr);
@@ -136,6 +135,7 @@ void mdata_shader_import(mfile_t *file) {
 #if MARS_PLATFORM_LINUX
         mstring_initf(&cmd, "tools/sokol-tools/linux/sokol-shdc --input %s --output out/temp/bare --slang %s --format bare", file->path, slangs);
 #elif MARS_PLATFORM_WINDOWS
+        mstring_initf(&cmd, "tools\\sokol-tools\\win32\\sokol-shdc --input %s --output out/temp/bare --slang %s --format bare", file->path, slangs);
 #elif MARS_PLATFORM_MACOS
 #endif
         int ret = system(cmd.cstr);
@@ -160,7 +160,7 @@ void mdata_shader_import(mfile_t *file) {
     }
 
     mstring_t mdata_shader_file_path;
-    mstring_initf(&mdata_shader_file_path, "%s.mdata_shader", file->path);
+    mstring_initf(&mdata_shader_file_path, "%s.mdata", file->path);
     json_serialize_to_file_pretty(val, mdata_shader_file_path.cstr);
     mstring_deinit(&mdata_shader_file_path);
 
@@ -171,7 +171,7 @@ mdata_shader_t *mdata_shader_load(const char *path) {
     mfile_t mdata_file;
     {
         mstring_t mdata_file_path;
-        mstring_initf(&mdata_file_path, "%s.mdata_shader", path);
+        mstring_initf(&mdata_file_path, "%s.mdata", path);
         mdata_file = mfile(mdata_file_path.cstr);
         mstring_deinit(&mdata_file_path);
     }
@@ -227,6 +227,7 @@ static void _stbi_write_func(void *context, void *data, int size) {
 static JSON_Value *_mdata_font_atlas_import(mfile_t *file, int font_size, int bitmap_size) {
     unsigned char *bitmap = malloc(bitmap_size * bitmap_size);
     stbtt_bakedchar cdata[96];
+	memset(cdata, 0, sizeof(cdata));
     stbtt_BakeFontBitmap(file->data, 0, -font_size, bitmap, bitmap_size, bitmap_size, 32, 95, cdata);
 
     float ascent, descent, linegap;
@@ -288,8 +289,8 @@ void mdata_font_import(mfile_t *file) {
     json_object_set_value(obj, "atlases", atlases_val);
 
     mstring_t mdata_font_file_path;
-    mstring_initf(&mdata_font_file_path, "%s.mdata_font", file->path);
-    json_serialize_to_file_pretty(val, mdata_font_file_path.cstr);
+    mstring_initf(&mdata_font_file_path, "%s.mdata", file->path);
+    json_serialize_to_file(val, mdata_font_file_path.cstr);
     mstring_deinit(&mdata_font_file_path);
 
     json_value_free(val);
@@ -323,7 +324,7 @@ mdata_font_t *mdata_font_load(const char *path) {
     mfile_t mdata_file;
     {
         mstring_t mdata_file_path;
-        mstring_initf(&mdata_file_path, "%s.mdata_font", path);
+        mstring_initf(&mdata_file_path, "%s.mdata", path);
         mdata_file = mfile(mdata_file_path.cstr);
         mstring_deinit(&mdata_file_path);
     }
@@ -429,7 +430,7 @@ void mdata_model_import(mfile_t *file) {
     json_object_set_value(obj, "vertices", vertices_val);
 
     mstring_t mdata_model_file_path;
-    mstring_initf(&mdata_model_file_path, "%s.mdata_model", file->path);
+    mstring_initf(&mdata_model_file_path, "%s.mdata", file->path);
     json_serialize_to_file(val, mdata_model_file_path.cstr);
     mstring_deinit(&mdata_model_file_path);
     json_value_free(val);
@@ -439,7 +440,7 @@ mdata_model_t *mdata_model_load(const char *path) {
     mfile_t mdata_file;
     {
         mstring_t mdata_file_path;
-        mstring_initf(&mdata_file_path, "%s.mdata_model", path);
+        mstring_initf(&mdata_file_path, "%s.mdata", path);
         mdata_file = mfile(mdata_file_path.cstr);
         mstring_deinit(&mdata_file_path);
     }
@@ -493,3 +494,140 @@ void mdata_model_free(mdata_model_t *data) {
     vec_deinit(&data->normals);
     free(data);
 }
+
+//
+// MDATA
+//
+
+static vec_mdata_loader_t _mdata_loaders;
+static map_mdata_t _loaded_mdata_files;
+static mdir_t _data_dir;
+
+void mdata_init(void) {
+	vec_init(&_mdata_loaders);
+	map_init(&_loaded_mdata_files);	
+	mdir_init(&_data_dir, "data", true);
+}
+
+void mdata_run_import(void) {
+	for (int i = 0; i < _data_dir.num_files; i++) {
+		mfile_t file = _data_dir.files[i];
+		if (!mfile_load_data(&file)) {
+			mlog_warning("Failed to load data for file %s", file.path);
+			continue;
+		}
+
+		mlog_note("Importing %s", file.path);
+
+		if ((strcmp(file.ext, ".glsl") == 0)) {
+			mdata_shader_import(&file);	
+		}
+		else if ((strcmp(file.ext, ".png") == 0) ||
+				(strcmp(file.ext, ".bmp") == 0) ||
+				(strcmp(file.ext, ".jpg") == 0)) {
+			mdata_texture_import(&file);
+		}
+		else if ((strcmp(file.ext, ".ttf") == 0)) {
+			mdata_font_import(&file);
+		}
+		else if ((strcmp(file.ext, ".obj") == 0)) {
+			mdata_model_import(&file);
+		}
+	}
+}
+
+void mdata_add_loader(mdata_loader_t loader) {
+	vec_push(&_mdata_loaders, loader);
+}
+
+void mdata_load_file(const char *path) {
+	mdata_t *loaded_data = map_get(&_loaded_mdata_files, path);
+	if (loaded_data) {
+		loaded_data->load_count++;
+	}
+	else {
+		mdata_t data;
+		data.load_count = 1;
+		mfile_t file = mfile(path);
+		if ((strcmp(file.ext, ".glsl") == 0)) {
+			data.type = MDATA_SHADER;
+			data.shader = mdata_shader_load(path);
+			if (!data.shader) {
+				mlog_warning("Unable to load shader file %s", file.path);
+			}
+		}
+		else if ((strcmp(file.ext, ".png") == 0) ||
+				(strcmp(file.ext, ".bmp") == 0) ||
+				(strcmp(file.ext, ".jpg") == 0)) {
+			data.type = MDATA_TEXTURE;
+			data.texture = mdata_texture_load(path);
+			if (!data.texture) {
+				mlog_warning("Unable to load texture file %s", file.path);
+			}
+		}
+		else if ((strcmp(file.ext, ".ttf") == 0)) {
+			data.type = MDATA_FONT;
+			data.font = mdata_font_load(path);
+			if (!data.font) {
+				mlog_warning("Unable to load font file %s", file.path);
+			}
+		}
+		else if ((strcmp(file.ext, ".obj") == 0)) {
+			data.type = MDATA_MODEL;
+			data.model = mdata_model_load(path);
+			if (!data.model) {
+				mlog_warning("Unable to load model file %s", file.path);
+			}
+		}
+		else {
+			mlog_warning("Unknown file ext %s", file.ext);
+			return;
+		}
+
+		for (int i = 0; i < _mdata_loaders.length; i++) {
+			mdata_loader_t loader = _mdata_loaders.data[i];
+			if (loader.type == data.type) {
+				loader.load(file.path, data);
+			}
+		}
+		map_set(&_loaded_mdata_files, path, data);
+	}
+}
+
+void mdata_unload_file(const char *path) {
+	mdata_t *loaded_data = map_get(&_loaded_mdata_files, path);
+	if (loaded_data) {
+		loaded_data->load_count--;
+		if (loaded_data->load_count == 0) {
+			switch (loaded_data->type) {
+				case MDATA_SHADER:
+					mdata_shader_free(loaded_data->shader);
+					break;
+				case MDATA_TEXTURE:
+					mdata_texture_free(loaded_data->texture);
+					break;
+				case MDATA_FONT:
+					mdata_font_free(loaded_data->font);
+					break;
+				case MDATA_MODEL:
+					mdata_model_free(loaded_data->model);
+					break;
+				case MDATA_CONFIG:
+					mdata_config_free(loaded_data->config);
+					break;
+			}
+
+			for (int i = 0; i < _mdata_loaders.length; i++) {
+				mdata_loader_t loader = _mdata_loaders.data[i];
+				if (loader.type == loaded_data->type) {
+					loader.unload(path, *loaded_data);
+				}
+			}
+			map_remove(&_loaded_mdata_files, path);
+		}
+	}
+	else {
+		mlog_warning("Attempting to unload file that isn't loaded %s", path);
+	}
+}
+

@@ -7,7 +7,7 @@
 #include "3rd_party/sokol/sokol_glue.h"
 #include "3rd_party/sokol/sokol_imgui.h"
 #include "3rd_party/sokol/sokol_time.h"
-#include "mcore/mimport.h"
+#include "mcore/mdata.h"
 #include "mcore/mlog.h"
 #include "golf2/debug_console.h"
 #include "golf2/game.h"
@@ -45,8 +45,8 @@ static void frame(void) {
     float dt = (float) stm_sec(stm_laptime(&last_time));
     if (!inited) {
         mlog_init();
-        mimport_init(0, NULL);
-        exit(0);
+        mdata_init();
+        mdata_run_import();
 
         golf_inputs_init();
         golf_debug_console_init();
@@ -54,6 +54,11 @@ static void frame(void) {
         golf_ui_init();
         golf_renderer_init();
         inited = true;
+
+        mdata_load_file("data/shaders/ui_sprite.glsl");
+        mdata_load_file("data/textures/UIpackSheet_transparent.png");
+
+        exit(0);
     }
 
     {
@@ -73,7 +78,7 @@ static void frame(void) {
         time_since_import += dt;
         if (time_since_import > 1.0f) {
             time_since_import = 0.0f;
-            mimport_run();
+            mdata_run_import();
         }
     }
 

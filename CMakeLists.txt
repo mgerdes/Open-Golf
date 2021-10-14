@@ -3,26 +3,6 @@ cmake_minimum_required(VERSION 3.12)
 project(minigolf)
 set(CMAKE_BUILD_TYPE Debug)
 
-add_executable(minigolf
-	src/golf/assets.c 
-	src/golf/audio.c 
-	src/golf/config.c 
-	src/golf/controls.c 
-	src/golf/data_stream.c 
-	src/golf/game.c 
-	src/golf/game_editor.c 
-	src/golf/hole.c 
-	src/golf/lightmaps.c 
-	src/golf/log.c 
-	src/golf/main.c 
-	src/golf/minigolf.c 
-	src/golf/obj_converter.c 
-	src/golf/profiler.c 
-	src/golf/renderer.c 
-	src/golf/shaders.c 
-	src/golf/single_file_libs.c 
-	src/golf/ui.c
-    src/membedder/membedded_files.h)
 set(GOLF_BASE_LIBRARIES 
     mcore
     cimgui
@@ -42,44 +22,6 @@ set(GOLF_BASE_LIBRARIES
     tinyobj_loader_c
     vec
     xatlas)
-target_compile_definitions(minigolf PRIVATE
-    MEMBED_FILES)
-if(CMAKE_SYSTEM_NAME STREQUAL Windows)
-    target_link_libraries(minigolf PRIVATE
-        ${GOLF_BASE_LIBRARIES})
-elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
-    target_link_libraries(minigolf PRIVATE
-        ${GOLF_BASE_LIBRARIES}
-        "-framework Cocoa"
-        "-framework QuartzCore"
-        "-framework OpenGL"
-        "-framework AudioToolbox")
-elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
-    target_link_libraries(minigolf PRIVATE 
-        ${GOLF_BASE_LIBRARIES}
-        -lX11
-        -lXcursor
-        -lXi
-        -lGL
-        -ldl
-        -lpthread
-        -lm
-        -lasound)
-elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
-    target_link_libraries(minigolf PRIVATE
-        ${GOLF_BASE_LIBRARIES}
-        "-framework Foundation"
-        "-framework UIKit"
-        "-framework OpenGLES"
-        "-framework GLKit"
-        "-framework AudioToolbox"
-        "-framework AVFoundation")
-    set_target_properties(minigolf PROPERTIES
-        MACOSX_BUNDLE_GUI_IDENTIFIER me.mgerdes.golf
-        MACOSX_BUNDLE_BUNDLE_VERSION 0.0.0
-        MACOSX_BUNDLE_SHORT_VERSION_STRING 0.0.0)
-    set(CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM RMF5MGUCT2 CACHE INTERNAL "")
-endif()
 
 add_executable(minigolf2
     src/golf2/debug_console.c
@@ -125,29 +67,11 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
     set(CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM RMF5MGUCT2 CACHE INTERNAL "")
 endif()
 
-if (CMAKE_SYSTEM_NAME STREQUAL Windows OR CMAKE_SYSTEM_NAME STREQUAL Darwin OR CMAKE_SYSTEM_NAME STREQUAL Linux)
-    add_executable(membedder
-        src/membedder/main.c)
-    target_link_libraries(membedder PRIVATE 
-        mcore
-        cute_headers
-        dbgtools
-        vec
-        map)
-    file(GLOB_RECURSE DATA_FILES CONFIGURE_DEPENDS "${CMAKE_SRC_DIR}/data/*")
-    add_custom_command(
-        OUTPUT ${CMAKE_SOURCE_DIR}/src/membedder/membedded_files.h
-        COMMAND membedder 
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        DEPENDS ${DATA_FILES})
-endif()
-
 add_library(mcore STATIC
     src/mcore/maths.c
     src/mcore/mcommon.c
     src/mcore/mdata.c
     src/mcore/mfile.c
-    src/mcore/mimport.c
     src/mcore/mlog.c
     src/mcore/mscript.c
     src/mcore/mstring.c)

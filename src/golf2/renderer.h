@@ -5,36 +5,25 @@
 #include "3rd_party/sokol/sokol_gfx.h"
 #include "3rd_party/vec/vec.h"
 #include "mcore/maths.h"
+#include "mcore/mdata.h"
 
 typedef struct golf_renderer_texture {
-    unsigned char *data;
+    mdata_texture_t *texture_data;
     int width;
     int height;
     sg_image sg_image;
 } golf_renderer_texture_t; 
 
 typedef struct golf_renderer_model {
-    char name[1024];
-    vec_vec3_t positions;
-    vec_vec2_t texcoords;
-    vec_vec3_t normals;
+    mdata_model_t *model_data;
     sg_buffer sg_positions_buf;
     sg_buffer sg_normals_buf;
     sg_buffer sg_texcoords_buf;
 } golf_renderer_model_t;
 
 typedef struct golf_renderer_font {
-    struct {
-        sg_image sg_image;
-        int image_size;
-        int font_size;
-        int ascent;
-        int descent;
-        struct {
-            int x0, y0, x1, y1;
-            float xoff, yoff, xadvance;
-        } chars[256];
-    } sizes[3];
+    mdata_font_t *font_data;
+    sg_image atlas_images[3];
 } golf_renderer_font_t;
 
 typedef map_t(golf_renderer_model_t) map_golf_renderer_model_t;

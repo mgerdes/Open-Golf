@@ -22,10 +22,12 @@ static void _debug_console_renderer_tab() {
 
         while ((key = map_next(&renderer->fonts_map, &iter))) {
             golf_renderer_font_t *font = map_get(&renderer->fonts_map, key);
+            mdata_font_t *font_data = font->font_data;
+
             if (igCollapsingHeaderTreeNodeFlags(key, ImGuiTreeNodeFlags_None)) {
                 for (int i = 0; i < 3; i++) {
-                    igText("Image Size: %d", font->sizes[i].image_size);
-                    igImage((ImTextureID)(intptr_t)font->sizes[i].sg_image.id, (ImVec2){font->sizes[i].image_size, font->sizes[i].image_size}, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
+                    igText("Image Size: %d", font_data->atlases[i].bmp_size);
+                    igImage((ImTextureID)(intptr_t)font->atlas_images[i].id, (ImVec2){font_data->atlases[i].bmp_size, font_data->atlases[i].bmp_size}, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
                 }
             }
         }

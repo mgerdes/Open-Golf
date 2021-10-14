@@ -1,1 +1,1 @@
-data data ZyB1aV9zcHJpdGVfc3F1YXJlCgp2IC0xIC0xIDAKdiAxIC0xIDAgCnYgMSAxIDAKdiAtMSAxIDAKCnZuIDAgMCAxCnZuIDAgMCAxCnZuIDAgMCAxCnZuIDAgMCAxCgp2dCAwIDAKdnQgMSAwCnZ0IDEgMQp2dCAwIDEKCmYgMS8xLzEgMi8yLzIgMy8zLzMKZiAxLzEvMSAzLzMvMyA0LzQvNAo=
+{"vertices":[{"position":[-1,-1,0],"texcoord":[0,0],"normal":[0,0,1]},{"position":[1,-1,0],"texcoord":[1,0],"normal":[0,0,1]},{"position":[1,1,0],"texcoord":[1,1],"normal":[0,0,1]},{"position":[-1,-1,0],"texcoord":[0,0],"normal":[0,0,1]},{"position":[1,1,0],"texcoord":[1,1],"normal":[0,0,1]},{"position":[-1,1,0],"texcoord":[0,1],"normal":[0,0,1]}]}
