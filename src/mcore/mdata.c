@@ -47,6 +47,17 @@ static vec4 _mdata_json_object_get_vec4(JSON_Object *obj, const char *name) {
 	return v;
 }
 
+static mfile_t _get_mdata_file(const char *path) {
+    mfile_t mdata_file;
+    {
+        mstring_t mdata_file_path;
+        mstring_initf(&mdata_file_path, "%s.mdata", path);
+        mdata_file = mfile(mdata_file_path.cstr);
+        mstring_deinit(&mdata_file_path);
+    }
+    return mdata_file;
+} 
+
 //
 // TEXTURE
 //
@@ -73,13 +84,7 @@ void mdata_texture_import(mfile_t *file) {
 }
 
 mdata_texture_t *mdata_texture_load(const char *path) {
-    mfile_t mdata_file;
-    {
-        mstring_t mdata_file_path;
-        mstring_initf(&mdata_file_path, "%s.mdata", path);
-        mdata_file = mfile(mdata_file_path.cstr);
-        mstring_deinit(&mdata_file_path);
-    }
+    mfile_t mdata_file = _get_mdata_file(path);
 
     if (!mfile_load_data(&mdata_file)) {
         return NULL;
@@ -195,13 +200,7 @@ void mdata_shader_import(mfile_t *file) {
 }
 
 mdata_shader_t *mdata_shader_load(const char *path) {
-    mfile_t mdata_file;
-    {
-        mstring_t mdata_file_path;
-        mstring_initf(&mdata_file_path, "%s.mdata", path);
-        mdata_file = mfile(mdata_file_path.cstr);
-        mstring_deinit(&mdata_file_path);
-    }
+    mfile_t mdata_file = _get_mdata_file(path);
 
     if (!mfile_load_data(&mdata_file)) {
         return NULL;
@@ -236,13 +235,7 @@ void mdata_config_import(mfile_t *file) {
 }
 
 mdata_config_t *mdata_config_load(const char *path) {
-	mfile_t mdata_file;
-	{
-		mstring_t mdata_file_path;
-		mstring_initf(&mdata_file_path, "%s.mdata", path);
-		mdata_file = mfile(mdata_file_path.cstr);
-		mstring_deinit(&mdata_file_path);
-	}
+	mfile_t mdata_file = _get_mdata_file(path);
 
 	if (!mfile_load_data(&mdata_file)) {
 		return NULL;
@@ -405,13 +398,7 @@ static void _mdata_json_object_get_font_atlas(JSON_Object *obj, mdata_font_atlas
 }
 
 mdata_font_t *mdata_font_load(const char *path) {
-    mfile_t mdata_file;
-    {
-        mstring_t mdata_file_path;
-        mstring_initf(&mdata_file_path, "%s.mdata", path);
-        mdata_file = mfile(mdata_file_path.cstr);
-        mstring_deinit(&mdata_file_path);
-    }
+    mfile_t mdata_file = _get_mdata_file(path);
 
     if (!mfile_load_data(&mdata_file)) {
         return NULL;
@@ -521,13 +508,7 @@ void mdata_model_import(mfile_t *file) {
 }
 
 mdata_model_t *mdata_model_load(const char *path) {
-    mfile_t mdata_file;
-    {
-        mstring_t mdata_file_path;
-        mstring_initf(&mdata_file_path, "%s.mdata", path);
-        mdata_file = mfile(mdata_file_path.cstr);
-        mstring_deinit(&mdata_file_path);
-    }
+    mfile_t mdata_file = _get_mdata_file(path);
 
     if (!mfile_load_data(&mdata_file)) {
         return NULL;
@@ -587,13 +568,7 @@ void mdata_ui_pixel_pack_import(mfile_t *file) {
 }
 
 mdata_ui_pixel_pack_t *mdata_ui_pixel_pack_load(const char *path) {
-	mfile_t mdata_file;
-    {
-        mstring_t mdata_file_path;
-        mstring_initf(&mdata_file_path, "%s.mdata", path);
-        mdata_file = mfile(mdata_file_path.cstr);
-        mstring_deinit(&mdata_file_path);
-    }
+	mfile_t mdata_file = _get_mdata_file(path);
 
 	if (!mfile_load_data(&mdata_file)) {
 		return NULL;
@@ -665,10 +640,25 @@ void mdata_init(void) {
 void mdata_run_import(void) {
 	for (int i = 0; i < _data_dir.num_files; i++) {
 		mfile_t file = _data_dir.files[i];
+        if (strcmp(file.ext, ".mdata") == 0) {
+            continue;
+        }
+
 		if (!mfile_load_data(&file)) {
 			mlog_warning("Failed to load data for file %s", file.path);
 			continue;
 		}
+
+        mfiletime_t file_time;
+        mfile_get_time(&file, &file_time);
+
+        mfile_t mdata_file = _get_mdata_file(file.path);
+        mfiletime_t mdata_file_time;
+        mfile_get_time(&mdata_file, &mdata_file_time);
+
+        if (mfiletime_cmp(file_time, mdata_file_time) < 0) {
+            continue;
+        }
 
 		mlog_note("Importing %s", file.path);
 
