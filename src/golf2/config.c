@@ -4,14 +4,14 @@
 #include "mcore/mdata.h"
 #include "mcore/mlog.h"
 
+static const char *_config_folder = "data/config/";
 static golf_config_t _golf_config;
 
 static bool _load_config(const char *path, mdata_t data) {
     assert(data.type == MDATA_CONFIG);
 
-    static const char *config_folder = "data/config/";
-    if (strstr(path, config_folder) != path) {
-        mlog_warning("Config file %s is outside of the %s folder", path, config_folder);
+    if (strstr(path, _config_folder) != path) {
+        mlog_warning("Config file %s is outside of the %s folder", path, _config_folder);
         return false;
     }
 
@@ -22,10 +22,24 @@ static bool _load_config(const char *path, mdata_t data) {
         mdata_config_property_t prop = config_data->properties.data[i]; 
         map_set(&config_file.props, prop.name, prop);
     }
-    map_set(&_golf_config.config_files, path + strlen(config_folder), config_file);
+    map_set(&_golf_config.config_files, path + strlen(_config_folder), config_file);
 }
 
 static bool _unload_config(const char *path, mdata_t data) {
+    assert(data.type == MDATA_CONFIG);
+}
+
+static bool _reload_config(const char *path, mdata_t data) {
+    assert(data.type == MDATA_CONFIG);
+
+    golf_config_file_t *config_file = map_get(&_golf_config.config_files, path + strlen(_config_folder));
+    if (!config_file) {
+        mlog_warning("Attempting to reload config file that isn't loaded %s", path);
+        return false;
+    }
+
+    map_deinit(&config_file->props);
+    _load_config(path, data);
 }
 
 golf_config_t *golf_config_get(void) {
@@ -34,7 +48,7 @@ golf_config_t *golf_config_get(void) {
 
 void golf_config_init(void) {
     map_init(&_golf_config.config_files);
-	mdata_add_loader(MDATA_CONFIG, _load_config, _unload_config);
+	mdata_add_loader(MDATA_CONFIG, _load_config, _unload_config, _reload_config);
 }
 
 static mdata_config_property_t *_get_config_property(const char *file, const char *name, mdata_config_property_type_t type) {

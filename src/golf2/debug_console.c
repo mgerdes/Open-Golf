@@ -118,11 +118,11 @@ static void _debug_console_renderer_tab() {
 								(ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
 						igSameLine(0, 0);
 						igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
-								(ImVec2){square->tm.uv0.x, square->tl.uv0.y}, (ImVec2){square->tm.uv1.x, square->tl.uv1.y}, 
+								(ImVec2){square->tm.uv0.x, square->tm.uv0.y}, (ImVec2){square->tm.uv1.x, square->tm.uv1.y}, 
 								(ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
 						igSameLine(0, 0);
 						igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
-								(ImVec2){square->tr.uv0.x, square->tl.uv0.y}, (ImVec2){square->tr.uv1.x, square->tl.uv1.y}, 
+								(ImVec2){square->tr.uv0.x, square->tr.uv0.y}, (ImVec2){square->tr.uv1.x, square->tr.uv1.y}, 
 								(ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
 
 						igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
@@ -130,11 +130,11 @@ static void _debug_console_renderer_tab() {
 								(ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
 						igSameLine(0, 0);
 						igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
-								(ImVec2){square->mm.uv0.x, square->ml.uv0.y}, (ImVec2){square->mm.uv1.x, square->ml.uv1.y}, 
+								(ImVec2){square->mm.uv0.x, square->mm.uv0.y}, (ImVec2){square->mm.uv1.x, square->mm.uv1.y}, 
 								(ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
 						igSameLine(0, 0);
 						igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
-								(ImVec2){square->mr.uv0.x, square->ml.uv0.y}, (ImVec2){square->mr.uv1.x, square->ml.uv1.y}, 
+								(ImVec2){square->mr.uv0.x, square->mr.uv0.y}, (ImVec2){square->mr.uv1.x, square->mr.uv1.y}, 
 								(ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
 
 						igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
@@ -142,11 +142,11 @@ static void _debug_console_renderer_tab() {
 								(ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
 						igSameLine(0, 0);
 						igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
-								(ImVec2){square->bm.uv0.x, square->bl.uv0.y}, (ImVec2){square->bm.uv1.x, square->bl.uv1.y}, 
+								(ImVec2){square->bm.uv0.x, square->bm.uv0.y}, (ImVec2){square->bm.uv1.x, square->bm.uv1.y}, 
 								(ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
 						igSameLine(0, 0);
 						igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
-								(ImVec2){square->br.uv0.x, square->bl.uv0.y}, (ImVec2){square->br.uv1.x, square->bl.uv1.y}, 
+								(ImVec2){square->br.uv0.x, square->br.uv0.y}, (ImVec2){square->br.uv1.x, square->br.uv1.y}, 
 								(ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
 
 						igPopStyleVar(1);

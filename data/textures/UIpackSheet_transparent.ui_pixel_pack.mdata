@@ -1,64 +1,83 @@
 {
-	"texture": "data/textures/UIpackSheet_transparent.png",
-	"tile_size": 16,
-	"tile_padding": 2,
-	"icons": 
-	[
-		{
-			"name": "blue_checkbox",
-			"x": 10, "y": 9
-		}
-	]
-	,
-	"squares": 
-	[
-		{
-			"name": "yellow_button_up",
-			"top_left": [6, 2], "top_mid": [7, 2], "top_right": [8, 2],
-			"mid_left": [6, 3], "mid_mid": [7, 3], "mid_right": [8, 3],
-			"bot_left": [6, 4], "bot_mid": [7, 4], "bot_right": [8, 4]
-		},
-		{
-			"name": "yellow_button_down",
-			"top_left": [6, 2], "top_mid": [7, 2], "top_right": [8, 2],
-			"mid_left": [6, 3], "mid_mid": [7, 3], "mid_right": [8, 3],
-			"bot_left": [6, 7], "bot_mid": [7, 7], "bot_right": [8, 7]
-		},
-		{
-			"name": "green_button_up",
-			"top_left": [12, 2], "top_mid": [13, 2], "top_right": [14, 2],
-			"mid_left": [12, 3], "mid_mid": [13, 3], "mid_right": [14, 3],
-			"bot_left": [12, 4], "bot_mid": [13, 4], "bot_right": [14, 4]
-		},
-		{
-			"name": "green_button_down",
-			"top_left": [12, 2], "top_mid": [13, 2], "top_right": [14, 2],
-			"mid_left": [12, 3], "mid_mid": [13, 3], "mid_right": [14, 3],
-			"bot_left": [12, 7], "bot_mid": [13, 7], "bot_right": [14, 7]
-		},
-		{
-			"name": "orange_button_up",
-			"top_left": [18, 2], "top_mid": [19, 2], "top_right": [20, 2],
-			"mid_left": [18, 3], "mid_mid": [19, 3], "mid_right": [20, 3],
-			"bot_left": [18, 4], "bot_mid": [19, 4], "bot_right": [20, 4]
-		},
-		{
-			"name": "orange_button_down",
-			"top_left": [18, 2], "top_mid": [19, 2], "top_right": [20, 2],
-			"mid_left": [18, 3], "mid_mid": [19, 3], "mid_right": [20, 3],
-			"bot_left": [18, 7], "bot_mid": [19, 7], "bot_right": [20, 7]
-		},
-		{
-			"name": "blue_button_up",
-			"top_left": [24, 2], "top_mid": [25, 2], "top_right": [26, 2],
-			"mid_left": [24, 3], "mid_mid": [25, 3], "mid_right": [26, 3],
-			"bot_left": [24, 4], "bot_mid": [25, 4], "bot_right": [26, 4]
-		},
-		{
-			"name": "blue_button_down",
-			"top_left": [24, 2], "top_mid": [25, 2], "top_right": [26, 2],
-			"mid_left": [24, 3], "mid_mid": [25, 3], "mid_right": [26, 3],
-			"bot_left": [24, 7], "bot_mid": [25, 7], "bot_right": [26, 7]
-		}
-	]
+    "texture": "data/textures/UIpackSheet_transparent.png",
+    "tile_size": 16,
+    "tile_padding": 2,
+    "icons": [
+        {
+            "name": "grey_checkbox",
+            "x": 3, "y": 6
+        },
+        {
+            "name": "yellow_checkbox",
+            "x": 9, "y": 6
+        },
+        {
+            "name": "green_checkbox",
+            "x": 15, "y": 6
+        },
+        {
+            "name": "orange_checkbox",
+            "x": 21, "y": 6
+        },
+        {
+            "name": "blue_checkbox",
+            "x": 27, "y": 6
+        }
+    ],
+    "squares": [
+        {
+            "name": "yellow_button_up",
+            "top_left": [6, 2], "top_mid": [7, 2], "top_right": [8, 2],
+            "mid_left": [6, 3], "mid_mid": [7, 3], "mid_right": [8, 3],
+            "bot_left": [6, 4], "bot_mid": [7, 4], "bot_right": [8, 4]
+        },
+        {
+            "name": "yellow_button_down",
+            "top_left": [6, 2], "top_mid": [7, 2], "top_right": [8, 2],
+            "mid_left": [6, 3], "mid_mid": [7, 3], "mid_right": [8, 3],
+            "bot_left": [6, 7], "bot_mid": [7, 7], "bot_right": [8, 7]
+        },
+        {
+            "name": "green_button_up",
+            "top_left": [12, 2], "top_mid": [13, 2], "top_right": [14, 2],
+            "mid_left": [12, 3], "mid_mid": [13, 3], "mid_right": [14, 3],
+            "bot_left": [12, 4], "bot_mid": [13, 4], "bot_right": [14, 4]
+        },
+        {
+            "name": "green_button_down",
+            "top_left": [12, 2], "top_mid": [13, 2], "top_right": [14, 2],
+            "mid_left": [12, 3], "mid_mid": [13, 3], "mid_right": [14, 3],
+            "bot_left": [12, 7], "bot_mid": [13, 7], "bot_right": [14, 7]
+        },
+        {
+            "name": "orange_button_up",
+            "top_left": [18, 2], "top_mid": [19, 2], "top_right": [20, 2],
+            "mid_left": [18, 3], "mid_mid": [19, 3], "mid_right": [20, 3],
+            "bot_left": [18, 4], "bot_mid": [19, 4], "bot_right": [20, 4]
+        },
+        {
+            "name": "orange_button_down",
+            "top_left": [18, 2], "top_mid": [19, 2], "top_right": [20, 2],
+            "mid_left": [18, 3], "mid_mid": [19, 3], "mid_right": [20, 3],
+            "bot_left": [18, 7], "bot_mid": [19, 7], "bot_right": [20, 7]
+        },
+        {
+            "name": "blue_button_up",
+            "top_left": [24, 2], "top_mid": [25, 2], "top_right": [26, 2],
+            "mid_left": [24, 3], "mid_mid": [25, 3], "mid_right": [26, 3],
+            "bot_left": [24, 4], "bot_mid": [25, 4], "bot_right": [26, 4]
+        },
+        {
+            "name": "blue_button_down",
+            "top_left": [24, 2], "top_mid": [25, 2], "top_right": [26, 2],
+            "mid_left": [24, 3], "mid_mid": [25, 3], "mid_right": [26, 3],
+            "bot_left": [24, 7], "bot_mid": [25, 7], "bot_right": [26, 7]
+        },
+        {
+            "name": "blue_background",
+            "top_left": [13, 20], "top_mid": [14, 20], "top_right": [15, 20],
+            "mid_left": [13, 21], "mid_mid": [14, 21], "mid_right": [15, 21],
+            "bot_left": [13, 22], "bot_mid": [14, 22], "bot_right": [15, 22]
+        }
+    ]
 }

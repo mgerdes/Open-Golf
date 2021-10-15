@@ -165,6 +165,7 @@ typedef enum mdata_type {
 
 typedef struct mdata {
 	int load_count;
+    mfiletime_t last_load_time; 
     const char *path;
 	mdata_type_t type;
 	union { 
@@ -183,13 +184,14 @@ typedef struct mdata_loader {
 	mdata_type_t type;
 	bool(*load)(const char *path, mdata_t data);
 	bool(*unload)(const char *path, mdata_t data);
+	bool(*reload)(const char *path, mdata_t data);
 } mdata_loader_t;
 
 typedef vec_t(mdata_loader_t) vec_mdata_loader_t;
 
 void mdata_init(void);
 void mdata_run_import(void);
-void mdata_add_loader(mdata_type_t type, bool(*load)(const char *path, mdata_t data), bool(*unload)(const char *path, mdata_t data));
+void mdata_add_loader(mdata_type_t type, bool(*load)(const char *path, mdata_t data), bool(*unload)(const char *path, mdata_t data), bool(*reload)(const char *path, mdata_t data));
 void mdata_load_file(const char *path);
 void mdata_unload_file(const char *path);
 

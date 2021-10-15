@@ -78,6 +78,10 @@ static bool _unload_shader(const char *path, mdata_t data) {
     assert(data.type == MDATA_SHADER);
 }
 
+static bool _reload_shader(const char *path, mdata_t data) {
+    assert(data.type == MDATA_SHADER);
+}
+
 static bool _load_texture(const char *path, mdata_t data) {
     assert(data.type == MDATA_TEXTURE);
 
@@ -126,6 +130,10 @@ static bool _unload_texture(const char *path, mdata_t data) {
     assert(data.type == MDATA_TEXTURE);
 }
 
+static bool _reload_texture(const char *path, mdata_t data) {
+    assert(data.type == MDATA_TEXTURE);
+}
+
 static void _load_font_atlas(const char *path, mdata_font_atlas_t *atlas, sg_image *atlas_image) {
     int x, y, n;
     int force_channels = 4;
@@ -168,6 +176,10 @@ static bool _unload_font(const char *path, mdata_t data) {
     assert(data.type == MDATA_FONT);
 }
 
+static bool _reload_font(const char *path, mdata_t data) {
+    assert(data.type == MDATA_FONT);
+}
+
 static bool _load_model(const char *path, mdata_t data) {
     assert(data.type == MDATA_MODEL);
 	mdata_model_t *model_data = data.model;
@@ -197,6 +209,10 @@ static bool _load_model(const char *path, mdata_t data) {
 }
 
 static bool _unload_model(const char *path, mdata_t data) {
+    assert(data.type == MDATA_MODEL);
+}
+
+static bool _reload_model(const char *path, mdata_t data) {
     assert(data.type == MDATA_MODEL);
 }
 
@@ -260,7 +276,21 @@ static bool _load_ui_pixel_pack(const char *path, mdata_t data) {
 }
 
 static bool _unload_ui_pixel_pack(const char *path, mdata_t data) {
+    assert(data.type == MDATA_UI_PIXEL_PACK);
+}
 
+static bool _reload_ui_pixel_pack(const char *path, mdata_t data) {
+    assert(data.type == MDATA_UI_PIXEL_PACK);
+
+    golf_renderer_ui_pixel_pack_t *ui_pixel_pack = map_get(&renderer.ui_pixel_packs_map, path);
+    if (!ui_pixel_pack) {
+        mlog_warning("Reloading file that isn't loaded %s", path); 
+        return false;
+    }
+    map_deinit(&ui_pixel_pack->squares);
+    map_deinit(&ui_pixel_pack->icons);
+
+    _load_ui_pixel_pack(path, data);
 }
 
 golf_renderer_t *golf_renderer_get(void) {
@@ -275,11 +305,11 @@ void golf_renderer_init(void) {
     map_init(&renderer.models_map);
 	map_init(&renderer.ui_pixel_packs_map);
 
-	mdata_add_loader(MDATA_SHADER, _load_shader, _unload_shader);
-	mdata_add_loader(MDATA_TEXTURE, _load_texture, _unload_texture);
-	mdata_add_loader(MDATA_FONT, _load_font, _unload_font);
-	mdata_add_loader(MDATA_MODEL, _load_model, _unload_model);
-	mdata_add_loader(MDATA_UI_PIXEL_PACK, _load_ui_pixel_pack, _unload_ui_pixel_pack);
+	mdata_add_loader(MDATA_SHADER, _load_shader, _unload_shader, _reload_shader);
+	mdata_add_loader(MDATA_TEXTURE, _load_texture, _unload_texture, _reload_texture);
+	mdata_add_loader(MDATA_FONT, _load_font, _unload_font, _reload_font);
+	mdata_add_loader(MDATA_MODEL, _load_model, _unload_model, _reload_model);
+	mdata_add_loader(MDATA_UI_PIXEL_PACK, _load_ui_pixel_pack, _unload_ui_pixel_pack, _reload_ui_pixel_pack);
 }
 
 void golf_renderer_draw(void) {

@@ -85,7 +85,7 @@ static void frame(void) {
         time_since_import += dt;
         if (time_since_import > 1.0f) {
             time_since_import = 0.0f;
-            //mdata_run_import();
+            mdata_run_import();
         }
     }
 

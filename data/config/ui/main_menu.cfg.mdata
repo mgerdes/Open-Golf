@@ -8,7 +8,7 @@
 		{
 			"type": "vec2",
 			"name": "background_size",
-			"val": [10, 10]
+			"val": [10, 222]
 		},
 		{
 			"type": "string",

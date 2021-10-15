@@ -638,52 +638,107 @@ void mdata_init(void) {
 }
 
 void mdata_run_import(void) {
-	for (int i = 0; i < _data_dir.num_files; i++) {
-		mfile_t file = _data_dir.files[i];
+    for (int i = 0; i < _data_dir.num_files; i++) {
+        mfile_t file = _data_dir.files[i];
         if (strcmp(file.ext, ".mdata") == 0) {
-            continue;
+            mstring_t base_file_path;
+            mstring_initf(&base_file_path, "%s", file.path);
+            mstring_pop(&base_file_path, 6);
+
+            mdata_t *loaded_data = map_get(&_loaded_mdata_files, base_file_path.cstr);
+            if (loaded_data) {
+                mfiletime_t mdata_filetime;
+                mfile_get_time(&file, &mdata_filetime);
+
+                int cmp = mfiletime_cmp(loaded_data->last_load_time, mdata_filetime);
+                if (mfiletime_cmp(loaded_data->last_load_time, mdata_filetime) < 0) {
+                    loaded_data->last_load_time = mdata_filetime;
+                    switch (loaded_data->type) {
+                        case MDATA_SHADER:
+                            mdata_shader_free(loaded_data->shader);
+                            loaded_data->shader = mdata_shader_load(base_file_path.cstr);
+                            break;
+                        case MDATA_TEXTURE:
+                            mdata_texture_free(loaded_data->texture);
+                            loaded_data->texture = mdata_texture_load(base_file_path.cstr);
+                            break;
+                        case MDATA_FONT:
+                            mdata_font_free(loaded_data->font);
+                            loaded_data->font = mdata_font_load(base_file_path.cstr);
+                            break;
+                        case MDATA_MODEL:
+                            mdata_model_free(loaded_data->model);
+                            loaded_data->model = mdata_model_load(base_file_path.cstr);
+                            break;
+                        case MDATA_CONFIG:
+                            mdata_config_free(loaded_data->config);
+                            loaded_data->config = mdata_config_load(base_file_path.cstr);
+                            break;
+                        case MDATA_UI_PIXEL_PACK:
+                            mdata_ui_pixel_pack_free(loaded_data->ui_pixel_pack);
+                            loaded_data->ui_pixel_pack = mdata_ui_pixel_pack_load(base_file_path.cstr);
+                            break;
+                    }
+
+                    for (int i = 0; i < _mdata_loaders.length; i++) {
+                        mdata_loader_t loader = _mdata_loaders.data[i];
+                        if (loader.type == loaded_data->type) {
+                            loader.reload(base_file_path.cstr, *loaded_data);
+                        }
+                    }
+                }
+            }
+
+            mstring_deinit(&base_file_path);
         }
+        else { 
+            if (!mfile_load_data(&file)) {
+                mlog_warning("Failed to load data for file %s", file.path);
+                continue;
+            }
 
-		if (!mfile_load_data(&file)) {
-			mlog_warning("Failed to load data for file %s", file.path);
-			continue;
-		}
+            mfiletime_t file_time;
+            mfile_get_time(&file, &file_time);
 
-        mfiletime_t file_time;
-        mfile_get_time(&file, &file_time);
+            mfile_t mdata_file = _get_mdata_file(file.path);
+            mfiletime_t mdata_file_time;
+            mfile_get_time(&mdata_file, &mdata_file_time);
 
-        mfile_t mdata_file = _get_mdata_file(file.path);
-        mfiletime_t mdata_file_time;
-        mfile_get_time(&mdata_file, &mdata_file_time);
+            if (mfiletime_cmp(file_time, mdata_file_time) < 0) {
+                continue;
+            }
 
-        if (mfiletime_cmp(file_time, mdata_file_time) < 0) {
-            continue;
+            void (*importer)(mfile_t*) = NULL;
+
+            if ((strcmp(file.ext, ".glsl") == 0)) {
+                importer = mdata_shader_import;
+            }
+            else if ((strcmp(file.ext, ".png") == 0) ||
+                    (strcmp(file.ext, ".bmp") == 0) ||
+                    (strcmp(file.ext, ".jpg") == 0)) {
+                importer = mdata_texture_import;
+            }
+            else if ((strcmp(file.ext, ".ttf") == 0)) {
+                importer = mdata_font_import;
+            }
+            else if ((strcmp(file.ext, ".obj") == 0)) {
+                importer = mdata_model_import;
+            }
+
+            if (importer) {
+                mlog_note("Importing %s", file.path);
+                importer(&file);
+            }
         }
-
-		mlog_note("Importing %s", file.path);
-
-		if ((strcmp(file.ext, ".glsl") == 0)) {
-			mdata_shader_import(&file);	
-		}
-		else if ((strcmp(file.ext, ".png") == 0) ||
-				(strcmp(file.ext, ".bmp") == 0) ||
-				(strcmp(file.ext, ".jpg") == 0)) {
-			mdata_texture_import(&file);
-		}
-		else if ((strcmp(file.ext, ".ttf") == 0)) {
-			mdata_font_import(&file);
-		}
-		else if ((strcmp(file.ext, ".obj") == 0)) {
-			mdata_model_import(&file);
-		}
 	}
 }
 
-void mdata_add_loader(mdata_type_t type, bool(*load)(const char *path, mdata_t data), bool(*unload)(const char *path, mdata_t data)) {
+void mdata_add_loader(mdata_type_t type, bool(*load)(const char *path, mdata_t data), bool(*unload)(const char *path, mdata_t data), bool(*reload)(const char *path, mdata_t data)) {
 	mdata_loader_t loader;
 	loader.type = type;
 	loader.load = load;
-	loader.unload = load;
+	loader.unload = unload;
+	loader.reload = reload;
 	vec_push(&_mdata_loaders, loader);
 }
 
@@ -744,6 +799,9 @@ void mdata_load_file(const char *path) {
 			mlog_warning("Unknown file ext %s", file.ext);
 			return;
 		}
+
+        mfile_t mdata_file = _get_mdata_file(path);
+        mfile_get_time(&mdata_file, &data.last_load_time);
 
 		for (int i = 0; i < _mdata_loaders.length; i++) {
 			mdata_loader_t loader = _mdata_loaders.data[i];
