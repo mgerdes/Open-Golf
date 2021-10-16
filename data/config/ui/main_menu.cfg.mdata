@@ -1,19 +1,40 @@
 {
 	"properties": [
 		{
-			"type": "vec2",
-			"name": "background_pos",
-			"val": [100, 100]
+            "name": "background_pos",
+            "val": [100, 100]
 		},
 		{
-			"type": "vec2",
-			"name": "background_size",
-			"val": [400, 400]
+            "name": "background_size",
+            "val": [400, 400]
 		},
 		{
-			"type": "string",
-			"name": "main_text",
-			"val": "OPEN GOLF"
+            "name": "background_pixel_pack",
+            "val": "data/textures/UIpackSheet_transparent.ui_pixel_pack"
+		},
+		{
+            "name": "background_pixel_pack_square",
+            "val": "blue_background"
+		},
+		{
+            "name": "main_text_string",
+            "val": "OPEN GOLF"
+		},
+		{
+            "name": "main_text_font", 
+            "val": "data/font/FantasqueSansMono-Bold.ttf"
+		},
+		{
+            "name": "main_text_pos", 
+            "val": [200, 200]
+		},
+		{
+            "name": "main_text_size", 
+            "val": 64
+		},
+		{
+            "name": "main_text_color", 
+            "val": [1, 0, 0, 1]
 		}
 	]
 }

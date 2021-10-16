@@ -257,33 +257,50 @@ mdata_config_t *mdata_config_load(const char *path) {
     for (int i = 0; i < json_array_get_count(props_array); i++) {
         JSON_Object *prop_obj = json_array_get_object(props_array, i);
         mdata_config_property_t prop;
-        const char *type = json_object_get_string(prop_obj, "type");
         prop.name = json_object_get_string(prop_obj, "name");
-        if (strcmp(type, "string") == 0) {
-            prop.type = MDATA_CONFIG_PROPERTY_STRING;
-            prop.string_val = json_object_get_string(prop_obj, "val");
-        }
-        else if (strcmp(type, "number") == 0) {
-            prop.type = MDATA_CONFIG_PROPERTY_NUMBER;
-            prop.number_val = json_object_get_number(prop_obj, "val");
-        }
-        else if (strcmp(type, "vec2") == 0) {
-            prop.type = MDATA_CONFIG_PROPERTY_VEC2;
-            prop.vec2_val = _mdata_json_object_get_vec2(prop_obj, "val");
-        }
-        else if (strcmp(type, "vec3") == 0) {
-            prop.type = MDATA_CONFIG_PROPERTY_VEC3;
-            prop.vec3_val = _mdata_json_object_get_vec3(prop_obj, "val");
-        }
-        else if (strcmp(type, "vec4") == 0) {
-            prop.type = MDATA_CONFIG_PROPERTY_VEC4;
-            prop.vec4_val = _mdata_json_object_get_vec4(prop_obj, "val");
-        }
-        else {
-            mlog_warning("Unknown type %s in config file %s", prop.type, path);
+        if (!prop.name) {
+            mlog_warning("No name found in config property");
             continue;
         }
-        vec_push(&data->properties, prop);
+
+        bool valid_type = false;
+        JSON_Value *val = json_object_get_value(prop_obj, "val");
+        JSON_Value_Type val_type = json_value_get_type(val);
+        if (val_type == JSONString) {
+            valid_type = true;
+            prop.type = MDATA_CONFIG_PROPERTY_STRING;
+            prop.string_val = json_value_get_string(val);
+        }
+        else if (val_type == JSONNumber) {
+            valid_type = true;
+            prop.type = MDATA_CONFIG_PROPERTY_NUMBER;
+            prop.number_val = json_value_get_number(val);
+        }
+        else if (val_type == JSONArray) {
+            JSON_Array *array = json_value_get_array(val);
+            if (json_array_get_count(array) == 2) {
+                valid_type = true;
+                prop.type = MDATA_CONFIG_PROPERTY_VEC2;
+                prop.vec2_val = _mdata_json_object_get_vec2(prop_obj, "val");
+            }
+            else if (json_array_get_count(array) == 3) {
+                valid_type = true;
+                prop.type = MDATA_CONFIG_PROPERTY_VEC3;
+                prop.vec3_val = _mdata_json_object_get_vec3(prop_obj, "val");
+            }
+            else if (json_array_get_count(array) == 4) {
+                valid_type = true;
+                prop.type = MDATA_CONFIG_PROPERTY_VEC4;
+                prop.vec4_val = _mdata_json_object_get_vec4(prop_obj, "val");
+            }
+        }
+
+        if (valid_type) {
+            vec_push(&data->properties, prop);
+        }
+        else {
+            mlog_warning("Invalid type found for property %s", prop.name);
+        }
     }
 
     return data;

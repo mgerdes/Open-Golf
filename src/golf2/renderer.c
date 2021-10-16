@@ -180,6 +180,19 @@ static bool _reload_font(const char *path, mdata_t data) {
     assert(data.type == MDATA_FONT);
 }
 
+static golf_renderer_font_t *_get_font(const char *path) {
+    static const char *fallback = "data/font/DroidSerif-Bold.ttf";
+    golf_renderer_font_t *font = map_get(&renderer.fonts_map, path);
+    if (!font) {
+        mlog_warning("Can't find font %s falling back to %s", path, fallback);
+        font = map_get(&renderer.fonts_map, fallback);
+        if (!font) {
+            mlog_error("Can't find fallback %s", fallback);
+        }
+    }
+    return font;
+}
+
 static bool _load_model(const char *path, mdata_t data) {
     assert(data.type == MDATA_MODEL);
     mdata_model_t *model_data = data.model;
@@ -214,6 +227,19 @@ static bool _unload_model(const char *path, mdata_t data) {
 
 static bool _reload_model(const char *path, mdata_t data) {
     assert(data.type == MDATA_MODEL);
+}
+
+static golf_renderer_model_t *_get_model(const char *path) {
+    static const char *fallback = "data/models/ui_sprite_square.obj";
+    golf_renderer_model_t *model = map_get(&renderer.models_map, path);
+    if (!model) {
+        mlog_warning("Can't find model %s falling back to %s", path, fallback);
+        model = map_get(&renderer.models_map, fallback);
+        if (!model) {
+            mlog_error("Can't find fallback %s", fallback);
+        }
+    }
+    return model;
 }
 
 static bool _load_ui_pixel_pack(const char *path, mdata_t data) {
@@ -312,5 +338,184 @@ void golf_renderer_init(void) {
     mdata_add_loader(MDATA_UI_PIXEL_PACK, _load_ui_pixel_pack, _unload_ui_pixel_pack, _reload_ui_pixel_pack);
 }
 
+static void _draw_ui_text(golf_ui_text_t text) {
+    golf_renderer_font_t *font = _get_font(text.font);
+    golf_renderer_model_t *square_model = _get_model("data/models/ui_sprite_square.obj");
+
+    float cur_x = text.pos.x;
+    float cur_y = text.pos.y;
+    int i = 0;
+
+    int sz_idx = 0;
+    for (int idx = 1; idx < 3; idx++) {
+        if (fabsf(font->font_data->atlases[idx].font_size - text.size) <
+                fabsf(font->font_data->atlases[sz_idx].font_size - text.size)) {
+            sz_idx = idx;
+        }
+    }
+
+    mdata_font_atlas_t atlas = font->font_data->atlases[sz_idx];
+
+    float sz_scale = text.size / atlas.font_size;
+
+    {
+        sg_bindings bindings = {
+            .vertex_buffers[ATTR_ui_sprite_vs_position] = square_model->sg_positions_buf,
+            .vertex_buffers[ATTR_ui_sprite_vs_texture_coord] = square_model->sg_texcoords_buf,
+            .fs_images[SLOT_ui_sprite_texture] = font->atlas_images[sz_idx],
+        };
+        sg_apply_bindings(&bindings);
+    }
+
+    float width = 0.0f;
+    while (text.string[i]) {
+        char c = text.string[i];
+        width += sz_scale * atlas.char_data[c].xadvance;
+        i++;
+    }
+
+    /*
+    if (strcmp(text.horizontal_alignment, "center") == 0) {
+        cur_x -= 0.5f * width;
+    }
+    else if (strcmp(text.horizontal_alignment, "left") == 0) {
+    }
+    else if (strcmp(text.horizontal_alignment, "right") == 0) {
+        cur_x -= width;
+    }
+    else {
+        mlog_warning("Invalid text horizontal_alignment %s", text.horizontal_alignment);
+    }
+    */
+
+    /*
+    if (strcmp(text.vertical_alignment, "center") == 0) {
+        cur_y -= 0.5f * (font->font_data->atlases[sz_idx].ascent + font->font_data->atlases[sz_idx].descent);
+    }
+    else if (strcmp(text.vertical_alignment, "top") == 0) {
+    }
+    else if (strcmp(text.vertical_alignment, "bottom") == 0) {
+        cur_y -= (font->font_data->atlases[sz_idx].ascent + font->font_data->atlases[sz_idx].descent);
+    }
+    else {
+        mlog_warning("Invalid text vertical_alignment %s", text.vertical_alignment);
+    }
+    */
+
+    i = 0;
+    while (text.string[i]) {
+        char c = text.string[i];
+
+        int x0 = atlas.char_data[c].x0;
+        int x1 = atlas.char_data[c].x1;
+        int y0 = atlas.char_data[c].y0;
+        int y1 = atlas.char_data[c].y1;
+        float xoff = atlas.char_data[c].xoff;
+        float yoff = atlas.char_data[c].yoff;
+        float xadvance = atlas.char_data[c].xadvance;
+
+        int round_x = floor((cur_x + xoff) + 0.5f);
+        int round_y = floor((cur_y - yoff) + 0.5f);
+
+        float qx0 = round_x; 
+        float qy0 = round_y;
+        float qx1 = round_x + x1 - x0;
+        float qy1 = round_y - (y1 - y0);
+
+        vec3 translate;
+        translate.x = qx0 + 0.5f * (qx1 - qx0);
+        translate.y = qy0 + 0.5f * (qy1 - qy0);
+        translate.z = 0.0f;
+
+        vec3 scale;
+        scale.x = sz_scale * 0.5f * (qx1 - qx0);
+        scale.y = sz_scale * 0.5f * (qy1 - qy0);
+        scale.z = 1.0f;
+
+        ui_sprite_vs_params_t vs_params = {
+            .mvp_mat = mat4_transpose(mat4_multiply_n(3,
+                        renderer.ui_proj_mat,
+                        mat4_translation(translate),
+                        mat4_scale(scale)))
+
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_sprite_vs_params,
+                &(sg_range) { &vs_params, sizeof(vs_params) } );
+
+        ui_sprite_fs_params_t fs_params = {
+            .tex_x = x0,
+            .tex_y = y0, 
+            .tex_dx = x1 - x0, 
+            .tex_dy = y1 - y0,
+            .is_font = 1.0f,
+            .color = text.color,
+
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_sprite_fs_params,
+                &(sg_range) { &fs_params, sizeof(fs_params) });
+
+        sg_draw(0, square_model->model_data->positions.length, 1);
+        
+        cur_x += sz_scale * atlas.char_data[c].xadvance;
+
+        i++;
+    }
+}
+
+static void _draw_ui_pixel_pack_square(golf_ui_pixel_pack_square_t pixel_pack_square) {
+}
+
+static void _draw_ui(void) {
+    golf_ui_t *ui = golf_ui_get();
+    sg_pass_action action = {
+        .colors[0] = {
+            .action = SG_ACTION_DONTCARE,
+            .value = { 0.529f, 0.808f, 0.922f, 1.0f },
+        },
+    };
+    sg_begin_default_pass(&action, sapp_width(), sapp_height());
+
+    sg_pipeline *ui_sprites_pipeline = map_get(&renderer.pipelines_map, "ui_sprites");
+    if (!ui_sprites_pipeline) {
+        mlog_error("Could not fine 'ui_sprites' pipeline");
+    }
+    sg_apply_pipeline(*ui_sprites_pipeline);
+
+    golf_renderer_model_t *square_model = _get_model("data/models/ui_sprite_square.obj");
+
+    for (int i = 0; i < ui->entities.length; i++) {
+        golf_ui_entity_t entity = ui->entities.data[i];
+        switch (entity.type) {
+            case GOLF_UI_TEXT:
+                _draw_ui_text(entity.text);
+                break;
+            case GOLF_UI_PIXEL_PACK_SQUARE:
+                _draw_ui_pixel_pack_square(entity.pixel_pack_square);
+                break;
+        }
+    }
+
+    sg_end_pass();
+}
+
 void golf_renderer_draw(void) {
+    {
+        float fb_width = (float) 1280;
+        float fb_height = (float) 720;
+        float w_width = (float) sapp_width();
+        float w_height = (float) sapp_height();
+        float w_fb_width = w_width;
+        float w_fb_height = (fb_height/fb_width)*w_fb_width;
+        if (w_fb_height > w_height) {
+            w_fb_height = w_height;
+            w_fb_width = (fb_width/fb_height)*w_fb_height;
+        }
+        renderer.ui_proj_mat = mat4_multiply_n(3,
+                mat4_orthographic_projection(0.0f, w_width, 0.0f, w_height, 0.0f, 1.0f),
+                mat4_translation(V3(0.5f*w_width - 0.5f*w_fb_width, 0.5f*w_height - 0.5f*w_fb_height, 0.0f)),
+                mat4_scale(V3(w_fb_width/fb_width, w_fb_height/fb_height, 1.0f))
+                );
+    }
+
+    _draw_ui();
 }

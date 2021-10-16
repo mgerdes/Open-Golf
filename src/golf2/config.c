@@ -51,6 +51,14 @@ void golf_config_init(void) {
     mdata_add_loader(MDATA_CONFIG, _load_config, _unload_config, _reload_config);
 }
 
+void golf_config_push_cur_file(char *file) {
+    vec_push(&_golf_config.cur_file_stack, file);
+}
+
+void golf_config_pop_cur_file(void) {
+    vec_pop(&_golf_config.cur_file_stack);
+}
+
 static mdata_config_property_t *_get_config_property(const char *file, const char *name, mdata_config_property_type_t type) {
     golf_config_file_t *config_file = map_get(&_golf_config.config_files, file);
     if (!config_file) {
@@ -65,7 +73,37 @@ static mdata_config_property_t *_get_config_property(const char *file, const cha
     return prop;
 }
 
-const char *config_get_string(const char *file, const char *name) {
+const char *_get_cur_file(void) {
+    if (_golf_config.cur_file_stack.length == 0) {
+        mlog_warning("Trying to get config value without a cur file pushed");
+        return "";
+    } 
+    else {
+        return vec_last(&_golf_config.cur_file_stack);
+    }
+}
+
+const char *golf_config_get_string(const char *name) {
+    return golf_config_get_string_file(_get_cur_file(), name);
+}
+
+const float golf_config_get_number(const char *name) {
+    return golf_config_get_number_file(_get_cur_file(), name);
+}
+
+const vec2 golf_config_get_vec2(const char *name) {
+    return golf_config_get_vec2_file(_get_cur_file(), name);
+}
+
+const vec3 golf_config_get_vec3(const char *name) {
+    return golf_config_get_vec3_file(_get_cur_file(), name);
+}
+
+const vec4 golf_config_get_vec4(const char *name) {
+    return golf_config_get_vec4_file(_get_cur_file(), name);
+}
+
+const char *golf_config_get_string_file(const char *file, const char *name) {
     mdata_config_property_t *prop = _get_config_property(file, name, MDATA_CONFIG_PROPERTY_STRING);
     if (prop) {
         return prop->string_val;
@@ -75,7 +113,7 @@ const char *config_get_string(const char *file, const char *name) {
     }
 }
 
-float config_get_number(const char *file, const char *name) {
+float golf_config_get_number_file(const char *file, const char *name) {
     mdata_config_property_t *prop = _get_config_property(file, name, MDATA_CONFIG_PROPERTY_NUMBER);
     if (prop) {
         return prop->number_val;
@@ -85,7 +123,7 @@ float config_get_number(const char *file, const char *name) {
     }
 }
 
-vec2 config_get_vec2(const char *file, const char *name) {
+vec2 golf_config_get_vec2_file(const char *file, const char *name) {
     mdata_config_property_t *prop = _get_config_property(file, name, MDATA_CONFIG_PROPERTY_VEC2);
     if (prop) {
         return prop->vec2_val;
@@ -95,7 +133,7 @@ vec2 config_get_vec2(const char *file, const char *name) {
     }
 }
 
-vec3 config_get_vec3(const char *file, const char *name) {
+vec3 golf_config_get_vec3_file(const char *file, const char *name) {
     mdata_config_property_t *prop = _get_config_property(file, name, MDATA_CONFIG_PROPERTY_VEC3);
     if (prop) {
         return prop->vec3_val;
@@ -105,7 +143,7 @@ vec3 config_get_vec3(const char *file, const char *name) {
     }
 }
 
-vec4 config_get_vec4(const char *file, const char *name) {
+vec4 golf_config_get_vec4_file(const char *file, const char *name) {
     mdata_config_property_t *prop = _get_config_property(file, name, MDATA_CONFIG_PROPERTY_VEC4);
     if (prop) {
         return prop->vec4_val;
