@@ -36,21 +36,21 @@ static void _debug_console_renderer_tab() {
         }
     }
 
-	if (igCollapsingHeaderTreeNodeFlags("Textures", ImGuiTreeNodeFlags_None)) {
-		const char *key;
-		map_iter_t iter = map_iter(&renderer->textures_map);
+    if (igCollapsingHeaderTreeNodeFlags("Textures", ImGuiTreeNodeFlags_None)) {
+        const char *key;
+        map_iter_t iter = map_iter(&renderer->textures_map);
 
-		while ((key = map_next(&renderer->textures_map, &iter))) {
-			golf_renderer_texture_t *texture = map_get(&renderer->textures_map, key);
+        while ((key = map_next(&renderer->textures_map, &iter))) {
+            golf_renderer_texture_t *texture = map_get(&renderer->textures_map, key);
 
             if (igTreeNodeStr(key)) {
-				igText("Width: %d", texture->width);
-				igText("Height: %d", texture->height);
-				igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){texture->width, texture->height}, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
+                igText("Width: %d", texture->width);
+                igText("Height: %d", texture->height);
+                igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){texture->width, texture->height}, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
                 igTreePop();
-			}
-		}
-	}
+            }
+        }
+    }
 
     if (igCollapsingHeaderTreeNodeFlags("Models", ImGuiTreeNodeFlags_None)) {
         const char *key;
@@ -58,114 +58,114 @@ static void _debug_console_renderer_tab() {
 
         while ((key = map_next(&renderer->models_map, &iter))) {
             golf_renderer_model_t *model = map_get(&renderer->models_map, key);
-			mdata_model_t *model_data = model->model_data;
+            mdata_model_t *model_data = model->model_data;
 
             if (igTreeNodeStr(key)) {
-				igText("Num Positions: %d", model_data->positions.length);
-				if (igCollapsingHeaderTreeNodeFlags("Positions", ImGuiTreeNodeFlags_None)) {
-					for (int i = 0; i < model_data->positions.length; i++) {
-						vec3 position = model_data->positions.data[i];
-						igText("<%.3f, %.3f, %.3f>", position.x, position.y, position.z);
-					}
-				}
+                igText("Num Positions: %d", model_data->positions.length);
+                if (igCollapsingHeaderTreeNodeFlags("Positions", ImGuiTreeNodeFlags_None)) {
+                    for (int i = 0; i < model_data->positions.length; i++) {
+                        vec3 position = model_data->positions.data[i];
+                        igText("<%.3f, %.3f, %.3f>", position.x, position.y, position.z);
+                    }
+                }
 
-				igText("Num Tex Coords: %d", model_data->texcoords.length);
-				if (igCollapsingHeaderTreeNodeFlags("Texcoords", ImGuiTreeNodeFlags_None)) {
-					for (int i = 0; i < model_data->texcoords.length; i++) {
-						vec2 texcoord = model_data->texcoords.data[i];
-						igText("<%.3f, %.3f>", texcoord.x, texcoord.y);
-					}
-				}
+                igText("Num Tex Coords: %d", model_data->texcoords.length);
+                if (igCollapsingHeaderTreeNodeFlags("Texcoords", ImGuiTreeNodeFlags_None)) {
+                    for (int i = 0; i < model_data->texcoords.length; i++) {
+                        vec2 texcoord = model_data->texcoords.data[i];
+                        igText("<%.3f, %.3f>", texcoord.x, texcoord.y);
+                    }
+                }
 
-				igText("Num Normals: %d", model_data->normals.length);
-				if (igCollapsingHeaderTreeNodeFlags("Normals", ImGuiTreeNodeFlags_None)) {
-					for (int i = 0; i < model_data->normals.length; i++) {
-						vec3 normal = model_data->normals.data[i];
-						igText("<%.3f, %.3f, %.3f>", normal.x, normal.y, normal.z);
-					}
-				}
+                igText("Num Normals: %d", model_data->normals.length);
+                if (igCollapsingHeaderTreeNodeFlags("Normals", ImGuiTreeNodeFlags_None)) {
+                    for (int i = 0; i < model_data->normals.length; i++) {
+                        vec3 normal = model_data->normals.data[i];
+                        igText("<%.3f, %.3f, %.3f>", normal.x, normal.y, normal.z);
+                    }
+                }
 
                 igTreePop();
             }
         }
     }
 
-	if (igCollapsingHeaderTreeNodeFlags("UI Pixel Packs", ImGuiTreeNodeFlags_None)) {
-		const char *key;
-		map_iter_t iter = map_iter(&renderer->ui_pixel_packs_map);
+    if (igCollapsingHeaderTreeNodeFlags("UI Pixel Packs", ImGuiTreeNodeFlags_None)) {
+        const char *key;
+        map_iter_t iter = map_iter(&renderer->ui_pixel_packs_map);
 
-		while ((key = map_next(&renderer->ui_pixel_packs_map, &iter))) {
-			golf_renderer_ui_pixel_pack_t *ui_pixel_pack = map_get(&renderer->ui_pixel_packs_map, key);
-			golf_renderer_texture_t *texture = map_get(&renderer->textures_map, ui_pixel_pack->texture);
-			if (!texture) {
-				continue;
-			}
+        while ((key = map_next(&renderer->ui_pixel_packs_map, &iter))) {
+            golf_renderer_ui_pixel_pack_t *ui_pixel_pack = map_get(&renderer->ui_pixel_packs_map, key);
+            golf_renderer_texture_t *texture = map_get(&renderer->textures_map, ui_pixel_pack->texture);
+            if (!texture) {
+                continue;
+            }
 
             if (igTreeNodeStr(key)) {
-				if (igCollapsingHeaderTreeNodeFlags("Squares", ImGuiTreeNodeFlags_None)) {
-					const char *key;
-					map_iter_t iter = map_iter(&ui_pixel_pack->squares);
+                if (igCollapsingHeaderTreeNodeFlags("Squares", ImGuiTreeNodeFlags_None)) {
+                    const char *key;
+                    map_iter_t iter = map_iter(&ui_pixel_pack->squares);
 
-					while ((key = map_next(&ui_pixel_pack->squares, &iter))) {
-						golf_renderer_ui_pixel_pack_square_t *square = map_get(&ui_pixel_pack->squares, key);
+                    while ((key = map_next(&ui_pixel_pack->squares, &iter))) {
+                        golf_renderer_ui_pixel_pack_square_t *square = map_get(&ui_pixel_pack->squares, key);
 
-						igText("%s", key);
-						igPushStyleVarVec2(ImGuiStyleVar_ItemSpacing, (ImVec2){0, 0});
+                        igText("%s", key);
+                        igPushStyleVarVec2(ImGuiStyleVar_ItemSpacing, (ImVec2){0, 0});
 
-						float sz = 15;
-						igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
-								(ImVec2){square->tl.uv0.x, square->tl.uv0.y}, (ImVec2){square->tl.uv1.x, square->tl.uv1.y}, 
-								(ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
-						igSameLine(0, 0);
-						igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
-								(ImVec2){square->tm.uv0.x, square->tm.uv0.y}, (ImVec2){square->tm.uv1.x, square->tm.uv1.y}, 
-								(ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
-						igSameLine(0, 0);
-						igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
-								(ImVec2){square->tr.uv0.x, square->tr.uv0.y}, (ImVec2){square->tr.uv1.x, square->tr.uv1.y}, 
-								(ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
+                        float sz = 15;
+                        igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
+                                (ImVec2){square->tl.uv0.x, square->tl.uv0.y}, (ImVec2){square->tl.uv1.x, square->tl.uv1.y}, 
+                                (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
+                        igSameLine(0, 0);
+                        igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
+                                (ImVec2){square->tm.uv0.x, square->tm.uv0.y}, (ImVec2){square->tm.uv1.x, square->tm.uv1.y}, 
+                                (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
+                        igSameLine(0, 0);
+                        igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
+                                (ImVec2){square->tr.uv0.x, square->tr.uv0.y}, (ImVec2){square->tr.uv1.x, square->tr.uv1.y}, 
+                                (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
 
-						igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
-								(ImVec2){square->ml.uv0.x, square->ml.uv0.y}, (ImVec2){square->ml.uv1.x, square->ml.uv1.y}, 
-								(ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
-						igSameLine(0, 0);
-						igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
-								(ImVec2){square->mm.uv0.x, square->mm.uv0.y}, (ImVec2){square->mm.uv1.x, square->mm.uv1.y}, 
-								(ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
-						igSameLine(0, 0);
-						igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
-								(ImVec2){square->mr.uv0.x, square->mr.uv0.y}, (ImVec2){square->mr.uv1.x, square->mr.uv1.y}, 
-								(ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
+                        igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
+                                (ImVec2){square->ml.uv0.x, square->ml.uv0.y}, (ImVec2){square->ml.uv1.x, square->ml.uv1.y}, 
+                                (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
+                        igSameLine(0, 0);
+                        igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
+                                (ImVec2){square->mm.uv0.x, square->mm.uv0.y}, (ImVec2){square->mm.uv1.x, square->mm.uv1.y}, 
+                                (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
+                        igSameLine(0, 0);
+                        igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
+                                (ImVec2){square->mr.uv0.x, square->mr.uv0.y}, (ImVec2){square->mr.uv1.x, square->mr.uv1.y}, 
+                                (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
 
-						igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
-								(ImVec2){square->bl.uv0.x, square->bl.uv0.y}, (ImVec2){square->bl.uv1.x, square->bl.uv1.y}, 
-								(ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
-						igSameLine(0, 0);
-						igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
-								(ImVec2){square->bm.uv0.x, square->bm.uv0.y}, (ImVec2){square->bm.uv1.x, square->bm.uv1.y}, 
-								(ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
-						igSameLine(0, 0);
-						igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
-								(ImVec2){square->br.uv0.x, square->br.uv0.y}, (ImVec2){square->br.uv1.x, square->br.uv1.y}, 
-								(ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
+                        igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
+                                (ImVec2){square->bl.uv0.x, square->bl.uv0.y}, (ImVec2){square->bl.uv1.x, square->bl.uv1.y}, 
+                                (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
+                        igSameLine(0, 0);
+                        igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
+                                (ImVec2){square->bm.uv0.x, square->bm.uv0.y}, (ImVec2){square->bm.uv1.x, square->bm.uv1.y}, 
+                                (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
+                        igSameLine(0, 0);
+                        igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
+                                (ImVec2){square->br.uv0.x, square->br.uv0.y}, (ImVec2){square->br.uv1.x, square->br.uv1.y}, 
+                                (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
 
-						igPopStyleVar(1);
-					}
-				}
+                        igPopStyleVar(1);
+                    }
+                }
 
-				if (igCollapsingHeaderTreeNodeFlags("Icons", ImGuiTreeNodeFlags_None)) {
-					const char *key;
-					map_iter_t iter = map_iter(&ui_pixel_pack->icons);
+                if (igCollapsingHeaderTreeNodeFlags("Icons", ImGuiTreeNodeFlags_None)) {
+                    const char *key;
+                    map_iter_t iter = map_iter(&ui_pixel_pack->icons);
 
-					while ((key = map_next(&ui_pixel_pack->icons, &iter))) {
-						golf_renderer_ui_pixel_pack_icon_t *icon = map_get(&ui_pixel_pack->icons, key);
-						igText("%s", key);
+                    while ((key = map_next(&ui_pixel_pack->icons, &iter))) {
+                        golf_renderer_ui_pixel_pack_icon_t *icon = map_get(&ui_pixel_pack->icons, key);
+                        igText("%s", key);
 
-						float sz = 30;
-						igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
-								(ImVec2){icon->uv0.x, icon->uv0.y}, (ImVec2){icon->uv1.x, icon->uv1.y}, 
-								(ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
-					}
+                        float sz = 30;
+                        igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){sz, sz},
+                                (ImVec2){icon->uv0.x, icon->uv0.y}, (ImVec2){icon->uv1.x, icon->uv1.y}, 
+                                (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
+                    }
                 }
 
                 igTreePop();

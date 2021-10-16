@@ -33,23 +33,23 @@ typedef struct golf_renderer_font {
 typedef map_t(golf_renderer_font_t) map_golf_renderer_font_t;
 
 typedef struct golf_renderer_ui_pixel_pack_icon {
-	vec2 uv0, uv1;
+    vec2 uv0, uv1;
 } golf_renderer_ui_pixel_pack_icon_t;
 
 typedef map_t(golf_renderer_ui_pixel_pack_icon_t) map_golf_renderer_ui_pixel_pack_icon_t;
 
 typedef struct golf_renderer_ui_pixel_pack_square {
-	golf_renderer_ui_pixel_pack_icon_t tl, tm, tr;
-	golf_renderer_ui_pixel_pack_icon_t ml, mm, mr;
-	golf_renderer_ui_pixel_pack_icon_t bl, bm, br;
+    golf_renderer_ui_pixel_pack_icon_t tl, tm, tr;
+    golf_renderer_ui_pixel_pack_icon_t ml, mm, mr;
+    golf_renderer_ui_pixel_pack_icon_t bl, bm, br;
 } golf_renderer_ui_pixel_pack_square_t;
 
 typedef map_t(golf_renderer_ui_pixel_pack_square_t) map_golf_renderer_ui_pixel_pack_square_t;
 
 typedef struct golf_renderer_ui_pixel_pack {
-	const char *texture;
-	map_golf_renderer_ui_pixel_pack_square_t squares;
-	map_golf_renderer_ui_pixel_pack_icon_t icons;
+    const char *texture;
+    map_golf_renderer_ui_pixel_pack_square_t squares;
+    map_golf_renderer_ui_pixel_pack_icon_t icons;
 } golf_renderer_ui_pixel_pack_t;
 
 typedef map_t(golf_renderer_ui_pixel_pack_t) map_golf_renderer_ui_pixel_pack_t;
@@ -58,14 +58,14 @@ typedef map_t(sg_shader) map_sg_shader_t;
 typedef map_t(sg_pipeline) map_sg_pipeline_t;
 
 typedef struct golf_renderer {
-	map_sg_shader_t shaders_map;
-	map_sg_pipeline_t pipelines_map;
-	map_golf_renderer_model_t models_map;
-	map_golf_renderer_texture_t textures_map;
-	map_golf_renderer_font_t fonts_map;
-	map_golf_renderer_ui_pixel_pack_t ui_pixel_packs_map;
+    map_sg_shader_t shaders_map;
+    map_sg_pipeline_t pipelines_map;
+    map_golf_renderer_model_t models_map;
+    map_golf_renderer_texture_t textures_map;
+    map_golf_renderer_font_t fonts_map;
+    map_golf_renderer_ui_pixel_pack_t ui_pixel_packs_map;
 
-	mat4 ui_proj_mat;
+    mat4 ui_proj_mat;
 } golf_renderer_t;
 
 golf_renderer_t *golf_renderer_get(void);

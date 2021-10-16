@@ -48,7 +48,7 @@ golf_config_t *golf_config_get(void) {
 
 void golf_config_init(void) {
     map_init(&_golf_config.config_files);
-	mdata_add_loader(MDATA_CONFIG, _load_config, _unload_config, _reload_config);
+    mdata_add_loader(MDATA_CONFIG, _load_config, _unload_config, _reload_config);
 }
 
 static mdata_config_property_t *_get_config_property(const char *file, const char *name, mdata_config_property_type_t type) {

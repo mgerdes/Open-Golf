@@ -21,30 +21,30 @@ static void _mdata_json_object_set_data(JSON_Object *obj, const char *name, unsi
 }
 
 static vec2 _mdata_json_object_get_vec2(JSON_Object *obj, const char *name) {
-	JSON_Array *array = json_object_get_array(obj, name);
-	vec2 v;
-	v.x = json_array_get_number(array, 0);
-	v.y = json_array_get_number(array, 1);
-	return v;
+    JSON_Array *array = json_object_get_array(obj, name);
+    vec2 v;
+    v.x = json_array_get_number(array, 0);
+    v.y = json_array_get_number(array, 1);
+    return v;
 }
 
 static vec3 _mdata_json_object_get_vec3(JSON_Object *obj, const char *name) {
-	JSON_Array *array = json_object_get_array(obj, name);
-	vec3 v;
-	v.x = json_array_get_number(array, 0);
-	v.y = json_array_get_number(array, 1);
-	v.z = json_array_get_number(array, 2);
-	return v;
+    JSON_Array *array = json_object_get_array(obj, name);
+    vec3 v;
+    v.x = json_array_get_number(array, 0);
+    v.y = json_array_get_number(array, 1);
+    v.z = json_array_get_number(array, 2);
+    return v;
 }
 
 static vec4 _mdata_json_object_get_vec4(JSON_Object *obj, const char *name) {
-	JSON_Array *array = json_object_get_array(obj, name);
-	vec4 v;
-	v.x = json_array_get_number(array, 0);
-	v.y = json_array_get_number(array, 1);
-	v.z = json_array_get_number(array, 2);
-	v.w = json_array_get_number(array, 3);
-	return v;
+    JSON_Array *array = json_object_get_array(obj, name);
+    vec4 v;
+    v.x = json_array_get_number(array, 0);
+    v.y = json_array_get_number(array, 1);
+    v.z = json_array_get_number(array, 2);
+    v.w = json_array_get_number(array, 3);
+    return v;
 }
 
 static mfile_t _get_mdata_file(const char *path) {
@@ -65,7 +65,7 @@ static mfile_t _get_mdata_file(const char *path) {
 void mdata_texture_import(mfile_t *file) {
     mdata_texture_t *existing_data = mdata_texture_load(file->path);
 
-	JSON_Value *val = json_value_init_object();
+    JSON_Value *val = json_value_init_object();
     JSON_Object *obj = json_value_get_object(val);
 
     json_object_set_string(obj, "filter", "linear");
@@ -235,58 +235,58 @@ void mdata_config_import(mfile_t *file) {
 }
 
 mdata_config_t *mdata_config_load(const char *path) {
-	mfile_t mdata_file = _get_mdata_file(path);
+    mfile_t mdata_file = _get_mdata_file(path);
 
-	if (!mfile_load_data(&mdata_file)) {
-		return NULL;
-	}
+    if (!mfile_load_data(&mdata_file)) {
+        return NULL;
+    }
 
-	JSON_Value *val = json_parse_string(mdata_file.data);
-	JSON_Object *obj = json_value_get_object(val);
-	if (!val) {
-		mlog_warning("Unable to parse json for mdatafile %s", path);
-		return NULL;
-	}
+    JSON_Value *val = json_parse_string(mdata_file.data);
+    JSON_Object *obj = json_value_get_object(val);
+    if (!val) {
+        mlog_warning("Unable to parse json for mdatafile %s", path);
+        return NULL;
+    }
 
-	mdata_config_t *data = malloc(sizeof(mdata_config_t));
-	vec_init(&data->properties);
+    mdata_config_t *data = malloc(sizeof(mdata_config_t));
+    vec_init(&data->properties);
 
-	data->json_val = val;
+    data->json_val = val;
 
-	JSON_Array *props_array = json_object_get_array(obj, "properties");
-	for (int i = 0; i < json_array_get_count(props_array); i++) {
-		JSON_Object *prop_obj = json_array_get_object(props_array, i);
-		mdata_config_property_t prop;
-		const char *type = json_object_get_string(prop_obj, "type");
-		prop.name = json_object_get_string(prop_obj, "name");
-		if (strcmp(type, "string") == 0) {
+    JSON_Array *props_array = json_object_get_array(obj, "properties");
+    for (int i = 0; i < json_array_get_count(props_array); i++) {
+        JSON_Object *prop_obj = json_array_get_object(props_array, i);
+        mdata_config_property_t prop;
+        const char *type = json_object_get_string(prop_obj, "type");
+        prop.name = json_object_get_string(prop_obj, "name");
+        if (strcmp(type, "string") == 0) {
             prop.type = MDATA_CONFIG_PROPERTY_STRING;
-			prop.string_val = json_object_get_string(prop_obj, "val");
-		}
-		else if (strcmp(type, "number") == 0) {
+            prop.string_val = json_object_get_string(prop_obj, "val");
+        }
+        else if (strcmp(type, "number") == 0) {
             prop.type = MDATA_CONFIG_PROPERTY_NUMBER;
-			prop.number_val = json_object_get_number(prop_obj, "val");
-		}
-		else if (strcmp(type, "vec2") == 0) {
+            prop.number_val = json_object_get_number(prop_obj, "val");
+        }
+        else if (strcmp(type, "vec2") == 0) {
             prop.type = MDATA_CONFIG_PROPERTY_VEC2;
-			prop.vec2_val = _mdata_json_object_get_vec2(prop_obj, "val");
-		}
-		else if (strcmp(type, "vec3") == 0) {
+            prop.vec2_val = _mdata_json_object_get_vec2(prop_obj, "val");
+        }
+        else if (strcmp(type, "vec3") == 0) {
             prop.type = MDATA_CONFIG_PROPERTY_VEC3;
-			prop.vec3_val = _mdata_json_object_get_vec3(prop_obj, "val");
-		}
-		else if (strcmp(type, "vec4") == 0) {
+            prop.vec3_val = _mdata_json_object_get_vec3(prop_obj, "val");
+        }
+        else if (strcmp(type, "vec4") == 0) {
             prop.type = MDATA_CONFIG_PROPERTY_VEC4;
-			prop.vec4_val = _mdata_json_object_get_vec4(prop_obj, "val");
-		}
-		else {
-			mlog_warning("Unknown type %s in config file %s", prop.type, path);
-			continue;
-		}
-		vec_push(&data->properties, prop);
-	}
+            prop.vec4_val = _mdata_json_object_get_vec4(prop_obj, "val");
+        }
+        else {
+            mlog_warning("Unknown type %s in config file %s", prop.type, path);
+            continue;
+        }
+        vec_push(&data->properties, prop);
+    }
 
-	return data;
+    return data;
 }
 
 void mdata_config_free(mdata_config_t *data) {
@@ -304,7 +304,7 @@ static void _stbi_write_func(void *context, void *data, int size) {
 static JSON_Value *_mdata_font_atlas_import(mfile_t *file, int font_size, int bitmap_size) {
     unsigned char *bitmap = malloc(bitmap_size * bitmap_size);
     stbtt_bakedchar cdata[96];
-	memset(cdata, 0, sizeof(cdata));
+    memset(cdata, 0, sizeof(cdata));
     stbtt_BakeFontBitmap(file->data, 0, -font_size, bitmap, bitmap_size, bitmap_size, 32, 95, cdata);
 
     float ascent, descent, linegap;
@@ -568,56 +568,56 @@ void mdata_ui_pixel_pack_import(mfile_t *file) {
 }
 
 mdata_ui_pixel_pack_t *mdata_ui_pixel_pack_load(const char *path) {
-	mfile_t mdata_file = _get_mdata_file(path);
+    mfile_t mdata_file = _get_mdata_file(path);
 
-	if (!mfile_load_data(&mdata_file)) {
-		return NULL;
-	}
+    if (!mfile_load_data(&mdata_file)) {
+        return NULL;
+    }
 
-	JSON_Value *val = json_parse_string(mdata_file.data);
-	JSON_Object *obj = json_value_get_object(val);
-	if (!val) {
-		mlog_warning("Unable to parse json for mdatafile %s", path);
-		return NULL;
-	}
+    JSON_Value *val = json_parse_string(mdata_file.data);
+    JSON_Object *obj = json_value_get_object(val);
+    if (!val) {
+        mlog_warning("Unable to parse json for mdatafile %s", path);
+        return NULL;
+    }
 
-	mdata_ui_pixel_pack_t *data = malloc(sizeof(mdata_ui_pixel_pack_t));
-	vec_init(&data->squares);
-	vec_init(&data->icons);
+    mdata_ui_pixel_pack_t *data = malloc(sizeof(mdata_ui_pixel_pack_t));
+    vec_init(&data->squares);
+    vec_init(&data->icons);
 
-	data->json_val = val;
-	data->texture = json_object_get_string(obj, "texture");
-	data->tile_size = json_object_get_number(obj, "tile_size");
-	data->tile_padding = json_object_get_number(obj, "tile_padding");
+    data->json_val = val;
+    data->texture = json_object_get_string(obj, "texture");
+    data->tile_size = json_object_get_number(obj, "tile_size");
+    data->tile_padding = json_object_get_number(obj, "tile_padding");
 
-	JSON_Array *icons_array = json_object_get_array(obj, "icons");
-	for (int i = 0; i < json_array_get_count(icons_array); i++) {
-		JSON_Object *icon_obj = json_array_get_object(icons_array, i);
-		mdata_ui_pixel_pack_icon_t icon;
-		icon.name = json_object_get_string(icon_obj, "name");
-		icon.x = json_object_get_number(icon_obj, "x");
-		icon.y = json_object_get_number(icon_obj, "y");
-		vec_push(&data->icons, icon);
-	}
+    JSON_Array *icons_array = json_object_get_array(obj, "icons");
+    for (int i = 0; i < json_array_get_count(icons_array); i++) {
+        JSON_Object *icon_obj = json_array_get_object(icons_array, i);
+        mdata_ui_pixel_pack_icon_t icon;
+        icon.name = json_object_get_string(icon_obj, "name");
+        icon.x = json_object_get_number(icon_obj, "x");
+        icon.y = json_object_get_number(icon_obj, "y");
+        vec_push(&data->icons, icon);
+    }
 
-	JSON_Array *squares_array = json_object_get_array(obj, "squares");
-	for (int i = 0; i < json_array_get_count(squares_array); i++) {
-		JSON_Object *square_obj = json_array_get_object(squares_array, i);
-		mdata_ui_pixel_pack_square_t square;
-		square.name = json_object_get_string(square_obj, "name");
-		square.tl = _mdata_json_object_get_vec2(square_obj, "top_left");
-		square.tm = _mdata_json_object_get_vec2(square_obj, "top_mid");
-		square.tr = _mdata_json_object_get_vec2(square_obj, "top_right");
-		square.ml = _mdata_json_object_get_vec2(square_obj, "mid_left");
-		square.mm = _mdata_json_object_get_vec2(square_obj, "mid_mid");
-		square.mr = _mdata_json_object_get_vec2(square_obj, "mid_right");
-		square.bl = _mdata_json_object_get_vec2(square_obj, "bot_left");
-		square.bm = _mdata_json_object_get_vec2(square_obj, "bot_mid");
-		square.br = _mdata_json_object_get_vec2(square_obj, "bot_right");
-		vec_push(&data->squares, square);
-	}
+    JSON_Array *squares_array = json_object_get_array(obj, "squares");
+    for (int i = 0; i < json_array_get_count(squares_array); i++) {
+        JSON_Object *square_obj = json_array_get_object(squares_array, i);
+        mdata_ui_pixel_pack_square_t square;
+        square.name = json_object_get_string(square_obj, "name");
+        square.tl = _mdata_json_object_get_vec2(square_obj, "top_left");
+        square.tm = _mdata_json_object_get_vec2(square_obj, "top_mid");
+        square.tr = _mdata_json_object_get_vec2(square_obj, "top_right");
+        square.ml = _mdata_json_object_get_vec2(square_obj, "mid_left");
+        square.mm = _mdata_json_object_get_vec2(square_obj, "mid_mid");
+        square.mr = _mdata_json_object_get_vec2(square_obj, "mid_right");
+        square.bl = _mdata_json_object_get_vec2(square_obj, "bot_left");
+        square.bm = _mdata_json_object_get_vec2(square_obj, "bot_mid");
+        square.br = _mdata_json_object_get_vec2(square_obj, "bot_right");
+        vec_push(&data->squares, square);
+    }
 
-	return data;
+    return data;
 }
 
 void mdata_ui_pixel_pack_free(mdata_ui_pixel_pack_t *data) {
@@ -632,9 +632,9 @@ static map_mdata_t _loaded_mdata_files;
 static mdir_t _data_dir;
 
 void mdata_init(void) {
-	vec_init(&_mdata_loaders);
-	map_init(&_loaded_mdata_files);	
-	mdir_init(&_data_dir, "data", true);
+    vec_init(&_mdata_loaders);
+    map_init(&_loaded_mdata_files);	
+    mdir_init(&_data_dir, "data", true);
 }
 
 void mdata_run_import(void) {
@@ -653,37 +653,47 @@ void mdata_run_import(void) {
                 int cmp = mfiletime_cmp(loaded_data->last_load_time, mdata_filetime);
                 if (mfiletime_cmp(loaded_data->last_load_time, mdata_filetime) < 0) {
                     loaded_data->last_load_time = mdata_filetime;
+
+                    bool load_successful = false;
                     switch (loaded_data->type) {
                         case MDATA_SHADER:
                             mdata_shader_free(loaded_data->shader);
                             loaded_data->shader = mdata_shader_load(base_file_path.cstr);
+                            load_successful = loaded_data->shader != NULL;
                             break;
                         case MDATA_TEXTURE:
                             mdata_texture_free(loaded_data->texture);
                             loaded_data->texture = mdata_texture_load(base_file_path.cstr);
+                            load_successful = loaded_data->texture != NULL;
                             break;
                         case MDATA_FONT:
                             mdata_font_free(loaded_data->font);
                             loaded_data->font = mdata_font_load(base_file_path.cstr);
+                            load_successful = loaded_data->font != NULL;
                             break;
                         case MDATA_MODEL:
                             mdata_model_free(loaded_data->model);
                             loaded_data->model = mdata_model_load(base_file_path.cstr);
+                            load_successful = loaded_data->model != NULL;
                             break;
                         case MDATA_CONFIG:
                             mdata_config_free(loaded_data->config);
                             loaded_data->config = mdata_config_load(base_file_path.cstr);
+                            load_successful = loaded_data->config != NULL;
                             break;
                         case MDATA_UI_PIXEL_PACK:
                             mdata_ui_pixel_pack_free(loaded_data->ui_pixel_pack);
                             loaded_data->ui_pixel_pack = mdata_ui_pixel_pack_load(base_file_path.cstr);
+                            load_successful = loaded_data->ui_pixel_pack != NULL;
                             break;
                     }
 
-                    for (int i = 0; i < _mdata_loaders.length; i++) {
-                        mdata_loader_t loader = _mdata_loaders.data[i];
-                        if (loader.type == loaded_data->type) {
-                            loader.reload(base_file_path.cstr, *loaded_data);
+                    if (load_successful) {
+                        for (int i = 0; i < _mdata_loaders.length; i++) {
+                            mdata_loader_t loader = _mdata_loaders.data[i];
+                            if (loader.type == loaded_data->type) {
+                                loader.reload(base_file_path.cstr, *loaded_data);
+                            }
                         }
                     }
                 }
@@ -730,125 +740,133 @@ void mdata_run_import(void) {
                 importer(&file);
             }
         }
-	}
+    }
 }
 
 void mdata_add_loader(mdata_type_t type, bool(*load)(const char *path, mdata_t data), bool(*unload)(const char *path, mdata_t data), bool(*reload)(const char *path, mdata_t data)) {
-	mdata_loader_t loader;
-	loader.type = type;
-	loader.load = load;
-	loader.unload = unload;
-	loader.reload = reload;
-	vec_push(&_mdata_loaders, loader);
+    mdata_loader_t loader;
+    loader.type = type;
+    loader.load = load;
+    loader.unload = unload;
+    loader.reload = reload;
+    vec_push(&_mdata_loaders, loader);
 }
 
 void mdata_load_file(const char *path) {
-	mdata_t *loaded_data = map_get(&_loaded_mdata_files, path);
-	if (loaded_data) {
-		loaded_data->load_count++;
-	}
-	else {
-		mdata_t data;
-		data.load_count = 1;
-		mfile_t file = mfile(path);
-		if ((strcmp(file.ext, ".glsl") == 0)) {
-			data.type = MDATA_SHADER;
-			data.shader = mdata_shader_load(path);
-			if (!data.shader) {
-				mlog_warning("Unable to load shader file %s", file.path);
-			}
-		}
-		else if ((strcmp(file.ext, ".png") == 0) ||
-				(strcmp(file.ext, ".bmp") == 0) ||
-				(strcmp(file.ext, ".jpg") == 0)) {
-			data.type = MDATA_TEXTURE;
-			data.texture = mdata_texture_load(path);
-			if (!data.texture) {
-				mlog_warning("Unable to load texture file %s", file.path);
-			}
-		}
-		else if ((strcmp(file.ext, ".ttf") == 0)) {
-			data.type = MDATA_FONT;
-			data.font = mdata_font_load(path);
-			if (!data.font) {
-				mlog_warning("Unable to load font file %s", file.path);
-			}
-		}
-		else if ((strcmp(file.ext, ".obj") == 0)) {
-			data.type = MDATA_MODEL;
-			data.model = mdata_model_load(path);
-			if (!data.model) {
-				mlog_warning("Unable to load model file %s", file.path);
-			}
-		}
-		else if ((strcmp(file.ext, ".ui_pixel_pack") == 0)) {
-			data.type = MDATA_UI_PIXEL_PACK;
-			data.ui_pixel_pack = mdata_ui_pixel_pack_load(path);
-			if (!data.ui_pixel_pack) {
-				mlog_warning("Unable to load ui pixel pack file %s", file.path);
-			}
-		}
-		else if ((strcmp(file.ext, ".cfg") == 0)) {
-			data.type = MDATA_CONFIG;
-			data.config = mdata_config_load(path);
-			if (!data.config) {
-				mlog_warning("Unable to load config file %s", file.path);
-			}
-		}
-		else {
-			mlog_warning("Unknown file ext %s", file.ext);
-			return;
-		}
+    mdata_t *loaded_data = map_get(&_loaded_mdata_files, path);
+    if (loaded_data) {
+        loaded_data->load_count++;
+    }
+    else {
+        mdata_t data;
+        data.load_count = 1;
+        mfile_t file = mfile(path);
+        bool load_successful = false;
+        if ((strcmp(file.ext, ".glsl") == 0)) {
+            data.type = MDATA_SHADER;
+            data.shader = mdata_shader_load(path);
+            load_successful = data.shader != NULL;
+            if (!data.shader) {
+                mlog_warning("Unable to load shader file %s", file.path);
+            }
+        }
+        else if ((strcmp(file.ext, ".png") == 0) ||
+                (strcmp(file.ext, ".bmp") == 0) ||
+                (strcmp(file.ext, ".jpg") == 0)) {
+            data.type = MDATA_TEXTURE;
+            data.texture = mdata_texture_load(path);
+            load_successful = data.texture != NULL;
+            if (!data.texture) {
+                mlog_warning("Unable to load texture file %s", file.path);
+            }
+        }
+        else if ((strcmp(file.ext, ".ttf") == 0)) {
+            data.type = MDATA_FONT;
+            data.font = mdata_font_load(path);
+            load_successful = data.font != NULL;
+            if (!data.font) {
+                mlog_warning("Unable to load font file %s", file.path);
+            }
+        }
+        else if ((strcmp(file.ext, ".obj") == 0)) {
+            data.type = MDATA_MODEL;
+            data.model = mdata_model_load(path);
+            load_successful = data.model != NULL;
+            if (!data.model) {
+                mlog_warning("Unable to load model file %s", file.path);
+            }
+        }
+        else if ((strcmp(file.ext, ".ui_pixel_pack") == 0)) {
+            data.type = MDATA_UI_PIXEL_PACK;
+            data.ui_pixel_pack = mdata_ui_pixel_pack_load(path);
+            load_successful = data.ui_pixel_pack != NULL;
+            if (!data.ui_pixel_pack) {
+                mlog_warning("Unable to load ui pixel pack file %s", file.path);
+            }
+        }
+        else if ((strcmp(file.ext, ".cfg") == 0)) {
+            data.type = MDATA_CONFIG;
+            data.config = mdata_config_load(path);
+            load_successful = data.config != NULL;
+            if (!data.config) {
+                mlog_warning("Unable to load config file %s", file.path);
+            }
+        }
+        else {
+            mlog_warning("Unknown file ext %s", file.ext);
+            return;
+        }
 
         mfile_t mdata_file = _get_mdata_file(path);
         mfile_get_time(&mdata_file, &data.last_load_time);
-
-		for (int i = 0; i < _mdata_loaders.length; i++) {
-			mdata_loader_t loader = _mdata_loaders.data[i];
-			if (loader.type == data.type) {
-				loader.load(file.path, data);
-			}
-		}
-		map_set(&_loaded_mdata_files, path, data);
-	}
+        if (load_successful) {
+            for (int i = 0; i < _mdata_loaders.length; i++) {
+                mdata_loader_t loader = _mdata_loaders.data[i];
+                if (loader.type == data.type) {
+                    loader.load(file.path, data);
+                }
+            }
+        }
+        map_set(&_loaded_mdata_files, path, data);
+    }
 }
 
 void mdata_unload_file(const char *path) {
-	mdata_t *loaded_data = map_get(&_loaded_mdata_files, path);
-	if (loaded_data) {
-		loaded_data->load_count--;
-		if (loaded_data->load_count == 0) {
-			switch (loaded_data->type) {
-				case MDATA_SHADER:
-					mdata_shader_free(loaded_data->shader);
-					break;
-				case MDATA_TEXTURE:
-					mdata_texture_free(loaded_data->texture);
-					break;
-				case MDATA_FONT:
-					mdata_font_free(loaded_data->font);
-					break;
-				case MDATA_MODEL:
-					mdata_model_free(loaded_data->model);
-					break;
-				case MDATA_CONFIG:
-					mdata_config_free(loaded_data->config);
-					break;
-				case MDATA_UI_PIXEL_PACK:
-					mdata_ui_pixel_pack_free(loaded_data->ui_pixel_pack);
-					break;
-			}
+    mdata_t *loaded_data = map_get(&_loaded_mdata_files, path);
+    if (loaded_data) {
+        loaded_data->load_count--;
+        if (loaded_data->load_count == 0) {
+            switch (loaded_data->type) {
+                case MDATA_SHADER:
+                    mdata_shader_free(loaded_data->shader);
+                    break;
+                case MDATA_TEXTURE:
+                    mdata_texture_free(loaded_data->texture);
+                    break;
+                case MDATA_FONT:
+                    mdata_font_free(loaded_data->font);
+                    break;
+                case MDATA_MODEL:
+                    mdata_model_free(loaded_data->model);
+                    break;
+                case MDATA_CONFIG:
+                    mdata_config_free(loaded_data->config);
+                    break;
+                case MDATA_UI_PIXEL_PACK:
+                    mdata_ui_pixel_pack_free(loaded_data->ui_pixel_pack);
+                    break;
+            }
 
-			for (int i = 0; i < _mdata_loaders.length; i++) {
-				mdata_loader_t loader = _mdata_loaders.data[i];
-				if (loader.type == loaded_data->type) {
-					loader.unload(path, *loaded_data);
-				}
-			}
-			map_remove(&_loaded_mdata_files, path);
-		}
-	}
-	else {
-		mlog_warning("Attempting to unload file that isn't loaded %s", path);
-	}
+            for (int i = 0; i < _mdata_loaders.length; i++) {
+                mdata_loader_t loader = _mdata_loaders.data[i];
+                if (loader.type == loaded_data->type) {
+                    loader.unload(path, *loaded_data);
+                }
+            }
+            map_remove(&_loaded_mdata_files, path);
+        }
+    }
+    else {
+        mlog_warning("Attempting to unload file that isn't loaded %s", path);
+    }
 }

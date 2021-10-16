@@ -3,17 +3,17 @@
 		{
 			"type": "vec2",
 			"name": "background_pos",
-			"val": [10, 10]
+			"val": [100, 100]
 		},
 		{
 			"type": "vec2",
 			"name": "background_size",
-			"val": [10, 222]
+			"val": [400, 400]
 		},
 		{
 			"type": "string",
 			"name": "main_text",
-			"val": "GOLF"
+			"val": "OPEN GOLF"
 		}
 	]
 }
