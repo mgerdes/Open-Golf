@@ -1,40 +1,56 @@
 {
 	"properties": [
-		{
-            "name": "background_pos",
-            "val": [100, 100]
-		},
-		{
-            "name": "background_size",
-            "val": [400, 400]
-		},
-		{
-            "name": "background_pixel_pack",
-            "val": "data/textures/UIpackSheet_transparent.ui_pixel_pack"
-		},
-		{
-            "name": "background_pixel_pack_square",
-            "val": "blue_background"
-		},
-		{
-            "name": "main_text_string",
-            "val": "OPEN GOLF"
-		},
-		{
-            "name": "main_text_font", 
-            "val": "data/font/FantasqueSansMono-Bold.ttf"
-		},
-		{
-            "name": "main_text_pos", 
-            "val": [200, 200]
-		},
-		{
-            "name": "main_text_size", 
-            "val": 64
-		},
-		{
-            "name": "main_text_color", 
-            "val": [1, 0, 0, 1]
-		}
+		{ "name": "background_pixel_pack_square_pos", "val": [500, 400] },
+		{ "name": "background_pixel_pack_square_size", "val": [400, 400] },
+        { "name": "background_pixel_pack_square_tile_screen_size", "val": 32 },
+		{ "name": "background_pixel_pack_square_pixel_pack", "val": "data/textures/UIpackSheet_transparent.ui_pixel_pack" },
+		{ "name": "background_pixel_pack_square_square_name", "val": "blue_background" },
+
+		{ "name": "main_text_string", "val": "OPEN GOLF" },
+		{ "name": "main_text_font", "val": "data/font/FantasqueSansMono-Bold.ttf" },
+		{ "name": "main_text_pos", "val": [500, 530] },
+		{ "name": "main_text_size", "val": 64 },
+		{ "name": "main_text_color", "val": [1, 0.8, 0.6, 1] },
+		{ "name": "main_text_horiz_align", "val": "center" },
+		{ "name": "main_text_vert_align", "val": "center" },
+
+		{ "name": "play_button_pos", "val": [500, 400] },
+		{ "name": "play_button_size", "val": [150, 60] },
+        { "name": "play_button_pixel_pack_tile_screen_size", "val": 32 },
+		{ "name": "play_button_pixel_pack", "val": "data/textures/UIpackSheet_transparent.ui_pixel_pack" },
+		{ "name": "play_button_pixel_pack_square_up", "val": "blue_button_up" },
+		{ "name": "play_button_pixel_pack_square_down", "val": "blue_button_down" },
+
+		{ "name": "play_text_string", "val": "PLAY" },
+		{ "name": "play_text_font", "val": "data/font/FantasqueSansMono-Bold.ttf" },
+		{ "name": "play_text_pos", "val": [500, 402] },
+		{ "name": "play_text_size", "val": 32 },
+		{ "name": "play_text_color", "val": [1, 0.8, 0.6, 1] },
+		{ "name": "play_text_horiz_align", "val": "center" },
+		{ "name": "play_text_vert_align", "val": "center" },
+
+		{ "name": "levels_button_pos", "val": [500, 330] },
+		{ "name": "levels_button_size", "val": [150, 60] },
+        { "name": "levels_button_pixel_pack_tile_screen_size", "val": 32 },
+		{ "name": "levels_button_pixel_pack", "val": "data/textures/UIpackSheet_transparent.ui_pixel_pack" },
+		{ "name": "levels_button_pixel_pack_square_up", "val": "blue_button_up" },
+		{ "name": "levels_button_pixel_pack_square_down", "val": "blue_button_down" },
+
+		{ "name": "levels_text_string", "val": "COURSES" },
+		{ "name": "levels_text_font", "val": "data/font/FantasqueSansMono-Bold.ttf" },
+		{ "name": "levels_text_pos", "val": [500, 332] },
+		{ "name": "levels_text_size", "val": 32 },
+		{ "name": "levels_text_color", "val": [1, 0.8, 0.6, 1] },
+		{ "name": "levels_text_horiz_align", "val": "center" },
+		{ "name": "levels_text_vert_align", "val": "center" },
+
+		{ "name": "level_select_background_pixel_pack_square_pos", "val": [800, 400] },
+		{ "name": "level_select_background_pixel_pack_square_size", "val": [400, 400] },
+        { "name": "level_select_background_pixel_pack_square_tile_screen_size", "val": 32 },
+		{ "name": "level_select_background_pixel_pack_square_pixel_pack", "val": "data/textures/UIpackSheet_transparent.ui_pixel_pack" },
+		{ "name": "level_select_background_pixel_pack_square_square_name", "val": "blue_background" },
+
+		{ "name": "level_select_scroll_list_pos", "val": [800, 400] },
+		{ "name": "level_select_scroll_list_size", "val": [400, 300] }
 	]
 }

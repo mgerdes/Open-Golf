@@ -96,10 +96,7 @@ static void _debug_console_renderer_tab() {
 
         while ((key = map_next(&renderer->ui_pixel_packs_map, &iter))) {
             golf_renderer_ui_pixel_pack_t *ui_pixel_pack = map_get(&renderer->ui_pixel_packs_map, key);
-            golf_renderer_texture_t *texture = map_get(&renderer->textures_map, ui_pixel_pack->texture);
-            if (!texture) {
-                continue;
-            }
+            golf_renderer_texture_t *texture =ui_pixel_pack->texture;
 
             if (igTreeNodeStr(key)) {
                 if (igCollapsingHeaderTreeNodeFlags("Squares", ImGuiTreeNodeFlags_None)) {

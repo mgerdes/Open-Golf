@@ -47,7 +47,7 @@ typedef struct golf_renderer_ui_pixel_pack_square {
 typedef map_t(golf_renderer_ui_pixel_pack_square_t) map_golf_renderer_ui_pixel_pack_square_t;
 
 typedef struct golf_renderer_ui_pixel_pack {
-    const char *texture;
+    golf_renderer_texture_t *texture;
     map_golf_renderer_ui_pixel_pack_square_t squares;
     map_golf_renderer_ui_pixel_pack_icon_t icons;
 } golf_renderer_ui_pixel_pack_t;

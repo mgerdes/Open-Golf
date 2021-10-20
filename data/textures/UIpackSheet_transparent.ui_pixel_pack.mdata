@@ -71,7 +71,7 @@
             "name": "blue_button_down",
             "top_left": [24, 2], "top_mid": [25, 2], "top_right": [26, 2],
             "mid_left": [24, 3], "mid_mid": [25, 3], "mid_right": [26, 3],
-            "bot_left": [24, 7], "bot_mid": [25, 7], "bot_right": [26, 7]
+            "bot_left": [27, 4], "bot_mid": [28, 4], "bot_right": [29, 4]
         },
         {
             "name": "blue_background",

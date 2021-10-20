@@ -34,6 +34,13 @@ void golf_inputs_handle_event(const sapp_event *event) {
             event->type == SAPP_EVENTTYPE_MOUSE_UP ||
             event->type == SAPP_EVENTTYPE_MOUSE_MOVE) {
     }
+    if (event->type == SAPP_EVENTTYPE_MOUSE_DOWN) {
+        inputs.mouse_down[SAPP_MOUSEBUTTON_LEFT] = true;
+    }
+    else if (event->type == SAPP_EVENTTYPE_MOUSE_UP) {
+        inputs.mouse_down[SAPP_MOUSEBUTTON_LEFT] = false;
+        inputs.mouse_clicked[SAPP_MOUSEBUTTON_LEFT] = true;
+    }
     inputs.window_mouse_pos = V2(event->mouse_x, 720.0f - event->mouse_y);
     inputs.mouse_pos = inputs.window_mouse_pos;
 
@@ -56,4 +63,12 @@ bool golf_inputs_button_down(sapp_keycode keycode) {
 
 bool golf_inputs_button_clicked(sapp_keycode keycode) {
     return inputs.button_clicked[keycode];
+}
+
+bool golf_inputs_mouse_down(void) {
+    return inputs.mouse_down[SAPP_MOUSEBUTTON_LEFT];
+}
+
+bool golf_inputs_mouse_clicked(void) {
+    return inputs.mouse_clicked[SAPP_MOUSEBUTTON_LEFT];
 }
