@@ -2,61 +2,53 @@
 #define _GOLF_UI_H
 
 #include "mcore/maths.h"
+#include "mcore/mstring.h"
+
+typedef vec_t(mstring_t) vec_mstring_t;
+
+typedef struct golf_ui_pixel_pack_square {
+    mstring_t ui_pixel_pack;
+    mstring_t square_name;
+    vec2 pos;
+    vec2 size;
+    float tile_screen_size;
+} golf_ui_pixel_pack_square_t;
+
+typedef struct golf_ui_text {
+    mstring_t font;
+    mstring_t string;
+    vec2 pos;
+    float size;
+    mstring_t horiz_align;
+    mstring_t vert_align;
+    vec4 color;
+} golf_ui_text_t;
 
 typedef enum golf_ui_button_state {
-    GOLF_UI_BUTTON_DOWN, 
-    GOLF_UI_BUTTON_UP, 
-    GOLF_UI_BUTTON_CLICKED, 
+    GOLF_UI_BUTTON_UP,
+    GOLF_UI_BUTTON_DOWN,
+    GOLF_UI_BUTTON_CLICKED,
 } golf_ui_button_state_t;
 
 typedef struct golf_ui_button {
     golf_ui_button_state_t state;
     vec2 pos;
     vec2 size;
+    vec_mstring_t up_entities;
+    vec_mstring_t down_entities;
 } golf_ui_button_t;
 
-typedef struct golf_ui_pixel_pack_square {
-    const char *ui_pixel_pack;
-    const char *square_name;
-    vec2 pos;
-    vec2 size;
-    float tile_screen_size;
-} golf_ui_pixel_pack_square_t;
-
-typedef struct golf_ui_pixel_pack_square_button {
-    const char *ui_pixel_pack;
-    const char *down_square_name;
-    const char *up_square_name;
-    float tile_screen_size;
-    golf_ui_button_t button;
-} golf_ui_pixel_pack_square_button_t;
-
-typedef struct golf_ui_text {
-    const char *font;
-    const char *string;
-    vec2 pos;
-    float size;
-    const char *horiz_align;
-    const char *vert_align;
-    vec4 color;
-} golf_ui_text_t;
-
 typedef struct golf_ui_scroll_list {
-    float offset;
-    vec2 pos; 
+    vec2 pos;
     vec2 size;
+    vec_mstring_t entities;
 } golf_ui_scroll_list_t;
-
-typedef struct golf_ui_scroll_list_state {
-    float offset;
-} golf_ui_scroll_list_state_t;
 
 typedef enum golf_ui_entity_type {
     GOLF_UI_PIXEL_PACK_SQUARE,
-    GOLF_UI_PIXEL_PACK_SQUARE_BUTTON,
     GOLF_UI_TEXT,
-    GOLF_UI_SCROLL_LIST_BEGIN,
-    GOLF_UI_SCROLL_LIST_END,
+    GOLF_UI_BUTTON,
+    GOLF_UI_SCROLL_LIST,
 } golf_ui_entity_type_t;
 
 typedef struct golf_ui_entity {
@@ -64,11 +56,12 @@ typedef struct golf_ui_entity {
     union {
         golf_ui_text_t text;
         golf_ui_pixel_pack_square_t pixel_pack_square;
-        golf_ui_pixel_pack_square_button_t pixel_pack_square_button;
+        golf_ui_button_t button;
         golf_ui_scroll_list_t scroll_list;
     };
 } golf_ui_entity_t;
 
+typedef map_t(golf_ui_entity_t) map_golf_ui_entity_t;
 typedef vec_t(golf_ui_entity_t) vec_golf_ui_entity_t;
 
 typedef enum golf_ui_state {
@@ -83,9 +76,11 @@ typedef struct golf_ui {
         } main_menu;
     };
 
+    vec2 entity_pos_offset;
     vec2 mouse_input_offset;
-    golf_ui_scroll_list_state_t scroll_list_state;
+    //golf_ui_scroll_list_state_t scroll_list_state;
     vec_golf_ui_entity_t entities;
+    map_golf_ui_entity_t entities_map;
 } golf_ui_t;
 
 golf_ui_t *golf_ui_get(void);

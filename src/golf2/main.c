@@ -66,6 +66,7 @@ static void frame(void) {
         mdata_load_file("data/font/DroidSerif-Bold.ttf");
         mdata_load_file("data/models/ui_sprite_square.obj");
         mdata_load_file("data/config/ui/main_menu.cfg");
+        mdata_load_file("data/ui/main_menu.ui");
     }
 
     {

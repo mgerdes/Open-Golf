@@ -371,7 +371,7 @@ void golf_renderer_init(void) {
 }
 
 static void _draw_ui_text(golf_ui_text_t text) {
-    golf_renderer_font_t *font = _get_font(text.font);
+    golf_renderer_font_t *font = _get_font(text.font.cstr);
     golf_renderer_model_t *square_model = _get_model("data/models/ui_sprite_square.obj");
 
     float cur_x = text.pos.x;
@@ -400,39 +400,39 @@ static void _draw_ui_text(golf_ui_text_t text) {
     }
 
     float width = 0.0f;
-    while (text.string[i]) {
-        char c = text.string[i];
+    while (text.string.cstr[i]) {
+        char c = text.string.cstr[i];
         width += sz_scale * atlas.char_data[c].xadvance;
         i++;
     }
 
-    if (strcmp(text.horiz_align, "center") == 0) {
+    if (strcmp(text.horiz_align.cstr, "center") == 0) {
         cur_x -= 0.5f * width;
     }
-    else if (strcmp(text.horiz_align, "left") == 0) {
+    else if (strcmp(text.horiz_align.cstr, "left") == 0) {
     }
-    else if (strcmp(text.horiz_align, "right") == 0) {
+    else if (strcmp(text.horiz_align.cstr, "right") == 0) {
         cur_x -= width;
     }
     else {
-        mlog_warning("Invalid text horizontal_alignment %s", text.horiz_align);
+        mlog_warning("Invalid text horizontal_alignment %s", text.horiz_align.cstr);
     }
 
-    if (strcmp(text.vert_align, "center") == 0) {
+    if (strcmp(text.vert_align.cstr, "center") == 0) {
         cur_y -= 0.5f * (font->font_data->atlases[sz_idx].ascent + font->font_data->atlases[sz_idx].descent);
     }
-    else if (strcmp(text.vert_align, "top") == 0) {
+    else if (strcmp(text.vert_align.cstr, "top") == 0) {
     }
-    else if (strcmp(text.vert_align, "bottom") == 0) {
+    else if (strcmp(text.vert_align.cstr, "bottom") == 0) {
         cur_y -= (font->font_data->atlases[sz_idx].ascent + font->font_data->atlases[sz_idx].descent);
     }
     else {
-        mlog_warning("Invalid text vert_align %s", text.vert_align);
+        mlog_warning("Invalid text vert_align %s", text.vert_align.cstr);
     }
 
     i = 0;
-    while (text.string[i]) {
-        char c = text.string[i];
+    while (text.string.cstr[i]) {
+        char c = text.string.cstr[i];
 
         int x0 = atlas.char_data[c].x0;
         int x1 = atlas.char_data[c].x1;
@@ -564,10 +564,10 @@ static void _draw_ui_pixel_pack_square_section(vec2 pos, vec2 size, float tile_s
 
 static void _draw_ui_pixel_pack_square(golf_ui_pixel_pack_square_t square) {
     golf_renderer_model_t *square_model = _get_model("data/models/ui_sprite_square.obj");
-    golf_renderer_ui_pixel_pack_t *pixel_pack = _get_ui_pixel_pack(square.ui_pixel_pack);
-    golf_renderer_ui_pixel_pack_square_t *pixel_pack_square = map_get(&pixel_pack->squares, square.square_name);
+    golf_renderer_ui_pixel_pack_t *pixel_pack = _get_ui_pixel_pack(square.ui_pixel_pack.cstr);
+    golf_renderer_ui_pixel_pack_square_t *pixel_pack_square = map_get(&pixel_pack->squares, square.square_name.cstr);
     if (!pixel_pack_square) {
-        mlog_warning("Invalid pixel pack square %s in pixel pack %s", square.square_name, square.ui_pixel_pack);
+        mlog_warning("Invalid pixel pack square %s in pixel pack %s", square.square_name.cstr, square.ui_pixel_pack.cstr);
         return;
     }
 
@@ -589,54 +589,6 @@ static void _draw_ui_pixel_pack_square(golf_ui_pixel_pack_square_t square) {
     _draw_ui_pixel_pack_square_section(square.pos, square.size, square.tile_screen_size, pixel_pack, pixel_pack_square, 1, 1);
 }
 
-static void _draw_ui_pixel_pack_square_button(golf_ui_pixel_pack_square_button_t button) {
-    golf_renderer_model_t *square_model = _get_model("data/models/ui_sprite_square.obj");
-    golf_renderer_ui_pixel_pack_t *pixel_pack = _get_ui_pixel_pack(button.ui_pixel_pack);
-
-    const char *square_name = NULL;
-    if (button.button.state == GOLF_UI_BUTTON_DOWN) {
-        square_name = button.down_square_name;
-    }
-    else {
-        square_name = button.up_square_name;
-    }
-    golf_renderer_ui_pixel_pack_square_t *pixel_pack_square = map_get(&pixel_pack->squares, square_name);
-    if (!pixel_pack_square) {
-        mlog_warning("Invalid pixel pack square %s in pixel pack %s", square_name, button.ui_pixel_pack);
-        return;
-    }
-
-    sg_bindings bindings = {
-        .vertex_buffers[ATTR_ui_sprite_vs_position] = square_model->sg_positions_buf,
-        .vertex_buffers[ATTR_ui_sprite_vs_texture_coord] = square_model->sg_texcoords_buf,
-        .fs_images[SLOT_ui_sprite_texture] = pixel_pack->texture->sg_image,
-    };
-    sg_apply_bindings(&bindings);
-
-    _draw_ui_pixel_pack_square_section(button.button.pos, button.button.size, button.tile_screen_size, pixel_pack, pixel_pack_square, 0, 0);
-    _draw_ui_pixel_pack_square_section(button.button.pos, button.button.size, button.tile_screen_size, pixel_pack, pixel_pack_square, 0, -1);
-    _draw_ui_pixel_pack_square_section(button.button.pos, button.button.size, button.tile_screen_size, pixel_pack, pixel_pack_square, 0, 1);
-    _draw_ui_pixel_pack_square_section(button.button.pos, button.button.size, button.tile_screen_size, pixel_pack, pixel_pack_square, -1, 0);
-    _draw_ui_pixel_pack_square_section(button.button.pos, button.button.size, button.tile_screen_size, pixel_pack, pixel_pack_square, 1, 0);
-    _draw_ui_pixel_pack_square_section(button.button.pos, button.button.size, button.tile_screen_size, pixel_pack, pixel_pack_square, -1, -1);
-    _draw_ui_pixel_pack_square_section(button.button.pos, button.button.size, button.tile_screen_size, pixel_pack, pixel_pack_square, 1, -1);
-    _draw_ui_pixel_pack_square_section(button.button.pos, button.button.size, button.tile_screen_size, pixel_pack, pixel_pack_square, -1, 1);
-    _draw_ui_pixel_pack_square_section(button.button.pos, button.button.size, button.tile_screen_size, pixel_pack, pixel_pack_square, 1, 1);
-}
-
-static void _draw_ui_scroll_list_begin(golf_ui_scroll_list_t scroll_list) {
-    vec2 p = scroll_list.pos;
-    vec2 s = scroll_list.size;
-    float o = scroll_list.offset;
-    sg_apply_scissor_rectf(p.x - 0.5f * s.x, p.y - 0.5f * s.y, s.x, s.y, false);
-    _set_ui_proj_mat(V2(p.x - 0.5f * s.x, p.y - 0.5f * s.y + o));
-}
-
-static void _draw_ui_scroll_list_end(void) {
-    sg_apply_scissor_rectf(0, 0, 1280, 720, false);
-    _set_ui_proj_mat(V2(0.0f, 0.0f));
-}
-
 static void _draw_ui(void) {
     golf_ui_t *ui = golf_ui_get();
     sg_pass_action action = {
@@ -653,8 +605,6 @@ static void _draw_ui(void) {
     }
     sg_apply_pipeline(*ui_sprites_pipeline);
 
-    golf_renderer_model_t *square_model = _get_model("data/models/ui_sprite_square.obj");
-
     for (int i = 0; i < ui->entities.length; i++) {
         golf_ui_entity_t entity = ui->entities.data[i];
         switch (entity.type) {
@@ -663,15 +613,6 @@ static void _draw_ui(void) {
                 break;
             case GOLF_UI_PIXEL_PACK_SQUARE:
                 _draw_ui_pixel_pack_square(entity.pixel_pack_square);
-                break;
-            case GOLF_UI_PIXEL_PACK_SQUARE_BUTTON:
-                _draw_ui_pixel_pack_square_button(entity.pixel_pack_square_button);
-                break;
-            case GOLF_UI_SCROLL_LIST_BEGIN:
-                _draw_ui_scroll_list_begin(entity.scroll_list);
-                break;
-            case GOLF_UI_SCROLL_LIST_END:
-                _draw_ui_scroll_list_end();
                 break;
         }
     }

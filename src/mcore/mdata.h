@@ -151,6 +151,53 @@ mdata_ui_pixel_pack_t *mdata_ui_pixel_pack_load(const char *path);
 void mdata_ui_pixel_pack_free(mdata_ui_pixel_pack_t *data);
 
 //
+// UI
+//
+
+typedef enum mdata_ui_entity_type {
+    MDATA_UI_ENTITY_PIXEL_PACK_SQUARE,
+    MDATA_UI_ENTITY_TEXT,
+} mdata_ui_entity_type_t;
+
+typedef struct mdata_ui_entity_pixel_pack_square {
+    vec2 pos;
+    vec2 size;
+    float tile_screen_size;
+    const char *pixel_pack;
+    const char *square_name;
+} mdata_ui_entity_pixel_pack_square_t;
+
+typedef struct mdata_ui_entity_text {
+    const char *string;
+    const char *font;
+    vec2 pos;
+    float size;
+    vec4 color;
+    const char *horiz_align;
+    const char *vert_align;
+} mdata_ui_entity_text_t;
+
+typedef struct mdata_ui_entity {
+    const char *name;
+    mdata_ui_entity_type_t type;
+    union {
+        mdata_ui_entity_pixel_pack_square_t pixel_pack_square;
+        mdata_ui_entity_text_t text;
+    };
+} mdata_ui_entity_t;
+
+typedef vec_t(mdata_ui_entity_t) vec_mdata_ui_entity_t;
+
+typedef struct mdata_ui {
+    void *json_val;
+    vec_mdata_ui_entity_t entities; 
+} mdata_ui_t;
+
+void mdata_ui_import(mfile_t *file);
+mdata_ui_t *mdata_ui_load(const char *path);
+void mdata_ui_free(mdata_ui_t *data);
+
+//
 // MDATA
 //
 
@@ -161,6 +208,7 @@ typedef enum mdata_type {
 	MDATA_MODEL,
 	MDATA_CONFIG,
 	MDATA_UI_PIXEL_PACK,
+	MDATA_UI,
 } mdata_type_t;
 
 typedef struct mdata {
@@ -175,6 +223,7 @@ typedef struct mdata {
 		mdata_model_t *model;
 		mdata_config_t *config;
 		mdata_ui_pixel_pack_t *ui_pixel_pack;
+		mdata_ui_t *ui;
 	};
 } mdata_t;
 

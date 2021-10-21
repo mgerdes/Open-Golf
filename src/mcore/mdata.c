@@ -641,6 +641,104 @@ void mdata_ui_pixel_pack_free(mdata_ui_pixel_pack_t *data) {
 }
 
 //
+// UI
+//
+
+void mdata_ui_import(mfile_t *file) {
+}
+
+mdata_ui_t *mdata_ui_load(const char *path) {
+    mfile_t mdata_file = _get_mdata_file(path);
+
+    if (!mfile_load_data(&mdata_file)) {
+        return NULL;
+    }
+
+    JSON_Value *val = json_parse_string(mdata_file.data);
+    JSON_Object *obj = json_value_get_object(val); 
+    if (!obj) {
+        mlog_warning("Unable to parse json for mdatafile %s", path);
+        return NULL;
+    }
+
+    mdata_ui_t *data = malloc(sizeof(mdata_ui_t));
+    vec_init(&data->entities);
+
+    data->json_val = val;
+
+    JSON_Array *entities_array = json_object_get_array(obj, "entities");
+    for (int i = 0; i < json_array_get_count(entities_array); i++) {
+        JSON_Object *entity_obj = json_array_get_object(entities_array, i);
+
+        const char *type = json_object_get_string(entity_obj, "type");
+        if (!type) {
+            mlog_warning("No type on entity in UI file");
+            continue;
+        }
+
+        const char *name = json_object_get_string(entity_obj, "type");
+        if (!name) {
+            mlog_warning("No name on entity in UI file");
+            continue;
+        }
+
+        if (strcmp(type, "pixel_pack_square") == 0) {
+            const char *pixel_pack = json_object_get_string(entity_obj, "string");
+            const char *square_name = json_object_get_string(entity_obj, "font");
+            vec2 pos = _mdata_json_object_get_vec2(entity_obj, "pos");
+            vec2 size = _mdata_json_object_get_vec2(entity_obj, "size");
+            float tile_screen_size = json_object_get_number(entity_obj, "size");
+
+            mdata_ui_entity_pixel_pack_square_t pixel_pack_square;
+            pixel_pack_square.pixel_pack = pixel_pack;
+            pixel_pack_square.square_name = square_name;
+            pixel_pack_square.pos = pos;
+            pixel_pack_square.size = size;
+            pixel_pack_square.tile_screen_size = tile_screen_size;
+
+            mdata_ui_entity_t entity;
+            entity.name = name;
+            entity.type = MDATA_UI_ENTITY_PIXEL_PACK_SQUARE;
+            entity.pixel_pack_square = pixel_pack_square;
+            vec_push(&data->entities, entity);
+        }
+        else if (strcmp(type, "text") == 0) {
+            const char *string = json_object_get_string(entity_obj, "string");
+            const char *font = json_object_get_string(entity_obj, "font");
+            vec2 pos = _mdata_json_object_get_vec2(entity_obj, "pos");
+            float size = json_object_get_number(entity_obj, "size");
+            vec4 color = _mdata_json_object_get_vec4(entity_obj, "color");
+            const char *horiz_align = json_object_get_string(entity_obj, "horiz-align");
+            const char *vert_align = json_object_get_string(entity_obj, "vert-align");
+
+            mdata_ui_entity_text_t text;
+            text.string = string;
+            text.font = font;
+            text.pos = pos;
+            text.size = size;
+            text.color = color;
+            text.horiz_align = horiz_align;
+            text.vert_align = vert_align;
+
+            mdata_ui_entity_t entity;
+            entity.name = name;
+            entity.type = MDATA_UI_ENTITY_TEXT;
+            entity.text = text;
+            vec_push(&data->entities, entity);
+        }
+        else {
+            mlog_warning("Unknown type in UI file %s", type);
+            continue;
+        }
+    }
+
+    return data;
+}
+
+void mdata_ui_free(mdata_ui_t *data) {
+}
+
+//
 // MDATA
 //
 
@@ -702,6 +800,11 @@ void mdata_run_import(void) {
                             mdata_ui_pixel_pack_free(loaded_data->ui_pixel_pack);
                             loaded_data->ui_pixel_pack = mdata_ui_pixel_pack_load(base_file_path.cstr);
                             load_successful = loaded_data->ui_pixel_pack != NULL;
+                            break;
+                        case MDATA_UI:
+                            mdata_ui_free(loaded_data->ui);
+                            loaded_data->ui = mdata_ui_load(base_file_path.cstr);
+                            load_successful = loaded_data->ui != NULL;
                             break;
                     }
 
@@ -829,6 +932,14 @@ void mdata_load_file(const char *path) {
                 mlog_warning("Unable to load config file %s", file.path);
             }
         }
+        else if ((strcmp(file.ext, ".ui") == 0)) {
+            data.type = MDATA_UI;
+            data.ui = mdata_ui_load(path);
+            load_successful = data.ui != NULL;
+            if (!data.ui) {
+                mlog_warning("Unable to load ui file %s", file.path);
+            }
+        }
         else {
             mlog_warning("Unknown file ext %s", file.ext);
             return;
@@ -871,6 +982,9 @@ void mdata_unload_file(const char *path) {
                     break;
                 case MDATA_UI_PIXEL_PACK:
                     mdata_ui_pixel_pack_free(loaded_data->ui_pixel_pack);
+                    break;
+                case MDATA_UI:
+                    mdata_ui_free(loaded_data->ui);
                     break;
             }
 

@@ -74,6 +74,7 @@ add_library(mcore STATIC
     src/mcore/mdata.c
     src/mcore/mfile.c
     src/mcore/mlog.c
+    src/mcore/mparson.c
     src/mcore/mscript.c
     src/mcore/mstring.c)
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
