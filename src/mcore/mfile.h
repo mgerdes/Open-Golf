@@ -43,6 +43,7 @@ bool mfile_set_data(mfile_t *file, char *data, int data_len);
 bool mfile_copy_data(mfile_t *file, void *buffer, int num_bytes);
 bool mfile_copy_line(mfile_t *file, char **line_buffer, int *line_buffer_len);
 bool mfile_get_time(mfile_t *file, mfiletime_t *time);
+int mfile_cmp_time(mfile_t *f0, mfile_t *f1);
 
 typedef struct mdir {
     int num_files;

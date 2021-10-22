@@ -10,7 +10,6 @@
 #include "mcore/mdata.h"
 #include "mcore/mlog.h"
 #include "golf2/config.h"
-#include "golf2/debug_console.h"
 #include "golf2/game.h"
 #include "golf2/inputs.h"
 #include "golf2/renderer.h"
@@ -49,9 +48,7 @@ static void frame(void) {
         mdata_init();
         mdata_run_import();
 
-        golf_config_init();
         golf_inputs_init();
-        golf_debug_console_init();
         golf_game_init();
         golf_ui_init();
         golf_renderer_init();
@@ -66,7 +63,6 @@ static void frame(void) {
         mdata_load_file("data/font/DroidSerif-Bold.ttf");
         mdata_load_file("data/models/ui_sprite_square.obj");
         mdata_load_file("data/config/ui/main_menu.cfg");
-        mdata_load_file("data/ui/main_menu.ui");
     }
 
     {
@@ -87,11 +83,11 @@ static void frame(void) {
         if (time_since_import > 1.0f) {
             time_since_import = 0.0f;
             mdata_run_import();
+            mdata_update(dt);
         }
     }
 
     {
-        golf_debug_console_update(dt);
         golf_game_update(dt);
         golf_ui_update(dt);
         golf_renderer_draw();

@@ -16,7 +16,7 @@ set(GOLF_BASE_LIBRARIES
     mattiasgustavsson_libs
     miniz
     parson
-    #s7
+    s7
     sokol
     stb
     tinyobj_loader_c
@@ -72,6 +72,11 @@ add_library(mcore STATIC
     src/mcore/maths.c
     src/mcore/mcommon.c
     src/mcore/mdata.c
+    src/mcore/mdata_font.c
+    src/mcore/mdata_model.c
+    src/mcore/mdata_script.c
+    src/mcore/mdata_shader.c
+    src/mcore/mdata_texture.c
     src/mcore/mfile.c
     src/mcore/mlog.c
     src/mcore/mparson.c
@@ -139,8 +144,8 @@ add_library(miniz STATIC
 add_library(parson STATIC
     src/3rd_party/parson/parson.c)
 
-#add_library(s7 STATIC
-#src/3rd_party/s7/s7.c)
+add_library(s7 STATIC
+    src/3rd_party/s7/s7.c)
 
 add_library(sokol STATIC
     src/3rd_party/sokol/impl.c)

@@ -270,6 +270,13 @@ bool mfile_get_time(mfile_t *file, mfiletime_t *time) {
 
 #endif
 
+int mfile_cmp_time(mfile_t *f0, mfile_t *f1) {
+    mfiletime_t f0_time, f1_time;
+    mfile_get_time(f0, &f0_time);
+    mfile_get_time(f1, &f1_time);
+    return mfiletime_cmp(f0_time, f1_time);
+}
+
 static void _directory_add_file(const char *file_path, void *data) {
     mfile_t file = mfile(file_path);
     vec_mfile_t *vec = (vec_mfile_t*) data;

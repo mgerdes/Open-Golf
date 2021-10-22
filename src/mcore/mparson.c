@@ -1,5 +1,18 @@
 #include "mcore/mparson.h"
 
+#include "mcore/mcommon.h"
+
+void json_object_get_data(JSON_Object *obj, const char *name, unsigned char **data, int *data_len) {
+    const char *data_base64 = json_object_get_string(obj, name); 
+    *data = mbase64_decode(data_base64, strlen(data_base64), data_len);
+}
+
+void json_object_set_data(JSON_Object *obj, const char *name, unsigned char *data, int data_len) {
+    char *enc = mbase64_encode(data, data_len); 
+    json_object_set_string(obj, name, enc);
+    free(enc);
+}
+
 vec2 json_object_get_vec2(JSON_Object *obj, const char *name) {
     JSON_Array *array = json_object_get_array(obj, name);
     vec2 v;
