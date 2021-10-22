@@ -19,10 +19,10 @@ static JSON_Value *_font_atlas_import(const char *file_data, int font_size, int 
     unsigned char *bitmap = malloc(bitmap_size * bitmap_size);
     stbtt_bakedchar cdata[96];
     memset(cdata, 0, sizeof(cdata));
-    stbtt_BakeFontBitmap(file_data, 0, -font_size, bitmap, bitmap_size, bitmap_size, 32, 95, cdata);
+    stbtt_BakeFontBitmap(file_data, 0, (float)-font_size, bitmap, bitmap_size, bitmap_size, 32, 95, cdata);
 
     float ascent, descent, linegap;
-    stbtt_GetScaledFontVMetrics(file_data, 0, -font_size, &ascent, &descent, &linegap);
+    stbtt_GetScaledFontVMetrics(file_data, 0, (float)-font_size, &ascent, &descent, &linegap);
 
     JSON_Value *val = json_value_init_object();
     JSON_Object *obj = json_value_get_object(val);
@@ -85,29 +85,30 @@ bool mdata_font_import(const char *path, char *data, int data_len) {
     mstring_deinit(&import_font_file_path);
 
     json_value_free(val);
+    return true;
 }
 
 
 static void _mdata_font_load_atlas(JSON_Object *atlas_obj, mdata_font_atlas_t *atlas) {
-    atlas->font_size = json_object_get_number(atlas_obj, "font_size");
-    atlas->ascent = json_object_get_number(atlas_obj, "ascent");
-    atlas->descent = json_object_get_number(atlas_obj, "descent");
-    atlas->linegap = json_object_get_number(atlas_obj, "linegap");
-    atlas->bmp_size = json_object_get_number(atlas_obj, "bitmap_size");
+    atlas->font_size = (float)json_object_get_number(atlas_obj, "font_size");
+    atlas->ascent = (float)json_object_get_number(atlas_obj, "ascent");
+    atlas->descent = (float)json_object_get_number(atlas_obj, "descent");
+    atlas->linegap = (float)json_object_get_number(atlas_obj, "linegap");
+    atlas->bmp_size = (int)json_object_get_number(atlas_obj, "bitmap_size");
     json_object_get_data(atlas_obj, "bitmap_data", &atlas->bmp_data, &atlas->bmp_data_len);
 
     JSON_Array *char_datas_array = json_object_get_array(atlas_obj, "char_datas");
     for (int i = 0; i < json_array_get_count(char_datas_array); i++) {
         JSON_Object *char_data_obj = json_array_get_object(char_datas_array, i);
-        int c = json_object_get_number(char_data_obj, "c");
+        int c = (int)json_object_get_number(char_data_obj, "c");
         if (c >= 0 && c < 256) {
-            atlas->char_data[c].x0 = json_object_get_number(char_data_obj, "x0");
-            atlas->char_data[c].x1 = json_object_get_number(char_data_obj, "x1");
-            atlas->char_data[c].y0 = json_object_get_number(char_data_obj, "y0");
-            atlas->char_data[c].y1 = json_object_get_number(char_data_obj, "y1");
-            atlas->char_data[c].xoff = json_object_get_number(char_data_obj, "xoff");
-            atlas->char_data[c].yoff = json_object_get_number(char_data_obj, "yoff");
-            atlas->char_data[c].xadvance = json_object_get_number(char_data_obj, "xadvance");
+            atlas->char_data[c].x0 = (float)json_object_get_number(char_data_obj, "x0");
+            atlas->char_data[c].x1 = (float)json_object_get_number(char_data_obj, "x1");
+            atlas->char_data[c].y0 = (float)json_object_get_number(char_data_obj, "y0");
+            atlas->char_data[c].y1 = (float)json_object_get_number(char_data_obj, "y1");
+            atlas->char_data[c].xoff = (float)json_object_get_number(char_data_obj, "xoff");
+            atlas->char_data[c].yoff = (float)json_object_get_number(char_data_obj, "yoff");
+            atlas->char_data[c].xadvance = (float)json_object_get_number(char_data_obj, "xadvance");
         }
     }
 
@@ -141,7 +142,7 @@ bool mdata_font_load(const char *path, char *data, int data_len) {
     JSON_Object *obj = json_value_get_object(val);
     if (!val) {
         mlog_warning("Unable to parse json for mdatafile %s", path);
-        return NULL;
+        return false;
     }
 
     JSON_Array *atlases_array = json_object_get_array(obj, "atlases");
@@ -152,10 +153,13 @@ bool mdata_font_load(const char *path, char *data, int data_len) {
     }
 
     json_value_free(val);
+    return true;
 }
 
 bool mdata_font_unload(const char *path) {
+    return true;
 }
 
 bool mdata_font_reload(const char *path, char *data, int data_len) {
+    return true;
 }

@@ -13,11 +13,11 @@ bool mdata_model_import(const char *path, char *data, int data_len) {
     JSON_Array *vertices = json_value_get_array(vertices_val);
 
     fastObjMesh *m = fast_obj_read(path);
-    for (int i = 0; i < m->group_count; i++) {
+    for (int i = 0; i < (int)m->group_count; i++) {
         const fastObjGroup grp = m->groups[i];
 
         int idx = 0;
-        for (int j = 0; j < grp.face_count; j++) {
+        for (int j = 0; j < (int)grp.face_count; j++) {
             int fv = m->face_vertices[grp.face_offset + j];
             if (fv != 3) {
                 mlog_warning("OBJ file isn't triangulated %s", path); 
@@ -80,4 +80,5 @@ bool mdata_model_import(const char *path, char *data, int data_len) {
     json_serialize_to_file(val, import_model_file_path.cstr);
     mstring_deinit(&import_model_file_path);
     json_value_free(val);
+    return true;
 }

@@ -23,7 +23,7 @@
 #endif
 
 int mfiletime_cmp(mfiletime_t time0, mfiletime_t time1) {
-    return time0.unix_time - time1.unix_time;
+    return (int)time0.unix_time - (int)time1.unix_time;
 }
 
 mfile_t mfile(const char *path) {

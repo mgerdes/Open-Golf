@@ -18,4 +18,5 @@ bool mdata_texture_import(const char *path, char *data, int data_len) {
     json_serialize_to_file_pretty(val, import_texture_file_path.cstr);
     mstring_deinit(&import_texture_file_path);
     json_value_free(val);
+    return true;
 }

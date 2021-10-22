@@ -90,4 +90,5 @@ bool mdata_shader_import(const char *path, char *data, int data_len) {
     mstring_deinit(&import_shader_file_path);
 
     json_value_free(val);
+    return true;
 }
