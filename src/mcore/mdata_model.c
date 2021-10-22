@@ -1,12 +1,12 @@
 #include "mcore/mdata_model.h"
 
 #include "3rd_party/fast_obj/fast_obj.h"
-#include "mcore/maths.h"
 #include "mcore/mdata.h"
-#include "mcore/mfile.h"
-#include "mcore/mlog.h"
-#include "mcore/mparson.h"
-#include "mcore/mstring.h"
+#include "golf/file.h"
+#include "golf/log.h"
+#include "golf/maths.h"
+#include "golf/parson_helper.h"
+#include "golf/string.h"
 
 bool mdata_model_import(const char *path, char *data, int data_len) {
     JSON_Value *vertices_val = json_value_init_array();
@@ -20,7 +20,7 @@ bool mdata_model_import(const char *path, char *data, int data_len) {
         for (int j = 0; j < (int)grp.face_count; j++) {
             int fv = m->face_vertices[grp.face_offset + j];
             if (fv != 3) {
-                mlog_warning("OBJ file isn't triangulated %s", path); 
+                golf_log_warning("OBJ file isn't triangulated %s", path); 
             }
 
             for (int k = 0; k < fv; k++) {
@@ -75,10 +75,10 @@ bool mdata_model_import(const char *path, char *data, int data_len) {
     JSON_Object *obj = json_value_get_object(val);
     json_object_set_value(obj, "vertices", vertices_val);
 
-    mstring_t import_model_file_path;
-    mstring_initf(&import_model_file_path, "%s.import", path);
+    golf_string_t import_model_file_path;
+    golf_string_initf(&import_model_file_path, "%s.import", path);
     json_serialize_to_file(val, import_model_file_path.cstr);
-    mstring_deinit(&import_model_file_path);
+    golf_string_deinit(&import_model_file_path);
     json_value_free(val);
     return true;
 }

@@ -4,7 +4,6 @@ project(minigolf)
 set(CMAKE_BUILD_TYPE Debug)
 
 set(GOLF_BASE_LIBRARIES 
-    mcore
     cimgui
     cute_headers
     dbgtools
@@ -23,26 +22,33 @@ set(GOLF_BASE_LIBRARIES
     vec
     xatlas)
 
-add_executable(minigolf2
-    src/golf2/config.c
-    src/golf2/debug_console.c
-    src/golf2/game.c
-    src/golf2/inputs.c
-    src/golf2/main.c
-    src/golf2/renderer.c
-    src/golf2/ui.c)
+add_executable(minigolf
+    src/golf/base64.c
+    src/golf/config.c
+    src/golf/data.c
+    src/golf/debug_console.c
+    src/golf/file.c
+    src/golf/game.c
+    src/golf/inputs.c
+    src/golf/log.c
+    src/golf/main.c
+    src/golf/maths.c
+    src/golf/parson_helper.c
+    src/golf/renderer.c
+    src/golf/string.c
+    src/golf/ui.c)
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
-    target_link_libraries(minigolf2 PRIVATE
+    target_link_libraries(minigolf PRIVATE
         ${GOLF_BASE_LIBRARIES})
 elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
-    target_link_libraries(minigolf2 PRIVATE
+    target_link_libraries(minigolf PRIVATE
         ${GOLF_BASE_LIBRARIES}
         "-framework Cocoa"
         "-framework QuartzCore"
         "-framework OpenGL"
         "-framework AudioToolbox")
 elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
-    target_link_libraries(minigolf2 PRIVATE 
+    target_link_libraries(minigolf PRIVATE 
         ${GOLF_BASE_LIBRARIES}
         -lX11
         -lXcursor
@@ -53,7 +59,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
         -lm
         -lasound)
 elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
-    target_link_libraries(minigolf2 PRIVATE
+    target_link_libraries(minigolf PRIVATE
         ${GOLF_BASE_LIBRARIES}
         "-framework Foundation"
         "-framework UIKit"
@@ -61,44 +67,12 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
         "-framework GLKit"
         "-framework AudioToolbox"
         "-framework AVFoundation")
-    set_target_properties(minigolf2 PROPERTIES
+    set_target_properties(minigolf PROPERTIES
         MACOSX_BUNDLE_GUI_IDENTIFIER me.mgerdes.golf
         MACOSX_BUNDLE_BUNDLE_VERSION 0.0.0
         MACOSX_BUNDLE_SHORT_VERSION_STRING 0.0.0)
     set(CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM RMF5MGUCT2 CACHE INTERNAL "")
 endif()
-
-add_library(mcore STATIC
-    src/mcore/maths.c
-    src/mcore/mcommon.c
-    src/mcore/mdata.c
-    src/mcore/mdata_font.c
-    src/mcore/mdata_model.c
-    src/mcore/mdata_script.c
-    src/mcore/mdata_shader.c
-    src/mcore/mdata_texture.c
-    src/mcore/mfile.c
-    src/mcore/mlog.c
-    src/mcore/mparson.c
-    #src/mcore/mscript.c
-    src/mcore/mstring.c)
-if(CMAKE_SYSTEM_NAME STREQUAL Windows)
-    target_compile_definitions(mcore PUBLIC
-        MARS_PLATFORM_WINDOWS)
-elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
-    target_compile_definitions(mcore PUBLIC
-        MARS_PLATFORM_MACOS)
-elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
-    target_compile_definitions(mcore PUBLIC
-        MARS_PLATFORM_LINUX)
-elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
-    target_compile_definitions(mcore PUBLIC
-        MARS_PLATFORM_IOS)
-endif()
-target_link_libraries(mcore PRIVATE
-    fast_obj
-    parson
-    stb)
 
 add_library(cimgui STATIC
     src/3rd_party/cimgui/cimgui.cpp)

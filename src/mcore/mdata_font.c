@@ -4,11 +4,11 @@
 #include "3rd_party/sokol/sokol_gfx.h"
 #include "3rd_party/stb/stb_image_write.h"
 #include "3rd_party/stb/stb_truetype.h"
+#include "golf/file.h"
+#include "golf/log.h"
+#include "golf/parson_helper.h"
+#include "golf/string.h"
 #include "mcore/mdata.h"
-#include "mcore/mfile.h"
-#include "mcore/mlog.h"
-#include "mcore/mparson.h"
-#include "mcore/mstring.h"
 
 static void _stbi_write_func(void *context, void *data, int size) {
     vec_char_t *bmp = (vec_char_t*)context;
@@ -79,10 +79,10 @@ bool mdata_font_import(const char *path, char *data, int data_len) {
 
     json_object_set_value(obj, "atlases", atlases_val);
 
-    mstring_t import_font_file_path;
-    mstring_initf(&import_font_file_path, "%s.import", path);
+    golf_string_t import_font_file_path;
+    golf_string_initf(&import_font_file_path, "%s.import", path);
     json_serialize_to_file(val, import_font_file_path.cstr);
-    mstring_deinit(&import_font_file_path);
+    golf_string_deinit(&import_font_file_path);
 
     json_value_free(val);
     return true;
@@ -117,7 +117,7 @@ static void _mdata_font_load_atlas(JSON_Object *atlas_obj, mdata_font_atlas_t *a
     stbi_set_flip_vertically_on_load(0);
     unsigned char *stb_data = stbi_load_from_memory(atlas->bmp_data, atlas->bmp_data_len, &x, &y, &n, force_channels);
     if (!stb_data) {
-        mlog_error("STB Failed to load image");
+        golf_log_error("STB Failed to load image");
     }
 
     atlas->image = sg_make_image(&(sg_image_desc) {
@@ -141,7 +141,7 @@ bool mdata_font_load(const char *path, char *data, int data_len) {
     JSON_Value *val = json_parse_string(data);
     JSON_Object *obj = json_value_get_object(val);
     if (!val) {
-        mlog_warning("Unable to parse json for mdatafile %s", path);
+        golf_log_warning("Unable to parse json for mdatafile %s", path);
         return false;
     }
 

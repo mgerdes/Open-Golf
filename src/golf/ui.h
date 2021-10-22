@@ -1,30 +1,23 @@
-#ifndef _UI_H
-#define _UI_H
+#ifndef _GOLF_UI_H
+#define _GOLF_UI_H
 
-#include "mcore/maths.h"
+#include <stdbool.h>
 
-#include "golf/controls.h"
+typedef enum golf_ui_state {
+    GOLF_UI_MAIN_MENU,
+} golf_ui_state_t;
 
-struct ui_button {
-    bool is_clicked, is_hovered;
-    vec2 pos, size;
-};
+typedef struct golf_ui {
+    golf_ui_state_t state;
+    union {
+        struct {
+            bool is_level_select_open;
+        } main_menu;
+    };
+} golf_ui_t;
 
-void ui_button_init(struct ui_button *button, vec2 pos, vec2 size);
-void ui_button_update(struct ui_button *button, struct button_inputs inputs);
-
-struct main_menu {
-    struct ui_button start_game_button;
-};
-
-void main_menu_init(struct main_menu *main_menu);
-void main_menu_update(struct main_menu *main_menu, float dt, struct button_inputs inputs);
-
-struct scoreboard {
-    int hole_score[18], hole_par[18]; 
-};
-
-void scoreboard_init(struct scoreboard *scoreboard);
-void scoreboard_reset(struct scoreboard *scoreboard);
+golf_ui_t *golf_ui_get(void);
+void golf_ui_init(void);
+void golf_ui_update(float dt);
 
 #endif
