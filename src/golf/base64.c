@@ -10,199 +10,163 @@
 #include "golf/base64.h"
 
 /*
-    base64 encoding / decoding library based off https://github.com/littlstar/b64.c
-*/
+ * Base64 encoding/decoding (RFC1341)
+ * Copyright (c) 2005-2011, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
 
-static const char _b64_table[] = {
-  'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
-  'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
-  'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
-  'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
-  'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
-  'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
-  'w', 'x', 'y', 'z', '0', '1', '2', '3',
-  '4', '5', '6', '7', '8', '9', '+', '/'
-};
+static const unsigned char base64_table[65] =
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-static void _buf_resize(char** buf, int *buf_size, int new_size) {
-    if (new_size > *buf_size) {
-        while (*buf_size < new_size) *buf_size = (*buf_size + 1) * 2;
-        *buf = realloc(*buf, *buf_size);
-    }
+int golf_base64_encode_out_len(const unsigned char *src, int len) {
+    int olen;
+
+    olen = len * 4 / 3 + 4; /* 3-byte blocks to 4-byte */
+    olen += olen / 72; /* line feeds */
+    olen++; /* nul termination */
+    return olen;
 }
 
-unsigned char *golf_base64_decode(const char *src, int len, int *out_dec_len) {
-    int i = 0;
-    int j = 0;
-    int l = 0;
-    int size = 0;
-    unsigned char *dec = NULL;
-    int dec_size = 1024;
-    unsigned char buf[3];
-    unsigned char tmp[4];
+int golf_base64_decode_out_len(const unsigned char *src, int len) {
+    unsigned char dtable[256];
+    int i, count, olen;
+    int pad = 0;
 
-    // alloc
-    *out_dec_len = 0;
-    dec = malloc(dec_size);
-    if (NULL == dec) { return NULL; }
+    memset(dtable, 0x80, 256);
+    for (i = 0; i < sizeof(base64_table) - 1; i++)
+        dtable[base64_table[i]] = (unsigned char) i;
+    dtable['='] = 0;
 
-    // parse until end of source
-    while (len--) {
-        // break if char is `=' or not base64 char
-        if ('=' == src[j]) { break; }
-        if (!(isalnum(src[j]) || '+' == src[j] || '/' == src[j])) { break; }
+    count = 0;
+    for (i = 0; i < len; i++) {
+        if (dtable[src[i]] != 0x80)
+            count++;
+    }
 
-        // read up to 4 bytes at a time into `tmp'
-        tmp[i++] = src[j++];
+    if (count == 0 || count % 4)
+        return 0;
 
-        // if 4 bytes read then decode into `buf'
-        if (4 == i) {
-            // translate values in `tmp' from table
-            for (i = 0; i < 4; ++i) {
-                // find translation char in `_b64_table'
-                for (l = 0; l < 64; ++l) {
-                    if (tmp[i] == _b64_table[l]) {
-                        tmp[i] = l;
-                        break;
-                    }
-                }
-            }
+    olen = count / 4 * 3;
+    return olen;
+}
 
-            // decode
-            buf[0] = (tmp[0] << 2) + ((tmp[1] & 0x30) >> 4);
-            buf[1] = ((tmp[1] & 0xf) << 4) + ((tmp[2] & 0x3c) >> 2);
-            buf[2] = ((tmp[2] & 0x3) << 6) + tmp[3];
 
-            // write decoded buffer to `dec'
-            _buf_resize((char**)&dec, &dec_size, size + 3);
-            if (dec != NULL){
-                for (i = 0; i < 3; ++i) {
-                    dec[size++] = buf[i];
-                }
-            } else {
-                return NULL;
-            }
+/**
+ * base64_encode - Base64 encode
+ * @src: Data to be encoded
+ * @len: Length of the data to be encoded
+ * @out_len: Pointer to output length variable, or %NULL if not used
+ * Returns: Allocated buffer of out_len bytes of encoded data,
+ * or %NULL on failure
+ *
+ * Caller is responsible for freeing the returned buffer. Returned buffer is
+ * nul terminated to make it easier to use as a C string. The nul terminator is
+ * not included in out_len.
+ */
+bool golf_base64_encode(const unsigned char *src, int len, unsigned char *out) {
+    unsigned char *pos;
+    const unsigned char *end, *in;
+    int line_len;
 
-            // reset
-            i = 0;
+    end = src + len;
+    in = src;
+    pos = out;
+    line_len = 0;
+    while (end - in >= 3) {
+        *pos++ = base64_table[in[0] >> 2];
+        *pos++ = base64_table[((in[0] & 0x03) << 4) | (in[1] >> 4)];
+        *pos++ = base64_table[((in[1] & 0x0f) << 2) | (in[2] >> 6)];
+        *pos++ = base64_table[in[2] & 0x3f];
+        in += 3;
+        line_len += 4;
+        if (line_len >= 72) {
+            *pos++ = '\n';
+            line_len = 0;
         }
     }
 
-    // remainder
-    if (i > 0) {
-        // fill `tmp' with `\0' at most 4 times
-        for (j = i; j < 4; ++j) {
-            tmp[j] = '\0';
-        }
-
-        // translate remainder
-        for (j = 0; j < 4; ++j) {
-            // find translation char in `_b64_table'
-            for (l = 0; l < 64; ++l) {
-                if (tmp[j] == _b64_table[l]) {
-                    tmp[j] = l;
-                    break;
-                }
-            }
-        }
-
-        // decode remainder
-        buf[0] = (tmp[0] << 2) + ((tmp[1] & 0x30) >> 4);
-        buf[1] = ((tmp[1] & 0xf) << 4) + ((tmp[2] & 0x3c) >> 2);
-        buf[2] = ((tmp[2] & 0x3) << 6) + tmp[3];
-
-        // write remainer decoded buffer to `dec'
-        _buf_resize((char**)&dec, &dec_size, size + (i - 1));
-        if (dec != NULL){
-            for (j = 0; (j < i - 1); ++j) {
-                dec[size++] = buf[j];
-            }
+    if (end - in) {
+        *pos++ = base64_table[in[0] >> 2];
+        if (end - in == 1) {
+            *pos++ = base64_table[(in[0] & 0x03) << 4];
+            *pos++ = '=';
         } else {
-            return NULL;
+            *pos++ = base64_table[((in[0] & 0x03) << 4) |
+                (in[1] >> 4)];
+            *pos++ = base64_table[(in[1] & 0x0f) << 2];
         }
+        *pos++ = '=';
+        line_len += 4;
     }
 
-    // Make sure we have enough space to add '\0' character at end.
-    _buf_resize((char**)&dec, &dec_size, size + 1);
-    if (dec != NULL){
-        dec[size] = '\0';
-    } else {
-        return NULL;
-    }
+    if (line_len)
+        *pos++ = '\n';
 
-    *out_dec_len = size;
-    return dec;
+    *pos = '\0';
+    return true;
 }
 
-char *golf_base64_encode(const unsigned char *src, int len) {
-    int i = 0;
-    int j = 0;
-    int enc_size = 1024;
-    char *enc = NULL;
-    int size = 0;
-    unsigned char buf[4];
-    unsigned char tmp[3];
 
-    // alloc
-    enc = malloc(enc_size);
-    if (NULL == enc) { return NULL; }
+/**
+ * base64_decode - Base64 decode
+ * @src: Data to be decoded
+ * @len: Length of the data to be decoded
+ * @out_len: Pointer to output length variable
+ * Returns: Allocated buffer of out_len bytes of decoded data,
+ * or %NULL on failure
+ *
+ * Caller is responsible for freeing the returned buffer.
+ */
+bool golf_base64_decode(const unsigned char *src, int len, unsigned char *out) {
+    unsigned char dtable[256], *pos, block[4], tmp;
+    int i, count;
+    int pad = 0;
 
-    // parse until end of source
-    while (len--) {
-        // read up to 3 bytes at a time into `tmp'
-        tmp[i++] = *(src++);
+    memset(dtable, 0x80, 256);
+    for (i = 0; i < sizeof(base64_table) - 1; i++)
+        dtable[base64_table[i]] = (unsigned char) i;
+    dtable['='] = 0;
 
-        // if 3 bytes read then encode into `buf'
-        if (3 == i) {
-            buf[0] = (tmp[0] & 0xfc) >> 2;
-            buf[1] = ((tmp[0] & 0x03) << 4) + ((tmp[1] & 0xf0) >> 4);
-            buf[2] = ((tmp[1] & 0x0f) << 2) + ((tmp[2] & 0xc0) >> 6);
-            buf[3] = tmp[2] & 0x3f;
+    count = 0;
+    for (i = 0; i < len; i++) {
+        if (dtable[src[i]] != 0x80)
+            count++;
+    }
 
-            // allocate 4 new byts for `enc` and
-            // then translate each encoded buffer
-            // part by index from the base 64 index table
-            // into `enc' unsigned char array
-            _buf_resize(&enc, &enc_size, size + 4);
-            for (i = 0; i < 4; ++i) {
-                enc[size++] = _b64_table[buf[i]];
+    if (count == 0 || count % 4)
+        return false;
+
+    pos = out;
+    count = 0;
+    for (i = 0; i < len; i++) {
+        tmp = dtable[src[i]];
+        if (tmp == 0x80)
+            continue;
+
+        if (src[i] == '=')
+            pad++;
+        block[count] = tmp;
+        count++;
+        if (count == 4) {
+            *pos++ = (block[0] << 2) | (block[1] >> 4);
+            *pos++ = (block[1] << 4) | (block[2] >> 2);
+            *pos++ = (block[2] << 6) | block[3];
+            count = 0;
+            if (pad) {
+                if (pad == 1)
+                    pos--;
+                else if (pad == 2)
+                    pos -= 2;
+                else {
+                    /* Invalid padding */
+                    return false;
+                }
+                break;
             }
-
-            // reset index
-            i = 0;
         }
     }
 
-    // remainder
-    if (i > 0) {
-        // fill `tmp' with `\0' at most 3 times
-        for (j = i; j < 3; ++j) {
-            tmp[j] = '\0';
-        }
-
-        // perform same codec as above
-        buf[0] = (tmp[0] & 0xfc) >> 2;
-        buf[1] = ((tmp[0] & 0x03) << 4) + ((tmp[1] & 0xf0) >> 4);
-        buf[2] = ((tmp[1] & 0x0f) << 2) + ((tmp[2] & 0xc0) >> 6);
-        buf[3] = tmp[2] & 0x3f;
-
-        // perform same write to `enc` with new allocation
-        for (j = 0; (j < i + 1); ++j) {
-            _buf_resize(&enc, &enc_size, size + 1);
-            enc[size++] = _b64_table[buf[j]];
-        }
-
-        // while there is still a remainder
-        // append `=' to `enc'
-        while ((i++ < 3)) {
-            _buf_resize(&enc, &enc_size, size + 1);
-            enc[size++] = '=';
-        }
-    }
-
-    // Make sure we have enough space to add '\0' character at end.
-    _buf_resize(&enc, &enc_size, size + 1);
-    enc[size] = '\0';
-
-    return enc;
+    return true;
 }

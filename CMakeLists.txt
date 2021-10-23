@@ -33,13 +33,14 @@ add_executable(minigolf
     src/golf/log.c
     src/golf/main.c
     src/golf/maths.c
-    src/golf/parson_helper.c
     src/golf/renderer.c
     src/golf/string.c
     src/golf/ui.c)
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
     target_link_libraries(minigolf PRIVATE
         ${GOLF_BASE_LIBRARIES})
+    target_compile_definitions(minigolf PUBLIC
+        GOLF_PLATFORM_WINDOWS)
 elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
     target_link_libraries(minigolf PRIVATE
         ${GOLF_BASE_LIBRARIES}
@@ -47,6 +48,8 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
         "-framework QuartzCore"
         "-framework OpenGL"
         "-framework AudioToolbox")
+    target_compile_definitions(minigolf PUBLIC
+        GOLF_PLATFORM_MACOS)
 elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
     target_link_libraries(minigolf PRIVATE 
         ${GOLF_BASE_LIBRARIES}
@@ -58,6 +61,8 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
         -lpthread
         -lm
         -lasound)
+    target_compile_definitions(minigolf PUBLIC
+        GOLF_PLATFORM_LINUX)
 elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
     target_link_libraries(minigolf PRIVATE
         ${GOLF_BASE_LIBRARIES}
@@ -67,6 +72,8 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
         "-framework GLKit"
         "-framework AudioToolbox"
         "-framework AVFoundation")
+    target_compile_definitions(minigolf PUBLIC
+        GOLF_PLATFORM_IOS)
     set_target_properties(minigolf PROPERTIES
         MACOSX_BUNDLE_GUI_IDENTIFIER me.mgerdes.golf
         MACOSX_BUNDLE_BUNDLE_VERSION 0.0.0

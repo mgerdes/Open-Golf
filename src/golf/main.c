@@ -9,6 +9,7 @@
 #include "3rd_party/sokol/sokol_time.h"
 #include "golf/config.h"
 #include "golf/data.h"
+#include "golf/debug_console.h"
 #include "golf/game.h"
 #include "golf/inputs.h"
 #include "golf/log.h"
@@ -91,6 +92,7 @@ static void frame(void) {
         golf_game_update(dt);
         golf_ui_update(dt);
         golf_renderer_draw();
+        golf_debug_console_update(dt);
     }
 
     {
