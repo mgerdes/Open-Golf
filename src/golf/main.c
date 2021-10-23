@@ -47,7 +47,7 @@ static void frame(void) {
     if (!inited) {
         golf_log_init();
         golf_data_init();
-        golf_data_run_import(true);
+        golf_data_run_import(false);
 
         golf_inputs_init();
         golf_game_init();
@@ -56,6 +56,7 @@ static void frame(void) {
         inited = true;
 
         golf_data_load_file("data/shaders/ui_sprite.glsl");
+        golf_data_load_file("data/textures/fallback.png");
         golf_data_load_file("data/textures/UIpackSheet_transparent.png");
         golf_data_load_file("data/textures/UIpackSheet_transparent.ui_pixel_pack");
         golf_data_load_file("data/font/FantasqueSansMono-Bold.ttf");

@@ -5,23 +5,23 @@
     "icons": [
         {
             "name": "grey_checkbox",
-            "x": 3, "y": 6
+            "pos": [3, 6]
         },
         {
             "name": "yellow_checkbox",
-            "x": 9, "y": 6
+            "pos": [9, 6]
         },
         {
             "name": "green_checkbox",
-            "x": 15, "y": 6
+            "pos": [15, 6]
         },
         {
             "name": "orange_checkbox",
-            "x": 21, "y": 6
+            "pos": [21, 6]
         },
         {
             "name": "blue_checkbox",
-            "x": 27, "y": 6
+            "pos": [27, 6]
         }
     ],
     "squares": [
@@ -77,7 +77,7 @@
             "name": "blue_background",
             "top_left": [13, 20], "top_mid": [14, 20], "top_right": [15, 20],
             "mid_left": [13, 21], "mid_mid": [14, 21], "mid_right": [15, 21],
-            "bot_left": [13, 22], "bot_mid": [14, 22], "bot_right": [15, 22]
+            "bot_left": [19, 22], "bot_mid": [14, 22], "bot_right": [15, 22]
         }
     ]
 }
