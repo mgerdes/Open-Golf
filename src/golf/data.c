@@ -124,6 +124,8 @@ static void *_golf_data_realloc(void *ptr, size_t new_sz) {
     return new_mem + sizeof(int);
 }
 
+#define GOLF_DATA_ALLOCATOR ((golf_allocator_t) { .alloc = _golf_data_alloc, .free = _golf_data_free })
+
 //
 // PARSON HELPERS
 //
@@ -181,7 +183,8 @@ vec4 json_object_get_vec4(JSON_Object *obj, const char *name) {
 
 static bool _golf_data_script_load(const char *path, char *data, int data_len) {
     golf_data_script_t *script = _golf_data_alloc(sizeof(golf_data_script_t));
-    golf_string_init(&script->src, data);
+    golf_string_init(&script->src, GOLF_DATA_ALLOCATOR);
+    golf_string_append_cstr(&script->src, data);
     return true;
 }
 
@@ -226,7 +229,8 @@ static bool _golf_data_texture_import(const char *path, char *data, int data_len
     }
 
     golf_string_t import_texture_file_path;
-    golf_string_initf(&import_texture_file_path, "%s.import", path);
+    golf_string_init(&import_texture_file_path, GOLF_DATA_ALLOCATOR);
+    golf_string_appendf(&import_texture_file_path, "%s.import", path);
     json_serialize_to_file_pretty(val, import_texture_file_path.cstr);
     golf_string_deinit(&import_texture_file_path);
     json_value_free(val);
@@ -309,7 +313,8 @@ static JSON_Value *_golf_data_shader_import_bare(const char *base_name, const ch
 
     {
         golf_string_t fs_bare_name;
-        golf_string_initf(&fs_bare_name, "%s_%s_fs.glsl", base_name, name);
+        golf_string_init(&fs_bare_name, GOLF_DATA_ALLOCATOR);
+        golf_string_appendf(&fs_bare_name, "%s_%s_fs.glsl", base_name, name);
         golf_file_t fs_file = golf_file(fs_bare_name.cstr);
         if (!golf_file_load_data(&fs_file)) {
             golf_log_error("Failed to read file %s", fs_bare_name.cstr);
@@ -321,7 +326,8 @@ static JSON_Value *_golf_data_shader_import_bare(const char *base_name, const ch
 
     {
         golf_string_t vs_bare_name;
-        golf_string_initf(&vs_bare_name, "%s_%s_vs.glsl", base_name, name);
+        golf_string_init(&vs_bare_name, GOLF_DATA_ALLOCATOR);
+        golf_string_appendf(&vs_bare_name, "%s_%s_vs.glsl", base_name, name);
         golf_file_t vs_file = golf_file(vs_bare_name.cstr);
         if (!golf_file_load_data(&vs_file)) {
             golf_log_error("Failed to read file %s", vs_bare_name.cstr);
@@ -342,10 +348,11 @@ bool _golf_data_shader_import(const char *path, char *data, int data_len) {
 
     {
         golf_string_t cmd;
+        golf_string_init(&cmd, GOLF_DATA_ALLOCATOR);
 #if GOLF_PLATFORM_LINUX
-        golf_string_initf(&cmd, "tools/sokol-tools/linux/sokol-shdc --input %s --output src/golf/shaders/%s.h --slang %s", file.path, file.name, slangs);
+        golf_string_appendf(&cmd, "tools/sokol-tools/linux/sokol-shdc --input %s --output src/golf/shaders/%s.h --slang %s", file.path, file.name, slangs);
 #elif GOLF_PLATFORM_WINDOWS
-        golf_string_initf(&cmd, "tools\\sokol-tools\\win32\\sokol-shdc --input %s --output src/golf/shaders/%s.h --slang %s", file.path, file.name, slangs);
+        golf_string_appendf(&cmd, "tools\\sokol-tools\\win32\\sokol-shdc --input %s --output src/golf/shaders/%s.h --slang %s", file.path, file.name, slangs);
 #elif GOLF_PLATFORM_MACOS
 #endif
         int ret = system(cmd.cstr);
@@ -354,16 +361,18 @@ bool _golf_data_shader_import(const char *path, char *data, int data_len) {
 
     {
         golf_string_t cmd;
+        golf_string_init(&cmd, GOLF_DATA_ALLOCATOR);
 #if GOLF_PLATFORM_LINUX
-        golf_string_initf(&cmd, "tools/sokol-tools/linux/sokol-shdc --input %s --output out/temp/bare --slang %s --format bare", file.path, slangs);
+        golf_string_appendf(&cmd, "tools/sokol-tools/linux/sokol-shdc --input %s --output out/temp/bare --slang %s --format bare", file.path, slangs);
 #elif GOLF_PLATFORM_WINDOWS
-        golf_string_initf(&cmd, "tools\\sokol-tools\\win32\\sokol-shdc --input %s --output out/temp/bare --slang %s --format bare", file.path, slangs);
+        golf_string_appendf(&cmd, "tools\\sokol-tools\\win32\\sokol-shdc --input %s --output out/temp/bare --slang %s --format bare", file.path, slangs);
 #elif GOLF_PLATFORM_MACOS
 #endif
         int ret = system(cmd.cstr);
         if (ret == 0) {
             golf_string_t base_bare_name;
-            golf_string_initf(&base_bare_name, "out/temp/bare_%s", file.name);
+            golf_string_init(&base_bare_name, GOLF_DATA_ALLOCATOR);
+            golf_string_appendf(&base_bare_name, "out/temp/bare_%s", file.name);
             golf_string_pop(&base_bare_name, 5);
 
             {
@@ -382,7 +391,8 @@ bool _golf_data_shader_import(const char *path, char *data, int data_len) {
     }
 
     golf_string_t import_shader_file_path;
-    golf_string_initf(&import_shader_file_path, "%s.import", file.path);
+    golf_string_init(&import_shader_file_path, GOLF_DATA_ALLOCATOR);
+    golf_string_appendf(&import_shader_file_path, "%s.import", file.path);
     json_serialize_to_file_pretty(val, import_shader_file_path.cstr);
     golf_string_deinit(&import_shader_file_path);
 
