@@ -30,7 +30,7 @@ static golf_data_t _golf_data;
 
 static void _golf_data_json_object_get_data(JSON_Object *obj, const char *name, unsigned char **data, int *data_len) {
     const char *enc_data = json_object_get_string(obj, name); 
-    int enc_len = strlen(enc_data);
+    int enc_len = (int)strlen(enc_data);
     *data_len = golf_base64_decode_out_len(enc_data, enc_len);
     *data = malloc(*data_len);
     if (!golf_base64_decode(enc_data, enc_len, *data)) {
@@ -601,7 +601,7 @@ bool _golf_data_model_unload(golf_data_file_t *data) {
 // UI PIXEL PACK
 //
 
-static void _golf_date_ui_pixel_pack_pos_to_uvs(golf_data_ui_pixel_pack_t *pp, float tex_w, float tex_h, vec2 p, vec2 *uv0, vec2 *uv1) {
+static void _golf_date_ui_pixel_pack_pos_to_uvs(golf_data_ui_pixel_pack_t *pp, int tex_w, int tex_h, vec2 p, vec2 *uv0, vec2 *uv1) {
     uv0->x = (pp->tile_size + pp->tile_padding) * p.x;
     uv0->x /= tex_w;
     uv0->y = (pp->tile_size + pp->tile_padding) * p.y;
@@ -894,7 +894,7 @@ void golf_data_debug_console_tab(void) {
             if (igTreeNodeStr(key)) {
                 igText("Width: %d", texture->width);
                 igText("Height: %d", texture->height);
-                igImage((ImTextureID)(intptr_t)texture->image.id, (ImVec2){texture->width, texture->height}, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
+                igImage((ImTextureID)(intptr_t)texture->image.id, (ImVec2){(float)texture->width, (float)texture->height}, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
                 igTreePop();
             }
         }
@@ -915,7 +915,7 @@ void golf_data_debug_console_tab(void) {
                 for (int i = 0; i < font->atlases.length; i++) {
                     golf_data_font_atlas_t *atlas = &font->atlases.data[i];
                     igText("Atlas Size: %d", atlas->size);
-                    igImage((ImTextureID)(intptr_t)atlas->image.id, (ImVec2){atlas->size, atlas->size}, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
+                    igImage((ImTextureID)(intptr_t)atlas->image.id, (ImVec2){(float)atlas->size, (float)atlas->size}, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
                 }
                 igTreePop();
             }
