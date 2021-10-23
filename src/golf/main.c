@@ -47,7 +47,7 @@ static void frame(void) {
     if (!inited) {
         golf_log_init();
         golf_data_init();
-        golf_data_run_import();
+        golf_data_run_import(true);
 
         golf_inputs_init();
         golf_game_init();
@@ -83,7 +83,7 @@ static void frame(void) {
         time_since_import += dt;
         if (time_since_import > 1.0f) {
             time_since_import = 0.0f;
-            golf_data_run_import();
+            golf_data_run_import(false);
             golf_data_update(dt);
         }
     }

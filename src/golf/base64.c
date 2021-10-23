@@ -52,7 +52,6 @@ int golf_base64_decode_out_len(const unsigned char *src, int len) {
     return olen;
 }
 
-
 /**
  * base64_encode - Base64 encode
  * @src: Data to be encoded
@@ -107,7 +106,6 @@ bool golf_base64_encode(const unsigned char *src, int len, unsigned char *out) {
     *pos = '\0';
     return true;
 }
-
 
 /**
  * base64_decode - Base64 decode
