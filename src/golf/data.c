@@ -85,17 +85,30 @@ static vec4 _golf_data_json_object_get_vec4(JSON_Object *obj, const char *name) 
 //
 
 static bool _golf_data_texture_import(const char *path, char *data, int data_len) {
+    golf_string_t import_texture_file_path;
+    golf_string_initf(&import_texture_file_path, "%s.import", path);
+
+    JSON_Value *existing_val = json_parse_file(import_texture_file_path.cstr);
+    JSON_Object *existing_obj = json_value_get_object(existing_val);
+    const char *existing_filter = json_object_get_string(existing_obj, "filter");
+
     JSON_Value *val = json_value_init_object();
     JSON_Object *obj = json_value_get_object(val);
 
-    json_object_set_string(obj, "filter", "linear");
+    if (existing_filter) {
+        json_object_set_string(obj, "filter", existing_filter);
+    }
+    else {
+        json_object_set_string(obj, "filter", "linear");
+    }
+
     _golf_data_json_object_set_data(obj, "img_data", data, data_len);
 
-    golf_string_t import_texture_file_path;
-    golf_string_initf(&import_texture_file_path, "%s.import", path);
     json_serialize_to_file_pretty(val, import_texture_file_path.cstr);
+
     golf_string_deinit(&import_texture_file_path);
     json_value_free(val);
+    json_value_free(existing_val);
     return true;
 }
 
