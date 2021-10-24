@@ -76,9 +76,22 @@ static vec4 _golf_data_json_object_get_vec4(JSON_Object *obj, const char *name) 
 }
 
 //
-// SCRIPTS
+// LUA SCRIPTS
 //
 
+static bool _golf_data_lua_script_load(const char *path, char *data, int data_len, golf_data_file_t *datafile) {
+    golf_data_script_t *script = malloc(sizeof(golf_data_script_t));
+    golf_string_init(&script->src, data);
+    datafile->type = GOLF_DATA_LUA_SCRIPT;
+    datafile->script = script;
+    return true;
+}
+
+static bool _golf_data_lua_script_unload(golf_data_file_t *data)  {
+    golf_string_deinit(&data->script->src);
+    free(data->script);
+    return true;
+}
 
 //
 // TEXTURES
@@ -736,6 +749,9 @@ golf_data_loader_t _golf_data_get_loader(const char *ext) {
     else if ((strcmp(ext, ".ui_pixel_pack") == 0)) {
         return &_golf_data_ui_pixel_pack_load;
     }
+    else if ((strcmp(ext, ".lua") == 0)) {
+        return &_golf_data_lua_script_load;
+    }
     else {
         return NULL;
     }
@@ -758,6 +774,9 @@ golf_data_unloader_t _golf_data_get_unloader(const char *ext) {
     }
     else if ((strcmp(ext, ".ui_pixel_pack") == 0)) {
         return &_golf_data_ui_pixel_pack_unload;
+    }
+    else if ((strcmp(ext, ".lua") == 0)) {
+        return &_golf_data_lua_script_unload;
     }
     else {
         return NULL;

@@ -14,6 +14,8 @@ typedef struct golf_ui {
             bool is_level_select_open;
         } main_menu;
     };
+
+    void *lua_state;
 } golf_ui_t;
 
 golf_ui_t *golf_ui_get(void);

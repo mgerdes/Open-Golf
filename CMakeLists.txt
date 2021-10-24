@@ -10,6 +10,7 @@ set(GOLF_BASE_LIBRARIES
     fast_obj
     glad
     imgui
+    lua
     lightmapper
     map
     mattiasgustavsson_libs
@@ -109,6 +110,40 @@ add_library(imgui STATIC
     src/3rd_party/imgui/imgui_widgets.cpp)
 target_compile_options(imgui PRIVATE 
     -std=c++11)
+
+add_library(lua STATIC
+    src/3rd_party/lua/lapi.c 
+    src/3rd_party/lua/lcode.c 
+    src/3rd_party/lua/lctype.c 
+    src/3rd_party/lua/ldebug.c 
+    src/3rd_party/lua/ldo.c 
+    src/3rd_party/lua/ldump.c 
+    src/3rd_party/lua/lfunc.c 
+    src/3rd_party/lua/lgc.c 
+    src/3rd_party/lua/llex.c 
+    src/3rd_party/lua/lmem.c 
+    src/3rd_party/lua/lobject.c 
+    src/3rd_party/lua/lopcodes.c 
+    src/3rd_party/lua/lparser.c 
+    src/3rd_party/lua/lstate.c 
+    src/3rd_party/lua/lstring.c 
+    src/3rd_party/lua/ltable.c 
+    src/3rd_party/lua/ltm.c 
+    src/3rd_party/lua/lundump.c 
+    src/3rd_party/lua/lvm.c 
+    src/3rd_party/lua/lzio.c 
+    src/3rd_party/lua/lauxlib.c 
+    src/3rd_party/lua/lbaselib.c 
+    src/3rd_party/lua/lcorolib.c 
+    src/3rd_party/lua/ldblib.c 
+    src/3rd_party/lua/liolib.c 
+    src/3rd_party/lua/lmathlib.c 
+    src/3rd_party/lua/loadlib.c 
+    src/3rd_party/lua/loslib.c 
+    src/3rd_party/lua/lstrlib.c 
+    src/3rd_party/lua/ltablib.c 
+    src/3rd_party/lua/lutf8lib.c 
+    src/3rd_party/lua/linit.c)
 
 add_library(lightmapper STATIC
     src/3rd_party/lightmapper/impl.c)

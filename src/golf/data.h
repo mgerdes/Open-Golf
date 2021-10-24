@@ -65,7 +65,7 @@ typedef struct golf_data_ui_pixel_pack {
 } golf_data_ui_pixel_pack_t;
 
 typedef enum golf_data_file_type {
-    GOLF_DATA_SCRIPT,
+    GOLF_DATA_LUA_SCRIPT,
     GOLF_DATA_TEXTURE,
     GOLF_DATA_FONT,
     GOLF_DATA_MODEL,
