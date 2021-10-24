@@ -8,9 +8,9 @@
 #include "golf/maths.h"
 #include "golf/string.h"
 
-typedef struct golf_data_script {
+typedef struct golf_data_lua_script {
     golf_string_t src;
-} golf_data_script_t;
+} golf_data_lua_script_t;
 
 typedef struct golf_data_texture {
     int width, height;
@@ -44,25 +44,25 @@ typedef struct golf_data_shader {
     sg_shader shader;
 } golf_data_shader_t;
 
-typedef struct golf_data_ui_pixel_pack_icon {
+typedef struct golf_data_pixel_pack_icon {
     vec2 uv0, uv1;
-} golf_data_ui_pixel_pack_icon_t;
-typedef map_t(golf_data_ui_pixel_pack_icon_t) map_golf_data_ui_pixel_pack_icon_t;
+} golf_data_pixel_pack_icon_t;
+typedef map_t(golf_data_pixel_pack_icon_t) map_golf_data_pixel_pack_icon_t;
 
-typedef struct golf_data_ui_pixel_pack_square {
+typedef struct golf_data_pixel_pack_square {
     vec2 tl_uv0, tm_uv0, tr_uv0, tl_uv1, tm_uv1, tr_uv1;
     vec2 ml_uv0, mm_uv0, mr_uv0, ml_uv1, mm_uv1, mr_uv1;
     vec2 bl_uv0, bm_uv0, br_uv0, bl_uv1, bm_uv1, br_uv1;
-} golf_data_ui_pixel_pack_square_t;
-typedef map_t(golf_data_ui_pixel_pack_square_t) map_golf_data_ui_pixel_pack_square_t;
+} golf_data_pixel_pack_square_t;
+typedef map_t(golf_data_pixel_pack_square_t) map_golf_data_pixel_pack_square_t;
 
-typedef struct golf_data_ui_pixel_pack {
+typedef struct golf_data_pixel_pack {
     golf_string_t texture; 
     float tile_size;
     float tile_padding;
-    map_golf_data_ui_pixel_pack_icon_t icons;
-    map_golf_data_ui_pixel_pack_square_t squares;
-} golf_data_ui_pixel_pack_t;
+    map_golf_data_pixel_pack_icon_t icons;
+    map_golf_data_pixel_pack_square_t squares;
+} golf_data_pixel_pack_t;
 
 typedef enum golf_data_file_type {
     GOLF_DATA_LUA_SCRIPT,
@@ -70,7 +70,7 @@ typedef enum golf_data_file_type {
     GOLF_DATA_FONT,
     GOLF_DATA_MODEL,
     GOLF_DATA_SHADER,
-    GOLF_DATA_UI_PIXEL_PACK,
+    GOLF_DATA_PIXEL_PACK,
 } golf_data_file_type_t;
 
 typedef struct golf_data_file {
@@ -81,12 +81,12 @@ typedef struct golf_data_file {
 
     golf_data_file_type_t type; 
     union {
-        golf_data_script_t *script;
+        golf_data_lua_script_t *lua_script;
         golf_data_texture_t *texture;
         golf_data_font_t *font;
         golf_data_model_t *model;
         golf_data_shader_t *shader;
-        golf_data_ui_pixel_pack_t *ui_pixel_pack;
+        golf_data_pixel_pack_t *pixel_pack;
     };
 } golf_data_file_t;
 
@@ -101,6 +101,8 @@ void golf_data_debug_console_tab(void);
 
 golf_data_file_t *golf_data_get_file(const char *path);
 golf_data_texture_t *golf_data_get_texture(const char *path);
+golf_data_lua_script_t *golf_data_get_lua_script(const char *path);
+golf_data_pixel_pack_t *golf_data_get_pixel_pack(const char *path);
 
 #endif
 

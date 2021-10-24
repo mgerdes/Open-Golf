@@ -1,5 +1,5 @@
 {
-    "texture": "data/textures/UIpackSheet_transparent.png",
+    "texture": "data/textures/pixel_pack_tex.png",
     "tile_size": 16,
     "tile_padding": 2,
     "icons": [

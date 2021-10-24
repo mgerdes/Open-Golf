@@ -80,16 +80,16 @@ static vec4 _golf_data_json_object_get_vec4(JSON_Object *obj, const char *name) 
 //
 
 static bool _golf_data_lua_script_load(const char *path, char *data, int data_len, golf_data_file_t *datafile) {
-    golf_data_script_t *script = malloc(sizeof(golf_data_script_t));
+    golf_data_lua_script_t *script = malloc(sizeof(golf_data_lua_script_t));
     golf_string_init(&script->src, data);
     datafile->type = GOLF_DATA_LUA_SCRIPT;
-    datafile->script = script;
+    datafile->lua_script = script;
     return true;
 }
 
 static bool _golf_data_lua_script_unload(golf_data_file_t *data)  {
-    golf_string_deinit(&data->script->src);
-    free(data->script);
+    golf_string_deinit(&data->lua_script->src);
+    free(data->lua_script);
     return true;
 }
 
@@ -627,7 +627,7 @@ bool _golf_data_model_unload(golf_data_file_t *data) {
 // UI PIXEL PACK
 //
 
-static void _golf_date_ui_pixel_pack_pos_to_uvs(golf_data_ui_pixel_pack_t *pp, int tex_w, int tex_h, vec2 p, vec2 *uv0, vec2 *uv1) {
+static void _golf_date_pixel_pack_pos_to_uvs(golf_data_pixel_pack_t *pp, int tex_w, int tex_h, vec2 p, vec2 *uv0, vec2 *uv1) {
     uv0->x = (pp->tile_size + pp->tile_padding) * p.x;
     uv0->x /= tex_w;
     uv0->y = (pp->tile_size + pp->tile_padding) * p.y;
@@ -639,18 +639,18 @@ static void _golf_date_ui_pixel_pack_pos_to_uvs(golf_data_ui_pixel_pack_t *pp, i
     uv1->y /= tex_h;
 }
 
-static bool _golf_data_ui_pixel_pack_load(const char *path, char *data, int data_len, golf_data_file_t *data_file) {
+static bool _golf_data_pixel_pack_load(const char *path, char *data, int data_len, golf_data_file_t *data_file) {
     JSON_Value *val = json_parse_string(data);
     JSON_Object *obj = json_value_get_object(val);
 
-    golf_data_ui_pixel_pack_t *ui_pixel_pack = malloc(sizeof(golf_data_ui_pixel_pack_t));
-    golf_string_init(&ui_pixel_pack->texture, json_object_get_string(obj, "texture"));
-    ui_pixel_pack->tile_size = (float)json_object_get_number(obj, "tile_size");
-    ui_pixel_pack->tile_padding = (float)json_object_get_number(obj, "tile_padding");
-    map_init(&ui_pixel_pack->icons);
-    map_init(&ui_pixel_pack->squares);
+    golf_data_pixel_pack_t *pixel_pack = malloc(sizeof(golf_data_pixel_pack_t));
+    golf_string_init(&pixel_pack->texture, json_object_get_string(obj, "texture"));
+    pixel_pack->tile_size = (float)json_object_get_number(obj, "tile_size");
+    pixel_pack->tile_padding = (float)json_object_get_number(obj, "tile_padding");
+    map_init(&pixel_pack->icons);
+    map_init(&pixel_pack->squares);
 
-    golf_data_texture_t *tex = golf_data_get_texture(ui_pixel_pack->texture.cstr);
+    golf_data_texture_t *tex = golf_data_get_texture(pixel_pack->texture.cstr);
 
     JSON_Array *icons_array = json_object_get_array(obj, "icons");
     for (int i = 0; i < (int)json_array_get_count(icons_array); i++) {
@@ -658,9 +658,9 @@ static bool _golf_data_ui_pixel_pack_load(const char *path, char *data, int data
         const char *name = json_object_get_string(icon_obj, "name");
         vec2 pos = _golf_data_json_object_get_vec2(icon_obj, "pos");
 
-        golf_data_ui_pixel_pack_icon_t icon;
-        _golf_date_ui_pixel_pack_pos_to_uvs(ui_pixel_pack, tex->width, tex->height, pos, &icon.uv0, &icon.uv1);
-        map_set(&ui_pixel_pack->icons, name, icon);
+        golf_data_pixel_pack_icon_t icon;
+        _golf_date_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, pos, &icon.uv0, &icon.uv1);
+        map_set(&pixel_pack->icons, name, icon);
     }
 
     JSON_Array *squares_array = json_object_get_array(obj, "squares");
@@ -677,29 +677,29 @@ static bool _golf_data_ui_pixel_pack_load(const char *path, char *data, int data
         vec2 bm = _golf_data_json_object_get_vec2(square_obj, "bot_mid");
         vec2 br = _golf_data_json_object_get_vec2(square_obj, "bot_right");
 
-        golf_data_ui_pixel_pack_square_t square;
-        _golf_date_ui_pixel_pack_pos_to_uvs(ui_pixel_pack, tex->width, tex->height, tl, &square.tl_uv0, &square.tl_uv1);
-        _golf_date_ui_pixel_pack_pos_to_uvs(ui_pixel_pack, tex->width, tex->height, tm, &square.tm_uv0, &square.tm_uv1);
-        _golf_date_ui_pixel_pack_pos_to_uvs(ui_pixel_pack, tex->width, tex->height, tr, &square.tr_uv0, &square.tr_uv1);
-        _golf_date_ui_pixel_pack_pos_to_uvs(ui_pixel_pack, tex->width, tex->height, ml, &square.ml_uv0, &square.ml_uv1);
-        _golf_date_ui_pixel_pack_pos_to_uvs(ui_pixel_pack, tex->width, tex->height, mm, &square.mm_uv0, &square.mm_uv1);
-        _golf_date_ui_pixel_pack_pos_to_uvs(ui_pixel_pack, tex->width, tex->height, mr, &square.mr_uv0, &square.mr_uv1);
-        _golf_date_ui_pixel_pack_pos_to_uvs(ui_pixel_pack, tex->width, tex->height, bl, &square.bl_uv0, &square.bl_uv1);
-        _golf_date_ui_pixel_pack_pos_to_uvs(ui_pixel_pack, tex->width, tex->height, bm, &square.bm_uv0, &square.bm_uv1);
-        _golf_date_ui_pixel_pack_pos_to_uvs(ui_pixel_pack, tex->width, tex->height, br, &square.br_uv0, &square.br_uv1);
-        map_set(&ui_pixel_pack->squares, name, square);
+        golf_data_pixel_pack_square_t square;
+        _golf_date_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, tl, &square.tl_uv0, &square.tl_uv1);
+        _golf_date_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, tm, &square.tm_uv0, &square.tm_uv1);
+        _golf_date_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, tr, &square.tr_uv0, &square.tr_uv1);
+        _golf_date_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, ml, &square.ml_uv0, &square.ml_uv1);
+        _golf_date_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, mm, &square.mm_uv0, &square.mm_uv1);
+        _golf_date_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, mr, &square.mr_uv0, &square.mr_uv1);
+        _golf_date_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, bl, &square.bl_uv0, &square.bl_uv1);
+        _golf_date_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, bm, &square.bm_uv0, &square.bm_uv1);
+        _golf_date_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, br, &square.br_uv0, &square.br_uv1);
+        map_set(&pixel_pack->squares, name, square);
     }
 
     json_value_free(val);
-    data_file->type = GOLF_DATA_UI_PIXEL_PACK;
-    data_file->ui_pixel_pack = ui_pixel_pack;
+    data_file->type = GOLF_DATA_PIXEL_PACK;
+    data_file->pixel_pack = pixel_pack;
     return true;
 }
 
-static bool _golf_data_ui_pixel_pack_unload(golf_data_file_t *data_file) {
-    map_deinit(&data_file->ui_pixel_pack->icons);
-    map_deinit(&data_file->ui_pixel_pack->squares);
-    free(data_file->ui_pixel_pack);
+static bool _golf_data_pixel_pack_unload(golf_data_file_t *data_file) {
+    map_deinit(&data_file->pixel_pack->icons);
+    map_deinit(&data_file->pixel_pack->squares);
+    free(data_file->pixel_pack);
     return true;
 }
 
@@ -746,8 +746,8 @@ golf_data_loader_t _golf_data_get_loader(const char *ext) {
     else if ((strcmp(ext, ".obj") == 0)) {
         return &_golf_data_model_load;
     }
-    else if ((strcmp(ext, ".ui_pixel_pack") == 0)) {
-        return &_golf_data_ui_pixel_pack_load;
+    else if ((strcmp(ext, ".pixel_pack") == 0)) {
+        return &_golf_data_pixel_pack_load;
     }
     else if ((strcmp(ext, ".lua") == 0)) {
         return &_golf_data_lua_script_load;
@@ -772,8 +772,8 @@ golf_data_unloader_t _golf_data_get_unloader(const char *ext) {
     else if ((strcmp(ext, ".obj") == 0)) {
         return &_golf_data_model_unload;
     }
-    else if ((strcmp(ext, ".ui_pixel_pack") == 0)) {
-        return &_golf_data_ui_pixel_pack_unload;
+    else if ((strcmp(ext, ".pixel_pack") == 0)) {
+        return &_golf_data_pixel_pack_unload;
     }
     else if ((strcmp(ext, ".lua") == 0)) {
         return &_golf_data_lua_script_unload;
@@ -908,6 +908,31 @@ golf_data_texture_t *golf_data_get_texture(const char *path) {
     return data_file->texture;
 }
 
+golf_data_pixel_pack_t *golf_data_get_pixel_pack(const char *path) {
+    static const char *fallback_pixel_pack = "data/textures/pixel_pack.pixel_pack";
+
+    golf_data_file_t *data_file = golf_data_get_file(path);
+    if (!data_file || data_file->type != GOLF_DATA_PIXEL_PACK) {
+        golf_log_warning("Could not find pixel pack %s. Using fallback", path);
+        data_file = golf_data_get_file(fallback_pixel_pack);
+        if (!data_file || data_file->type != GOLF_DATA_PIXEL_PACK) {
+            golf_log_error("Could not find fallback pixel_pack");
+        }
+    }
+    return data_file->pixel_pack;
+}
+
+golf_data_lua_script_t *golf_data_get_lua_script(const char *path) {
+    golf_data_file_t *data_file = golf_data_get_file(path);
+    if (data_file && data_file->type == GOLF_DATA_LUA_SCRIPT) {
+        return data_file->lua_script;
+    }
+    else {
+        golf_log_error("Script %s isn't loaded", path);
+        return NULL;
+    }
+}
+
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "3rd_party/cimgui/cimgui.h"
 
@@ -1007,17 +1032,17 @@ void golf_data_debug_console_tab(void) {
         }
     }
 
-    if (igCollapsingHeaderTreeNodeFlags("UI Pixel Packs", ImGuiTreeNodeFlags_None)) {
+    if (igCollapsingHeaderTreeNodeFlags("Pixel Packs", ImGuiTreeNodeFlags_None)) {
         const char *key;
         map_iter_t iter = map_iter(&_golf_data.loaded_files);
 
         while ((key = map_next(&_golf_data.loaded_files, &iter))) {
             golf_data_file_t *loaded_file = map_get(&_golf_data.loaded_files, key);
-            if (loaded_file->type != GOLF_DATA_UI_PIXEL_PACK) {
+            if (loaded_file->type != GOLF_DATA_PIXEL_PACK) {
                 continue;
             }
 
-            golf_data_ui_pixel_pack_t *pp = loaded_file->ui_pixel_pack;
+            golf_data_pixel_pack_t *pp = loaded_file->pixel_pack;
             golf_data_texture_t *t = golf_data_get_texture(pp->texture.cstr);
 
             if (igTreeNodeStr(key)) {
@@ -1026,7 +1051,7 @@ void golf_data_debug_console_tab(void) {
                     map_iter_t icons_iter = map_iter(&pp->icons);
                     while ((icon_key = map_next(&pp->icons, &icons_iter))) {
                         if (igTreeNodeStr(icon_key)) {
-                            golf_data_ui_pixel_pack_icon_t *i = map_get(&pp->icons, icon_key);
+                            golf_data_pixel_pack_icon_t *i = map_get(&pp->icons, icon_key);
                             igImage((ImTextureID)(intptr_t)t->image.id, (ImVec2){40, 40}, (ImVec2){i->uv0.x, i->uv0.y}, (ImVec2){i->uv1.x, i->uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
                             igTreePop();
                         }
@@ -1039,7 +1064,7 @@ void golf_data_debug_console_tab(void) {
                     map_iter_t squares_iter = map_iter(&pp->squares);
                     while ((square_key = map_next(&pp->squares, &squares_iter))) {
                         if (igTreeNodeStr(square_key)) {
-                            golf_data_ui_pixel_pack_square_t *s = map_get(&pp->squares, square_key);
+                            golf_data_pixel_pack_square_t *s = map_get(&pp->squares, square_key);
 
                             igPushStyleVarVec2(ImGuiStyleVar_ItemSpacing, (ImVec2){0, 0});
 
