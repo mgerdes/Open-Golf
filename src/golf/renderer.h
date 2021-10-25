@@ -6,8 +6,12 @@
 #include "3rd_party/vec/vec.h"
 #include "golf/maths.h"
 
+typedef map_t(sg_pipeline) map_sg_pipeline_t;
+
 typedef struct golf_renderer {
     mat4 ui_proj_mat;
+
+    map_sg_pipeline_t pipelines_map;
 } golf_renderer_t;
 
 golf_renderer_t *golf_renderer_get(void);

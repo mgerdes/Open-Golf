@@ -34,7 +34,7 @@ void main() {
     vec2 tc = vec2(tex_x, tex_y) + frag_texture_coord * vec2(tex_dx, tex_dy);
     g_frag_color = texture(ui_sprite_texture, tc);
     g_frag_color.a = is_font*g_frag_color.x + (1.0 - is_font)*g_frag_color.a;
-    g_frag_color.xyz = (1.0 - is_font)*g_frag_color.xyz + is_font*color.xyz;
+    g_frag_color.xyz = (1.0 - is_font)*((1.0 - color.a)*g_frag_color.xyz + color.a*color.xyz) + is_font*color.xyz;
 }
 @end
 

@@ -190,14 +190,14 @@ static bool _golf_data_texture_load(const char *path, char *data, int data_len, 
 
     datafile->type = GOLF_DATA_TEXTURE;
     datafile->texture = malloc(sizeof(golf_data_texture_t));
-    datafile->texture->image = image;
+    datafile->texture->sg_image = image;
     datafile->texture->width = width;
     datafile->texture->height = height;
     return true;
 }
 
 static bool _golf_data_texture_unload(golf_data_file_t *data) {
-    sg_destroy_image(data->texture->image);
+    sg_destroy_image(data->texture->sg_image);
     free(data->texture);
     return true;
 }
@@ -321,7 +321,7 @@ static bool _golf_data_shader_load(const char *path, char *data, int data_len, g
     shader_desc.vs.source = vs;
 
     golf_data_shader_t *shader = malloc(sizeof(golf_data_shader_t));
-    shader->shader = sg_make_shader(&shader_desc);
+    shader->sg_shader = sg_make_shader(&shader_desc);
 
     json_value_free(val);
 
@@ -331,7 +331,7 @@ static bool _golf_data_shader_load(const char *path, char *data, int data_len, g
 }
 
 static bool _golf_data_shader_unload(golf_data_file_t *data) {
-    sg_destroy_shader(data->shader->shader);
+    sg_destroy_shader(data->shader->sg_shader);
     free(data->shader);
     return true;
 }
@@ -451,7 +451,7 @@ static void _golf_data_font_load_atlas(JSON_Object *atlas_obj, golf_data_font_at
         golf_log_error("STB Failed to load image");
     }
 
-    atlas->image = sg_make_image(&(sg_image_desc) {
+    atlas->sg_image = sg_make_image(&(sg_image_desc) {
             .width = atlas->size,
             .height = atlas->size,
             .pixel_format = SG_PIXELFORMAT_RGBA8,
@@ -497,7 +497,7 @@ bool _golf_data_font_load(const char *path, char *data, int data_len, golf_data_
 bool _golf_data_font_unload(golf_data_file_t *data) {
     for (int i = 0; i < data->font->atlases.length; i++) {
         golf_data_font_atlas_t atlas = data->font->atlases.data[i];
-        sg_destroy_image(atlas.image);
+        sg_destroy_image(atlas.sg_image);
     }
     vec_deinit(&data->font->atlases);
     free(data->font);
@@ -608,6 +608,24 @@ bool _golf_data_model_load(const char *path, char *data, int data_len, golf_data
         vec_push(&model->texcoords, texcoord);
     }
 
+    {
+        sg_buffer_desc desc = {
+            .type = SG_BUFFERTYPE_VERTEXBUFFER,
+        };
+
+        desc.data.size = sizeof(vec3) * model->positions.length;
+        desc.data.ptr = model->positions.data;
+        model->sg_positions_buf = sg_make_buffer(&desc);
+
+        desc.data.size = sizeof(vec3) * model->normals.length;
+        desc.data.ptr = model->normals.data;
+        model->sg_normals_buf = sg_make_buffer(&desc);
+
+        desc.data.size = sizeof(vec2) * model->texcoords.length;
+        desc.data.ptr = model->texcoords.data;
+        model->sg_texcoords_buf = sg_make_buffer(&desc);
+    }
+
     json_value_free(val);
 
     data_file->type = GOLF_DATA_MODEL;
@@ -644,13 +662,13 @@ static bool _golf_data_pixel_pack_load(const char *path, char *data, int data_le
     JSON_Object *obj = json_value_get_object(val);
 
     golf_data_pixel_pack_t *pixel_pack = malloc(sizeof(golf_data_pixel_pack_t));
-    golf_string_init(&pixel_pack->texture, json_object_get_string(obj, "texture"));
+    pixel_pack->texture = golf_data_get_texture(json_object_get_string(obj, "texture"));
     pixel_pack->tile_size = (float)json_object_get_number(obj, "tile_size");
     pixel_pack->tile_padding = (float)json_object_get_number(obj, "tile_padding");
     map_init(&pixel_pack->icons);
     map_init(&pixel_pack->squares);
 
-    golf_data_texture_t *tex = golf_data_get_texture(pixel_pack->texture.cstr);
+    golf_data_texture_t *tex = pixel_pack->texture;
 
     JSON_Array *icons_array = json_object_get_array(obj, "icons");
     for (int i = 0; i < (int)json_array_get_count(icons_array); i++) {
@@ -704,6 +722,155 @@ static bool _golf_data_pixel_pack_unload(golf_data_file_t *data_file) {
 }
 
 //
+// CONFIG
+//
+
+static bool _golf_data_config_load(const char *path, char *data, int data_len, golf_data_file_t *data_file) {
+    JSON_Value *val = json_parse_string(data);
+    JSON_Object *obj = json_value_get_object(val);
+
+    if (!val || !obj) {
+        golf_log_warning("Can't parse json for config file %s", path);
+        return false;
+    }
+
+    golf_data_config_t *config = malloc(sizeof(golf_data_config_t));
+    map_init(&config->properties);
+
+    for (int i = 0; i < (int)json_object_get_count(obj); i++) {
+        const char *name = json_object_get_name(obj, i);
+        JSON_Value *prop_val = json_object_get_value_at(obj, i);
+        JSON_Value_Type type = json_value_get_type(prop_val);
+
+        bool valid_property = false;
+        golf_data_config_property_t data_property;  
+        if (type == JSONNumber) {
+            double prop_num = json_value_get_number(prop_val);
+            data_property.type = GOLF_DATA_CONFIG_PROPERTY_NUM;
+            data_property.num_val = (float)prop_num;
+            valid_property = true;
+        }
+        else if (type == JSONString) {
+            const char *prop_string = json_value_get_string(prop_val);
+            data_property.type = GOLF_DATA_CONFIG_PROPERTY_STRING;
+            data_property.string_val = malloc(strlen(prop_string) + 1);
+            strcpy(data_property.string_val, prop_string);
+            valid_property = true;
+        }
+        else if (type == JSONArray) {
+            JSON_Array *prop_array = json_value_get_array(prop_val);
+            if (json_array_get_count(prop_array) == 2) {
+                data_property.type = GOLF_DATA_CONFIG_PROPERTY_VEC2;
+                data_property.vec2_val = _golf_data_json_object_get_vec2(obj, name);
+                valid_property = true;
+            }
+            else if (json_array_get_count(prop_array) == 3) {
+                data_property.type = GOLF_DATA_CONFIG_PROPERTY_VEC3;
+                data_property.vec3_val = _golf_data_json_object_get_vec3(obj, name);
+                valid_property = true;
+            }
+            else if (json_array_get_count(prop_array) == 4) {
+                data_property.type = GOLF_DATA_CONFIG_PROPERTY_VEC4;
+                data_property.vec4_val = _golf_data_json_object_get_vec4(obj, name);
+                valid_property = true;
+            }
+        }
+
+        if (valid_property) {
+            map_set(&config->properties, name, data_property);
+        }
+        else {
+            golf_log_warning("Property %s is invalid", name);
+        }
+    }
+
+    json_value_free(val);
+    data_file->type = GOLF_DATA_CONFIG;
+    data_file->config = config;
+    return true;
+}
+
+static bool _golf_data_config_unload(golf_data_file_t *data_file) {
+    {
+        const char *key;
+        map_iter_t iter = map_iter(&data_file->config->properties);
+
+        while ((key = map_next(&data_file->config->properties, &iter))) {
+            golf_data_config_property_t *prop = map_get(&data_file->config->properties, key);
+            switch (prop->type) {
+                case GOLF_DATA_CONFIG_PROPERTY_NUM:
+                case GOLF_DATA_CONFIG_PROPERTY_VEC2:
+                case GOLF_DATA_CONFIG_PROPERTY_VEC3:
+                case GOLF_DATA_CONFIG_PROPERTY_VEC4:
+                    break;
+                case GOLF_DATA_CONFIG_PROPERTY_STRING:
+                    free(prop->string_val);
+                    break;
+            }
+        }
+    }
+
+    map_deinit(&data_file->config->properties);
+    free(data_file->config);
+}
+
+float golf_data_config_get_num(golf_data_config_t *cfg, const char *name) {
+    golf_data_config_property_t *prop = map_get(&cfg->properties, name);
+    if (prop && prop->type == GOLF_DATA_CONFIG_PROPERTY_NUM) {
+        return prop->num_val;
+    }
+    else {
+        golf_log_warning("Invalid config property %s", name);
+        return 0.0f;
+    }
+}
+
+const char *golf_data_config_get_string(golf_data_config_t *cfg, const char *name) {
+    golf_data_config_property_t *prop = map_get(&cfg->properties, name);
+    if (prop && prop->type == GOLF_DATA_CONFIG_PROPERTY_STRING) {
+        return prop->string_val;
+    }
+    else {
+        golf_log_warning("Invalid config property %s", name);
+        return "";
+    }
+}
+
+vec2 golf_data_config_get_vec2(golf_data_config_t *cfg, const char *name) {
+    golf_data_config_property_t *prop = map_get(&cfg->properties, name);
+    if (prop && prop->type == GOLF_DATA_CONFIG_PROPERTY_VEC2) {
+        return prop->vec2_val;
+    }
+    else {
+        golf_log_warning("Invalid config property %s", name);
+        return V2(0, 0);
+    }
+}
+
+vec3 golf_data_config_get_vec3(golf_data_config_t *cfg, const char *name) {
+    golf_data_config_property_t *prop = map_get(&cfg->properties, name);
+    if (prop && prop->type == GOLF_DATA_CONFIG_PROPERTY_VEC3) {
+        return prop->vec3_val;
+    }
+    else {
+        golf_log_warning("Invalid config property %s", name);
+        return V3(0, 0, 0);
+    }
+}
+
+vec4 golf_data_config_get_vec4(golf_data_config_t *cfg, const char *name) {
+    golf_data_config_property_t *prop = map_get(&cfg->properties, name);
+    if (prop && prop->type == GOLF_DATA_CONFIG_PROPERTY_VEC4) {
+        return prop->vec4_val;
+    }
+    else {
+        golf_log_warning("Invalid config property %s", name);
+        return V4(0, 0, 0, 0);
+    }
+}
+
+
+//
 // DATA
 //
 
@@ -752,6 +919,9 @@ golf_data_loader_t _golf_data_get_loader(const char *ext) {
     else if ((strcmp(ext, ".lua") == 0)) {
         return &_golf_data_lua_script_load;
     }
+    else if ((strcmp(ext, ".cfg") == 0)) {
+        return &_golf_data_config_load;
+    }
     else {
         return NULL;
     }
@@ -777,6 +947,9 @@ golf_data_unloader_t _golf_data_get_unloader(const char *ext) {
     }
     else if ((strcmp(ext, ".lua") == 0)) {
         return &_golf_data_lua_script_unload;
+    }
+    else if ((strcmp(ext, ".cfg") == 0)) {
+        return &_golf_data_config_unload;
     }
     else {
         return NULL;
@@ -916,21 +1089,55 @@ golf_data_pixel_pack_t *golf_data_get_pixel_pack(const char *path) {
         golf_log_warning("Could not find pixel pack %s. Using fallback", path);
         data_file = golf_data_get_file(fallback_pixel_pack);
         if (!data_file || data_file->type != GOLF_DATA_PIXEL_PACK) {
-            golf_log_error("Could not find fallback pixel_pack");
+            golf_log_error("Could not find fallback pixel pack");
         }
     }
     return data_file->pixel_pack;
 }
 
-golf_data_lua_script_t *golf_data_get_lua_script(const char *path) {
+golf_data_model_t *golf_data_get_model(const char *path) {
+    static const char *fallback = "data/models/ui_sprite_square.obj";
+
     golf_data_file_t *data_file = golf_data_get_file(path);
-    if (data_file && data_file->type == GOLF_DATA_LUA_SCRIPT) {
-        return data_file->lua_script;
+    if (!data_file || data_file->type != GOLF_DATA_MODEL) {
+        golf_log_warning("Could not find model %s. Using fallback", path);
+        data_file = golf_data_get_file(fallback);
+        if (!data_file || data_file->type != GOLF_DATA_MODEL) {
+            golf_log_error("Could not find fallback model");
+        }
     }
-    else {
-        golf_log_error("Script %s isn't loaded", path);
+    return data_file->model;
+}
+
+golf_data_shader_t *golf_data_get_shader(const char *path) {
+    golf_data_file_t *data_file = golf_data_get_file(path);
+    if (!data_file || data_file->type != GOLF_DATA_SHADER) {
+        golf_log_error("Could not find shader %s.", path);
         return NULL;
     }
+    return data_file->shader;
+}
+
+golf_data_font_t *golf_data_get_font(const char *path) {
+    static const char *fallback = "data/font/DroidSerif-Bold.ttf";
+
+    golf_data_file_t *data_file = golf_data_get_file(path);
+    if (!data_file || data_file->type != GOLF_DATA_FONT) {
+        golf_log_warning("Could not find font %s. Using fallback", path);
+        data_file = golf_data_get_file(fallback);
+        if (!data_file || data_file->type != GOLF_DATA_FONT) {
+            golf_log_error("Could not find fallback font");
+        }
+    }
+    return data_file->font;
+}
+
+golf_data_config_t *golf_data_get_config(const char *path) {
+    golf_data_file_t *data_file = golf_data_get_file(path);
+    if (!data_file || data_file->type != GOLF_DATA_CONFIG) {
+        golf_log_error("Could not find config file %s", path);
+    }
+    return data_file->config;
 }
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
@@ -951,7 +1158,7 @@ void golf_data_debug_console_tab(void) {
             if (igTreeNodeStr(key)) {
                 igText("Width: %d", texture->width);
                 igText("Height: %d", texture->height);
-                igImage((ImTextureID)(intptr_t)texture->image.id, (ImVec2){(float)texture->width, (float)texture->height}, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
+                igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){(float)texture->width, (float)texture->height}, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
                 igTreePop();
             }
         }
@@ -971,8 +1178,8 @@ void golf_data_debug_console_tab(void) {
             if (igTreeNodeStr(key)) {
                 for (int i = 0; i < font->atlases.length; i++) {
                     golf_data_font_atlas_t *atlas = &font->atlases.data[i];
-                    igText("Atlas Size: %d", atlas->size);
-                    igImage((ImTextureID)(intptr_t)atlas->image.id, (ImVec2){(float)atlas->size, (float)atlas->size}, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
+                    igText("Font Size: %f", atlas->font_size);
+                    igImage((ImTextureID)(intptr_t)atlas->sg_image.id, (ImVec2){(float)atlas->size, (float)atlas->size}, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
                 }
                 igTreePop();
             }
@@ -1043,7 +1250,7 @@ void golf_data_debug_console_tab(void) {
             }
 
             golf_data_pixel_pack_t *pp = loaded_file->pixel_pack;
-            golf_data_texture_t *t = golf_data_get_texture(pp->texture.cstr);
+            golf_data_texture_t *t = pp->texture;
 
             if (igTreeNodeStr(key)) {
                 if (igTreeNodeStr("Icons")) {
@@ -1052,7 +1259,7 @@ void golf_data_debug_console_tab(void) {
                     while ((icon_key = map_next(&pp->icons, &icons_iter))) {
                         if (igTreeNodeStr(icon_key)) {
                             golf_data_pixel_pack_icon_t *i = map_get(&pp->icons, icon_key);
-                            igImage((ImTextureID)(intptr_t)t->image.id, (ImVec2){40, 40}, (ImVec2){i->uv0.x, i->uv0.y}, (ImVec2){i->uv1.x, i->uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
+                            igImage((ImTextureID)(intptr_t)t->sg_image.id, (ImVec2){40, 40}, (ImVec2){i->uv0.x, i->uv0.y}, (ImVec2){i->uv1.x, i->uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
                             igTreePop();
                         }
                     }
@@ -1068,23 +1275,23 @@ void golf_data_debug_console_tab(void) {
 
                             igPushStyleVarVec2(ImGuiStyleVar_ItemSpacing, (ImVec2){0, 0});
 
-                            igImage((ImTextureID)(intptr_t)t->image.id, (ImVec2){40, 40}, (ImVec2){s->tl_uv0.x, s->tl_uv0.y}, (ImVec2){s->tl_uv1.x, s->tl_uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
+                            igImage((ImTextureID)(intptr_t)t->sg_image.id, (ImVec2){40, 40}, (ImVec2){s->tl_uv0.x, s->tl_uv0.y}, (ImVec2){s->tl_uv1.x, s->tl_uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
                             igSameLine(0, 0);
-                            igImage((ImTextureID)(intptr_t)t->image.id, (ImVec2){40, 40}, (ImVec2){s->tm_uv0.x, s->tm_uv0.y}, (ImVec2){s->tm_uv1.x, s->tm_uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
+                            igImage((ImTextureID)(intptr_t)t->sg_image.id, (ImVec2){40, 40}, (ImVec2){s->tm_uv0.x, s->tm_uv0.y}, (ImVec2){s->tm_uv1.x, s->tm_uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
                             igSameLine(0, 0);
-                            igImage((ImTextureID)(intptr_t)t->image.id, (ImVec2){40, 40}, (ImVec2){s->tr_uv0.x, s->tr_uv0.y}, (ImVec2){s->tr_uv1.x, s->tr_uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
+                            igImage((ImTextureID)(intptr_t)t->sg_image.id, (ImVec2){40, 40}, (ImVec2){s->tr_uv0.x, s->tr_uv0.y}, (ImVec2){s->tr_uv1.x, s->tr_uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
 
-                            igImage((ImTextureID)(intptr_t)t->image.id, (ImVec2){40, 40}, (ImVec2){s->ml_uv0.x, s->ml_uv0.y}, (ImVec2){s->ml_uv1.x, s->ml_uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
+                            igImage((ImTextureID)(intptr_t)t->sg_image.id, (ImVec2){40, 40}, (ImVec2){s->ml_uv0.x, s->ml_uv0.y}, (ImVec2){s->ml_uv1.x, s->ml_uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
                             igSameLine(0, 0);
-                            igImage((ImTextureID)(intptr_t)t->image.id, (ImVec2){40, 40}, (ImVec2){s->mm_uv0.x, s->mm_uv0.y}, (ImVec2){s->mm_uv1.x, s->mm_uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
+                            igImage((ImTextureID)(intptr_t)t->sg_image.id, (ImVec2){40, 40}, (ImVec2){s->mm_uv0.x, s->mm_uv0.y}, (ImVec2){s->mm_uv1.x, s->mm_uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
                             igSameLine(0, 0);
-                            igImage((ImTextureID)(intptr_t)t->image.id, (ImVec2){40, 40}, (ImVec2){s->mr_uv0.x, s->mr_uv0.y}, (ImVec2){s->mr_uv1.x, s->mr_uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
+                            igImage((ImTextureID)(intptr_t)t->sg_image.id, (ImVec2){40, 40}, (ImVec2){s->mr_uv0.x, s->mr_uv0.y}, (ImVec2){s->mr_uv1.x, s->mr_uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
 
-                            igImage((ImTextureID)(intptr_t)t->image.id, (ImVec2){40, 40}, (ImVec2){s->bl_uv0.x, s->bl_uv0.y}, (ImVec2){s->bl_uv1.x, s->bl_uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
+                            igImage((ImTextureID)(intptr_t)t->sg_image.id, (ImVec2){40, 40}, (ImVec2){s->bl_uv0.x, s->bl_uv0.y}, (ImVec2){s->bl_uv1.x, s->bl_uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
                             igSameLine(0, 0);
-                            igImage((ImTextureID)(intptr_t)t->image.id, (ImVec2){40, 40}, (ImVec2){s->bm_uv0.x, s->bm_uv0.y}, (ImVec2){s->bm_uv1.x, s->bm_uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
+                            igImage((ImTextureID)(intptr_t)t->sg_image.id, (ImVec2){40, 40}, (ImVec2){s->bm_uv0.x, s->bm_uv0.y}, (ImVec2){s->bm_uv1.x, s->bm_uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
                             igSameLine(0, 0);
-                            igImage((ImTextureID)(intptr_t)t->image.id, (ImVec2){40, 40}, (ImVec2){s->br_uv0.x, s->br_uv0.y}, (ImVec2){s->br_uv1.x, s->br_uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
+                            igImage((ImTextureID)(intptr_t)t->sg_image.id, (ImVec2){40, 40}, (ImVec2){s->br_uv0.x, s->br_uv0.y}, (ImVec2){s->br_uv1.x, s->br_uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
 
                             igPopStyleVar(1);
                             igTreePop();

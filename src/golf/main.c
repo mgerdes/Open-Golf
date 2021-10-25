@@ -65,7 +65,6 @@ static void frame(void) {
         golf_data_load_file("data/font/DroidSerif-Bold.ttf");
         golf_data_load_file("data/models/ui_sprite_square.obj");
         golf_data_load_file("data/config/ui/main_menu.cfg");
-        golf_data_load_file("data/scripts/ui.lua");
     }
 
     {

@@ -22,6 +22,10 @@
         {
             "name": "blue_checkbox",
             "pos": [27, 6]
+        },
+        {
+            "name": "blue_tube",
+            "pos": [25, 18]
         }
     ],
     "squares": [
@@ -77,7 +81,13 @@
             "name": "blue_background",
             "top_left": [13, 20], "top_mid": [14, 20], "top_right": [15, 20],
             "mid_left": [13, 21], "mid_mid": [14, 21], "mid_right": [15, 21],
-            "bot_left": [19, 22], "bot_mid": [14, 22], "bot_right": [15, 22]
+            "bot_left": [13, 22], "bot_mid": [14, 22], "bot_right": [15, 22]
+        },
+        {
+            "name": "blue_border_background",
+            "top_left": [24, 8], "top_mid": [25, 8], "top_right": [26, 8],
+            "mid_left": [24, 9], "mid_mid": [25, 9], "mid_right": [26, 9],
+            "bot_left": [27, 10], "bot_mid": [28, 10], "bot_right": [29, 10]
         }
     ]
 }
