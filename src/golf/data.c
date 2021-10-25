@@ -1144,7 +1144,7 @@ golf_data_config_t *golf_data_get_config(const char *path) {
 #include "3rd_party/cimgui/cimgui.h"
 
 void golf_data_debug_console_tab(void) {
-    if (igCollapsingHeaderTreeNodeFlags("Textures", ImGuiTreeNodeFlags_None)) {
+    if (igCollapsingHeader_TreeNodeFlags("Textures", ImGuiTreeNodeFlags_None)) {
         const char *key;
         map_iter_t iter = map_iter(&_golf_data.loaded_files);
 
@@ -1155,7 +1155,7 @@ void golf_data_debug_console_tab(void) {
             }
 
             golf_data_texture_t *texture = loaded_file->texture;
-            if (igTreeNodeStr(key)) {
+            if (igTreeNode_Str(key)) {
                 igText("Width: %d", texture->width);
                 igText("Height: %d", texture->height);
                 igImage((ImTextureID)(intptr_t)texture->sg_image.id, (ImVec2){(float)texture->width, (float)texture->height}, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
@@ -1164,7 +1164,7 @@ void golf_data_debug_console_tab(void) {
         }
     }
 
-    if (igCollapsingHeaderTreeNodeFlags("Fonts", ImGuiTreeNodeFlags_None)) {
+    if (igCollapsingHeader_TreeNodeFlags("Fonts", ImGuiTreeNodeFlags_None)) {
         const char *key;
         map_iter_t iter = map_iter(&_golf_data.loaded_files);
 
@@ -1175,7 +1175,7 @@ void golf_data_debug_console_tab(void) {
             }
 
             golf_data_font_t *font = loaded_file->font;
-            if (igTreeNodeStr(key)) {
+            if (igTreeNode_Str(key)) {
                 for (int i = 0; i < font->atlases.length; i++) {
                     golf_data_font_atlas_t *atlas = &font->atlases.data[i];
                     igText("Font Size: %f", atlas->font_size);
@@ -1186,7 +1186,7 @@ void golf_data_debug_console_tab(void) {
         }
     }
 
-    if (igCollapsingHeaderTreeNodeFlags("Models", ImGuiTreeNodeFlags_None)) {
+    if (igCollapsingHeader_TreeNodeFlags("Models", ImGuiTreeNodeFlags_None)) {
         const char *key;
         map_iter_t iter = map_iter(&_golf_data.loaded_files);
 
@@ -1197,22 +1197,22 @@ void golf_data_debug_console_tab(void) {
             }
 
             golf_data_model_t *model = loaded_file->model;
-            if (igTreeNodeStr(key)) {
-                if (igTreeNodeStr("Positions: ")) {
+            if (igTreeNode_Str(key)) {
+                if (igTreeNode_Str("Positions: ")) {
                     for (int i = 0; i < model->positions.length; i++) {
                         vec3 position = model->positions.data[i];
                         igText("<%.3f, %.3f, %.3f>", position.x, position.y, position.z);
                     }
                     igTreePop();
                 }
-                if (igTreeNodeStr("Normals: ")) {
+                if (igTreeNode_Str("Normals: ")) {
                     for (int i = 0; i < model->normals.length; i++) {
                         vec3 normal = model->normals.data[i];
                         igText("<%.3f, %.3f, %.3f>", normal.x, normal.y, normal.z);
                     }
                     igTreePop();
                 }
-                if (igTreeNodeStr("Texcoords: ")) {
+                if (igTreeNode_Str("Texcoords: ")) {
                     for (int i = 0; i < model->texcoords.length; i++) {
                         vec2 texcoord = model->texcoords.data[i];
                         igText("<%.3f, %.3f>", texcoord.x, texcoord.y);
@@ -1224,7 +1224,7 @@ void golf_data_debug_console_tab(void) {
         }
     }
 
-    if (igCollapsingHeaderTreeNodeFlags("Shaders", ImGuiTreeNodeFlags_None)) {
+    if (igCollapsingHeader_TreeNodeFlags("Shaders", ImGuiTreeNodeFlags_None)) {
         const char *key;
         map_iter_t iter = map_iter(&_golf_data.loaded_files);
 
@@ -1233,13 +1233,13 @@ void golf_data_debug_console_tab(void) {
             if (loaded_file->type != GOLF_DATA_SHADER) {
                 continue;
             }
-            if (igTreeNodeStr(key)) {
+            if (igTreeNode_Str(key)) {
                 igTreePop();
             }
         }
     }
 
-    if (igCollapsingHeaderTreeNodeFlags("Pixel Packs", ImGuiTreeNodeFlags_None)) {
+    if (igCollapsingHeader_TreeNodeFlags("Pixel Packs", ImGuiTreeNodeFlags_None)) {
         const char *key;
         map_iter_t iter = map_iter(&_golf_data.loaded_files);
 
@@ -1252,12 +1252,12 @@ void golf_data_debug_console_tab(void) {
             golf_data_pixel_pack_t *pp = loaded_file->pixel_pack;
             golf_data_texture_t *t = pp->texture;
 
-            if (igTreeNodeStr(key)) {
-                if (igTreeNodeStr("Icons")) {
+            if (igTreeNode_Str(key)) {
+                if (igTreeNode_Str("Icons")) {
                     const char *icon_key;
                     map_iter_t icons_iter = map_iter(&pp->icons);
                     while ((icon_key = map_next(&pp->icons, &icons_iter))) {
-                        if (igTreeNodeStr(icon_key)) {
+                        if (igTreeNode_Str(icon_key)) {
                             golf_data_pixel_pack_icon_t *i = map_get(&pp->icons, icon_key);
                             igImage((ImTextureID)(intptr_t)t->sg_image.id, (ImVec2){40, 40}, (ImVec2){i->uv0.x, i->uv0.y}, (ImVec2){i->uv1.x, i->uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
                             igTreePop();
@@ -1266,14 +1266,14 @@ void golf_data_debug_console_tab(void) {
                     igTreePop();
                 }
 
-                if (igTreeNodeStr("Squares")) {
+                if (igTreeNode_Str("Squares")) {
                     const char *square_key;
                     map_iter_t squares_iter = map_iter(&pp->squares);
                     while ((square_key = map_next(&pp->squares, &squares_iter))) {
-                        if (igTreeNodeStr(square_key)) {
+                        if (igTreeNode_Str(square_key)) {
                             golf_data_pixel_pack_square_t *s = map_get(&pp->squares, square_key);
 
-                            igPushStyleVarVec2(ImGuiStyleVar_ItemSpacing, (ImVec2){0, 0});
+                            igPushStyleVar_Vec2(ImGuiStyleVar_ItemSpacing, (ImVec2){0, 0});
 
                             igImage((ImTextureID)(intptr_t)t->sg_image.id, (ImVec2){40, 40}, (ImVec2){s->tl_uv0.x, s->tl_uv0.y}, (ImVec2){s->tl_uv1.x, s->tl_uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 0});
                             igSameLine(0, 0);

@@ -10,13 +10,13 @@ set(GOLF_BASE_LIBRARIES
     fast_obj
     glad
     imgui
-    lua
+    #lua
     lightmapper
     map
     mattiasgustavsson_libs
     miniz
     parson
-    s7
+    #s7
     sokol
     stb
     tinyobj_loader_c
@@ -107,6 +107,7 @@ add_library(imgui STATIC
     src/3rd_party/imgui/imgui.cpp
     src/3rd_party/imgui/imgui_demo.cpp
     src/3rd_party/imgui/imgui_draw.cpp
+    src/3rd_party/imgui/imgui_tables.cpp
     src/3rd_party/imgui/imgui_widgets.cpp)
 target_compile_options(imgui PRIVATE 
     -std=c++11)
