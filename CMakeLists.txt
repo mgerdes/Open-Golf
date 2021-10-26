@@ -3,6 +3,17 @@ cmake_minimum_required(VERSION 3.12)
 project(minigolf)
 set(CMAKE_BUILD_TYPE Debug)
 
+add_executable(golf
+    src/golf_exe/main.c)
+target_link_libraries(golf PRIVATE
+    golf_lib)
+
+add_executable(editor
+    src/editor_exe/editor.c
+    src/editor_exe/main.c)
+target_link_libraries(editor PRIVATE
+    golf_lib)
+
 set(GOLF_BASE_LIBRARIES 
     cimgui
     cute_headers
@@ -10,20 +21,18 @@ set(GOLF_BASE_LIBRARIES
     fast_obj
     glad
     imgui
-    #lua
     lightmapper
     map
     mattiasgustavsson_libs
     miniz
     parson
-    #s7
     sokol
     stb
     tinyobj_loader_c
     vec
     xatlas)
 
-add_executable(minigolf
+add_library(golf_lib STATIC
     src/golf/base64.c
     src/golf/config.c
     src/golf/data.c
@@ -32,27 +41,26 @@ add_executable(minigolf
     src/golf/game.c
     src/golf/inputs.c
     src/golf/log.c
-    src/golf/main.c
     src/golf/maths.c
     src/golf/renderer.c
     src/golf/string.c
     src/golf/ui.c)
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
-    target_link_libraries(minigolf PRIVATE
+    target_link_libraries(golf_lib PUBLIC
         ${GOLF_BASE_LIBRARIES})
-    target_compile_definitions(minigolf PUBLIC
+    target_compile_definitions(golf_lib PUBLIC
         GOLF_PLATFORM_WINDOWS)
 elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
-    target_link_libraries(minigolf PRIVATE
+    target_link_libraries(golf_lib PUBLIC
         ${GOLF_BASE_LIBRARIES}
         "-framework Cocoa"
         "-framework QuartzCore"
         "-framework OpenGL"
         "-framework AudioToolbox")
-    target_compile_definitions(minigolf PUBLIC
+    target_compile_definitions(golf_lib PUBLIC
         GOLF_PLATFORM_MACOS)
 elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
-    target_link_libraries(minigolf PRIVATE 
+    target_link_libraries(golf_lib PUBLIC 
         ${GOLF_BASE_LIBRARIES}
         -lX11
         -lXcursor
@@ -62,10 +70,10 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
         -lpthread
         -lm
         -lasound)
-    target_compile_definitions(minigolf PUBLIC
+    target_compile_definitions(golf_lib PUBLIC
         GOLF_PLATFORM_LINUX)
 elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
-    target_link_libraries(minigolf PRIVATE
+    target_link_libraries(golf_lib PUBLIC
         ${GOLF_BASE_LIBRARIES}
         "-framework Foundation"
         "-framework UIKit"
@@ -73,9 +81,9 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
         "-framework GLKit"
         "-framework AudioToolbox"
         "-framework AVFoundation")
-    target_compile_definitions(minigolf PUBLIC
+    target_compile_definitions(golf_lib PUBLIC
         GOLF_PLATFORM_IOS)
-    set_target_properties(minigolf PROPERTIES
+    set_target_properties(golf_lib PROPERTIES
         MACOSX_BUNDLE_GUI_IDENTIFIER me.mgerdes.golf
         MACOSX_BUNDLE_BUNDLE_VERSION 0.0.0
         MACOSX_BUNDLE_SHORT_VERSION_STRING 0.0.0)
@@ -112,40 +120,6 @@ add_library(imgui STATIC
 target_compile_options(imgui PRIVATE 
     -std=c++11)
 
-add_library(lua STATIC
-    src/3rd_party/lua/lapi.c 
-    src/3rd_party/lua/lcode.c 
-    src/3rd_party/lua/lctype.c 
-    src/3rd_party/lua/ldebug.c 
-    src/3rd_party/lua/ldo.c 
-    src/3rd_party/lua/ldump.c 
-    src/3rd_party/lua/lfunc.c 
-    src/3rd_party/lua/lgc.c 
-    src/3rd_party/lua/llex.c 
-    src/3rd_party/lua/lmem.c 
-    src/3rd_party/lua/lobject.c 
-    src/3rd_party/lua/lopcodes.c 
-    src/3rd_party/lua/lparser.c 
-    src/3rd_party/lua/lstate.c 
-    src/3rd_party/lua/lstring.c 
-    src/3rd_party/lua/ltable.c 
-    src/3rd_party/lua/ltm.c 
-    src/3rd_party/lua/lundump.c 
-    src/3rd_party/lua/lvm.c 
-    src/3rd_party/lua/lzio.c 
-    src/3rd_party/lua/lauxlib.c 
-    src/3rd_party/lua/lbaselib.c 
-    src/3rd_party/lua/lcorolib.c 
-    src/3rd_party/lua/ldblib.c 
-    src/3rd_party/lua/liolib.c 
-    src/3rd_party/lua/lmathlib.c 
-    src/3rd_party/lua/loadlib.c 
-    src/3rd_party/lua/loslib.c 
-    src/3rd_party/lua/lstrlib.c 
-    src/3rd_party/lua/ltablib.c 
-    src/3rd_party/lua/lutf8lib.c 
-    src/3rd_party/lua/linit.c)
-
 add_library(lightmapper STATIC
     src/3rd_party/lightmapper/impl.c)
 
@@ -160,9 +134,6 @@ add_library(miniz STATIC
 
 add_library(parson STATIC
     src/3rd_party/parson/parson.c)
-
-add_library(s7 STATIC
-    src/3rd_party/s7/s7.c)
 
 add_library(sokol STATIC
     src/3rd_party/sokol/impl.c)

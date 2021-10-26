@@ -144,3 +144,7 @@ sapp_desc sokol_main(int argc, char *argv[]) {
             .swap_interval = 1,
     };
 }
+
+#define SOKOL_WIN32_FORCE_MAIN
+#define SOKOL_IMPL
+#include "3rd_party/sokol/sokol_app.h"
