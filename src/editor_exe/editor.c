@@ -2,6 +2,10 @@
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "3rd_party/cimgui/cimgui.h"
+#include "3rd_party/cimguizmo/cimguizmo.h"
+
+#include "golf/data.h"
+#include "golf/renderer.h"
 
 void editor_init(void) {
     ImGuiIO *IO = igGetIO();
@@ -14,6 +18,7 @@ void editor_update(float dt) {
     igSetNextWindowPos(viewport->Pos, ImGuiCond_Always, (ImVec2){0, 0});
     igSetNextWindowSize(viewport->Size, ImGuiCond_Always);
     igSetNextWindowViewport(viewport->ID);
+    igSetNextWindowBgAlpha(0);
     igPushStyleVar_Float(ImGuiStyleVar_WindowRounding, 0.0f);
     igPushStyleVar_Vec2(ImGuiStyleVar_WindowPadding, (ImVec2){0, 0});
     igBegin("Dockspace", 0, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
@@ -66,10 +71,34 @@ void editor_update(float dt) {
     }
 
     ImGuiDockNode *central_node = igDockBuilderGetCentralNode(dock_main_id);
-    //printf("%f, %f\n", central_node->Size.x, central_node->Size.y);
+    golf_renderer_t *renderer = golf_renderer_get();
+    renderer->viewport_pos = V2(central_node->Pos.x, central_node->Pos.y);
+    renderer->viewport_size = V2(central_node->Size.x, central_node->Size.y);
 
-    igBegin("Top", NULL, ImGuiWindowFlags_NoTitleBar);
-    igEnd();
+    {
+        igBegin("Top", NULL, ImGuiWindowFlags_NoTitleBar);
+        {
+            golf_data_texture_t *tex = golf_data_get_texture("data/textures/translate.png");
+            igImageButton((ImTextureID)(intptr_t)tex->sg_image.id, (ImVec2){ 15, 15 }, 
+                    (ImVec2){ 0, 0 }, (ImVec2) { 1, 1 } , 2,
+                    (ImVec4){ 0, 0, 0, 0} , (ImVec4){ 0, 0, 0, 1});
+        }
+        igSameLine(0, 5);
+        {
+            golf_data_texture_t *tex = golf_data_get_texture("data/textures/rotate.png");
+            igImageButton((ImTextureID)(intptr_t)tex->sg_image.id, (ImVec2){ 15, 15 }, 
+                    (ImVec2){ 0, 0 }, (ImVec2) { 1, 1 } , 2,
+                    (ImVec4){ 0, 0, 0, 0} , (ImVec4){ 0, 0, 0, 1});
+        }
+        igSameLine(0, 5);
+        {
+            golf_data_texture_t *tex = golf_data_get_texture("data/textures/scale.png");
+            igImageButton((ImTextureID)(intptr_t)tex->sg_image.id, (ImVec2){ 15, 15 }, 
+                    (ImVec2){ 0, 0 }, (ImVec2) { 1, 1 } , 2,
+                    (ImVec4){ 1, 1, 1, 0.0} , (ImVec4){ 0, 0, 0, 1});
+        }
+        igEnd();
+    }
 
     igBegin("Right", NULL, ImGuiWindowFlags_NoTitleBar);
     igEnd();

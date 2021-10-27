@@ -16,11 +16,11 @@ target_link_libraries(editor PRIVATE
 
 set(GOLF_BASE_LIBRARIES 
     cimgui
+    cimguizmo
     cute_headers
     dbgtools
     fast_obj
     glad
-    imgui
     lightmapper
     map
     mattiasgustavsson_libs
@@ -97,6 +97,14 @@ target_compile_options(cimgui PRIVATE
 target_link_libraries(cimgui PRIVATE 
     imgui)
 
+add_library(cimguizmo STATIC
+    src/3rd_party/cimguizmo/cimguizmo.cpp)
+target_compile_options(cimguizmo PRIVATE 
+    -std=c++11)
+target_link_libraries(cimguizmo PRIVATE 
+    imgui
+    imguizmo)
+
 add_library(cute_headers STATIC
     src/3rd_party/cute_headers/impl.c)
 
@@ -119,6 +127,13 @@ add_library(imgui STATIC
     src/3rd_party/imgui/imgui_widgets.cpp)
 target_compile_options(imgui PRIVATE 
     -std=c++11)
+
+add_library(imguizmo STATIC
+    src/3rd_party/imguizmo/ImGuizmo.cpp)
+target_compile_options(imguizmo PRIVATE 
+    -std=c++11)
+target_link_libraries(imguizmo PRIVATE 
+    imgui)
 
 add_library(lightmapper STATIC
     src/3rd_party/lightmapper/impl.c)

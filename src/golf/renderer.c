@@ -2,13 +2,18 @@
 
 #include <assert.h>
 
+#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
+#include "3rd_party/cimgui/cimgui.h"
+#include "3rd_party/cimguizmo/cimguizmo.h"
 #include "3rd_party/stb/stb_image.h"
 #include "3rd_party/sokol/sokol_app.h"
 #include "3rd_party/sokol/sokol_gfx.h"
-#include "golf/shaders/ui_sprite.glsl.h"
 #include "golf/log.h"
 #include "golf/maths.h"
 #include "golf/ui.h"
+
+#include "golf/shaders/environment.glsl.h"
+#include "golf/shaders/ui_sprite.glsl.h"
 
 static golf_renderer_t renderer;
 
@@ -36,16 +41,49 @@ golf_renderer_t *golf_renderer_get(void) {
 }
 
 void golf_renderer_init(void) {
-    golf_data_load_file("data/shaders/ui_sprite.glsl");
     map_init(&renderer.pipelines_map);
 
+    golf_data_load_file("data/models/ui_sprite_square.obj");
+    golf_data_load_file("data/models/cube.obj");
+    golf_data_load_file("data/shaders/environment.glsl");
+    golf_data_load_file("data/shaders/ui_sprite.glsl");
+    golf_data_load_file("data/textures/translate.png");
+    golf_data_load_file("data/textures/scale.png");
+    golf_data_load_file("data/textures/rotate.png");
+
     {
-        sg_pipeline ui_pipeline = sg_make_pipeline(&(sg_pipeline_desc) {
-            .shader = golf_data_get_shader("data/shaders/ui_sprite.glsl")->sg_shader,
+        golf_data_shader_t *shader = golf_data_get_shader("data/shaders/environment.glsl");
+        sg_pipeline_desc pipeline_desc = {
+            .shader = shader->sg_shader,
             .layout = {
                 .attrs = {
-                    [ATTR_ui_sprite_vs_position] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
-                    [ATTR_ui_sprite_vs_texture_coord] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
+                    [ATTR_environment_vs_position] 
+                        = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                    [ATTR_environment_vs_texturecoord] 
+                        = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
+                    [ATTR_environment_vs_normal] 
+                        = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 2 },
+                },
+            },
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = true,
+            },
+        };
+        sg_pipeline pipeline = sg_make_pipeline(&pipeline_desc);
+        map_set(&renderer.pipelines_map, "environment", pipeline);
+    }
+
+    {
+        golf_data_shader_t *shader = golf_data_get_shader("data/shaders/ui_sprite.glsl");
+        sg_pipeline_desc pipeline_desc = {
+            .shader = shader->sg_shader,
+            .layout = {
+                .attrs = {
+                    [ATTR_ui_sprite_vs_position] =
+                    { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                    [ATTR_ui_sprite_vs_texture_coord] =
+                    { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
                 },
             },
             .colors[0] = {
@@ -55,8 +93,9 @@ void golf_renderer_init(void) {
                     .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
                 },
             },
-        });
-        map_set(&renderer.pipelines_map, "ui_sprites", ui_pipeline);
+        };
+        sg_pipeline pipeline = sg_make_pipeline(&pipeline_desc);
+        map_set(&renderer.pipelines_map, "ui_sprites", pipeline);
     }
 }
 
@@ -381,12 +420,81 @@ static void _draw_ui(void) {
         }
     }
 
-    {
-        sg_end_pass();
-    }
+    sg_end_pass();
 }
 
 void golf_renderer_draw(void) {
     _set_ui_proj_mat(V2(0.0f, 0.0f));
     _draw_ui();
+}
+
+static mat4 cube_model_mat;
+bool cube_model_mat_inited = false;
+
+void golf_renderer_draw_editor(void) {
+    if (!cube_model_mat_inited) {
+        cube_model_mat = mat4_identity();
+        cube_model_mat_inited = true;
+    }
+
+    {
+        renderer.cam_pos = V3(5, 5, 5);
+        renderer.cam_dir = vec3_normalize(vec3_sub(V3(0, 0, 0), renderer.cam_pos));
+
+        float near = 0.1f;
+        float far = 150.0f;
+        renderer.proj_mat = mat4_perspective_projection(66.0f, renderer.viewport_size.x/renderer.viewport_size.y, near, far);
+        renderer.view_mat = mat4_look_at(V3(5, 5, 5), V3(0, 0, 0), V3(0, 1, 0));
+        renderer.proj_view_mat = mat4_multiply(renderer.proj_mat, renderer.view_mat);
+    }
+
+    {
+        ImGuizmo_SetRect(renderer.viewport_pos.x, renderer.viewport_pos.y, renderer.viewport_size.x, renderer.viewport_size.y);
+        mat4 view_mat_t = mat4_transpose(renderer.view_mat);
+        mat4 proj_mat_t = mat4_transpose(renderer.proj_mat);
+        mat4 cube_model_mat_t = mat4_transpose(cube_model_mat);
+        ImGuizmo_Manipulate(view_mat_t.m, proj_mat_t.m, ROTATE, WORLD, cube_model_mat_t.m, NULL, NULL, NULL, NULL);
+        cube_model_mat = mat4_transpose(cube_model_mat_t);
+    }
+
+    {
+        sg_pass_action action = {
+            .colors[0] = {
+                .action = SG_ACTION_DONTCARE,
+                .value = { 0.529f, 0.808f, 0.922f, 1.0f },
+            },
+        };
+        sg_begin_default_pass(&action, sapp_width(), sapp_height());
+        sg_apply_viewportf(renderer.viewport_pos.x, renderer.viewport_pos.y, 
+                renderer.viewport_size.x, renderer.viewport_size.y, true);
+
+        sg_pipeline *environment_pipeline = map_get(&renderer.pipelines_map, "environment");
+        if (!environment_pipeline) {
+            golf_log_error("Could not fine 'environment' pipeline");
+        }
+        sg_apply_pipeline(*environment_pipeline);
+    }
+
+    {
+        golf_data_model_t *model = golf_data_get_model("data/models/cube.obj");
+        mat4 model_mat = cube_model_mat;
+
+        sg_bindings bindings = {
+            .vertex_buffers[0] = model->sg_positions_buf,
+            .vertex_buffers[1] = model->sg_texcoords_buf,
+            .vertex_buffers[2] = model->sg_normals_buf,
+        };
+        sg_apply_bindings(&bindings);
+
+        environment_vs_params_t vs_params = {
+            .proj_view_mat = mat4_transpose(renderer.proj_view_mat),
+            .model_mat = mat4_transpose(model_mat),
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_environment_vs_params, 
+                &(sg_range) { &vs_params, sizeof(vs_params) });
+
+        sg_draw(0, model->positions.length, 1);
+    }
+
+    sg_end_pass();
 }

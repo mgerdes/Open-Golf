@@ -1,6 +1,9 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
+#include "3rd_party/cimgui/cimgui.h"
+#include "3rd_party/cimguizmo/cimguizmo.h"
 #include "3rd_party/sokol/sokol_app.h"
 #include "3rd_party/sokol/sokol_audio.h"
 #include "3rd_party/sokol/sokol_gfx.h"
@@ -70,6 +73,7 @@ static void frame(void) {
         sg_end_pass();
 
         simgui_new_frame(sapp_width(), sapp_height(), dt);
+        ImGuizmo_BeginFrame();
     }
 
     {
@@ -83,6 +87,7 @@ static void frame(void) {
 
     {
         editor_update(dt);
+        golf_renderer_draw_editor();
     }
 
     {

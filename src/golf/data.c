@@ -12,6 +12,7 @@
 #include "golf/maths.h"
 #include "golf/string.h"
 
+#include "golf/shaders/environment.glsl.h"
 #include "golf/shaders/ui_sprite.glsl.h"
 
 typedef struct golf_data {
@@ -299,6 +300,9 @@ static bool _golf_data_shader_load(const char *path, char *data, int data_len, g
     const sg_shader_desc *const_shader_desc;
     if (strcmp(path, "data/shaders/ui_sprite.glsl") == 0) {
         const_shader_desc = ui_sprite_shader_desc(sg_query_backend());
+    }
+    else if (strcmp(path, "data/shaders/environment.glsl") == 0) {
+        const_shader_desc = environment_shader_desc(sg_query_backend());
     }
     else {
         golf_log_warning("No importer for shader %s", path);
