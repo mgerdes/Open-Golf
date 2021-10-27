@@ -82,6 +82,11 @@ void editor_update(float dt) {
             igImageButton((ImTextureID)(intptr_t)tex->sg_image.id, (ImVec2){ 15, 15 }, 
                     (ImVec2){ 0, 0 }, (ImVec2) { 1, 1 } , 2,
                     (ImVec4){ 0, 0, 0, 0} , (ImVec4){ 0, 0, 0, 1});
+            if (igIsItemHovered(ImGuiHoveredFlags_None)) {
+                igBeginTooltip();
+                igText("Translate Mode (Ctrl+W)");
+                igEndTooltip();
+            }
         }
         igSameLine(0, 5);
         {
@@ -89,6 +94,11 @@ void editor_update(float dt) {
             igImageButton((ImTextureID)(intptr_t)tex->sg_image.id, (ImVec2){ 15, 15 }, 
                     (ImVec2){ 0, 0 }, (ImVec2) { 1, 1 } , 2,
                     (ImVec4){ 0, 0, 0, 0} , (ImVec4){ 0, 0, 0, 1});
+            if (igIsItemHovered(ImGuiHoveredFlags_None)) {
+                igBeginTooltip();
+                igText("Rotate Mode (Ctrl+E}");
+                igEndTooltip();
+            }
         }
         igSameLine(0, 5);
         {
@@ -96,6 +106,11 @@ void editor_update(float dt) {
             igImageButton((ImTextureID)(intptr_t)tex->sg_image.id, (ImVec2){ 15, 15 }, 
                     (ImVec2){ 0, 0 }, (ImVec2) { 1, 1 } , 2,
                     (ImVec4){ 1, 1, 1, 0.0} , (ImVec4){ 0, 0, 0, 1});
+            if (igIsItemHovered(ImGuiHoveredFlags_None)) {
+                igBeginTooltip();
+                igText("Scale Mode (Ctrl+R)");
+                igEndTooltip();
+            }
         }
         igEnd();
     }
