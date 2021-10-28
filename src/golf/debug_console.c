@@ -8,17 +8,20 @@
 #include "golf/maths.h"
 #include "golf/renderer.h"
 
+static golf_inputs_t *inputs; 
+
 void golf_debug_console_init() {
+    inputs = golf_inputs_get();
 }
 
 static void _debug_console_main_tab() {
     igText("Frame Rate: %0.3f\n", igGetIO()->Framerate);
-    igText("Mouse Pos: <%0.3f, %0.3f>\n", golf_inputs_window_mouse_pos().x, golf_inputs_window_mouse_pos().y);
+    igText("Mouse Pos: <%0.3f, %0.3f>\n", inputs->mouse_pos.x, inputs->mouse_pos.y);
 }
 
 void golf_debug_console_update(float dt) {
     static bool debug_console_open = false;
-    if (golf_inputs_button_clicked(SAPP_KEYCODE_GRAVE_ACCENT)) {
+    if (inputs->button_clicked[SAPP_KEYCODE_GRAVE_ACCENT]) {
         debug_console_open = !debug_console_open;
     }
 

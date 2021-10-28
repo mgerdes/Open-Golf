@@ -8,6 +8,7 @@
 #include "golf/log.h"
 
 static golf_ui_t ui;
+static golf_inputs_t *inputs; 
 
 static vec2 _ui_pos(vec2 pos) {
     if (ui.has_context) {
@@ -81,10 +82,10 @@ static void _golf_ui_text(const char *font, vec2 pos, float size, int horiz_alig
 static golf_ui_button_state_t _golf_ui_button(vec2 pos, vec2 size) {
     pos = _ui_pos(pos);
 
-    vec2 mp = golf_inputs_window_mouse_pos();
+    vec2 mp = inputs->mouse_pos;
     if (mp.x > pos.x - 0.5f * size.x && mp.x < pos.x + 0.5f * size.x &&
             mp.y > pos.y - 0.5f * size.y && mp.y < pos.y + 0.5f * size.y) {
-        if (golf_inputs_mouse_clicked()) {
+        if (inputs->mouse_clicked[SAPP_MOUSEBUTTON_LEFT]) {
             return GOLF_UI_BUTTON_CLICKED;
         }
         else {
@@ -122,13 +123,13 @@ static void _golf_ui_scroll_list_begin(vec2 pos, vec2 size, float total_height, 
         }
 
         if (button_state == GOLF_UI_BUTTON_DOWN) {
-            if (golf_inputs_mouse_down()) {
+            if (inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
                 ui.scroll_list_moving = true;
             }
         }
 
         if (ui.scroll_list_moving) {
-            vec2 mp = golf_inputs_window_mouse_pos();
+            vec2 mp = inputs->mouse_pos;
             float inner_bar_y0 = (bar_pos.y - 0.5f * bar_size.y + 0.5f * inner_bar_height + inner_bar_pad);
             float inner_bar_y1 = (bar_pos.y + 0.5f * bar_size.y - 0.5f * inner_bar_height - inner_bar_pad);
             float a = (mp.y - inner_bar_y1) / (inner_bar_y0 - inner_bar_y1);
@@ -136,7 +137,7 @@ static void _golf_ui_scroll_list_begin(vec2 pos, vec2 size, float total_height, 
             if (a > 1.0f) a = 1.0f;
             ui.scroll_list_y = (total_height - size.y) * a;
 
-            if (!golf_inputs_mouse_down()) {
+            if (!inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
                 ui.scroll_list_moving = false;
             }
         }
@@ -145,13 +146,13 @@ static void _golf_ui_scroll_list_begin(vec2 pos, vec2 size, float total_height, 
     ui.has_context = true;
     ui.context.pos = V2(pos.x, pos.y + ui.scroll_list_y);
 
-    if (golf_inputs_button_down(SAPP_KEYCODE_UP)) {
+    if (inputs->button_down[SAPP_KEYCODE_UP]) {
         ui.scroll_list_y -= 10.0f;
         if (ui.scroll_list_y < 0.0f) {
             ui.scroll_list_y = 0.0f;
         }
     }
-    if (golf_inputs_button_down(SAPP_KEYCODE_DOWN)) {
+    if (inputs->button_down[SAPP_KEYCODE_DOWN]) {
         ui.scroll_list_y += 10.0f;
         if (ui.scroll_list_y > total_height - size.y) {
             ui.scroll_list_y = total_height - size.y;
@@ -184,6 +185,7 @@ void golf_ui_init(void) {
     vec_init(&ui.entities);
     memset(&ui, 0, sizeof(ui));
     ui.state = GOLF_UI_MAIN_MENU;
+    inputs = golf_inputs_get();
 }
 
 void golf_ui_update(float dt) {

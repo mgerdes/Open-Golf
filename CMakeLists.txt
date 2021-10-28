@@ -9,7 +9,6 @@ target_link_libraries(golf PRIVATE
     golf_lib)
 
 add_executable(editor
-    src/editor_exe/editor.c
     src/editor_exe/main.c)
 target_link_libraries(editor PRIVATE
     golf_lib)
@@ -37,9 +36,11 @@ add_library(golf_lib STATIC
     src/golf/config.c
     src/golf/data.c
     src/golf/debug_console.c
+    src/golf/editor.c
     src/golf/file.c
     src/golf/game.c
     src/golf/inputs.c
+    src/golf/level.c
     src/golf/log.c
     src/golf/maths.c
     src/golf/renderer.c

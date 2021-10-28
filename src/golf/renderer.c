@@ -8,6 +8,7 @@
 #include "3rd_party/stb/stb_image.h"
 #include "3rd_party/sokol/sokol_app.h"
 #include "3rd_party/sokol/sokol_gfx.h"
+#include "golf/editor.h"
 #include "golf/log.h"
 #include "golf/maths.h"
 #include "golf/ui.h"
@@ -47,9 +48,6 @@ void golf_renderer_init(void) {
     golf_data_load_file("data/models/cube.obj");
     golf_data_load_file("data/shaders/environment.glsl");
     golf_data_load_file("data/shaders/ui_sprite.glsl");
-    golf_data_load_file("data/textures/translate.png");
-    golf_data_load_file("data/textures/scale.png");
-    golf_data_load_file("data/textures/rotate.png");
 
     {
         golf_data_shader_t *shader = golf_data_get_shader("data/shaders/environment.glsl");
@@ -97,6 +95,30 @@ void golf_renderer_init(void) {
         sg_pipeline pipeline = sg_make_pipeline(&pipeline_desc);
         map_set(&renderer.pipelines_map, "ui_sprites", pipeline);
     }
+
+    renderer.cam_azimuth_angle = 0.5f*MF_PI;
+    renderer.cam_inclination_angle = 0;
+    renderer.cam_pos = V3(0, 0, 5);
+    renderer.cam_dir = V3(0, 0, -1);
+
+    {
+        float x = renderer.cam_dir.x;
+        float y = renderer.cam_dir.y;
+        float z = renderer.cam_dir.z;
+        renderer.cam_inclination_angle = acosf(y);
+        renderer.cam_azimuth_angle = atan2f(z, x);
+        if (x < 0) {
+            renderer.cam_inclination_angle += MF_PI;
+        }
+
+        float theta = renderer.cam_inclination_angle;
+        float phi = renderer.cam_azimuth_angle;
+        renderer.cam_dir.x = sinf(theta) * cosf(phi);
+        renderer.cam_dir.y = cosf(theta);
+        renderer.cam_dir.z = sinf(theta) * sinf(phi);
+    }
+
+    renderer.cam_up = V3(0, 1, 0);
 }
 
 
@@ -213,7 +235,7 @@ static void _draw_ui_text(golf_ui_text_t text) {
                 &(sg_range) { &fs_params, sizeof(fs_params) });
 
         sg_draw(0, square_model->positions.length, 1);
-        
+
         cur_x += sz_scale * atlas.char_data[c].xadvance;
 
         i++;
@@ -428,33 +450,21 @@ void golf_renderer_draw(void) {
     _draw_ui();
 }
 
-static mat4 cube_model_mat;
-bool cube_model_mat_inited = false;
-
 void golf_renderer_draw_editor(void) {
-    if (!cube_model_mat_inited) {
-        cube_model_mat = mat4_identity();
-        cube_model_mat_inited = true;
-    }
-
     {
-        renderer.cam_pos = V3(5, 5, 5);
-        renderer.cam_dir = vec3_normalize(vec3_sub(V3(0, 0, 0), renderer.cam_pos));
+        float theta = renderer.cam_inclination_angle;
+        float phi = renderer.cam_azimuth_angle;
+        renderer.cam_dir.x = sinf(theta) * cosf(phi);
+        renderer.cam_dir.y = cosf(theta);
+        renderer.cam_dir.z = sinf(theta) * sinf(phi);
 
         float near = 0.1f;
         float far = 150.0f;
-        renderer.proj_mat = mat4_perspective_projection(66.0f, renderer.viewport_size.x/renderer.viewport_size.y, near, far);
-        renderer.view_mat = mat4_look_at(V3(5, 5, 5), V3(0, 0, 0), V3(0, 1, 0));
+        renderer.proj_mat = mat4_perspective_projection(66.0f,
+                renderer.viewport_size.x / renderer.viewport_size.y, near, far);
+        renderer.view_mat = mat4_look_at(renderer.cam_pos,
+                vec3_add(renderer.cam_pos, renderer.cam_dir), renderer.cam_up);
         renderer.proj_view_mat = mat4_multiply(renderer.proj_mat, renderer.view_mat);
-    }
-
-    {
-        ImGuizmo_SetRect(renderer.viewport_pos.x, renderer.viewport_pos.y, renderer.viewport_size.x, renderer.viewport_size.y);
-        mat4 view_mat_t = mat4_transpose(renderer.view_mat);
-        mat4 proj_mat_t = mat4_transpose(renderer.proj_mat);
-        mat4 cube_model_mat_t = mat4_transpose(cube_model_mat);
-        ImGuizmo_Manipulate(view_mat_t.m, proj_mat_t.m, ROTATE, WORLD, cube_model_mat_t.m, NULL, NULL, NULL, NULL);
-        cube_model_mat = mat4_transpose(cube_model_mat_t);
     }
 
     {
@@ -476,24 +486,32 @@ void golf_renderer_draw_editor(void) {
     }
 
     {
-        golf_data_model_t *model = golf_data_get_model("data/models/cube.obj");
-        mat4 model_mat = cube_model_mat;
+        golf_editor_t *editor = golf_editor_get();
+        for (int i = 0; i < editor->terrain_entities.length; i++) {
+            golf_terrain_entity_t *terrain_entity = editor->terrain_entities.data[i];
+            if (!*(editor->terrain_entity_active.data[i])) {
+                continue;
+            }
 
-        sg_bindings bindings = {
-            .vertex_buffers[0] = model->sg_positions_buf,
-            .vertex_buffers[1] = model->sg_texcoords_buf,
-            .vertex_buffers[2] = model->sg_normals_buf,
-        };
-        sg_apply_bindings(&bindings);
+            golf_data_model_t *model = golf_data_get_model("data/models/cube.obj");
+            mat4 model_mat = terrain_entity->model_mat;
 
-        environment_vs_params_t vs_params = {
-            .proj_view_mat = mat4_transpose(renderer.proj_view_mat),
-            .model_mat = mat4_transpose(model_mat),
-        };
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_environment_vs_params, 
-                &(sg_range) { &vs_params, sizeof(vs_params) });
+            sg_bindings bindings = {
+                .vertex_buffers[0] = model->sg_positions_buf,
+                .vertex_buffers[1] = model->sg_texcoords_buf,
+                .vertex_buffers[2] = model->sg_normals_buf,
+            };
+            sg_apply_bindings(&bindings);
 
-        sg_draw(0, model->positions.length, 1);
+            environment_vs_params_t vs_params = {
+                .proj_view_mat = mat4_transpose(renderer.proj_view_mat),
+                .model_mat = mat4_transpose(model_mat),
+            };
+            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_environment_vs_params, 
+                    &(sg_range) { &vs_params, sizeof(vs_params) });
+
+            sg_draw(0, model->positions.length, 1);
+        }
     }
 
     sg_end_pass();

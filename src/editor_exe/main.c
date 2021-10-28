@@ -10,9 +10,9 @@
 #include "3rd_party/sokol/sokol_glue.h"
 #include "3rd_party/sokol/sokol_imgui.h"
 #include "3rd_party/sokol/sokol_time.h"
-#include "editor_exe/editor.h"
 #include "golf/config.h"
 #include "golf/data.h"
+#include "golf/editor.h"
 #include "golf/debug_console.h"
 #include "golf/game.h"
 #include "golf/inputs.h"
@@ -58,7 +58,7 @@ static void frame(void) {
         golf_ui_init();
         golf_renderer_init();
 
-        editor_init();
+        golf_editor_init();
         inited = true;
     }
 
@@ -86,8 +86,10 @@ static void frame(void) {
     }
 
     {
-        editor_update(dt);
+        golf_inputs_begin_frame();
+        golf_editor_update(dt);
         golf_renderer_draw_editor();
+        golf_inputs_end_frame();
     }
 
     {
@@ -107,9 +109,6 @@ static void frame(void) {
         sg_commit();
     }
 
-    {
-        golf_inputs_update();
-    }
 
     fflush(stdout);
 }

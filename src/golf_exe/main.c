@@ -90,10 +90,12 @@ static void frame(void) {
     }
 
     {
+        golf_inputs_begin_frame();
         golf_game_update(dt);
         golf_ui_update(dt);
         golf_renderer_draw();
         golf_debug_console_update(dt);
+        golf_inputs_end_frame();
     }
 
     {
@@ -111,10 +113,6 @@ static void frame(void) {
         simgui_render();
         sg_end_pass();
         sg_commit();
-    }
-
-    {
-        golf_inputs_update();
     }
 
     fflush(stdout);
