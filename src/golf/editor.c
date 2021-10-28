@@ -5,6 +5,7 @@
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "3rd_party/cimgui/cimgui.h"
 #include "3rd_party/cimguizmo/cimguizmo.h"
+#include "3rd_party/IconsMaterialDesign/IconsMaterialDesign.h"
 #include "golf/data.h"
 #include "golf/inputs.h"
 #include "golf/log.h"
@@ -28,6 +29,7 @@ void golf_editor_init(void) {
     golf_data_load_file("data/textures/editor/rotate_icon.png");
     golf_data_load_file("data/textures/editor/scale_icon.png");
     golf_data_load_file("data/textures/editor/translate_icon.png");
+    golf_data_load_file("data/textures/editor/local_icon.png");
 
     {
         golf_terrain_entity_t *terrain = malloc(sizeof(golf_terrain_entity_t));	
@@ -116,6 +118,8 @@ static void _golf_editor_undo_action(void) {
 
 void golf_editor_update(float dt) {
     ImGuiIO *IO = igGetIO();
+
+
     ImGuiViewport* viewport = igGetMainViewport();
     igSetNextWindowPos(viewport->Pos, ImGuiCond_Always, (ImVec2){ 0, 0 });
     igSetNextWindowSize(viewport->Size, ImGuiCond_Always);
@@ -254,6 +258,10 @@ void golf_editor_update(float dt) {
         }
         igSameLine(0, 5);
         {
+            if (igButton("icon: " ICON_MD_3D_ROTATION " icon", (ImVec2){ 0, 0 })) {
+                printf("KSDFJSF");
+            }
+
             golf_data_texture_t *tex = golf_data_get_texture("data/textures/editor/scale_icon.png");
             if (igImageButton((ImTextureID)(intptr_t)tex->sg_image.id, (ImVec2){ 20, 20 }, 
                         (ImVec2){ 0, 0 }, (ImVec2) { 1, 1 }, 0,
@@ -263,6 +271,19 @@ void golf_editor_update(float dt) {
             if (igIsItemHovered(ImGuiHoveredFlags_None)) {
                 igBeginTooltip();
                 igText("Scale (R)");
+                igEndTooltip();
+            }
+        }
+        igSameLine(0, 5);
+        {
+            golf_data_texture_t *tex = golf_data_get_texture("data/textures/editor/local_icon.png");
+            if (igImageButton((ImTextureID)(intptr_t)tex->sg_image.id, (ImVec2){ 20, 20 }, 
+                        (ImVec2){ 0, 0 }, (ImVec2) { 1, 1 }, 0,
+                        (ImVec4){ 0, 0, 0, 0} , (ImVec4){ 0, 0, 0, 1})) {
+            }
+            if (igIsItemHovered(ImGuiHoveredFlags_None)) {
+                igBeginTooltip();
+                igText("Local");
                 igEndTooltip();
             }
         }

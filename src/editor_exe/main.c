@@ -4,6 +4,7 @@
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "3rd_party/cimgui/cimgui.h"
 #include "3rd_party/cimguizmo/cimguizmo.h"
+#include "3rd_party/IconsMaterialDesign/IconsMaterialDesign.h"
 #include "3rd_party/sokol/sokol_app.h"
 #include "3rd_party/sokol/sokol_audio.h"
 #include "3rd_party/sokol/sokol_gfx.h"
@@ -28,7 +29,8 @@ static void init(void) {
             .context = sapp_sgcontext(),
             });
     simgui_setup(&(simgui_desc_t) {
-            .dpi_scale = sapp_dpi_scale() 
+            .dpi_scale = sapp_dpi_scale(),
+            .no_default_font = true,
             });
     saudio_setup(&(saudio_desc){
             .sample_rate = 44100,
@@ -36,6 +38,39 @@ static void init(void) {
             .packet_frames = 64,
             .num_packets = 32, 
             });
+
+    {
+        // setup ImGui font with custom icons
+        ImGuiIO *io = igGetIO();
+        ImFontAtlas_AddFontDefault(io->Fonts, NULL);
+
+        static const ImWchar icons_ranges[] = { ICON_MIN_MD, ICON_MAX_MD, 0 };
+        ImFontConfig icons_config;
+        icons_config.MergeMode = true;
+        icons_config.PixelSnapH = true;
+        icons_config.FontDataOwnedByAtlas = false;
+        //ImFontAtlas_AddFontFromFileTTF(io->Fonts, "data/font/MaterialIcons-Regular.ttf", 13, &icons_config, icons_ranges);
+        //ImFontConfig h1Conf;
+        //h1Conf.SizePixels = 26.0f;
+        //md_conf.headingFormats[0].font = io.Fonts->AddFontDefault(&h1Conf);
+
+        unsigned char* font_pixels;
+        int font_width, font_height, bytes_per_pixel;
+        ImFontAtlas_GetTexDataAsRGBA32(io->Fonts, &font_pixels, &font_width, &font_height, &bytes_per_pixel);
+        {
+            sg_image_desc desc = { };
+            desc.width = font_width;
+            desc.height = font_height;
+            desc.pixel_format = SG_PIXELFORMAT_RGBA8;
+            desc.wrap_u = SG_WRAP_CLAMP_TO_EDGE;
+            desc.wrap_v = SG_WRAP_CLAMP_TO_EDGE;
+            desc.min_filter = SG_FILTER_LINEAR;
+            desc.mag_filter = SG_FILTER_LINEAR;
+            desc.data.subimage[0][0].ptr = font_pixels;
+            desc.data.subimage[0][0].size = font_width * font_height * 4;
+            io->Fonts->TexID = (ImTextureID)(uintptr_t) sg_make_image(&desc).id;
+        }
+    }
 }
 
 static void cleanup(void) {
