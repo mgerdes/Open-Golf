@@ -486,30 +486,36 @@ void golf_renderer_draw_editor(void) {
 
     {
         golf_editor_t *editor = golf_editor_get();
-        for (int i = 0; i < editor->model_entities.length; i++) {
-            golf_model_entity_t *entity = editor->model_entities.data[i];
-            if (!*(editor->model_entity_active.data[i])) {
+        for (int i = 0; i < editor->entities.length; i++) {
+            golf_entity_t entity = editor->entities.data[i];
+            if (!editor->entity_active.data[i]) {
                 continue;
             }
 
-            golf_data_model_t *model = golf_data_get_model(entity->model_path);
-            mat4 model_mat = entity->model_mat;
+            if (entity.type == MODEL_ENTITY) {
+                golf_model_entity_t model_entity = entity.model_entity;
+                golf_data_model_t *model = golf_data_get_model(model_entity.model_path);
+                mat4 model_mat = model_entity.model_mat;
 
-            sg_bindings bindings = {
-                .vertex_buffers[0] = model->sg_positions_buf,
-                .vertex_buffers[1] = model->sg_texcoords_buf,
-                .vertex_buffers[2] = model->sg_normals_buf,
-            };
-            sg_apply_bindings(&bindings);
+                sg_bindings bindings = {
+                    .vertex_buffers[0] = model->sg_positions_buf,
+                    .vertex_buffers[1] = model->sg_texcoords_buf,
+                    .vertex_buffers[2] = model->sg_normals_buf,
+                };
+                sg_apply_bindings(&bindings);
 
-            environment_vs_params_t vs_params = {
-                .proj_view_mat = mat4_transpose(renderer.proj_view_mat),
-                .model_mat = mat4_transpose(model_mat),
-            };
-            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_environment_vs_params, 
-                    &(sg_range) { &vs_params, sizeof(vs_params) });
+                environment_vs_params_t vs_params = {
+                    .proj_view_mat = mat4_transpose(renderer.proj_view_mat),
+                    .model_mat = mat4_transpose(model_mat),
+                };
+                sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_environment_vs_params, 
+                        &(sg_range) { &vs_params, sizeof(vs_params) });
 
-            sg_draw(0, model->positions.length, 1);
+                sg_draw(0, model->positions.length, 1);
+            }
+            else if (entity.type == TERRAIN_ENTITY) {
+            }
+
         }
     }
 

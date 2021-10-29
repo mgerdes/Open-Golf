@@ -37,6 +37,10 @@ typedef enum golf_entity_type {
 
 typedef struct golf_entity {
     golf_entity_type_t type;
+    union {
+        golf_model_entity_t model_entity;
+        golf_terrain_entity_t terrain_entity;
+    };
 } golf_entity_t;
 typedef vec_t(golf_entity_t) vec_golf_entity_t;
 
@@ -47,5 +51,9 @@ typedef struct golf_level {
 bool golf_level_save(golf_level_t *level, const char *path);
 bool golf_level_load(golf_level_t *level, const char *path, char *data, int data_len);
 bool golf_level_unload(golf_level_t *level);
+
+mat4 golf_entity_get_model_mat(golf_entity_t *entity);
+mat4 *golf_entity_get_model_mat_ptr(golf_entity_t *entity);
+void golf_entity_set_model_mat(golf_entity_t *entity, mat4 model_mat);
 
 #endif

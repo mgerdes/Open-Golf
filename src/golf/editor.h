@@ -26,8 +26,8 @@ typedef struct golf_editor_action {
 typedef vec_t(golf_editor_action_t) vec_golf_editor_action_t;
 
 typedef struct golf_editor {
-    vec_char_ptr_t model_entity_active;
-    vec_golf_model_entity_ptr_t model_entities;	
+    vec_bool_t entity_active;
+    vec_golf_entity_t entities;
 
     bool started_modify_data_action;
     golf_editor_action_t modify_data_action;
