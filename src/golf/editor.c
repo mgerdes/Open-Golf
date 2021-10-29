@@ -98,6 +98,20 @@ static void _golf_editor_commit_modify_data_action(void) {
     vec_push(&editor.actions, editor.modify_data_action);
 }
 
+static void _golf_editor_fix_modify_data(char *new_ptr, char *old_ptr_start, char *old_ptr_end) {
+    for (int i = 0; i < editor.actions.length; i++) {
+        golf_editor_action_t *action = &editor.actions.data[i];
+        if (action->type == MODIFY_DATA_ACTION) {
+            if (action->data >= old_ptr_start && action->data < old_ptr_end) {
+                action->data = new_ptr + (action->data - old_ptr_start);
+            }
+        }
+        else {
+            golf_log_warning("Undo action type not handled %d", action->type);
+        }
+    }
+}
+
 static void _golf_editor_undo_action(void) {
     if (editor.actions.length == 0) {
         return;
@@ -160,8 +174,20 @@ void golf_editor_update(float dt) {
                         new_entity.type = MODEL_ENTITY;
                         memcpy(&new_entity.model_entity, &model_entity, sizeof(golf_model_entity_t));
 
-                        vec_push(&editor.entity_active, true);
+                        char *entity_active_ptr = (char*)editor.entity_active.data;
+                        char *entity_ptr = (char*)editor.entities.data;
+                        vec_push(&editor.entity_active, false);
                         vec_push(&editor.entities, new_entity);
+                        if (entity_active_ptr != (char*)editor.entity_active.data) {
+                            _golf_editor_fix_modify_data((char*)editor.entity_active.data, entity_active_ptr, entity_active_ptr + sizeof(bool) * (editor.entity_active.length - 1));
+                        }
+                        if (entity_ptr != (char*)editor.entities.data) {
+                            _golf_editor_fix_modify_data((char*)editor.entities.data, entity_ptr, entity_ptr + sizeof(golf_entity_t) * (editor.entities.length - 1));
+                        }
+
+                        _golf_editor_start_modify_data_action((char*)&vec_last(&editor.entity_active), sizeof(bool));
+                        vec_last(&editor.entity_active) = true;
+                        _golf_editor_commit_modify_data_action();
                     }
                 }
             }
@@ -388,6 +414,16 @@ void golf_editor_update(float dt) {
 
     {
         igBegin("Right", NULL, ImGuiWindowFlags_NoTitleBar);
+        for (int i = 0; i < editor.entities.length; i++) {
+            golf_entity_t entity = editor.entities.data[i];
+            if (entity.type == MODEL_ENTITY) {
+                if (igTreeNode_Ptr((void*)(intptr_t)i, "Model Entity")) {
+                    igText("HI");
+                    igTreePop();
+                }
+            }
+        }
+
         if (editor.selected_entity_idx >= 0) {
             golf_entity_t entity = editor.entities.data[editor.selected_entity_idx];
 

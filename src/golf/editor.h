@@ -18,8 +18,8 @@ typedef struct golf_editor_action {
     union {
         struct {
             int data_size;
-            void *data;
-            void *data_copy;
+            char *data;
+            char *data_copy;
         };
     };
 } golf_editor_action_t;
