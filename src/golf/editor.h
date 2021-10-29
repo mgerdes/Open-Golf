@@ -5,6 +5,7 @@
 #include "3rd_party/cimgui/cimgui.h"
 #include "3rd_party/cimguizmo/cimguizmo.h"
 #include "3rd_party/vec/vec.h"
+#include "golf/file.h"
 #include "golf/level.h"
 #include "golf/maths.h"
 
@@ -25,8 +26,8 @@ typedef struct golf_editor_action {
 typedef vec_t(golf_editor_action_t) vec_golf_editor_action_t;
 
 typedef struct golf_editor {
-    vec_char_ptr_t terrain_entity_active;
-    vec_golf_terrain_entity_ptr_t terrain_entities;	
+    vec_char_ptr_t model_entity_active;
+    vec_golf_model_entity_ptr_t model_entities;	
 
     bool started_modify_data_action;
     golf_editor_action_t modify_data_action;
@@ -34,11 +35,17 @@ typedef struct golf_editor {
 
     int hovered_entity_idx;
     int selected_entity_idx;
+    char model_path_temp[GOLF_FILE_MAX_PATH];
 
     struct {
         bool is_using;
+        bool bounds_mode_on;
         OPERATION operation;
         MODE mode;
+        bool use_snap;
+        float translate_snap;
+        float scale_snap;
+        float rotate_snap;
         mat4 model_mat;
     } gizmo;
 } golf_editor_t;

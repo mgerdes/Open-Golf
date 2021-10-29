@@ -5,24 +5,43 @@
 #include "golf/file.h"
 #include "golf/maths.h"
 
+typedef struct golf_terrain_entity_vertex {
+    vec3 position;
+    vec3 normal;
+    vec2 texturecoord;
+} golf_terrain_entity_vertex_t;
+typedef vec_t(golf_terrain_entity_vertex_t) vec_golf_terrain_entity_vertex_t;
+
+typedef struct golf_terrain_entity_face {
+    int num_vertices;
+    golf_terrain_entity_vertex_t vertices[4];
+} golf_terrain_entity_face_t;
+typedef vec_t(golf_terrain_entity_face_t) vec_golf_terrain_entity_face_t;
+
 typedef struct golf_terrain_entity {
-	char model_path[GOLF_FILE_MAX_PATH];
-	float bounds[6];
-	mat4 model_mat;
+    mat4 model_mat;
+    vec_golf_terrain_entity_face_t faces;
 } golf_terrain_entity_t;
-typedef vec_t(golf_terrain_entity_t*) vec_golf_terrain_entity_ptr_t;
+
+typedef struct golf_model_entity {
+    char model_path[GOLF_FILE_MAX_PATH];
+    float bounds[6];
+    mat4 model_mat;
+} golf_model_entity_t;
+typedef vec_t(golf_model_entity_t*) vec_golf_model_entity_ptr_t;
 
 typedef enum golf_entity_type {
-	TERRAIN_ENTITY,
+    TERRAIN_ENTITY,
+    MODEL_ENTITY,
 } golf_entity_type_t;
 
 typedef struct golf_entity {
-	golf_entity_type_t type;
+    golf_entity_type_t type;
 } golf_entity_t;
 typedef vec_t(golf_entity_t) vec_golf_entity_t;
 
 typedef struct golf_level {
-	vec_golf_entity_t entities;
+    vec_golf_entity_t entities;
 } golf_level_t;
 
 bool golf_level_save(golf_level_t *level, const char *path);

@@ -1,9 +1,11 @@
+#include <float.h>
 #include <stdbool.h>
 #include <stdio.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "3rd_party/cimgui/cimgui.h"
 #include "3rd_party/cimguizmo/cimguizmo.h"
+#include "3rd_party/IconsFontAwesome5/IconsFontAwesome5.h"
 #include "3rd_party/sokol/sokol_app.h"
 #include "3rd_party/sokol/sokol_audio.h"
 #include "3rd_party/sokol/sokol_gfx.h"
@@ -28,7 +30,8 @@ static void init(void) {
             .context = sapp_sgcontext(),
             });
     simgui_setup(&(simgui_desc_t) {
-            .dpi_scale = sapp_dpi_scale() 
+            .dpi_scale = sapp_dpi_scale(),
+            .no_default_font = true,
             });
     saudio_setup(&(saudio_desc){
             .sample_rate = 44100,
@@ -36,6 +39,48 @@ static void init(void) {
             .packet_frames = 64,
             .num_packets = 32, 
             });
+
+    {
+        // setup ImGui font with custom icons
+        ImGuiIO *io = igGetIO();
+        ImFontAtlas_AddFontDefault(io->Fonts, NULL);
+
+        static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+
+        ImFontConfig icons_config;
+        memset(&icons_config, 0, sizeof(icons_config));
+        icons_config.SizePixels = 16;
+        icons_config.OversampleH = 1;
+        icons_config.OversampleV = 1;
+        icons_config.RasterizerMultiply = 1.0f;
+        icons_config.EllipsisChar = -1;
+        icons_config.GlyphMaxAdvanceX = FLT_MAX;
+        icons_config.GlyphMinAdvanceX = 16;
+        icons_config.MergeMode = true;
+        icons_config.PixelSnapH = true;
+        icons_config.FontDataOwnedByAtlas = false;
+        icons_config.GlyphOffset.x -= 2.0f;
+        icons_config.GlyphOffset.y += 3.0f;
+        ImFontAtlas_AddFontFromFileTTF(io->Fonts, "data/font/fa-solid-900.ttf", 16, &icons_config, icons_ranges);
+
+        unsigned char* font_pixels;
+        int font_width, font_height, bytes_per_pixel;
+        ImFontAtlas_GetTexDataAsRGBA32(io->Fonts, &font_pixels, &font_width, &font_height, &bytes_per_pixel);
+        {
+            sg_image_desc desc;
+            memset(&desc, 0, sizeof(desc));
+            desc.width = font_width;
+            desc.height = font_height;
+            desc.pixel_format = SG_PIXELFORMAT_RGBA8;
+            desc.wrap_u = SG_WRAP_CLAMP_TO_EDGE;
+            desc.wrap_v = SG_WRAP_CLAMP_TO_EDGE;
+            desc.min_filter = SG_FILTER_LINEAR;
+            desc.mag_filter = SG_FILTER_LINEAR;
+            desc.data.subimage[0][0].ptr = font_pixels;
+            desc.data.subimage[0][0].size = font_width * font_height * 4;
+            io->Fonts->TexID = (ImTextureID)(uintptr_t) sg_make_image(&desc).id;
+        }
+    }
 }
 
 static void cleanup(void) {
@@ -60,6 +105,10 @@ static void frame(void) {
 
         golf_editor_init();
         inited = true;
+
+        golf_data_load_file("data/models/ui_sprite_square.obj");
+        golf_data_load_file("data/models/cube.obj");
+        golf_data_load_file("data/models/teapot.obj");
     }
 
     {

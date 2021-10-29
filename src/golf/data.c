@@ -523,55 +523,57 @@ bool _golf_data_model_import(const char *path, char *data, int data_len) {
         int idx = 0;
         for (int j = 0; j < (int)grp.face_count; j++) {
             int fv = m->face_vertices[grp.face_offset + j];
-            if (fv != 3) {
-                golf_log_warning("OBJ file isn't triangulated %s", path); 
-                break;
+			int fm = m->face_materials[grp.face_offset + j];
+			if (fm < m->material_count) {
+				fastObjMaterial mat = m->materials[fm];
+				printf("%s\n", mat.name);
+			}
+
+			fastObjIndex m0 = m->indices[grp.index_offset + idx];
+			vec3 p0 = vec3_create_from_array(&m->positions[3 * m0.p]);
+			vec2 t0 = vec2_create_from_array(&m->texcoords[2 * m0.t]);
+			vec3 n0 = vec3_create_from_array(&m->normals[3 * m0.n]);
+
+            for (int k = 0; k < fv - 2; k++) {
+				fastObjIndex m1 = m->indices[grp.index_offset + idx + k + 1];
+				vec3 p1 = vec3_create_from_array(&m->positions[3 * m1.p]);
+				vec2 t1 = vec2_create_from_array(&m->texcoords[2 * m1.t]);
+				vec3 n1 = vec3_create_from_array(&m->normals[3 * m1.n]);
+
+				fastObjIndex m2 = m->indices[grp.index_offset + idx + k + 2];
+				vec3 p2 = vec3_create_from_array(&m->positions[3 * m2.p]);
+				vec2 t2 = vec2_create_from_array(&m->texcoords[2 * m2.t]);
+				vec3 n2 = vec3_create_from_array(&m->normals[3 * m2.n]);
+
+				json_array_append_number(vertices, p0.x);
+				json_array_append_number(vertices, p0.y);
+				json_array_append_number(vertices, p0.z);
+				json_array_append_number(vertices, t0.x);
+				json_array_append_number(vertices, t0.y);
+				json_array_append_number(vertices, n0.x);
+				json_array_append_number(vertices, n0.y);
+				json_array_append_number(vertices, n0.z);
+
+				json_array_append_number(vertices, p1.x);
+				json_array_append_number(vertices, p1.y);
+				json_array_append_number(vertices, p1.z);
+				json_array_append_number(vertices, t1.x);
+				json_array_append_number(vertices, t1.y);
+				json_array_append_number(vertices, n1.x);
+				json_array_append_number(vertices, n1.y);
+				json_array_append_number(vertices, n1.z);
+
+				json_array_append_number(vertices, p2.x);
+				json_array_append_number(vertices, p2.y);
+				json_array_append_number(vertices, p2.z);
+				json_array_append_number(vertices, t2.x);
+				json_array_append_number(vertices, t2.y);
+				json_array_append_number(vertices, n2.x);
+				json_array_append_number(vertices, n2.y);
+				json_array_append_number(vertices, n2.z);
             }
 
-            for (int k = 0; k < fv; k++) {
-                fastObjIndex mi = m->indices[grp.index_offset + idx];
-
-                vec3 p;
-                p.x = m->positions[3 * mi.p + 0];
-                p.y = m->positions[3 * mi.p + 1];
-                p.z = m->positions[3 * mi.p + 2];
-
-                vec2 t;
-                t.x = m->texcoords[2 * mi.t + 0];
-                t.y = m->texcoords[2 * mi.t + 1];
-
-                vec3 n;
-                n.x = m->normals[3 * mi.n + 0];
-                n.y = m->normals[3 * mi.n + 1];
-                n.z = m->normals[3 * mi.n + 2];
-
-                JSON_Value *position_array_val = json_value_init_array();
-                JSON_Array *position_array = json_value_get_array(position_array_val);
-                json_array_append_number(position_array, p.x);
-                json_array_append_number(position_array, p.y);
-                json_array_append_number(position_array, p.z);
-
-                JSON_Value *texcoord_array_val = json_value_init_array();
-                JSON_Array *texcoord_array = json_value_get_array(texcoord_array_val);
-                json_array_append_number(texcoord_array, t.x);
-                json_array_append_number(texcoord_array, t.y);
-
-                JSON_Value *normal_array_val = json_value_init_array();
-                JSON_Array *normal_array = json_value_get_array(normal_array_val);
-                json_array_append_number(normal_array, n.x);
-                json_array_append_number(normal_array, n.y);
-                json_array_append_number(normal_array, n.z);
-
-                JSON_Value *face_val = json_value_init_object();
-                JSON_Object *face = json_value_get_object(face_val);
-                json_object_set_value(face, "position", position_array_val);
-                json_object_set_value(face, "texcoord", texcoord_array_val);
-                json_object_set_value(face, "normal", normal_array_val);
-
-                json_array_append_value(vertices, face_val);
-
-                idx++;
-            }
+			idx += fv;
         }
     }
     fast_obj_destroy(m);
@@ -602,15 +604,24 @@ bool _golf_data_model_load(const char *path, char *data, int data_len, golf_data
     vec_init(&model->texcoords);
 
     JSON_Array *json_vertices = json_object_get_array(obj, "vertices");
-    for (int i = 0; i < (int)json_array_get_count(json_vertices); i++) {
-        JSON_Object *json_vertex = json_array_get_object(json_vertices, i);
-        vec3 position = _golf_data_json_object_get_vec3(json_vertex, "position");
-        vec3 normal = _golf_data_json_object_get_vec3(json_vertex, "normal");
-        vec2 texcoord = _golf_data_json_object_get_vec2(json_vertex, "texcoord");
-        vec_push(&model->positions, position);
-        vec_push(&model->normals, normal);
-        vec_push(&model->texcoords, texcoord);
-    }
+	for (int i = 0; i < (int)json_array_get_count(json_vertices); i += 8) {
+		vec3 p;
+		vec2 t;
+		vec3 n;
+
+		p.x = json_array_get_number(json_vertices, i + 0);
+		p.y = json_array_get_number(json_vertices, i + 1);
+		p.z = json_array_get_number(json_vertices, i + 2);
+		t.x = json_array_get_number(json_vertices, i + 3);
+		t.y = json_array_get_number(json_vertices, i + 4);
+		n.x = json_array_get_number(json_vertices, i + 5);
+		n.y = json_array_get_number(json_vertices, i + 6);
+		n.z = json_array_get_number(json_vertices, i + 7);
+
+		vec_push(&model->positions, p);
+		vec_push(&model->texcoords, t);
+		vec_push(&model->normals, n);
+	}
 
     {
         sg_buffer_desc desc = {
@@ -1100,7 +1111,7 @@ golf_data_pixel_pack_t *golf_data_get_pixel_pack(const char *path) {
 }
 
 golf_data_model_t *golf_data_get_model(const char *path) {
-    static const char *fallback = "data/models/ui_sprite_square.obj";
+    static const char *fallback = "data/models/cube.obj";
 
     golf_data_file_t *data_file = golf_data_get_file(path);
     if (!data_file || data_file->type != GOLF_DATA_MODEL) {

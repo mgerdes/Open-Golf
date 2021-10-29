@@ -3,17 +3,17 @@
 #include <float.h>
 
 struct ray ray_create(vec3 orig, vec3 dir) {
-	struct ray ray;
-	ray.orig = orig;
-	ray.dir = dir;
-	return ray;
+    struct ray ray;
+    ray.orig = orig;
+    ray.dir = dir;
+    return ray;
 }
 
 struct ray_2D ray_2D_create(vec2 orig, vec2 dir) {
-	struct ray_2D ray_2D;
-	ray_2D.orig = orig;
-	ray_2D.dir = dir;
-	return ray_2D;
+    struct ray_2D ray_2D;
+    ray_2D.orig = orig;
+    ray_2D.dir = dir;
+    return ray_2D;
 }
 
 vec2 ray_2D_at_time(struct ray_2D r, float t) {
@@ -21,17 +21,17 @@ vec2 ray_2D_at_time(struct ray_2D r, float t) {
 }
 
 struct bounding_box bounding_box_create(vec3 center, vec3 half_lengths) {
-	struct bounding_box bounding_box;
-	bounding_box.center = center;
-	bounding_box.half_lengths = half_lengths;
-	return bounding_box;
+    struct bounding_box bounding_box;
+    bounding_box.center = center;
+    bounding_box.half_lengths = half_lengths;
+    return bounding_box;
 }
 
 bool ray_2D_intersect(struct ray_2D r1, struct ray_2D r2, float *t1, float *t2) {
     mat4 m = mat4_create(r1.dir.x, -r2.dir.x, 0.0f, 0.0f,
-                         r1.dir.y, -r2.dir.y, 0.0f, 0.0f,
-                         0.0f, 0.0f, 1.0f, 0.0f,
-                         0.0f, 0.0f, 0.0f, 1.0f);
+            r1.dir.y, -r2.dir.y, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f,
+            0.0f, 0.0f, 0.0f, 1.0f);
     mat4 mi = mat4_inverse(m);
     vec4 v = vec4_create(r2.orig.x - r1.orig.x, r2.orig.y - r1.orig.y, 0.0f, 0.0f);
     vec4 t_v = vec4_apply_mat(v, mi);
@@ -41,10 +41,17 @@ bool ray_2D_intersect(struct ray_2D r1, struct ray_2D r2, float *t1, float *t2) 
 }
 
 vec2 vec2_create(float x, float y) {
-	vec2 v;
-	v.x = x;
-	v.y = y;
-	return v;
+    vec2 v;
+    v.x = x;
+    v.y = y;
+    return v;
+}
+
+vec2 vec2_create_from_array(float *a) {
+    vec2 v;
+    v.x = a[0];
+    v.y = a[1];
+    return v;
 }
 
 vec2 vec2_sub(vec2 v1, vec2 v2) {
@@ -218,11 +225,19 @@ void vec2_print(vec2 v) {
 }
 
 vec3 vec3_create(float x, float y, float z) {
-	vec3 v;
-	v.x = x;
-	v.y = y;
-	v.z = z;
-	return v;
+    vec3 v;
+    v.x = x;
+    v.y = y;
+    v.z = z;
+    return v;
+}
+
+vec3 vec3_create_from_array(float *a) {
+    vec3 v;
+    v.x = a[0];
+    v.y = a[1];
+    v.z = a[2];
+    return v;
 }
 
 vec3 vec3_add(vec3 v1, vec3 v2) {
@@ -235,9 +250,9 @@ vec3 vec3_sub(vec3 v1, vec3 v2) {
 
 vec3 vec3_add_scaled(vec3 v1, vec3 v2, float s) {
     return vec3_create(
-        v1.x + v2.x * s,
-        v1.y + v2.y * s,
-        v1.z + v2.z * s);
+            v1.x + v2.x * s,
+            v1.y + v2.y * s,
+            v1.z + v2.z * s);
 }
 
 vec3 vec3_subtract(vec3 v1, vec3 v2) {
@@ -288,12 +303,12 @@ vec3 vec3_div(vec3 v, float s) {
 
 float vec3_distance(vec3 v1, vec3 v2) {
     return sqrtf((v1.x - v2.x) * (v1.x - v2.x) + (v1.y - v2.y) * (v1.y - v2.y) +
-                 (v1.z - v2.z) * (v1.z - v2.z));
+            (v1.z - v2.z) * (v1.z - v2.z));
 }
 
 float vec3_distance_squared(vec3 v1, vec3 v2) {
     return (v1.x - v2.x) * (v1.x - v2.x) + (v1.y - v2.y) * (v1.y - v2.y) +
-           (v1.z - v2.z) * (v1.z - v2.z);
+        (v1.z - v2.z) * (v1.z - v2.z);
 }
 
 vec3 vec3_set_length(vec3 v, float l) {
@@ -464,59 +479,68 @@ void vec4_print(vec4 v) {
 }
 
 mat4 mat4_create(float a, float b, float c, float d,
-                 float e, float f, float g, float h,
-                 float i, float j, float k, float l,
-                 float m, float n, float o, float p) {
-	mat4 mat;
-	mat.m[0] = a;
-	mat.m[1] = b;
-	mat.m[2] = c;
-	mat.m[3] = d;
-	mat.m[4] = e;
-	mat.m[5] = f;
-	mat.m[6] = g;
-	mat.m[7] = h;
-	mat.m[8] = i;
-	mat.m[9] = j;
-	mat.m[10] = k;
-	mat.m[11] = l;
-	mat.m[12] = m;
-	mat.m[13] = n;
-	mat.m[14] = o;
-	mat.m[15] = p;
-	return mat;
+        float e, float f, float g, float h,
+        float i, float j, float k, float l,
+        float m, float n, float o, float p) {
+    mat4 mat;
+    mat.m[0] = a;
+    mat.m[1] = b;
+    mat.m[2] = c;
+    mat.m[3] = d;
+    mat.m[4] = e;
+    mat.m[5] = f;
+    mat.m[6] = g;
+    mat.m[7] = h;
+    mat.m[8] = i;
+    mat.m[9] = j;
+    mat.m[10] = k;
+    mat.m[11] = l;
+    mat.m[12] = m;
+    mat.m[13] = n;
+    mat.m[14] = o;
+    mat.m[15] = p;
+    return mat;
+}
+
+bool mat4_equal(mat4 m0, mat4 m1) {
+    for (int i = 0; i < 16; i++) {
+        if (fabs(m0.m[i] - m1.m[i]) >= 0.001f) {
+            return false;
+        }
+    }
+    return true;
 }
 
 mat4 mat4_zero() {
     return mat4_create(
-        0.0, 0.0, 0.0, 0.0,
-        0.0, 0.0, 0.0, 0.0,
-        0.0, 0.0, 0.0, 0.0,
-        0.0, 0.0, 0.0, 0.0);
+            0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0);
 }
 
 mat4 mat4_identity() {
     return mat4_create(
-        1.0, 0.0, 0.0, 0.0,
-        0.0, 1.0, 0.0, 0.0,
-        0.0, 0.0, 1.0, 0.0,
-        0.0, 0.0, 0.0, 1.0);
+            1.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.0,
+            0.0, 0.0, 0.0, 1.0);
 }
 
 mat4 mat4_translation(vec3 v) {
     return mat4_create(
-        1.0, 0.0, 0.0, v.x,
-        0.0, 1.0, 0.0, v.y,
-        0.0, 0.0, 1.0, v.z,
-        0.0, 0.0, 0.0, 1.0);
+            1.0, 0.0, 0.0, v.x,
+            0.0, 1.0, 0.0, v.y,
+            0.0, 0.0, 1.0, v.z,
+            0.0, 0.0, 0.0, 1.0);
 }
 
 mat4 mat4_scale(vec3 v) {
     return mat4_create(
-        v.x, 0.0, 0.0, 0.0,
-        0.0, v.y, 0.0, 0.0,
-        0.0, 0.0, v.z, 0.0,
-        0.0, 0.0, 0.0, 1.0);
+            v.x, 0.0, 0.0, 0.0,
+            0.0, v.y, 0.0, 0.0,
+            0.0, 0.0, v.z, 0.0,
+            0.0, 0.0, 0.0, 1.0);
 }
 
 /*
@@ -526,39 +550,39 @@ mat4 mat4_rotation_x(float theta) {
     float c = cosf(theta);
     float s = sinf(theta);
     return mat4_create(
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, c, -s, 0.0f,
-        0.0f, s, c, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f);
+            1.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, c, -s, 0.0f,
+            0.0f, s, c, 0.0f,
+            0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 mat4 mat4_rotation_y(float theta) {
     float c = cosf(theta);
     float s = sinf(theta);
     return mat4_create(
-        c, 0.0f, s, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        -s, 0.0f, c, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f);
+            c, 0.0f, s, 0.0f,
+            0.0f, 1.0f, 0.0f, 0.0f,
+            -s, 0.0f, c, 0.0f,
+            0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 mat4 mat4_rotation_z(float theta) {
     float c = cosf(theta);
     float s = sinf(theta);
     return mat4_create(
-        c, -s, 0.0f, 0.0f,
-        s, c, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f);
+            c, -s, 0.0f, 0.0f,
+            s, c, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f,
+            0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 mat4 mat4_shear(float theta, vec3 a, vec3 b) {
     float t = tanf(theta);
     return mat4_create(
-        a.x * b.x * t + 1.0f, a.x * b.y * t, a.x * b.z * t, 0.0f,
-        a.y * b.x * t, a.y * b.y * t + 1.0f, a.y * b.z * t, 0.0f,
-        a.z * b.x * t, a.z * b.y * t, a.z * b.z * t + 1.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f);
+            a.x * b.x * t + 1.0f, a.x * b.y * t, a.x * b.z * t, 0.0f,
+            a.y * b.x * t, a.y * b.y * t + 1.0f, a.y * b.z * t, 0.0f,
+            a.z * b.x * t, a.z * b.y * t, a.z * b.z * t + 1.0f, 0.0f,
+            0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 void mat4_print(mat4 m) {
@@ -605,20 +629,20 @@ mat4 mat4_multiply(mat4 m1, mat4 m2) {
     float c15 = a[12] * b[3] + a[13] * b[7] + a[14] * b[11] + a[15] * b[15];
 
     return mat4_create(
-        c0, c1, c2, c3,
-        c4, c5, c6, c7,
-        c8, c9, c10, c11,
-        c12, c13, c14, c15);
+            c0, c1, c2, c3,
+            c4, c5, c6, c7,
+            c8, c9, c10, c11,
+            c12, c13, c14, c15);
 }
 
 mat4 mat4_transpose(mat4 m) {
     float *a = m.m;
 
     return mat4_create(
-        a[0], a[4], a[8], a[12],
-        a[1], a[5], a[9], a[13],
-        a[2], a[6], a[10], a[14],
-        a[3], a[7], a[11], a[15]);
+            a[0], a[4], a[8], a[12],
+            a[1], a[5], a[9], a[13],
+            a[2], a[6], a[10], a[14],
+            a[3], a[7], a[11], a[15]);
 }
 
 mat4 mat4_normal_transform(mat4 m) {
@@ -701,10 +725,10 @@ mat4 mat4_inverse(mat4 m) {
     float a15 = a[0] * a[5] * a[10] + a[1] * a[6] * a[8] + a[2] * a[4] * a[9] - a[0] * a[6] * a[9] - a[1] * a[4] * a[10] - a[2] * a[5] * a[8];
 
     return mat4_create(
-        a0 / det, a1 / det, a2 / det, a3 / det,
-        a4 / det, a5 / det, a6 / det, a7 / det,
-        a8 / det, a9 / det, a10 / det, a11 / det,
-        a12 / det, a13 / det, a14 / det, a15 / det);
+            a0 / det, a1 / det, a2 / det, a3 / det,
+            a4 / det, a5 / det, a6 / det, a7 / det,
+            a8 / det, a9 / det, a10 / det, a11 / det,
+            a12 / det, a13 / det, a14 / det, a15 / det);
 }
 
 /*
@@ -717,10 +741,10 @@ mat4 mat4_look_at(vec3 position, vec3 target, vec3 up) {
     vec3 u = vec3_normalize(vec3_cross(s, f));
 
     mat4 M = mat4_create(
-        s.x, s.y, s.z, 0.0,
-        u.x, u.y, u.z, 0.0,
-        -f.x, -f.y, -f.z, 0.0,
-        0.0, 0.0, 0.0, 1.0);
+            s.x, s.y, s.z, 0.0,
+            u.x, u.y, u.z, 0.0,
+            -f.x, -f.y, -f.z, 0.0,
+            0.0, 0.0, 0.0, 1.0);
     mat4 T = mat4_translation(vec3_scale(position, -1.0));
 
     return mat4_multiply(M, T);
@@ -728,10 +752,10 @@ mat4 mat4_look_at(vec3 position, vec3 target, vec3 up) {
 
 mat4 mat4_from_axes(vec3 x, vec3 y, vec3 z) {
     return mat4_create(
-        x.x, x.y, x.z, 0.0f,
-        y.x, y.y, y.z, 0.0f,
-        z.x, z.y, z.z, 0.0f,
-        0.0, 0.0, 0.0, 1.0f);
+            x.x, x.y, x.z, 0.0f,
+            y.x, y.y, y.z, 0.0f,
+            z.x, z.y, z.z, 0.0f,
+            0.0, 0.0, 0.0, 1.0f);
 }
 
 void mat4_get_axes(mat4 m, vec3 *x, vec3 *y, vec3 *z) {
@@ -761,10 +785,10 @@ mat4 mat4_perspective_projection(float fov, float aspect, float near, float far)
     float d = (2.0f * far * near) / denominator;
 
     return mat4_create(
-        a, 0.0f, 0.0f, 0.0f,
-        0.0f, b, 0.0f, 0.0f,
-        0.0f, 0.0f, c, d,
-        0.0f, 0.0f, -1.0f, 0.0f);
+            a, 0.0f, 0.0f, 0.0f,
+            0.0f, b, 0.0f, 0.0f,
+            0.0f, 0.0f, c, d,
+            0.0f, 0.0f, -1.0f, 0.0f);
 }
 
 /*
@@ -780,10 +804,10 @@ mat4 mat4_orthographic_projection(float left, float right, float bottom, float t
     float f = -(far + near) / (far - near);
 
     return mat4_create(
-        a, 0.0f, 0.0f, d,
-        0.0f, b, 0.0f, e,
-        0.0f, 0.0f, c, f,
-        0.0f, 0.0f, 0.0f, 1.0f);
+            a, 0.0f, 0.0f, d,
+            0.0f, b, 0.0f, e,
+            0.0f, 0.0f, c, f,
+            0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 mat4 mat4_from_quat(quat q) {
@@ -793,33 +817,33 @@ mat4 mat4_from_quat(quat q) {
     float w = q.w;
 
     return mat4_create(
-        1.0f - 2.0f * y * y - 2.0f * z * z, 2.0f * x * y - 2.0f * w * z, 2.0f * x * z + 2.0f * w * y,
-        0.0f,
-        2.0f * x * y + 2.0f * w * z, 1.0f - 2.0f * x * x - 2.0f * z * z, 2.0f * y * z - 2.0f * w * x,
-        0.0f,
-        2.0f * x * z - 2.0f * w * y, 2.0f * y * z + 2.0f * w * x, 1.0f - 2.0f * x * x - 2.0f * y * y,
-        0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f);
+            1.0f - 2.0f * y * y - 2.0f * z * z, 2.0f * x * y - 2.0f * w * z, 2.0f * x * z + 2.0f * w * y,
+            0.0f,
+            2.0f * x * y + 2.0f * w * z, 1.0f - 2.0f * x * x - 2.0f * z * z, 2.0f * y * z - 2.0f * w * x,
+            0.0f,
+            2.0f * x * z - 2.0f * w * y, 2.0f * y * z + 2.0f * w * x, 1.0f - 2.0f * x * x - 2.0f * y * y,
+            0.0f,
+            0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 mat4 mat4_box_inertia_tensor(vec3 half_lengths, float mass) {
     return mat4_create(
-        (1.0f / 12.0f) * mass * (half_lengths.x + half_lengths.y), 0.0f, 0.0f, 0.0f,
-        0.0f, (1.0f / 12.0f) * mass * (half_lengths.y + half_lengths.z), 0.0f, 0.0f,
-        0.0f, 0.0f, (1.0f / 12.0f) * mass * (half_lengths.z + half_lengths.x), 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f);
+            (1.0f / 12.0f) * mass * (half_lengths.x + half_lengths.y), 0.0f, 0.0f, 0.0f,
+            0.0f, (1.0f / 12.0f) * mass * (half_lengths.y + half_lengths.z), 0.0f, 0.0f,
+            0.0f, 0.0f, (1.0f / 12.0f) * mass * (half_lengths.z + half_lengths.x), 0.0f,
+            0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 mat4 mat4_sphere_inertia_tensor(float radius, float mass) {
     return mat4_create(
-        (2.0f / 5.0f) * mass * radius * radius, 0.0f, 0.0f, 0.0f,
-        0.0f, (2.0f / 5.0f) * mass * radius * radius, 0.0f, 0.0f,
-        0.0f, 0.0f, (2.0f / 5.0f) * mass * radius * radius, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f);
+            (2.0f / 5.0f) * mass * radius * radius, 0.0f, 0.0f, 0.0f,
+            0.0f, (2.0f / 5.0f) * mass * radius * radius, 0.0f, 0.0f,
+            0.0f, 0.0f, (2.0f / 5.0f) * mass * radius * radius, 0.0f,
+            0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 mat4 mat4_triangle_transform(vec2 src_p1, vec2 src_p2, vec2 src_p3,
-                             vec2 dest_p1, vec2 dest_p2, vec2 dest_p3) {
+        vec2 dest_p1, vec2 dest_p2, vec2 dest_p3) {
     float x11 = src_p1.x;
     float x12 = src_p1.y;
     float x21 = src_p2.x;
@@ -834,20 +858,20 @@ mat4 mat4_triangle_transform(vec2 src_p1, vec2 src_p2, vec2 src_p3,
     float y32 = dest_p3.y;
 
     float a1 = ((y11 - y21) * (x12 - x32) - (y11 - y31) * (x12 - x22)) /
-               ((x11 - x21) * (x12 - x32) - (x11 - x31) * (x12 - x22));
+        ((x11 - x21) * (x12 - x32) - (x11 - x31) * (x12 - x22));
     float a2 = ((y11 - y21) * (x11 - x31) - (y11 - y31) * (x11 - x21)) /
-               ((x12 - x22) * (x11 - x31) - (x12 - x32) * (x11 - x21));
+        ((x12 - x22) * (x11 - x31) - (x12 - x32) * (x11 - x21));
     float a3 = y11 - a1 * x11 - a2 * x12;
     float a4 = ((y12 - y22) * (x12 - x32) - (y12 - y32) * (x12 - x22)) /
-               ((x11 - x21) * (x12 - x32) - (x11 - x31) * (x12 - x22));
+        ((x11 - x21) * (x12 - x32) - (x11 - x31) * (x12 - x22));
     float a5 = ((y12 - y22) * (x11 - x31) - (y12 - y32) * (x11 - x21)) /
-               ((x12 - x22) * (x11 - x31) - (x12 - x32) * (x11 - x21));
+        ((x12 - x22) * (x11 - x31) - (x12 - x32) * (x11 - x21));
     float a6 = y12 - a4 * x11 - a5 * x12;
 
     return mat4_create(a1, a2, a3, 0.0f,
-                       a4, a5, a6, 0.0f,
-                       0.0f, 0.0f, 1.0f, 0.0f,
-                       0.0f, 0.0f, 0.0f, 1.0f);
+            a4, a5, a6, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f,
+            0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 mat4 mat4_box_to_line_transform(vec3 p0, vec3 p1, float sz) {
@@ -872,12 +896,12 @@ mat4 mat4_interpolate(mat4 m0, mat4 m1, float t) {
 }
 
 quat quat_create(float x, float y, float z, float w) {
-	quat q;
-	q.x = x;
-	q.y = y;
-	q.z = z;
-	q.w = w;
-	return q;
+    quat q;
+    q.x = x;
+    q.y = y;
+    q.z = z;
+    q.w = w;
+    return q;
 }
 
 quat quat_create_from_axis_angle(vec3 axis, float angle) {
@@ -1012,7 +1036,7 @@ bool rect_2D_contains_point(struct rect_2D rect, vec2 pt) {
     vec2 p0 = rect.top_left;
     vec2 p1 = V2(p0.x + rect.size.x, p0.y - rect.size.y);
     return pt.x >= p0.x && pt.x <= p1.x &&
-           pt.y <= p0.y && pt.y >= p1.y;
+        pt.y <= p0.y && pt.y >= p1.y;
 }
 
 static bool intersect_segment_triangle(vec3 p, vec3 q, vec3 a, vec3 b, vec3 c, float *t) {

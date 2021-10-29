@@ -87,6 +87,7 @@ struct bounding_box bounding_box_create(vec3 center, vec3 half_lengths);
 #define V4_ZERO V4(0.0f, 0.0f, 0.0f, 0.0f)
 
 vec2 vec2_create(float x, float y);
+vec2 vec2_create_from_array(float *a);
 vec2 vec2_sub(vec2 v1, vec2 v2);
 vec2 vec2_normalize(vec2 v);
 vec2 vec2_scale(vec2 v, float s);
@@ -116,6 +117,7 @@ bool vec2_equal(vec2 v1, vec2 v2);
 void vec2_print(vec2 v);
 
 vec3 vec3_create(float x, float y, float z);
+vec3 vec3_create_from_array(float *a);
 vec3 vec3_add(vec3 v1, vec3 v2);
 vec3 vec3_sub(vec3 v1, vec3 v2);
 vec3 vec3_add_scaled(vec3 v1, vec3 v2, float s);
@@ -159,9 +161,10 @@ void vec4_normalize_this(vec4 v);
 void vec4_print(vec4 v);
 
 mat4 mat4_create(float a, float b, float c, float d,
-                 float e, float f, float g, float h,
-                 float i, float j, float k, float l,
-                 float m, float n, float o, float p);
+        float e, float f, float g, float h,
+        float i, float j, float k, float l,
+        float m, float n, float o, float p);
+bool mat4_equal(mat4 m0, mat4 m1);
 mat4 mat4_zero(void);
 mat4 mat4_identity();
 mat4 mat4_translation(vec3 v);
@@ -184,7 +187,7 @@ mat4 mat4_from_quat(quat q);
 mat4 mat4_box_inertia_tensor(vec3 half_lengths, float mass);
 mat4 mat4_sphere_inertia_tensor(float radius, float mass);
 mat4 mat4_triangle_transform(vec2 src_p1, vec2 src_p2, vec2 src_p3,
-                             vec2 dest_p1, vec2 dest_p2, vec2 dest_p3);
+        vec2 dest_p1, vec2 dest_p2, vec2 dest_p3);
 mat4 mat4_box_to_line_transform(vec3 p0, vec3 p1, float sz);
 mat4 mat4_interpolate(mat4 m0, mat4 m1, float t);
 void mat4_print(mat4 m);

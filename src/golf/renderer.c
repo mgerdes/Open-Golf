@@ -4,6 +4,7 @@
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "3rd_party/cimgui/cimgui.h"
+#include "3rd_party/cimgui/cimgui.h"
 #include "3rd_party/cimguizmo/cimguizmo.h"
 #include "3rd_party/stb/stb_image.h"
 #include "3rd_party/sokol/sokol_app.h"
@@ -44,8 +45,6 @@ golf_renderer_t *golf_renderer_get(void) {
 void golf_renderer_init(void) {
     map_init(&renderer.pipelines_map);
 
-    golf_data_load_file("data/models/ui_sprite_square.obj");
-    golf_data_load_file("data/models/cube.obj");
     golf_data_load_file("data/shaders/environment.glsl");
     golf_data_load_file("data/shaders/ui_sprite.glsl");
 
@@ -487,14 +486,14 @@ void golf_renderer_draw_editor(void) {
 
     {
         golf_editor_t *editor = golf_editor_get();
-        for (int i = 0; i < editor->terrain_entities.length; i++) {
-            golf_terrain_entity_t *terrain_entity = editor->terrain_entities.data[i];
-            if (!*(editor->terrain_entity_active.data[i])) {
+        for (int i = 0; i < editor->model_entities.length; i++) {
+            golf_model_entity_t *entity = editor->model_entities.data[i];
+            if (!*(editor->model_entity_active.data[i])) {
                 continue;
             }
 
-            golf_data_model_t *model = golf_data_get_model("data/models/cube.obj");
-            mat4 model_mat = terrain_entity->model_mat;
+            golf_data_model_t *model = golf_data_get_model(entity->model_path);
+            mat4 model_mat = entity->model_mat;
 
             sg_bindings bindings = {
                 .vertex_buffers[0] = model->sg_positions_buf,
