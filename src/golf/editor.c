@@ -231,13 +231,25 @@ void golf_editor_update(float dt) {
         }
     }
 
-    /*
-    if (editor.selected_entity_idx >= 0) {
+    if (editor.selected_entity_idxs.length > 0) {
+        vec3 avg_translation = V3(0, 0, 0);
+        for (int i = 0; i < editor.selected_entity_idxs.length; i++) {
+            int idx = editor.selected_entity_idxs.data[i];
+            golf_entity_t *entity = &editor.entities.data[idx];
+            mat4 model_mat = golf_entity_get_model_mat(entity);
+
+            vec3 translation;
+            vec3 scale;
+            quat rotation;
+            mat4_decompose(model_mat, &translation, &scale, &rotation);
+            avg_translation = vec3_add(avg_translation, translation);
+        }
+        avg_translation = vec3_scale(avg_translation, 1.0f / editor.selected_entity_idxs.length);
+
         ImGuizmo_SetRect(renderer->viewport_pos.x, renderer->viewport_pos.y, renderer->viewport_size.x, renderer->viewport_size.y);
         mat4 view_mat_t = mat4_transpose(renderer->view_mat);
         mat4 proj_mat_t = mat4_transpose(renderer->proj_mat);
 
-        golf_entity_t *entity = &editor.entities.data[editor.selected_entity_idx];
         float *bounds = NULL;
         //if (editor.gizmo.bounds_mode_on) {
             //bounds = entity->bounds;
@@ -266,6 +278,21 @@ void golf_editor_update(float dt) {
             bounds_snap = bounds_snap_values;
         }
 
+        mat4 model_mat = mat4_transpose(mat4_translation(avg_translation));
+        mat4 delta_matrix;
+        ImGuizmo_Manipulate(view_mat_t.m, proj_mat_t.m, editor.gizmo.operation, 
+                editor.gizmo.mode, model_mat.m, delta_matrix.m, snap, bounds, bounds_snap);
+        delta_matrix = mat4_transpose(delta_matrix);
+
+        for (int i = 0; i < editor.selected_entity_idxs.length; i++) {
+            int idx = editor.selected_entity_idxs.data[i];
+            golf_entity_t *entity = &editor.entities.data[idx];
+            mat4 model_mat = golf_entity_get_model_mat(entity);
+            model_mat = mat4_multiply_n(2, model_mat, delta_matrix);
+            golf_entity_set_model_mat(entity, model_mat);
+        }
+
+        /*
         mat4 *model_mat_ptr = golf_entity_get_model_mat_ptr(entity);
         mat4 model_mat = mat4_transpose(*model_mat_ptr);
         ImGuizmo_Manipulate(view_mat_t.m, proj_mat_t.m, editor.gizmo.operation, 
@@ -279,8 +306,8 @@ void golf_editor_update(float dt) {
             _golf_editor_commit_modify_data_action();
         }
         editor.gizmo.is_using = ImGuizmo_IsUsing();
+        */
     }
-    */
 
     {
         igBegin("Top", NULL, ImGuiWindowFlags_NoTitleBar);
@@ -477,9 +504,16 @@ void golf_editor_update(float dt) {
         }
 
         if (!IO->WantCaptureMouse && inputs->mouse_clicked[SAPP_MOUSEBUTTON_LEFT]) {
-            if (editor.hovered_entity_idx >= 0) {
+            if (!inputs->button_down[SAPP_KEYCODE_LEFT_SHIFT]) {
                 editor.selected_entity_idxs.length = 0;
-                vec_push(&editor.selected_entity_idxs, editor.hovered_entity_idx);
+            }
+
+            if (editor.hovered_entity_idx >= 0) {
+                int idx = -1;
+                vec_find(&editor.selected_entity_idxs, editor.hovered_entity_idx, idx);
+                if (idx == -1) {
+                    vec_push(&editor.selected_entity_idxs, editor.hovered_entity_idx);
+                }
             }
 
             /*
