@@ -20,8 +20,6 @@ typedef struct golf_data {
 } golf_data_t;
 
 typedef bool (*golf_data_importer_t)(const char *path, char *data, int data_len);
-typedef bool (*golf_data_loader_t)(const char *path, char *data, int data_len, golf_data_file_t *data_file);
-typedef bool (*golf_data_unloader_t)(golf_data_file_t *data_file);
 
 static golf_data_t _golf_data;
 
@@ -77,24 +75,6 @@ static vec4 _golf_data_json_object_get_vec4(JSON_Object *obj, const char *name) 
 }
 
 //
-// LUA SCRIPTS
-//
-
-static bool _golf_data_lua_script_load(const char *path, char *data, int data_len, golf_data_file_t *datafile) {
-    golf_data_lua_script_t *script = malloc(sizeof(golf_data_lua_script_t));
-    golf_string_init(&script->src, data);
-    datafile->type = GOLF_DATA_LUA_SCRIPT;
-    datafile->lua_script = script;
-    return true;
-}
-
-static bool _golf_data_lua_script_unload(golf_data_file_t *data)  {
-    golf_string_deinit(&data->lua_script->src);
-    free(data->lua_script);
-    return true;
-}
-
-//
 // TEXTURES
 //
 
@@ -126,7 +106,7 @@ static bool _golf_data_texture_import(const char *path, char *data, int data_len
     return true;
 }
 
-static bool _golf_data_texture_load(const char *path, char *data, int data_len, golf_data_file_t *datafile) {
+static bool _golf_data_texture_load(const char *path, char *data, int data_len, golf_data_texture_t *texture) {
     JSON_Value *val = json_parse_string(data);
 
     if (!val) {
@@ -189,17 +169,14 @@ static bool _golf_data_texture_load(const char *path, char *data, int data_len, 
 
     json_value_free(val);
 
-    datafile->type = GOLF_DATA_TEXTURE;
-    datafile->texture = malloc(sizeof(golf_data_texture_t));
-    datafile->texture->sg_image = image;
-    datafile->texture->width = width;
-    datafile->texture->height = height;
+    texture->sg_image = image;
+    texture->width = width;
+    texture->height = height;
     return true;
 }
 
-static bool _golf_data_texture_unload(golf_data_file_t *data) {
-    sg_destroy_image(data->texture->sg_image);
-    free(data->texture);
+static bool _golf_data_texture_unload(golf_data_texture_t *texture) {
+    sg_destroy_image(texture->sg_image);
     return true;
 }
 
@@ -296,7 +273,7 @@ bool _golf_data_shader_import(const char *path, char *data, int data_len) {
     return true;
 }
 
-static bool _golf_data_shader_load(const char *path, char *data, int data_len, golf_data_file_t *datafile) {
+static bool _golf_data_shader_load(const char *path, char *data, int data_len, golf_data_shader_t *shader) {
     const sg_shader_desc *const_shader_desc;
     if (strcmp(path, "data/shaders/ui_sprite.glsl") == 0) {
         const_shader_desc = ui_sprite_shader_desc(sg_query_backend());
@@ -324,19 +301,15 @@ static bool _golf_data_shader_load(const char *path, char *data, int data_len, g
     shader_desc.fs.source = fs;
     shader_desc.vs.source = vs;
 
-    golf_data_shader_t *shader = malloc(sizeof(golf_data_shader_t));
     shader->sg_shader = sg_make_shader(&shader_desc);
 
     json_value_free(val);
 
-    datafile->type = GOLF_DATA_SHADER;
-    datafile->shader = shader; 
     return true;
 }
 
-static bool _golf_data_shader_unload(golf_data_file_t *data) {
-    sg_destroy_shader(data->shader->sg_shader);
-    free(data->shader);
+static bool _golf_data_shader_unload(golf_data_shader_t *shader) {
+    sg_destroy_shader(shader->sg_shader);
     return true;
 }
 
@@ -473,7 +446,7 @@ static void _golf_data_font_load_atlas(JSON_Object *atlas_obj, golf_data_font_at
     free(stb_data);
 }
 
-bool _golf_data_font_load(const char *path, char *data, int data_len, golf_data_file_t *data_file) {
+bool _golf_data_font_load(const char *path, char *data, int data_len, golf_data_font_t *font) {
     JSON_Value *val = json_parse_string(data);
     JSON_Object *obj = json_value_get_object(val);
     if (!val) {
@@ -482,7 +455,6 @@ bool _golf_data_font_load(const char *path, char *data, int data_len, golf_data_
     }
 
     JSON_Array *atlases_array = json_object_get_array(obj, "atlases");
-    golf_data_font_t *font = malloc(sizeof(golf_data_font_t));
     vec_init(&font->atlases);
     for (int i = 0; i < json_array_get_count(atlases_array); i++) {
         JSON_Object *atlas_obj = json_array_get_object(atlases_array, i);
@@ -493,18 +465,15 @@ bool _golf_data_font_load(const char *path, char *data, int data_len, golf_data_
 
     json_value_free(val);
 
-    data_file->type = GOLF_DATA_FONT;
-    data_file->font = font;
     return true;
 }
 
-bool _golf_data_font_unload(golf_data_file_t *data) {
-    for (int i = 0; i < data->font->atlases.length; i++) {
-        golf_data_font_atlas_t atlas = data->font->atlases.data[i];
+bool _golf_data_font_unload(golf_data_font_t *font) {
+    for (int i = 0; i < font->atlases.length; i++) {
+        golf_data_font_atlas_t atlas = font->atlases.data[i];
         sg_destroy_image(atlas.sg_image);
     }
-    vec_deinit(&data->font->atlases);
-    free(data->font);
+    vec_deinit(&font->atlases);
     return true;
 }
 
@@ -590,7 +559,7 @@ bool _golf_data_model_import(const char *path, char *data, int data_len) {
     return true;
 }
 
-bool _golf_data_model_load(const char *path, char *data, int data_len, golf_data_file_t *data_file) {
+bool _golf_data_model_load(const char *path, char *data, int data_len, golf_data_model_t *model) {
     JSON_Value *val = json_parse_string(data);
     JSON_Object *obj = json_value_get_object(val);
     if (!val) {
@@ -598,7 +567,6 @@ bool _golf_data_model_load(const char *path, char *data, int data_len, golf_data
         return false;
     }
 
-    golf_data_model_t *model = malloc(sizeof(golf_data_model_t));
     vec_init(&model->positions);
     vec_init(&model->normals);
     vec_init(&model->texcoords);
@@ -643,16 +611,13 @@ bool _golf_data_model_load(const char *path, char *data, int data_len, golf_data
 
     json_value_free(val);
 
-    data_file->type = GOLF_DATA_MODEL;
-    data_file->model = model;
     return true;
 }
 
-bool _golf_data_model_unload(golf_data_file_t *data) {
-    vec_deinit(&data->model->positions);
-    vec_deinit(&data->model->normals);
-    vec_deinit(&data->model->texcoords);
-    free(data->model);
+bool _golf_data_model_unload(golf_data_model_t *model) {
+    vec_deinit(&model->positions);
+    vec_deinit(&model->normals);
+    vec_deinit(&model->texcoords);
     return true;
 }
 
@@ -672,11 +637,10 @@ static void _golf_date_pixel_pack_pos_to_uvs(golf_data_pixel_pack_t *pp, int tex
     uv1->y /= tex_h;
 }
 
-static bool _golf_data_pixel_pack_load(const char *path, char *data, int data_len, golf_data_file_t *data_file) {
+static bool _golf_data_pixel_pack_load(const char *path, char *data, int data_len, golf_data_pixel_pack_t *pixel_pack) {
     JSON_Value *val = json_parse_string(data);
     JSON_Object *obj = json_value_get_object(val);
 
-    golf_data_pixel_pack_t *pixel_pack = malloc(sizeof(golf_data_pixel_pack_t));
     pixel_pack->texture = golf_data_get_texture(json_object_get_string(obj, "texture"));
     pixel_pack->tile_size = (float)json_object_get_number(obj, "tile_size");
     pixel_pack->tile_padding = (float)json_object_get_number(obj, "tile_padding");
@@ -724,15 +688,12 @@ static bool _golf_data_pixel_pack_load(const char *path, char *data, int data_le
     }
 
     json_value_free(val);
-    data_file->type = GOLF_DATA_PIXEL_PACK;
-    data_file->pixel_pack = pixel_pack;
     return true;
 }
 
-static bool _golf_data_pixel_pack_unload(golf_data_file_t *data_file) {
-    map_deinit(&data_file->pixel_pack->icons);
-    map_deinit(&data_file->pixel_pack->squares);
-    free(data_file->pixel_pack);
+static bool _golf_data_pixel_pack_unload(golf_data_pixel_pack_t *pixel_pack) {
+    map_deinit(&pixel_pack->icons);
+    map_deinit(&pixel_pack->squares);
     return true;
 }
 
@@ -740,7 +701,7 @@ static bool _golf_data_pixel_pack_unload(golf_data_file_t *data_file) {
 // CONFIG
 //
 
-static bool _golf_data_config_load(const char *path, char *data, int data_len, golf_data_file_t *data_file) {
+static bool _golf_data_config_load(const char *path, char *data, int data_len, golf_data_config_t *config) {
     JSON_Value *val = json_parse_string(data);
     JSON_Object *obj = json_value_get_object(val);
 
@@ -749,7 +710,6 @@ static bool _golf_data_config_load(const char *path, char *data, int data_len, g
         return false;
     }
 
-    golf_data_config_t *config = malloc(sizeof(golf_data_config_t));
     map_init(&config->properties);
 
     for (int i = 0; i < (int)json_object_get_count(obj); i++) {
@@ -800,33 +760,28 @@ static bool _golf_data_config_load(const char *path, char *data, int data_len, g
     }
 
     json_value_free(val);
-    data_file->type = GOLF_DATA_CONFIG;
-    data_file->config = config;
     return true;
 }
 
-static bool _golf_data_config_unload(golf_data_file_t *data_file) {
-    {
-        const char *key;
-        map_iter_t iter = map_iter(&data_file->config->properties);
+static bool _golf_data_config_unload(golf_data_config_t *config) {
+    const char *key;
+    map_iter_t iter = map_iter(&config->properties);
 
-        while ((key = map_next(&data_file->config->properties, &iter))) {
-            golf_data_config_property_t *prop = map_get(&data_file->config->properties, key);
-            switch (prop->type) {
-                case GOLF_DATA_CONFIG_PROPERTY_NUM:
-                case GOLF_DATA_CONFIG_PROPERTY_VEC2:
-                case GOLF_DATA_CONFIG_PROPERTY_VEC3:
-                case GOLF_DATA_CONFIG_PROPERTY_VEC4:
-                    break;
-                case GOLF_DATA_CONFIG_PROPERTY_STRING:
-                    free(prop->string_val);
-                    break;
-            }
+    while ((key = map_next(&config->properties, &iter))) {
+        golf_data_config_property_t *prop = map_get(&config->properties, key);
+        switch (prop->type) {
+            case GOLF_DATA_CONFIG_PROPERTY_NUM:
+            case GOLF_DATA_CONFIG_PROPERTY_VEC2:
+            case GOLF_DATA_CONFIG_PROPERTY_VEC3:
+            case GOLF_DATA_CONFIG_PROPERTY_VEC4:
+                break;
+            case GOLF_DATA_CONFIG_PROPERTY_STRING:
+                free(prop->string_val);
+                break;
         }
     }
 
-    map_deinit(&data_file->config->properties);
-    free(data_file->config);
+    map_deinit(&config->properties);
 }
 
 float golf_data_config_get_num(golf_data_config_t *cfg, const char *name) {
@@ -913,64 +868,6 @@ golf_data_importer_t _golf_data_get_importer(const char *ext) {
     }
 }
 
-golf_data_loader_t _golf_data_get_loader(const char *ext) { 
-    if ((strcmp(ext, ".png") == 0) ||
-            (strcmp(ext, ".jpg") == 0) ||
-            (strcmp(ext, ".bmp") == 0)) {
-        return &_golf_data_texture_load;
-    }
-    else if ((strcmp(ext, ".glsl") == 0)) {
-        return &_golf_data_shader_load;
-    }
-    else if ((strcmp(ext, ".ttf") == 0)) {
-        return &_golf_data_font_load;
-    }
-    else if ((strcmp(ext, ".obj") == 0)) {
-        return &_golf_data_model_load;
-    }
-    else if ((strcmp(ext, ".pixel_pack") == 0)) {
-        return &_golf_data_pixel_pack_load;
-    }
-    else if ((strcmp(ext, ".lua") == 0)) {
-        return &_golf_data_lua_script_load;
-    }
-    else if ((strcmp(ext, ".cfg") == 0)) {
-        return &_golf_data_config_load;
-    }
-    else {
-        return NULL;
-    }
-}
-
-golf_data_unloader_t _golf_data_get_unloader(const char *ext) { 
-    if ((strcmp(ext, ".png") == 0) ||
-            (strcmp(ext, ".jpg") == 0) ||
-            (strcmp(ext, ".bmp") == 0)) {
-        return &_golf_data_texture_unload;
-    }
-    else if ((strcmp(ext, ".glsl") == 0)) {
-        return &_golf_data_shader_unload;
-    }
-    else if ((strcmp(ext, ".ttf") == 0)) {
-        return &_golf_data_font_unload;
-    }
-    else if ((strcmp(ext, ".obj") == 0)) {
-        return &_golf_data_model_unload;
-    }
-    else if ((strcmp(ext, ".pixel_pack") == 0)) {
-        return &_golf_data_pixel_pack_unload;
-    }
-    else if ((strcmp(ext, ".lua") == 0)) {
-        return &_golf_data_lua_script_unload;
-    }
-    else if ((strcmp(ext, ".cfg") == 0)) {
-        return &_golf_data_config_unload;
-    }
-    else {
-        return NULL;
-    }
-}
-
 void golf_data_run_import(bool force_import) {
     golf_dir_t dir;
     golf_dir_init(&dir, "data", true);
@@ -1016,15 +913,32 @@ void golf_data_update(float dt) {
             if (golf_file_load_data(&file_to_load)) {
                 golf_log_note("Reloading file %s", key);
 
-
-                golf_data_loader_t load = _golf_data_get_loader(file.ext);
-                golf_data_unloader_t unload = _golf_data_get_unloader(file.ext);
-                if (!load || !unload) {
-                    golf_log_error("Missing loader or unloader for loaded file %s", file.path);
+                switch (loaded_file->type) {
+                    case GOLF_DATA_TEXTURE:
+                        _golf_data_texture_unload(loaded_file->texture);
+                        _golf_data_texture_load(file.path, file_to_load.data, file_to_load.data_len, loaded_file->texture);
+                        break;
+                    case GOLF_DATA_FONT:
+                        _golf_data_font_unload(loaded_file->font);
+                        _golf_data_font_load(file.path, file_to_load.data, file_to_load.data_len, loaded_file->font);
+                        break;
+                    case GOLF_DATA_MODEL:
+                        _golf_data_model_unload(loaded_file->model);
+                        _golf_data_model_load(file.path, file_to_load.data, file_to_load.data_len, loaded_file->model);
+                        break;
+                    case GOLF_DATA_SHADER:
+                        _golf_data_shader_unload(loaded_file->shader);
+                        _golf_data_shader_load(file.path, file_to_load.data, file_to_load.data_len, loaded_file->shader);
+                        break;
+                    case GOLF_DATA_PIXEL_PACK:
+                        _golf_data_pixel_pack_unload(loaded_file->pixel_pack);
+                        _golf_data_pixel_pack_load(file.path, file_to_load.data, file_to_load.data_len, loaded_file->pixel_pack);
+                        break;
+                    case GOLF_DATA_CONFIG:
+                        _golf_data_config_unload(loaded_file->config);
+                        _golf_data_config_load(file.path, file_to_load.data, file_to_load.data_len, loaded_file->config);
+                        break;
                 }
-
-                unload(loaded_file);
-                load(file.path, file_to_load.data, file_to_load.data_len, loaded_file);
 
                 loaded_file->last_load_time = file_time;
                 golf_file_free_data(&file_to_load);
@@ -1056,18 +970,47 @@ void golf_data_load_file(const char *path) {
     }
 
     if (golf_file_load_data(&file_to_load)) {
-        golf_data_loader_t loader = _golf_data_get_loader(file.ext);
-        if (loader) {
-            golf_data_file_t loaded_file;
-            loaded_file.load_count = 1;
-            loaded_file.file = file_to_load;
-            golf_file_get_time(&file_to_load, &loaded_file.last_load_time);
-            loader(path, file_to_load.data, file_to_load.data_len, &loaded_file);
-            map_set(&_golf_data.loaded_files, path, loaded_file);
+        bool valid = true;
+        golf_data_file_t loaded_file;
+        loaded_file.load_count = 1;
+        loaded_file.file = file_to_load;
+        golf_file_get_time(&file_to_load, &loaded_file.last_load_time);
+
+        if (strcmp(file.ext, ".png") == 0 ||
+                strcmp(file.ext, "jpg") == 0 ||
+                strcmp(file.ext, "bmp") == 0) {
+            golf_data_texture_t *texture = malloc(sizeof(golf_data_texture_t));
+            _golf_data_texture_load(file.path, file_to_load.data, file_to_load.data_len, texture);
+            loaded_file.type = GOLF_DATA_TEXTURE;
+            loaded_file.texture = texture;
+        }
+        else if (strcmp(file.ext, ".glsl") == 0) {
+            golf_data_shader_t *shader = malloc(sizeof(golf_data_shader_t));
+            _golf_data_shader_load(file.path, file_to_load.data, file_to_load.data_len, shader);
+            loaded_file.type = GOLF_DATA_SHADER;
+            loaded_file.shader = shader;
+        }
+        else if (strcmp(file.ext, ".ttf") == 0) {
+            golf_data_font_t *font = malloc(sizeof(golf_data_font_t));
+            _golf_data_font_load(file.path, file_to_load.data, file_to_load.data_len, font);
+            loaded_file.type = GOLF_DATA_FONT;
+            loaded_file.font = font;
+        }
+        else if (strcmp(file.ext, ".obj") == 0) {
+            golf_data_model_t *model = malloc(sizeof(golf_data_model_t));
+            _golf_data_model_load(file.path, file_to_load.data, file_to_load.data_len, model);
+            loaded_file.type = GOLF_DATA_MODEL;
+            loaded_file.model = model;
         }
         else {
-            golf_log_warning("Trying to load file without a loader %s", path);
+            golf_log_warning("Can't load file %s", path);
+            valid = false;
         }
+
+        if (valid) {
+            map_set(&_golf_data.loaded_files, path, loaded_file);
+        }
+
         golf_file_free_data(&file_to_load);
     }
     else {

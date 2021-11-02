@@ -34,8 +34,7 @@ typedef struct golf_editor {
     vec_golf_editor_action_t actions;
 
     int hovered_entity_idx;
-    int selected_entity_idx;
-    char model_path_temp[GOLF_FILE_MAX_PATH];
+    vec_int_t selected_entity_idxs;
 
     struct {
         bool is_using;

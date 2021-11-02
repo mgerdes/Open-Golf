@@ -29,6 +29,7 @@ void golf_editor_init(void) {
     {
         golf_model_entity_t model_entity;
         snprintf(model_entity.model_path, GOLF_FILE_MAX_PATH, "%s", "data/models/cube.obj");
+        model_entity.model = golf_data_get_model(model_entity.model_path);
         model_entity.model_mat = mat4_translation(V3(2, 0, 2));
         model_entity.bounds[0] = model_entity.bounds[1] = model_entity.bounds[2] = -1;
         model_entity.bounds[3] = model_entity.bounds[4] = model_entity.bounds[5] = 1;
@@ -44,6 +45,7 @@ void golf_editor_init(void) {
     {
         golf_model_entity_t model_entity;
         snprintf(model_entity.model_path, GOLF_FILE_MAX_PATH, "%s", "data/models/cube.obj");
+        model_entity.model = golf_data_get_model(model_entity.model_path);
         model_entity.model_mat = mat4_translation(V3(-2, 0, -2));
         model_entity.bounds[0] = model_entity.bounds[1] = model_entity.bounds[2] = -1;
         model_entity.bounds[3] = model_entity.bounds[4] = model_entity.bounds[5] = 1;
@@ -60,7 +62,7 @@ void golf_editor_init(void) {
     editor.started_modify_data_action = false;
 
     editor.hovered_entity_idx = -1;
-    editor.selected_entity_idx = -1;
+    vec_init(&editor.selected_entity_idxs);
 
     memset(&editor.gizmo, 0, sizeof(editor.gizmo));
     editor.gizmo.is_using = false;
@@ -164,9 +166,9 @@ void golf_editor_update(float dt) {
             if (igMenuItem_Bool("Redo", NULL, false, true)) {
             }
             if (igMenuItem_Bool("Duplicate", NULL, false, true)) {
-                if (editor.selected_entity_idx >= 0) {
-                    golf_entity_t selected_entity = editor.entities.data[editor.selected_entity_idx];
-
+                for (int i = 0; i < editor.selected_entity_idxs.length; i++) {
+                    int idx = editor.selected_entity_idxs.data[i];
+                    golf_entity_t selected_entity = editor.entities.data[idx];
                     if (selected_entity.type == MODEL_ENTITY) {
                         golf_model_entity_t model_entity = selected_entity.model_entity;
 
@@ -221,11 +223,15 @@ void golf_editor_update(float dt) {
     renderer->viewport_pos = V2(central_node->Pos.x, central_node->Pos.y);
     renderer->viewport_size = V2(central_node->Size.x, central_node->Size.y);
 
-    if (editor.selected_entity_idx >= 0 && 
-            !editor.entity_active.data[editor.selected_entity_idx]) {
-        editor.selected_entity_idx = -1;
+    for (int i = 0; i < editor.selected_entity_idxs.length; i++) {
+        int idx = editor.selected_entity_idxs.data[i];
+        if (!editor.entity_active.data[idx]) {
+            vec_splice(&editor.selected_entity_idxs, i, 1);
+            i--;
+        }
     }
 
+    /*
     if (editor.selected_entity_idx >= 0) {
         ImGuizmo_SetRect(renderer->viewport_pos.x, renderer->viewport_pos.y, renderer->viewport_size.x, renderer->viewport_size.y);
         mat4 view_mat_t = mat4_transpose(renderer->view_mat);
@@ -274,6 +280,7 @@ void golf_editor_update(float dt) {
         }
         editor.gizmo.is_using = ImGuizmo_IsUsing();
     }
+    */
 
     {
         igBegin("Top", NULL, ImGuiWindowFlags_NoTitleBar);
@@ -415,45 +422,18 @@ void golf_editor_update(float dt) {
     {
         igBegin("Right", NULL, ImGuiWindowFlags_NoTitleBar);
         for (int i = 0; i < editor.entities.length; i++) {
-            golf_entity_t entity = editor.entities.data[i];
-            if (entity.type == MODEL_ENTITY) {
+            golf_entity_t *entity = &editor.entities.data[i];
+            if (entity->type == MODEL_ENTITY) {
+                golf_model_entity_t *model_entity = &entity->model_entity;
                 if (igTreeNode_Ptr((void*)(intptr_t)i, "Model Entity")) {
-                    igText("HI");
+                    igInputText("Model Path", model_entity->model_path, GOLF_FILE_MAX_PATH,
+                            ImGuiInputTextFlags_None, NULL, NULL);
+                    if (igIsItemDeactivatedAfterEdit()) {
+                        model_entity->model = golf_data_get_model(model_entity->model_path);
+                    }
                     igTreePop();
                 }
             }
-        }
-
-        if (editor.selected_entity_idx >= 0) {
-            golf_entity_t entity = editor.entities.data[editor.selected_entity_idx];
-
-            /*
-            golf_model_entity_t *entity = editor.model_entities.data[editor.selected_entity_idx];
-            mat4 model_mat = mat4_transpose(entity->model_mat);
-            float translation[3];
-            float rotation[3];
-            float scale[3];
-            ImGuizmo_DecomposeMatrixToComponents(model_mat.m, translation, rotation, scale);
-            bool modified = false;
-            igInputFloat3("Translation", translation, "%.3f", ImGuiInputTextFlags_None);
-            igInputFloat3("Rotation", rotation, "%.3f", ImGuiInputTextFlags_None);
-            igInputFloat3("Scale", scale, "%.3f", ImGuiInputTextFlags_None);
-            ImGuizmo_RecomposeMatrixFromComponents(translation, rotation, scale, model_mat.m);
-
-            if (!mat4_equal(mat4_transpose(model_mat), entity->model_mat)) {
-                //_golf_editor_start_modify_data_action(&entity->model_mat, sizeof(entity->model_mat));
-                entity->model_mat = mat4_transpose(model_mat);
-                _golf_editor_commit_modify_data_action();
-            }
-
-            igInputText("Model Path", editor.model_path_temp, GOLF_FILE_MAX_PATH,
-                    ImGuiInputTextFlags_None, NULL, NULL);
-            if (igIsItemDeactivatedAfterEdit()) {
-                //_golf_editor_start_modify_data_action(entity->model_path, GOLF_FILE_MAX_PATH);
-                snprintf(entity->model_path, GOLF_FILE_MAX_PATH, "%s", editor.model_path_temp);
-                _golf_editor_commit_modify_data_action();
-            }
-            */
         }
         igEnd();
     }
@@ -475,7 +455,7 @@ void golf_editor_update(float dt) {
 
             if (entity.type == MODEL_ENTITY) {
                 golf_model_entity_t model_entity = entity.model_entity;
-                golf_data_model_t *model = golf_data_get_model(model_entity.model_path);
+                golf_data_model_t *model = model_entity.model;
 
                 for (int j = 0; j < model->positions.length; j += 3) {
                     vec3 p0 = vec3_apply_mat4(model->positions.data[j + 0], 1, model_entity.model_mat);
@@ -497,15 +477,20 @@ void golf_editor_update(float dt) {
         }
 
         if (!IO->WantCaptureMouse && inputs->mouse_clicked[SAPP_MOUSEBUTTON_LEFT]) {
-            editor.selected_entity_idx = editor.hovered_entity_idx;
+            if (editor.hovered_entity_idx >= 0) {
+                editor.selected_entity_idxs.length = 0;
+                vec_push(&editor.selected_entity_idxs, editor.hovered_entity_idx);
+            }
+
+            /*
             if (editor.hovered_entity_idx >= 0) {
                 golf_entity_t entity = editor.entities.data[editor.selected_entity_idx];
                 if (entity.type == MODEL_ENTITY) {
                     golf_model_entity_t model_entity = entity.model_entity;
                     editor.gizmo.model_mat = mat4_transpose(model_entity.model_mat);
-                    snprintf(editor.model_path_temp, GOLF_FILE_MAX_PATH, "%s", model_entity.model_path);
                 }
             }
+            */
         }
 
         vec_deinit(&triangles);

@@ -2,6 +2,7 @@
 #define _GOLF_LEVEL_H
 
 #include "3rd_party/vec/vec.h"
+#include "golf/data.h"
 #include "golf/file.h"
 #include "golf/maths.h"
 
@@ -25,6 +26,7 @@ typedef struct golf_terrain_entity {
 
 typedef struct golf_model_entity {
     char model_path[GOLF_FILE_MAX_PATH];
+    golf_data_model_t *model;
     float bounds[6];
     mat4 model_mat;
 } golf_model_entity_t;

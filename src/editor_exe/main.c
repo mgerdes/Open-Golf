@@ -98,6 +98,10 @@ static void frame(void) {
         golf_data_init();
         golf_data_run_import(false);
 
+        golf_data_load_file("data/models/ui_sprite_square.obj");
+        golf_data_load_file("data/models/cube.obj");
+        golf_data_load_file("data/models/teapot.obj");
+
         golf_inputs_init();
         golf_game_init();
         golf_ui_init();
@@ -105,10 +109,6 @@ static void frame(void) {
 
         golf_editor_init();
         inited = true;
-
-        golf_data_load_file("data/models/ui_sprite_square.obj");
-        golf_data_load_file("data/models/cube.obj");
-        golf_data_load_file("data/models/teapot.obj");
     }
 
     {

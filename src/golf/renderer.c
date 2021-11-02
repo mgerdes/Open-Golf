@@ -494,7 +494,7 @@ void golf_renderer_draw_editor(void) {
 
             if (entity.type == MODEL_ENTITY) {
                 golf_model_entity_t model_entity = entity.model_entity;
-                golf_data_model_t *model = golf_data_get_model(model_entity.model_path);
+                golf_data_model_t *model = model_entity.model;
                 mat4 model_mat = model_entity.model_mat;
 
                 sg_bindings bindings = {

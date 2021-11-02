@@ -95,14 +95,13 @@ vec2 golf_data_config_get_vec2(golf_data_config_t *cfg, const char *name);
 vec3 golf_data_config_get_vec3(golf_data_config_t *cfg, const char *name);
 vec4 golf_data_config_get_vec4(golf_data_config_t *cfg, const char *name);
 
-#define CFG_NUM(cfg, name) golf_data_config_get_num(cfg, name);
-#define CFG_STRING(cfg, name) golf_data_config_get_string(cfg, name);
-#define CFG_VEC2(cfg, name) golf_data_config_get_vec2(cfg, name);
-#define CFG_VEC3(cfg, name) golf_data_config_get_vec3(cfg, name);
-#define CFG_VEC4(cfg, name) golf_data_config_get_vec4(cfg, name);
+#define CFG_NUM(cfg, name) golf_data_config_get_num(cfg, name)
+#define CFG_STRING(cfg, name) golf_data_config_get_string(cfg, name)
+#define CFG_VEC2(cfg, name) golf_data_config_get_vec2(cfg, name)
+#define CFG_VEC3(cfg, name) golf_data_config_get_vec3(cfg, name)
+#define CFG_VEC4(cfg, name) golf_data_config_get_vec4(cfg, name)
 
 typedef enum golf_data_file_type {
-    GOLF_DATA_LUA_SCRIPT,
     GOLF_DATA_TEXTURE,
     GOLF_DATA_FONT,
     GOLF_DATA_MODEL,
@@ -119,7 +118,6 @@ typedef struct golf_data_file {
 
     golf_data_file_type_t type; 
     union {
-        golf_data_lua_script_t *lua_script;
         golf_data_texture_t *texture;
         golf_data_font_t *font;
         golf_data_model_t *model;
