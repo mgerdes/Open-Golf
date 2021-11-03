@@ -27,32 +27,36 @@ void golf_editor_init(void) {
     vec_init(&editor.entities);
 
     {
-        golf_model_entity_t model_entity;
-        snprintf(model_entity.model_path, GOLF_FILE_MAX_PATH, "%s", "data/models/cube.obj");
-        model_entity.model = golf_data_get_model(model_entity.model_path);
-        model_entity.model_mat = mat4_translation(V3(2, 0, 2));
-        model_entity.bounds[0] = model_entity.bounds[1] = model_entity.bounds[2] = -1;
-        model_entity.bounds[3] = model_entity.bounds[4] = model_entity.bounds[5] = 1;
+        golf_model_entity_t model;
+        snprintf(model.model_path, GOLF_FILE_MAX_PATH, "%s", "data/models/cube.obj");
+        model.model = golf_data_get_model(model.model_path);
+        model.position = V3(2, 0, 2);
+        model.scale = V3(1, 1, 1);
+        model.orientation = QUAT(0, 0, 0, 1);
+        model.bounds[0] = model.bounds[1] = model.bounds[2] = -1;
+        model.bounds[3] = model.bounds[4] = model.bounds[5] = 1;
 
         golf_entity_t entity;
         entity.type = MODEL_ENTITY;
-        entity.model_entity = model_entity;
+        entity.model = model;
 
         vec_push(&editor.entity_active, true);
         vec_push(&editor.entities, entity);
     }
 
     {
-        golf_model_entity_t model_entity;
-        snprintf(model_entity.model_path, GOLF_FILE_MAX_PATH, "%s", "data/models/cube.obj");
-        model_entity.model = golf_data_get_model(model_entity.model_path);
-        model_entity.model_mat = mat4_translation(V3(-2, 0, -2));
-        model_entity.bounds[0] = model_entity.bounds[1] = model_entity.bounds[2] = -1;
-        model_entity.bounds[3] = model_entity.bounds[4] = model_entity.bounds[5] = 1;
+        golf_model_entity_t model;
+        snprintf(model.model_path, GOLF_FILE_MAX_PATH, "%s", "data/models/cube.obj");
+        model.model = golf_data_get_model(model.model_path);
+        model.position = V3(-2, 0, -2);
+        model.scale = V3(1, 1, 1);
+        model.orientation = QUAT(0, 0, 0, 1);
+        model.bounds[0] = model.bounds[1] = model.bounds[2] = -1;
+        model.bounds[3] = model.bounds[4] = model.bounds[5] = 1;
 
         golf_entity_t entity;
         entity.type = MODEL_ENTITY;
-        entity.model_entity = model_entity;
+        entity.model = model;
 
         vec_push(&editor.entity_active, true);
         vec_push(&editor.entities, entity);
@@ -170,11 +174,11 @@ void golf_editor_update(float dt) {
                     int idx = editor.selected_entity_idxs.data[i];
                     golf_entity_t selected_entity = editor.entities.data[idx];
                     if (selected_entity.type == MODEL_ENTITY) {
-                        golf_model_entity_t model_entity = selected_entity.model_entity;
+                        golf_model_entity_t model_entity = selected_entity.model;
 
                         golf_entity_t new_entity;
                         new_entity.type = MODEL_ENTITY;
-                        memcpy(&new_entity.model_entity, &model_entity, sizeof(golf_model_entity_t));
+                        memcpy(&new_entity.model, &model_entity, sizeof(golf_model_entity_t));
 
                         char *entity_active_ptr = (char*)editor.entity_active.data;
                         char *entity_ptr = (char*)editor.entities.data;
@@ -236,13 +240,14 @@ void golf_editor_update(float dt) {
         for (int i = 0; i < editor.selected_entity_idxs.length; i++) {
             int idx = editor.selected_entity_idxs.data[i];
             golf_entity_t *entity = &editor.entities.data[idx];
-            mat4 model_mat = golf_entity_get_model_mat(entity);
-
-            vec3 translation;
-            vec3 scale;
-            quat rotation;
-            mat4_decompose(model_mat, &translation, &scale, &rotation);
-            avg_translation = vec3_add(avg_translation, translation);
+            switch (entity->type) {
+                case TERRAIN_ENTITY:
+                    avg_translation = vec3_add(avg_translation, entity->terrain.position);
+                    break;
+                case MODEL_ENTITY:
+                    avg_translation = vec3_add(avg_translation, entity->model.position);
+                    break;
+            }
         }
         avg_translation = vec3_scale(avg_translation, 1.0f / editor.selected_entity_idxs.length);
 
@@ -282,31 +287,28 @@ void golf_editor_update(float dt) {
         mat4 delta_matrix;
         ImGuizmo_Manipulate(view_mat_t.m, proj_mat_t.m, editor.gizmo.operation, 
                 editor.gizmo.mode, model_mat.m, delta_matrix.m, snap, bounds, bounds_snap);
-        delta_matrix = mat4_transpose(delta_matrix);
+        //delta_matrix = mat4_transpose(delta_matrix);
+
+        float delta_translation_arr[3];
+        float delta_rotation_arr[3];
+        float delta_scale_arr[3];
+        ImGuizmo_DecomposeMatrixToComponents(delta_matrix.m, delta_translation_arr, delta_rotation_arr, delta_scale_arr);
+        vec3 delta_translation = vec3_create_from_array(delta_translation_arr);
+        if (vec3_length(delta_translation) > 0.01f) {
+            vec3_print(delta_translation);
+        }
 
         for (int i = 0; i < editor.selected_entity_idxs.length; i++) {
             int idx = editor.selected_entity_idxs.data[i];
             golf_entity_t *entity = &editor.entities.data[idx];
-            mat4 model_mat = golf_entity_get_model_mat(entity);
-            model_mat = mat4_multiply_n(2, model_mat, delta_matrix);
-            golf_entity_set_model_mat(entity, model_mat);
+            switch (entity->type) {
+                case TERRAIN_ENTITY:
+                    break;
+                case MODEL_ENTITY:
+                    entity->model.position = vec3_add(entity->model.position, delta_translation);
+                    break;
+            }
         }
-
-        /*
-        mat4 *model_mat_ptr = golf_entity_get_model_mat_ptr(entity);
-        mat4 model_mat = mat4_transpose(*model_mat_ptr);
-        ImGuizmo_Manipulate(view_mat_t.m, proj_mat_t.m, editor.gizmo.operation, 
-                editor.gizmo.mode, model_mat.m, NULL, snap, bounds, bounds_snap);
-        golf_entity_set_model_mat(entity, mat4_transpose(model_mat));
-
-        if (!editor.gizmo.is_using && ImGuizmo_IsUsing()) {
-            _golf_editor_start_modify_data_action(model_mat_ptr, sizeof(mat4));
-        }
-        if (editor.gizmo.is_using && !ImGuizmo_IsUsing()) {
-            _golf_editor_commit_modify_data_action();
-        }
-        editor.gizmo.is_using = ImGuizmo_IsUsing();
-        */
     }
 
     {
@@ -451,7 +453,7 @@ void golf_editor_update(float dt) {
         for (int i = 0; i < editor.entities.length; i++) {
             golf_entity_t *entity = &editor.entities.data[i];
             if (entity->type == MODEL_ENTITY) {
-                golf_model_entity_t *model_entity = &entity->model_entity;
+                golf_model_entity_t *model_entity = &entity->model;
                 if (igTreeNode_Ptr((void*)(intptr_t)i, "Model Entity")) {
                     igInputText("Model Path", model_entity->model_path, GOLF_FILE_MAX_PATH,
                             ImGuiInputTextFlags_None, NULL, NULL);
@@ -475,19 +477,20 @@ void golf_editor_update(float dt) {
         vec_init(&entity_idxs);
 
         for (int i = 0; i < editor.entities.length; i++) {
-            golf_entity_t entity = editor.entities.data[i];
+            golf_entity_t *entity = &editor.entities.data[i];
             if (!editor.entity_active.data[i]) {
                 continue;
             }
 
-            if (entity.type == MODEL_ENTITY) {
-                golf_model_entity_t model_entity = entity.model_entity;
-                golf_data_model_t *model = model_entity.model;
+            if (entity->type == MODEL_ENTITY) {
+                golf_model_entity_t *model_entity = &entity->model;
+                golf_data_model_t *model = model_entity->model;
+                mat4 model_mat = golf_model_entity_get_model_mat(model_entity);
 
                 for (int j = 0; j < model->positions.length; j += 3) {
-                    vec3 p0 = vec3_apply_mat4(model->positions.data[j + 0], 1, model_entity.model_mat);
-                    vec3 p1 = vec3_apply_mat4(model->positions.data[j + 1], 1, model_entity.model_mat);
-                    vec3 p2 = vec3_apply_mat4(model->positions.data[j + 2], 1, model_entity.model_mat);
+                    vec3 p0 = vec3_apply_mat4(model->positions.data[j + 0], 1, model_mat);
+                    vec3 p1 = vec3_apply_mat4(model->positions.data[j + 1], 1, model_mat);
+                    vec3 p2 = vec3_apply_mat4(model->positions.data[j + 2], 1, model_mat);
                     vec_push(&triangles, p0);
                     vec_push(&triangles, p1);
                     vec_push(&triangles, p2);

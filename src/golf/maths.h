@@ -190,8 +190,6 @@ mat4 mat4_triangle_transform(vec2 src_p1, vec2 src_p2, vec2 src_p3,
         vec2 dest_p1, vec2 dest_p2, vec2 dest_p3);
 mat4 mat4_box_to_line_transform(vec3 p0, vec3 p1, float sz);
 mat4 mat4_interpolate(mat4 m0, mat4 m1, float t);
-mat4 mat4_decompose(mat4 m, vec3 *translation, vec3 *scale, quat *rotation);
-void mat4_get_axis_angle(mat4 m, vec3 *axis, float *angle);
 void mat4_print(mat4 m);
 
 quat quat_create(float x, float y, float z, float w);

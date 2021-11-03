@@ -895,39 +895,6 @@ mat4 mat4_interpolate(mat4 m0, mat4 m1, float t) {
     return m;
 }
 
-mat4 mat4_decompose(mat4 m, vec3 *translation, vec3 *scale, quat *rotation) {
-    translation->x = m.m[3];
-    translation->y = m.m[7];
-    translation->z = m.m[11];
-    m.m[3] = m.m[7] = m.m[11] = 0.0f;
-
-    scale->x = vec3_length(V3(m.m[0], m.m[4], m.m[8]));
-    scale->y = vec3_length(V3(m.m[1], m.m[5], m.m[9]));
-    scale->z = vec3_length(V3(m.m[2], m.m[6], m.m[10]));
-
-    m.m[0] /= scale->x;
-    m.m[4] /= scale->x;
-    m.m[8] /= scale->x;
-
-    m.m[1] /= scale->y;
-    m.m[5] /= scale->y;
-    m.m[9] /= scale->y;
-
-    m.m[2] /= scale->z;
-    m.m[6] /= scale->z;
-    m.m[10] /= scale->z;
-}
-
-void mat4_get_axis_angle(mat4 m, vec3 *axis, float *angle) {
-    //*angle = acosf((m.m[0] + m.m[5] + m.m[10] - 1.0f) /  2.0f);
-    //axis->x = m.m[
-    //*x = 
-    //angle = acos(( m00 + m11 + m22 - 1)/2)
-    //x = (m21 - m12)/√((m21 - m12)2+(m02 - m20)2+(m10 - m01)2)
-    //y = (m02 - m20)/√((m21 - m12)2+(m02 - m20)2+(m10 - m01)2)
-    //z = (m10 - m01)/√((m21 - m12)2+(m02 - m20)2+(m10 - m01)2)
-}
-
 quat quat_create(float x, float y, float z, float w) {
     quat q;
     q.x = x;
