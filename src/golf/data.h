@@ -34,7 +34,16 @@ typedef struct golf_data_font {
     vec_golf_data_font_atlas_t atlases;
 } golf_data_font_t;
 
+#define GOLF_MODEL_MATERIAL_NAME_MAX_LEN 64
+typedef struct golf_data_model_material {
+    char name[GOLF_MODEL_MATERIAL_NAME_MAX_LEN];
+    int start_vertex;
+    int vertex_count;
+} golf_data_model_material_t;
+typedef vec_t(golf_data_model_material_t) vec_golf_data_model_material_t;
+
 typedef struct golf_data_model {
+    vec_golf_data_model_material_t materials;
     vec_vec3_t positions;
     vec_vec3_t normals;
     vec_vec2_t texcoords;

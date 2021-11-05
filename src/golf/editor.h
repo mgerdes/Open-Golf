@@ -9,32 +9,38 @@
 #include "golf/level.h"
 #include "golf/maths.h"
 
-typedef enum golf_editor_action_type {
-    MODIFY_DATA_ACTION,
-} golf_editor_action_type_t;
+typedef struct golf_editor_entity {
+    bool active;
+    golf_entity_type_t type;
 
-typedef struct golf_editor_action {
-    golf_editor_action_type_t type;
     union {
         struct {
-            int data_size;
-            char *data;
-            char *data_copy;
-        };
+            golf_model_entity_t model;
+        } model_data;
+
+        struct {
+            golf_terrain_entity_t terrain;
+        } terrain_data;
     };
+} golf_editor_entity_t;
+typedef vec_t(golf_editor_entity_t) vec_golf_editor_entity_t;
+
+typedef struct golf_editor_action {
+    int data_size;
+    char *data;
+    char *data_copy;
 } golf_editor_action_t;
 typedef vec_t(golf_editor_action_t) vec_golf_editor_action_t;
 
 typedef struct golf_editor {
-    vec_bool_t entity_active;
-    vec_golf_entity_t entities;
+    vec_golf_editor_entity_t entities;
 
-    bool started_modify_data_action;
-    golf_editor_action_t modify_data_action;
+    bool started_action;
+    golf_editor_action_t cur_action;
     vec_golf_editor_action_t actions;
 
-    int hovered_entity_idx;
-    vec_int_t selected_entity_idxs;
+    int hovered_idx;
+    vec_int_t selected_idxs;
 
     struct {
         bool is_using;

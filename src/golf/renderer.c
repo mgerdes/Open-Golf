@@ -487,15 +487,15 @@ void golf_renderer_draw_editor(void) {
     {
         golf_editor_t *editor = golf_editor_get();
         for (int i = 0; i < editor->entities.length; i++) {
-            golf_entity_t *entity = &editor->entities.data[i];
-            if (!editor->entity_active.data[i]) {
+            golf_editor_entity_t *entity = &editor->entities.data[i];
+            if (!entity->active) {
                 continue;
             }
 
             if (entity->type == MODEL_ENTITY) {
-                golf_model_entity_t *model_entity = &entity->model;
+                golf_model_entity_t *model_entity = &entity->model_data.model;
                 golf_data_model_t *model = model_entity->model;
-                mat4 model_mat = golf_model_entity_get_model_mat(model_entity);
+                mat4 model_mat = golf_transform_get_model_mat(model_entity->transform);
 
                 sg_bindings bindings = {
                     .vertex_buffers[0] = model->sg_positions_buf,

@@ -12,9 +12,9 @@ bool golf_level_unload(golf_level_t *level) {
     return false;
 }
 
-mat4 golf_model_entity_get_model_mat(golf_model_entity_t *entity) {
+mat4 golf_transform_get_model_mat(golf_transform_t transform) {
     return mat4_multiply_n(3,
-            mat4_translation(entity->position),
-            mat4_from_quat(entity->orientation),
-            mat4_scale(entity->scale));
+            mat4_translation(transform.position),
+            mat4_from_quat(transform.rotation),
+            mat4_scale(transform.scale));
 }
