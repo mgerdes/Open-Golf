@@ -45,11 +45,11 @@ golf_renderer_t *golf_renderer_get(void) {
 void golf_renderer_init(void) {
     map_init(&renderer.pipelines_map);
 
-    golf_data_load_file("data/shaders/environment.glsl");
-    golf_data_load_file("data/shaders/ui_sprite.glsl");
+    golf_data_load("data/shaders/environment.glsl");
+    golf_data_load("data/shaders/ui_sprite.glsl");
 
     {
-        golf_data_shader_t *shader = golf_data_get_shader("data/shaders/environment.glsl");
+        golf_shader_t *shader = golf_data_get_shader("data/shaders/environment.glsl");
         sg_pipeline_desc pipeline_desc = {
             .shader = shader->sg_shader,
             .layout = {
@@ -72,7 +72,7 @@ void golf_renderer_init(void) {
     }
 
     {
-        golf_data_shader_t *shader = golf_data_get_shader("data/shaders/ui_sprite.glsl");
+        golf_shader_t *shader = golf_data_get_shader("data/shaders/ui_sprite.glsl");
         sg_pipeline_desc pipeline_desc = {
             .shader = shader->sg_shader,
             .layout = {
@@ -122,8 +122,8 @@ void golf_renderer_init(void) {
 
 
 static void _draw_ui_text(golf_ui_text_t text) {
-    golf_data_font_t *font = text.font;
-    golf_data_model_t *square_model = golf_data_get_model("data/models/ui_sprite_square.obj");
+    golf_font_t *font = text.font;
+    golf_model_t *square_model = golf_data_get_model("data/models/ui_sprite_square.obj");
 
     float cur_x = text.pos.x;
     float cur_y = text.pos.y;
@@ -137,7 +137,7 @@ static void _draw_ui_text(golf_ui_text_t text) {
         }
     }
 
-    golf_data_font_atlas_t atlas = font->atlases.data[sz_idx];
+    golf_font_atlas_t atlas = font->atlases.data[sz_idx];
 
     float sz_scale = text.size / atlas.font_size;
 
@@ -185,21 +185,21 @@ static void _draw_ui_text(golf_ui_text_t text) {
     while (text.string[i]) {
         char c = text.string[i];
 
-        int x0 = atlas.char_data[c].x0;
-        int x1 = atlas.char_data[c].x1;
-        int y0 = atlas.char_data[c].y0;
-        int y1 = atlas.char_data[c].y1;
+        int x0 = (int)atlas.char_data[c].x0;
+        int x1 = (int)atlas.char_data[c].x1;
+        int y0 = (int)atlas.char_data[c].y0;
+        int y1 = (int)atlas.char_data[c].y1;
         float xoff = atlas.char_data[c].xoff;
         float yoff = atlas.char_data[c].yoff;
         float xadvance = atlas.char_data[c].xadvance;
 
-        int round_x = floor((cur_x + xoff) + 0.5f);
-        int round_y = floor((cur_y - yoff) + 0.5f);
+        int round_x = (int)floor((cur_x + xoff) + 0.5f);
+        int round_y = (int)floor((cur_y - yoff) + 0.5f);
 
-        float qx0 = round_x; 
-        float qy0 = round_y;
-        float qx1 = round_x + x1 - x0;
-        float qy1 = round_y - (y1 - y0);
+        float qx0 = (float)round_x; 
+        float qy0 = (float)round_y;
+        float qx1 = (float)(round_x + x1 - x0);
+        float qy1 = (float)(round_y - (y1 - y0));
 
         vec3 translate;
         translate.x = qx0 + 0.5f * (qx1 - qx0);
@@ -241,8 +241,8 @@ static void _draw_ui_text(golf_ui_text_t text) {
     }
 }
 
-static void _draw_ui_pixel_pack_square_section(vec2 pos, vec2 size, float tile_screen_size, golf_data_pixel_pack_t *pixel_pack, golf_data_pixel_pack_square_t *pixel_pack_square, int x, int y, vec4 overlay_color) {
-    golf_data_model_t *square_model = golf_data_get_model("data/models/ui_sprite_square.obj");
+static void _draw_ui_pixel_pack_square_section(vec2 pos, vec2 size, float tile_screen_size, golf_pixel_pack_t *pixel_pack, golf_pixel_pack_square_t *pixel_pack_square, int x, int y, vec4 overlay_color) {
+    golf_model_t *square_model = golf_data_get_model("data/models/ui_sprite_square.obj");
 
     float px = pos.x + x * (0.5f * size.x - 0.5f * tile_screen_size);
     float py = pos.y + y * (0.5f * size.y - 0.5f * tile_screen_size);
@@ -323,9 +323,9 @@ static void _draw_ui_pixel_pack_square_section(vec2 pos, vec2 size, float tile_s
 }
 
 static void _draw_ui_pixel_pack_square(golf_ui_pixel_pack_square_t square) {
-    golf_data_model_t *square_model = golf_data_get_model("data/models/ui_sprite_square.obj");
-    golf_data_pixel_pack_t *pixel_pack = square.pixel_pack;
-    golf_data_pixel_pack_square_t *pixel_pack_square = square.square;
+    golf_model_t *square_model = golf_data_get_model("data/models/ui_sprite_square.obj");
+    golf_pixel_pack_t *pixel_pack = square.pixel_pack;
+    golf_pixel_pack_square_t *pixel_pack_square = square.square;
 
     sg_bindings bindings = {
         .vertex_buffers[ATTR_ui_sprite_vs_position] = square_model->sg_positions_buf,
@@ -346,9 +346,9 @@ static void _draw_ui_pixel_pack_square(golf_ui_pixel_pack_square_t square) {
 }
 
 static void _draw_ui_pixel_pack_icon(golf_ui_pixel_pack_icon_t icon) {
-    golf_data_model_t *square_model = golf_data_get_model("data/models/ui_sprite_square.obj");
-    golf_data_pixel_pack_t *pixel_pack = icon.pixel_pack;
-    golf_data_pixel_pack_icon_t *pixel_pack_icon = icon.icon;
+    golf_model_t *square_model = golf_data_get_model("data/models/ui_sprite_square.obj");
+    golf_pixel_pack_t *pixel_pack = icon.pixel_pack;
+    golf_pixel_pack_icon_t *pixel_pack_icon = icon.icon;
 
     sg_bindings bindings = {
         .vertex_buffers[ATTR_ui_sprite_vs_position] = square_model->sg_positions_buf,
@@ -494,15 +494,8 @@ void golf_renderer_draw_editor(void) {
 
             if (entity->type == MODEL_ENTITY) {
                 golf_model_entity_t *model_entity = &entity->model_data.model;
-                golf_data_model_t *model = model_entity->model;
+                golf_model_t *model = model_entity->model;
                 mat4 model_mat = golf_transform_get_model_mat(model_entity->transform);
-
-                sg_bindings bindings = {
-                    .vertex_buffers[0] = model->sg_positions_buf,
-                    .vertex_buffers[1] = model->sg_texcoords_buf,
-                    .vertex_buffers[2] = model->sg_normals_buf,
-                };
-                sg_apply_bindings(&bindings);
 
                 environment_vs_params_t vs_params = {
                     .proj_view_mat = mat4_transpose(renderer.proj_view_mat),
@@ -511,7 +504,34 @@ void golf_renderer_draw_editor(void) {
                 sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_environment_vs_params, 
                         &(sg_range) { &vs_params, sizeof(vs_params) });
 
-                sg_draw(0, model->positions.length, 1);
+                for (int i = 0; i < model->groups.length; i++) {
+                    golf_model_group_t group = model->groups.data[i];
+                    golf_texture_t *texture = golf_data_get_texture("data/textures/fallback.png");
+                    if (strcmp(group.material_name, "ground") == 0) {
+                        texture = golf_data_get_texture("data/textures/ground.png");
+                    }
+                    else if (strcmp(group.material_name, "wall-side") == 0) {
+                        texture = golf_data_get_texture("data/textures/wood.jpg");
+                    }
+                    else if (strcmp(group.material_name, "wall-top") == 0) {
+                        texture = golf_data_get_texture("data/textures/wood.jpg");
+                    }
+                    else if (strcmp(group.material_name, "cube") == 0) {
+                        texture = golf_data_get_texture("data/textures/wood.jpg");
+                    }
+                    else {
+                        texture = golf_data_get_texture("data/textures/fallback.png");
+                    }
+
+                    sg_bindings bindings = {
+                        .vertex_buffers[0] = model->sg_positions_buf,
+                        .vertex_buffers[1] = model->sg_texcoords_buf,
+                        .vertex_buffers[2] = model->sg_normals_buf,
+                        .fs_images[SLOT_kd_texture] = texture->sg_image,
+                    };
+                    sg_apply_bindings(&bindings);
+                    sg_draw(group.start_vertex, group.vertex_count, 1);
+                }
             }
             else if (entity->type == TERRAIN_ENTITY) {
             }

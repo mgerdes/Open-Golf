@@ -12,22 +12,22 @@ typedef enum golf_ui_button_state {
 } golf_ui_button_state_t;
 
 typedef struct golf_ui_pixel_pack_square {
-    golf_data_pixel_pack_t *pixel_pack; 
-    golf_data_pixel_pack_square_t *square;
+    golf_pixel_pack_t *pixel_pack; 
+    golf_pixel_pack_square_t *square;
     vec2 pos, size;
     float tile_screen_size;
     vec4 overlay_color;
 } golf_ui_pixel_pack_square_t;
 
 typedef struct golf_ui_pixel_pack_icon {
-    golf_data_pixel_pack_t *pixel_pack;
-    golf_data_pixel_pack_icon_t *icon;
+    golf_pixel_pack_t *pixel_pack;
+    golf_pixel_pack_icon_t *icon;
     vec2 pos, size;
     vec4 overlay_color;
 } golf_ui_pixel_pack_icon_t;
 
 typedef struct golf_ui_text {
-    golf_data_font_t *font;
+    golf_font_t *font;
     char *string;
     vec2 pos;
     float size;

@@ -455,7 +455,7 @@ void golf_editor_update(float dt) {
             switch (entity->type) {
                 case MODEL_ENTITY: {
                     golf_model_entity_t *model_entity = &entity->model_data.model;
-                    golf_data_model_t *model = model_entity->model;
+                    golf_model_t *model = model_entity->model;
                     mat4 model_mat = golf_transform_get_model_mat(model_entity->transform);
                     for (int j = 0; j < model->positions.length; j++) {
                         vec3 p0 = vec3_apply_mat4(model->positions.data[j + 0], 1, model_mat);
@@ -511,28 +511,29 @@ void golf_editor_update(float dt) {
         }
     }
 
+    float cam_speed = 2.0f;
     if (!IO->WantCaptureKeyboard) {
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_W]) {
-            renderer->cam_pos.x += 8.0f * dt * cosf(renderer->cam_azimuth_angle);
-            renderer->cam_pos.z += 8.0f * dt * sinf(renderer->cam_azimuth_angle);
+            renderer->cam_pos.x += cam_speed * dt * cosf(renderer->cam_azimuth_angle);
+            renderer->cam_pos.z += cam_speed * dt * sinf(renderer->cam_azimuth_angle);
         }
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_S]) {
-            renderer->cam_pos.x -= 8.0f * dt * cosf(renderer->cam_azimuth_angle);
-            renderer->cam_pos.z -= 8.0f * dt * sinf(renderer->cam_azimuth_angle);
+            renderer->cam_pos.x -= cam_speed * dt * cosf(renderer->cam_azimuth_angle);
+            renderer->cam_pos.z -= cam_speed * dt * sinf(renderer->cam_azimuth_angle);
         }
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_D]) {
-            renderer->cam_pos.x += 8.0f * dt * cosf(renderer->cam_azimuth_angle + 0.5f * MF_PI);
-            renderer->cam_pos.z += 8.0f * dt * sinf(renderer->cam_azimuth_angle + 0.5f * MF_PI);
+            renderer->cam_pos.x += cam_speed * dt * cosf(renderer->cam_azimuth_angle + 0.5f * MF_PI);
+            renderer->cam_pos.z += cam_speed * dt * sinf(renderer->cam_azimuth_angle + 0.5f * MF_PI);
         }
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_A]) {
-            renderer->cam_pos.x -= 8.0f * dt * cosf(renderer->cam_azimuth_angle + 0.5f * MF_PI);
-            renderer->cam_pos.z -= 8.0f * dt * sinf(renderer->cam_azimuth_angle + 0.5f * MF_PI);
+            renderer->cam_pos.x -= cam_speed * dt * cosf(renderer->cam_azimuth_angle + 0.5f * MF_PI);
+            renderer->cam_pos.z -= cam_speed * dt * sinf(renderer->cam_azimuth_angle + 0.5f * MF_PI);
         }
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_Q]) {
-            renderer->cam_pos.y -= 8.0f * dt;
+            renderer->cam_pos.y -= cam_speed * dt;
         }
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_E]) {
-            renderer->cam_pos.y += 8.0f * dt;
+            renderer->cam_pos.y += cam_speed * dt;
         }
         if (inputs->button_down[SAPP_KEYCODE_LEFT_CONTROL] && inputs->button_clicked[SAPP_KEYCODE_Z]) {
             _golf_editor_undo_action();

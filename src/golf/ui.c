@@ -119,7 +119,7 @@ static void _golf_ui_scroll_list_begin(vec2 pos, vec2 size, float total_height, 
             _golf_ui_pixel_pack_icon(bar_pixel_pack_name, "blue_tube", bar_inner_pos, bar_inner_size, V4(0, 0, 0, 0));
         }
         else {
-            _golf_ui_pixel_pack_icon(bar_pixel_pack_name, "blue_tube", bar_inner_pos, bar_inner_size, V4(0, 0, 0, 0.1));
+            _golf_ui_pixel_pack_icon(bar_pixel_pack_name, "blue_tube", bar_inner_pos, bar_inner_size, V4(0, 0, 0, 0.1f));
         }
 
         if (button_state == GOLF_UI_BUTTON_DOWN) {
@@ -201,7 +201,7 @@ void golf_ui_update(float dt) {
     }
     ui.entities.length = 0;
 
-    golf_data_config_t *cfg = golf_data_get_config("data/config/ui/main_menu.cfg");
+    golf_config_t *cfg = golf_data_get_config("data/config/ui/main_menu.cfg");
     const char *font_name = CFG_STRING(cfg, "font_name");
     const char *pixel_pack_name = CFG_STRING(cfg, "pixel_pack_name");
 
@@ -292,7 +292,7 @@ void golf_ui_update(float dt) {
         }
 
         {
-            int levels_grid_cols = CFG_NUM(cfg, "levels_grid_cols");
+            int levels_grid_cols = (int)CFG_NUM(cfg, "levels_grid_cols");
             vec2 sl_pos = CFG_VEC2(cfg, "levels_scroll_list_pos");
             vec2 sl_size = CFG_VEC2(cfg, "levels_scroll_list_size");
             float sl_bar_x = CFG_NUM(cfg, "levels_scroll_list_bar_x");

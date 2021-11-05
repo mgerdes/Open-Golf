@@ -29,11 +29,11 @@ void golf_log_init(void) {
 static void _print_callstack() {
     void *addresses[256];
     int i;
-    int num_addresses = callstack(0, addresses, 256);
+    int num_addresses = callstack(3, addresses, 256);
 
     callstack_symbol_t symbols[256];
-    char symbols_buffer[1024];
-    num_addresses = callstack_symbols( addresses, symbols, num_addresses, symbols_buffer, 1024 );
+    char symbols_buffer[2048];
+    num_addresses = callstack_symbols(addresses, symbols, num_addresses, symbols_buffer, 2048 );
 
     for (i = 0; i < num_addresses; i++) {
         printf( "%3d) %-50s %s(%u)\n", i, symbols[i].function, symbols[i].file, symbols[i].line );
@@ -49,20 +49,15 @@ static void _log(enum _golf_log_level level, const char *fmt, va_list arg) {
     }
     vprintf(fmt, arg);
     printf("\n");
-    /*
     if (level == _golf_log_level_warning) {
         _print_callstack();
-        if (_state.entry_count < 32) {
-            _golf_log_entry_t *entry = &_state.entries[_state.entry_count++];
-            vsnprintf(entry->msg, 1024, fmt, arg);
-        }
+        //if (_state.entry_count < 32) {
+            //_golf_log_entry_t *entry = &_state.entries[_state.entry_count++];
+            //vsnprintf(entry->msg, 1024, fmt, arg);
+        //}
     }
     else if (level == _golf_log_level_error) {
         _print_callstack();
-        assert(false);
-    }
-    */
-    if (level == _golf_log_level_error) {
         assert(false);
     }
 }

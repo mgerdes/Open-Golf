@@ -35,7 +35,7 @@ typedef vec_t(golf_terrain_entity_t) vec_golf_terrain_entity_t;
 typedef struct golf_model_entity {
     golf_transform_t transform;
     char model_path[GOLF_FILE_MAX_PATH];
-    golf_data_model_t *model;
+    golf_model_t *model;
 } golf_model_entity_t;
 typedef vec_t(golf_model_entity_t) vec_golf_model_entity_t;
 

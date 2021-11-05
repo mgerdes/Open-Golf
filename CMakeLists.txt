@@ -7,11 +7,13 @@ add_executable(golf
     src/golf_exe/main.c)
 target_link_libraries(golf PRIVATE
     golf_lib)
+set_property(TARGET golf PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 
 add_executable(editor
     src/editor_exe/main.c)
 target_link_libraries(editor PRIVATE
     golf_lib)
+set_property(TARGET editor PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 
 set(GOLF_BASE_LIBRARIES 
     cimgui

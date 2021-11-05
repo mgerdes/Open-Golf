@@ -55,16 +55,16 @@ static void frame(void) {
         golf_renderer_init();
         inited = true;
 
-        golf_data_load_file("data/shaders/ui_sprite.glsl");
-        golf_data_load_file("data/textures/fallback.png");
-        golf_data_load_file("data/textures/pixel_pack_tex.png");
-        golf_data_load_file("data/textures/pixel_pack.pixel_pack");
-        golf_data_load_file("data/font/FantasqueSansMono-Bold.ttf");
-        golf_data_load_file("data/font/FiraSans-Bold.ttf");
-        golf_data_load_file("data/font/SourceSans3-Bold.ttf");
-        golf_data_load_file("data/font/DroidSerif-Bold.ttf");
-        golf_data_load_file("data/models/ui_sprite_square.obj");
-        golf_data_load_file("data/config/ui/main_menu.cfg");
+        golf_data_load("data/shaders/ui_sprite.glsl");
+        golf_data_load("data/textures/fallback.png");
+        golf_data_load("data/textures/pixel_pack_tex.png");
+        golf_data_load("data/textures/pixel_pack.pixel_pack");
+        golf_data_load("data/font/FantasqueSansMono-Bold.ttf");
+        golf_data_load("data/font/FiraSans-Bold.ttf");
+        golf_data_load("data/font/SourceSans3-Bold.ttf");
+        golf_data_load("data/font/DroidSerif-Bold.ttf");
+        golf_data_load("data/models/ui_sprite_square.obj");
+        golf_data_load("data/config/ui/main_menu.cfg");
     }
 
     {

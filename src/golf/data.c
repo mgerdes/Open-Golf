@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "golf/data.h"
 
 #include "3rd_party/fast_obj/fast_obj.h"
@@ -15,13 +16,9 @@
 #include "golf/shaders/environment.glsl.h"
 #include "golf/shaders/ui_sprite.glsl.h"
 
-typedef struct golf_data {
-    map_golf_data_file_t loaded_files;
-} golf_data_t;
+static map_golf_data_t _loaded_data;
 
 typedef bool (*golf_data_importer_t)(const char *path, char *data, int data_len);
-
-static golf_data_t _golf_data;
 
 //
 // PARSON HELPERS
@@ -78,7 +75,7 @@ static vec4 _golf_data_json_object_get_vec4(JSON_Object *obj, const char *name) 
 // TEXTURES
 //
 
-static bool _golf_data_texture_import(const char *path, char *data, int data_len) {
+static bool _golf_texture_import(const char *path, char *data, int data_len) {
     golf_string_t import_texture_file_path;
     golf_string_initf(&import_texture_file_path, "%s.import", path);
 
@@ -106,7 +103,7 @@ static bool _golf_data_texture_import(const char *path, char *data, int data_len
     return true;
 }
 
-static bool _golf_data_texture_load(const char *path, char *data, int data_len, golf_data_texture_t *texture) {
+static bool _golf_texture_load(const char *path, char *data, int data_len, golf_texture_t *texture) {
     JSON_Value *val = json_parse_string(data);
 
     if (!val) {
@@ -175,7 +172,7 @@ static bool _golf_data_texture_load(const char *path, char *data, int data_len, 
     return true;
 }
 
-static bool _golf_data_texture_unload(golf_data_texture_t *texture) {
+static bool _golf_texture_unload(golf_texture_t *texture) {
     sg_destroy_image(texture->sg_image);
     return true;
 }
@@ -184,7 +181,7 @@ static bool _golf_data_texture_unload(golf_data_texture_t *texture) {
 // SHADERS
 //
 
-static JSON_Value *_golf_data_shader_import_bare(const char *base_name, const char *name) {
+static JSON_Value *_golf_shader_import_bare(const char *base_name, const char *name) {
     JSON_Value *val = json_value_init_object();
     JSON_Object *obj = json_value_get_object(val);
 
@@ -215,7 +212,7 @@ static JSON_Value *_golf_data_shader_import_bare(const char *base_name, const ch
     return val;
 }
 
-bool _golf_data_shader_import(const char *path, char *data, int data_len) {
+bool _golf_shader_import(const char *path, char *data, int data_len) {
     golf_file_t file = golf_file(path);
     static const char *slangs = "glsl330:glsl300es";
     JSON_Value *val = json_value_init_object();
@@ -250,12 +247,12 @@ bool _golf_data_shader_import(const char *path, char *data, int data_len) {
             golf_string_pop(&base_bare_name, 5);
 
             {
-                JSON_Value *bare_val = _golf_data_shader_import_bare(base_bare_name.cstr, "glsl300es");
+                JSON_Value *bare_val = _golf_shader_import_bare(base_bare_name.cstr, "glsl300es");
                 json_object_set_value(obj, "glsl300es", bare_val);
             }
 
             {
-                JSON_Value *bare_val = _golf_data_shader_import_bare(base_bare_name.cstr, "glsl330");
+                JSON_Value *bare_val = _golf_shader_import_bare(base_bare_name.cstr, "glsl330");
                 json_object_set_value(obj, "glsl330", bare_val);
             }
 
@@ -273,7 +270,7 @@ bool _golf_data_shader_import(const char *path, char *data, int data_len) {
     return true;
 }
 
-static bool _golf_data_shader_load(const char *path, char *data, int data_len, golf_data_shader_t *shader) {
+static bool _golf_shader_load(const char *path, char *data, int data_len, golf_shader_t *shader) {
     const sg_shader_desc *const_shader_desc;
     if (strcmp(path, "data/shaders/ui_sprite.glsl") == 0) {
         const_shader_desc = ui_sprite_shader_desc(sg_query_backend());
@@ -308,7 +305,7 @@ static bool _golf_data_shader_load(const char *path, char *data, int data_len, g
     return true;
 }
 
-static bool _golf_data_shader_unload(golf_data_shader_t *shader) {
+static bool _golf_shader_unload(golf_shader_t *shader) {
     sg_destroy_shader(shader->sg_shader);
     return true;
 }
@@ -322,7 +319,7 @@ static void _stbi_write_func(void *context, void *data, int size) {
     vec_pusharr(bmp, (char*)data, size);
 }
 
-static JSON_Value *_golf_data_font_atlas_import(const char *file_data, int font_size, int img_size) {
+static JSON_Value *_golf_font_atlas_import(const char *file_data, int font_size, int img_size) {
     unsigned char *bitmap = malloc(img_size * img_size);
     stbtt_bakedchar cdata[96];
     memset(cdata, 0, sizeof(cdata));
@@ -368,20 +365,20 @@ static JSON_Value *_golf_data_font_atlas_import(const char *file_data, int font_
     return val;
 }
 
-bool _golf_data_font_import(const char *path, char *data, int data_len) {
+bool _golf_font_import(const char *path, char *data, int data_len) {
     JSON_Value *val = json_value_init_object();
     JSON_Object *obj = json_value_get_object(val);
 
     JSON_Value *atlases_val = json_value_init_array();
     JSON_Array *atlases_array = json_value_get_array(atlases_val);
 
-    json_array_append_value(atlases_array, _golf_data_font_atlas_import(data, 16, 256));
-    json_array_append_value(atlases_array, _golf_data_font_atlas_import(data, 24, 256));
-    json_array_append_value(atlases_array, _golf_data_font_atlas_import(data, 32, 256));
-    json_array_append_value(atlases_array, _golf_data_font_atlas_import(data, 40, 512));
-    json_array_append_value(atlases_array, _golf_data_font_atlas_import(data, 48, 512));
-    json_array_append_value(atlases_array, _golf_data_font_atlas_import(data, 56, 512));
-    json_array_append_value(atlases_array, _golf_data_font_atlas_import(data, 64, 512));
+    json_array_append_value(atlases_array, _golf_font_atlas_import(data, 16, 256));
+    json_array_append_value(atlases_array, _golf_font_atlas_import(data, 24, 256));
+    json_array_append_value(atlases_array, _golf_font_atlas_import(data, 32, 256));
+    json_array_append_value(atlases_array, _golf_font_atlas_import(data, 40, 512));
+    json_array_append_value(atlases_array, _golf_font_atlas_import(data, 48, 512));
+    json_array_append_value(atlases_array, _golf_font_atlas_import(data, 56, 512));
+    json_array_append_value(atlases_array, _golf_font_atlas_import(data, 64, 512));
 
     json_object_set_value(obj, "atlases", atlases_val);
 
@@ -394,7 +391,7 @@ bool _golf_data_font_import(const char *path, char *data, int data_len) {
     return true;
 }
 
-static void _golf_data_font_load_atlas(JSON_Object *atlas_obj, golf_data_font_atlas_t *atlas) {
+static void _golf_font_load_atlas(JSON_Object *atlas_obj, golf_font_atlas_t *atlas) {
     atlas->font_size = (float)json_object_get_number(atlas_obj, "font_size");
     atlas->ascent = (float)json_object_get_number(atlas_obj, "ascent");
     atlas->descent = (float)json_object_get_number(atlas_obj, "descent");
@@ -402,7 +399,7 @@ static void _golf_data_font_load_atlas(JSON_Object *atlas_obj, golf_data_font_at
     atlas->size = (int)json_object_get_number(atlas_obj, "img_size");
 
     JSON_Array *char_datas_array = json_object_get_array(atlas_obj, "char_datas");
-    for (int i = 0; i < json_array_get_count(char_datas_array); i++) {
+    for (int i = 0; i < (int)json_array_get_count(char_datas_array); i++) {
         JSON_Object *char_data_obj = json_array_get_object(char_datas_array, i);
         int c = (int)json_object_get_number(char_data_obj, "c");
         if (c >= 0 && c < 256) {
@@ -446,7 +443,7 @@ static void _golf_data_font_load_atlas(JSON_Object *atlas_obj, golf_data_font_at
     free(stb_data);
 }
 
-bool _golf_data_font_load(const char *path, char *data, int data_len, golf_data_font_t *font) {
+bool _golf_font_load(const char *path, char *data, int data_len, golf_font_t *font) {
     JSON_Value *val = json_parse_string(data);
     JSON_Object *obj = json_value_get_object(val);
     if (!val) {
@@ -456,10 +453,10 @@ bool _golf_data_font_load(const char *path, char *data, int data_len, golf_data_
 
     JSON_Array *atlases_array = json_object_get_array(obj, "atlases");
     vec_init(&font->atlases);
-    for (int i = 0; i < json_array_get_count(atlases_array); i++) {
+    for (int i = 0; i < (int)json_array_get_count(atlases_array); i++) {
         JSON_Object *atlas_obj = json_array_get_object(atlases_array, i);
-        golf_data_font_atlas_t atlas;
-        _golf_data_font_load_atlas(atlas_obj, &atlas);
+        golf_font_atlas_t atlas;
+        _golf_font_load_atlas(atlas_obj, &atlas);
         vec_push(&font->atlases, atlas);
     }
 
@@ -468,9 +465,9 @@ bool _golf_data_font_load(const char *path, char *data, int data_len, golf_data_
     return true;
 }
 
-bool _golf_data_font_unload(golf_data_font_t *font) {
+bool _golf_font_unload(golf_font_t *font) {
     for (int i = 0; i < font->atlases.length; i++) {
-        golf_data_font_atlas_t atlas = font->atlases.data[i];
+        golf_font_atlas_t atlas = font->atlases.data[i];
         sg_destroy_image(atlas.sg_image);
     }
     vec_deinit(&font->atlases);
@@ -487,7 +484,7 @@ typedef struct _model_material_data {
 } _model_material_data_t;
 typedef vec_t(_model_material_data_t) _vec_model_material_data;
 
-bool _golf_data_model_import(const char *path, char *data, int data_len) {
+bool _golf_model_import(const char *path, char *data, int data_len) {
     _vec_model_material_data model_materials;
     vec_init(&model_materials);
 
@@ -498,12 +495,12 @@ bool _golf_data_model_import(const char *path, char *data, int data_len) {
         int idx = 0;
         for (int j = 0; j < (int)grp.face_count; j++) {
             int fv = m->face_vertices[grp.face_offset + j];
-			int fm = m->face_materials[grp.face_offset + j];
+            int fm = m->face_materials[grp.face_offset + j];
             const char *material_name = "default";
-			if (fm < (int)m->material_count) {
-				fastObjMaterial mat = m->materials[fm];
+            if (fm < (int)m->material_count) {
+                fastObjMaterial mat = m->materials[fm];
                 material_name = mat.name;
-			}
+            }
 
             _model_material_data_t *model_material = NULL;
             for (int i = 0; i < model_materials.length; i++) {
@@ -519,10 +516,10 @@ bool _golf_data_model_import(const char *path, char *data, int data_len) {
                 model_material = &vec_last(&model_materials);
             }
 
-			fastObjIndex m0 = m->indices[grp.index_offset + idx];
-			vec3 p0 = vec3_create_from_array(&m->positions[3 * m0.p]);
-			vec2 t0 = vec2_create_from_array(&m->texcoords[2 * m0.t]);
-			vec3 n0 = vec3_create_from_array(&m->normals[3 * m0.n]);
+            fastObjIndex m0 = m->indices[grp.index_offset + idx];
+            vec3 p0 = vec3_create_from_array(&m->positions[3 * m0.p]);
+            vec2 t0 = vec2_create_from_array(&m->texcoords[2 * m0.t]);
+            vec3 n0 = vec3_create_from_array(&m->normals[3 * m0.n]);
 
             for (int k = 0; k < fv - 2; k++) {
                 fastObjIndex m1 = m->indices[grp.index_offset + idx + k + 1];
@@ -563,30 +560,30 @@ bool _golf_data_model_import(const char *path, char *data, int data_len) {
                 vec_push(&model_material->vertices, t2.y);
             }
 
-			idx += fv;
+            idx += fv;
         }
     }
 
-    JSON_Value *json_materials_val = json_value_init_array();
-    JSON_Array *json_materials_arr = json_value_get_array(json_materials_val);
+    JSON_Value *json_groups_val = json_value_init_array();
+    JSON_Array *json_groups_arr = json_value_get_array(json_groups_val);
     for (int i = 0; i < model_materials.length; i++) {
-        JSON_Value *json_material_val = json_value_init_object();
-        JSON_Object *json_material_obj = json_value_get_object(json_material_val);
-        json_object_set_string(json_material_obj, "name", model_materials.data[i].name);
+        JSON_Value *json_group_val = json_value_init_object();
+        JSON_Object *json_group_obj = json_value_get_object(json_group_val);
+        json_object_set_string(json_group_obj, "material_name", model_materials.data[i].name);
 
         JSON_Value *json_vertices_val = json_value_init_array();
         JSON_Array *json_vertices_arr = json_value_get_array(json_vertices_val);
         for (int j = 0; j < model_materials.data[i].vertices.length; j++) {
             json_array_append_number(json_vertices_arr, model_materials.data[i].vertices.data[j]);
         }
-        json_object_set_value(json_material_obj, "vertices", json_vertices_val);
+        json_object_set_value(json_group_obj, "vertices", json_vertices_val);
 
-        json_array_append_value(json_materials_arr, json_material_val);
+        json_array_append_value(json_groups_arr, json_group_val);
     }
 
     JSON_Value *json_val = json_value_init_object();
     JSON_Object *json_obj = json_value_get_object(json_val);
-    json_object_set_value(json_obj, "materials", json_materials_val);
+    json_object_set_value(json_obj, "groups", json_groups_val);
 
     golf_string_t import_model_file_path;
     golf_string_initf(&import_model_file_path, "%s.import", path);
@@ -602,8 +599,7 @@ bool _golf_data_model_import(const char *path, char *data, int data_len) {
     return true;
 }
 
-bool _golf_data_model_load(const char *path, char *data, int data_len, golf_data_model_t *model) {
-    /*
+bool _golf_model_load(const char *path, char *data, int data_len, golf_model_t *model) {
     JSON_Value *val = json_parse_string(data);
     JSON_Object *obj = json_value_get_object(val);
     if (!val) {
@@ -611,32 +607,40 @@ bool _golf_data_model_load(const char *path, char *data, int data_len, golf_data
         return false;
     }
 
+    vec_init(&model->groups);
     vec_init(&model->positions);
     vec_init(&model->normals);
     vec_init(&model->texcoords);
 
-    JSON_Array *json_faces = json_object_get_array(obj, "faces");
-    for (int i = 0; i < (int)json_array_get_count(json_faces); i++) {
-        JSON_Array *json_face = json_array_get_array(json_faces, i);
+    JSON_Array *json_groups_arr = json_object_get_array(obj, "groups");
+    for (int i = 0; i < (int)json_array_get_count(json_groups_arr); i++) {
+        JSON_Object *json_group_obj = json_array_get_object(json_groups_arr, i);
+        const char *material_name = json_object_get_string(json_group_obj, "material_name");
+        JSON_Array *json_vertices_arr = json_object_get_array(json_group_obj, "vertices");
 
-        for (int j = 1; j < (int)json_array_get_count(json_face); j += 8) {
+        golf_model_group_t model_group;
+        snprintf(model_group.material_name, GOLF_MODEL_MATERIAL_NAME_MAX_LEN, "%s", material_name);
+        model_group.start_vertex = model->positions.length;
+        model_group.vertex_count = (int)json_array_get_count(json_vertices_arr) / 8;
+        for (int j = 0; j < (int)json_array_get_count(json_vertices_arr); j += 8) {
             vec3 p;
             vec2 t;
             vec3 n;
 
-            p.x = json_array_get_number(json_vertices, j + 0);
-            p.y = json_array_get_number(json_vertices, j + 1);
-            p.z = json_array_get_number(json_vertices, j + 2);
-            t.x = json_array_get_number(json_vertices, j + 3);
-            t.y = json_array_get_number(json_vertices, j + 4);
-            n.x = json_array_get_number(json_vertices, j + 5);
-            n.y = json_array_get_number(json_vertices, j + 6);
-            n.z = json_array_get_number(json_vertices, j + 7);
+            p.x = (float)json_array_get_number(json_vertices_arr, j + 0);
+            p.y = (float)json_array_get_number(json_vertices_arr, j + 1);
+            p.z = (float)json_array_get_number(json_vertices_arr, j + 2);
+            n.x = (float)json_array_get_number(json_vertices_arr, j + 3);
+            n.y = (float)json_array_get_number(json_vertices_arr, j + 4);
+            n.z = (float)json_array_get_number(json_vertices_arr, j + 5);
+            t.x = (float)json_array_get_number(json_vertices_arr, j + 6);
+            t.y = (float)json_array_get_number(json_vertices_arr, j + 7);
 
             vec_push(&model->positions, p);
             vec_push(&model->texcoords, t);
             vec_push(&model->normals, n);
         }
+        vec_push(&model->groups, model_group);
     }
 
     {
@@ -658,12 +662,11 @@ bool _golf_data_model_load(const char *path, char *data, int data_len, golf_data
     }
 
     json_value_free(val);
-    */
 
     return true;
 }
 
-bool _golf_data_model_unload(golf_data_model_t *model) {
+bool _golf_model_unload(golf_model_t *model) {
     vec_deinit(&model->positions);
     vec_deinit(&model->normals);
     vec_deinit(&model->texcoords);
@@ -674,7 +677,7 @@ bool _golf_data_model_unload(golf_data_model_t *model) {
 // UI PIXEL PACK
 //
 
-static void _golf_date_pixel_pack_pos_to_uvs(golf_data_pixel_pack_t *pp, int tex_w, int tex_h, vec2 p, vec2 *uv0, vec2 *uv1) {
+static void _golf_pixel_pack_pos_to_uvs(golf_pixel_pack_t *pp, int tex_w, int tex_h, vec2 p, vec2 *uv0, vec2 *uv1) {
     uv0->x = (pp->tile_size + pp->tile_padding) * p.x;
     uv0->x /= tex_w;
     uv0->y = (pp->tile_size + pp->tile_padding) * p.y;
@@ -686,7 +689,7 @@ static void _golf_date_pixel_pack_pos_to_uvs(golf_data_pixel_pack_t *pp, int tex
     uv1->y /= tex_h;
 }
 
-static bool _golf_data_pixel_pack_load(const char *path, char *data, int data_len, golf_data_pixel_pack_t *pixel_pack) {
+static bool _golf_pixel_pack_load(const char *path, char *data, int data_len, golf_pixel_pack_t *pixel_pack) {
     JSON_Value *val = json_parse_string(data);
     JSON_Object *obj = json_value_get_object(val);
 
@@ -696,7 +699,7 @@ static bool _golf_data_pixel_pack_load(const char *path, char *data, int data_le
     map_init(&pixel_pack->icons);
     map_init(&pixel_pack->squares);
 
-    golf_data_texture_t *tex = pixel_pack->texture;
+    golf_texture_t *tex = pixel_pack->texture;
 
     JSON_Array *icons_array = json_object_get_array(obj, "icons");
     for (int i = 0; i < (int)json_array_get_count(icons_array); i++) {
@@ -704,8 +707,8 @@ static bool _golf_data_pixel_pack_load(const char *path, char *data, int data_le
         const char *name = json_object_get_string(icon_obj, "name");
         vec2 pos = _golf_data_json_object_get_vec2(icon_obj, "pos");
 
-        golf_data_pixel_pack_icon_t icon;
-        _golf_date_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, pos, &icon.uv0, &icon.uv1);
+        golf_pixel_pack_icon_t icon;
+        _golf_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, pos, &icon.uv0, &icon.uv1);
         map_set(&pixel_pack->icons, name, icon);
     }
 
@@ -723,16 +726,16 @@ static bool _golf_data_pixel_pack_load(const char *path, char *data, int data_le
         vec2 bm = _golf_data_json_object_get_vec2(square_obj, "bot_mid");
         vec2 br = _golf_data_json_object_get_vec2(square_obj, "bot_right");
 
-        golf_data_pixel_pack_square_t square;
-        _golf_date_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, tl, &square.tl_uv0, &square.tl_uv1);
-        _golf_date_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, tm, &square.tm_uv0, &square.tm_uv1);
-        _golf_date_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, tr, &square.tr_uv0, &square.tr_uv1);
-        _golf_date_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, ml, &square.ml_uv0, &square.ml_uv1);
-        _golf_date_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, mm, &square.mm_uv0, &square.mm_uv1);
-        _golf_date_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, mr, &square.mr_uv0, &square.mr_uv1);
-        _golf_date_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, bl, &square.bl_uv0, &square.bl_uv1);
-        _golf_date_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, bm, &square.bm_uv0, &square.bm_uv1);
-        _golf_date_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, br, &square.br_uv0, &square.br_uv1);
+        golf_pixel_pack_square_t square;
+        _golf_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, tl, &square.tl_uv0, &square.tl_uv1);
+        _golf_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, tm, &square.tm_uv0, &square.tm_uv1);
+        _golf_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, tr, &square.tr_uv0, &square.tr_uv1);
+        _golf_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, ml, &square.ml_uv0, &square.ml_uv1);
+        _golf_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, mm, &square.mm_uv0, &square.mm_uv1);
+        _golf_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, mr, &square.mr_uv0, &square.mr_uv1);
+        _golf_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, bl, &square.bl_uv0, &square.bl_uv1);
+        _golf_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, bm, &square.bm_uv0, &square.bm_uv1);
+        _golf_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, br, &square.br_uv0, &square.br_uv1);
         map_set(&pixel_pack->squares, name, square);
     }
 
@@ -740,7 +743,7 @@ static bool _golf_data_pixel_pack_load(const char *path, char *data, int data_le
     return true;
 }
 
-static bool _golf_data_pixel_pack_unload(golf_data_pixel_pack_t *pixel_pack) {
+static bool _golf_pixel_pack_unload(golf_pixel_pack_t *pixel_pack) {
     map_deinit(&pixel_pack->icons);
     map_deinit(&pixel_pack->squares);
     return true;
@@ -750,7 +753,7 @@ static bool _golf_data_pixel_pack_unload(golf_data_pixel_pack_t *pixel_pack) {
 // CONFIG
 //
 
-static bool _golf_data_config_load(const char *path, char *data, int data_len, golf_data_config_t *config) {
+static bool _golf_config_load(const char *path, char *data, int data_len, golf_config_t *config) {
     JSON_Value *val = json_parse_string(data);
     JSON_Object *obj = json_value_get_object(val);
 
@@ -767,16 +770,16 @@ static bool _golf_data_config_load(const char *path, char *data, int data_len, g
         JSON_Value_Type type = json_value_get_type(prop_val);
 
         bool valid_property = false;
-        golf_data_config_property_t data_property;  
+        golf_config_property_t data_property;  
         if (type == JSONNumber) {
             double prop_num = json_value_get_number(prop_val);
-            data_property.type = GOLF_DATA_CONFIG_PROPERTY_NUM;
+            data_property.type = GOLF_CONFIG_PROPERTY_NUM;
             data_property.num_val = (float)prop_num;
             valid_property = true;
         }
         else if (type == JSONString) {
             const char *prop_string = json_value_get_string(prop_val);
-            data_property.type = GOLF_DATA_CONFIG_PROPERTY_STRING;
+            data_property.type = GOLF_CONFIG_PROPERTY_STRING;
             data_property.string_val = malloc(strlen(prop_string) + 1);
             strcpy(data_property.string_val, prop_string);
             valid_property = true;
@@ -784,17 +787,17 @@ static bool _golf_data_config_load(const char *path, char *data, int data_len, g
         else if (type == JSONArray) {
             JSON_Array *prop_array = json_value_get_array(prop_val);
             if (json_array_get_count(prop_array) == 2) {
-                data_property.type = GOLF_DATA_CONFIG_PROPERTY_VEC2;
+                data_property.type = GOLF_CONFIG_PROPERTY_VEC2;
                 data_property.vec2_val = _golf_data_json_object_get_vec2(obj, name);
                 valid_property = true;
             }
             else if (json_array_get_count(prop_array) == 3) {
-                data_property.type = GOLF_DATA_CONFIG_PROPERTY_VEC3;
+                data_property.type = GOLF_CONFIG_PROPERTY_VEC3;
                 data_property.vec3_val = _golf_data_json_object_get_vec3(obj, name);
                 valid_property = true;
             }
             else if (json_array_get_count(prop_array) == 4) {
-                data_property.type = GOLF_DATA_CONFIG_PROPERTY_VEC4;
+                data_property.type = GOLF_CONFIG_PROPERTY_VEC4;
                 data_property.vec4_val = _golf_data_json_object_get_vec4(obj, name);
                 valid_property = true;
             }
@@ -812,30 +815,31 @@ static bool _golf_data_config_load(const char *path, char *data, int data_len, g
     return true;
 }
 
-static bool _golf_data_config_unload(golf_data_config_t *config) {
+static bool _golf_config_unload(golf_config_t *config) {
     const char *key;
     map_iter_t iter = map_iter(&config->properties);
 
     while ((key = map_next(&config->properties, &iter))) {
-        golf_data_config_property_t *prop = map_get(&config->properties, key);
+        golf_config_property_t *prop = map_get(&config->properties, key);
         switch (prop->type) {
-            case GOLF_DATA_CONFIG_PROPERTY_NUM:
-            case GOLF_DATA_CONFIG_PROPERTY_VEC2:
-            case GOLF_DATA_CONFIG_PROPERTY_VEC3:
-            case GOLF_DATA_CONFIG_PROPERTY_VEC4:
+            case GOLF_CONFIG_PROPERTY_NUM:
+            case GOLF_CONFIG_PROPERTY_VEC2:
+            case GOLF_CONFIG_PROPERTY_VEC3:
+            case GOLF_CONFIG_PROPERTY_VEC4:
                 break;
-            case GOLF_DATA_CONFIG_PROPERTY_STRING:
+            case GOLF_CONFIG_PROPERTY_STRING:
                 free(prop->string_val);
                 break;
         }
     }
 
     map_deinit(&config->properties);
+    return true;
 }
 
-float golf_data_config_get_num(golf_data_config_t *cfg, const char *name) {
-    golf_data_config_property_t *prop = map_get(&cfg->properties, name);
-    if (prop && prop->type == GOLF_DATA_CONFIG_PROPERTY_NUM) {
+float golf_config_get_num(golf_config_t *cfg, const char *name) {
+    golf_config_property_t *prop = map_get(&cfg->properties, name);
+    if (prop && prop->type == GOLF_CONFIG_PROPERTY_NUM) {
         return prop->num_val;
     }
     else {
@@ -844,9 +848,9 @@ float golf_data_config_get_num(golf_data_config_t *cfg, const char *name) {
     }
 }
 
-const char *golf_data_config_get_string(golf_data_config_t *cfg, const char *name) {
-    golf_data_config_property_t *prop = map_get(&cfg->properties, name);
-    if (prop && prop->type == GOLF_DATA_CONFIG_PROPERTY_STRING) {
+const char *golf_config_get_string(golf_config_t *cfg, const char *name) {
+    golf_config_property_t *prop = map_get(&cfg->properties, name);
+    if (prop && prop->type == GOLF_CONFIG_PROPERTY_STRING) {
         return prop->string_val;
     }
     else {
@@ -855,9 +859,9 @@ const char *golf_data_config_get_string(golf_data_config_t *cfg, const char *nam
     }
 }
 
-vec2 golf_data_config_get_vec2(golf_data_config_t *cfg, const char *name) {
-    golf_data_config_property_t *prop = map_get(&cfg->properties, name);
-    if (prop && prop->type == GOLF_DATA_CONFIG_PROPERTY_VEC2) {
+vec2 golf_config_get_vec2(golf_config_t *cfg, const char *name) {
+    golf_config_property_t *prop = map_get(&cfg->properties, name);
+    if (prop && prop->type == GOLF_CONFIG_PROPERTY_VEC2) {
         return prop->vec2_val;
     }
     else {
@@ -866,9 +870,9 @@ vec2 golf_data_config_get_vec2(golf_data_config_t *cfg, const char *name) {
     }
 }
 
-vec3 golf_data_config_get_vec3(golf_data_config_t *cfg, const char *name) {
-    golf_data_config_property_t *prop = map_get(&cfg->properties, name);
-    if (prop && prop->type == GOLF_DATA_CONFIG_PROPERTY_VEC3) {
+vec3 golf_config_get_vec3(golf_config_t *cfg, const char *name) {
+    golf_config_property_t *prop = map_get(&cfg->properties, name);
+    if (prop && prop->type == GOLF_CONFIG_PROPERTY_VEC3) {
         return prop->vec3_val;
     }
     else {
@@ -877,9 +881,9 @@ vec3 golf_data_config_get_vec3(golf_data_config_t *cfg, const char *name) {
     }
 }
 
-vec4 golf_data_config_get_vec4(golf_data_config_t *cfg, const char *name) {
-    golf_data_config_property_t *prop = map_get(&cfg->properties, name);
-    if (prop && prop->type == GOLF_DATA_CONFIG_PROPERTY_VEC4) {
+vec4 golf_config_get_vec4(golf_config_t *cfg, const char *name) {
+    golf_config_property_t *prop = map_get(&cfg->properties, name);
+    if (prop && prop->type == GOLF_CONFIG_PROPERTY_VEC4) {
         return prop->vec4_val;
     }
     else {
@@ -894,23 +898,23 @@ vec4 golf_data_config_get_vec4(golf_data_config_t *cfg, const char *name) {
 //
 
 void golf_data_init(void) {
-    map_init(&_golf_data.loaded_files);
+    map_init(&_loaded_data);
 }
 
 golf_data_importer_t _golf_data_get_importer(const char *ext) { 
     if ((strcmp(ext, ".png") == 0) ||
             (strcmp(ext, ".jpg") == 0) ||
             (strcmp(ext, ".bmp") == 0)) {
-        return &_golf_data_texture_import;
+        return &_golf_texture_import;
     }
     else if ((strcmp(ext, ".glsl") == 0)) {
-        return &_golf_data_shader_import;
+        return &_golf_shader_import;
     }
     else if ((strcmp(ext, ".ttf") == 0)) {
-        return &_golf_data_font_import;
+        return &_golf_font_import;
     }
     else if ((strcmp(ext, ".obj") == 0)) {
-        return &_golf_data_model_import;
+        return &_golf_model_import;
     }
     else {
         return NULL;
@@ -949,10 +953,10 @@ void golf_data_run_import(bool force_import) {
 
 void golf_data_update(float dt) {
     const char *key;
-    map_iter_t iter = map_iter(&_golf_data.loaded_files);
+    map_iter_t iter = map_iter(&_loaded_data);
 
-    while ((key = map_next(&_golf_data.loaded_files, &iter))) {
-        golf_data_file_t *loaded_file = map_get(&_golf_data.loaded_files, key);
+    while ((key = map_next(&_loaded_data, &iter))) {
+        golf_data_t *loaded_file = map_get(&_loaded_data, key);
 
         golf_filetime_t file_time;
         golf_file_get_time(&loaded_file->file, &file_time);
@@ -964,28 +968,28 @@ void golf_data_update(float dt) {
 
                 switch (loaded_file->type) {
                     case GOLF_DATA_TEXTURE:
-                        _golf_data_texture_unload(loaded_file->texture);
-                        _golf_data_texture_load(file.path, file_to_load.data, file_to_load.data_len, loaded_file->texture);
+                        _golf_texture_unload(loaded_file->texture);
+                        _golf_texture_load(file.path, file_to_load.data, file_to_load.data_len, loaded_file->texture);
                         break;
                     case GOLF_DATA_FONT:
-                        _golf_data_font_unload(loaded_file->font);
-                        _golf_data_font_load(file.path, file_to_load.data, file_to_load.data_len, loaded_file->font);
+                        _golf_font_unload(loaded_file->font);
+                        _golf_font_load(file.path, file_to_load.data, file_to_load.data_len, loaded_file->font);
                         break;
                     case GOLF_DATA_MODEL:
-                        _golf_data_model_unload(loaded_file->model);
-                        _golf_data_model_load(file.path, file_to_load.data, file_to_load.data_len, loaded_file->model);
+                        _golf_model_unload(loaded_file->model);
+                        _golf_model_load(file.path, file_to_load.data, file_to_load.data_len, loaded_file->model);
                         break;
                     case GOLF_DATA_SHADER:
-                        _golf_data_shader_unload(loaded_file->shader);
-                        _golf_data_shader_load(file.path, file_to_load.data, file_to_load.data_len, loaded_file->shader);
+                        _golf_shader_unload(loaded_file->shader);
+                        _golf_shader_load(file.path, file_to_load.data, file_to_load.data_len, loaded_file->shader);
                         break;
                     case GOLF_DATA_PIXEL_PACK:
-                        _golf_data_pixel_pack_unload(loaded_file->pixel_pack);
-                        _golf_data_pixel_pack_load(file.path, file_to_load.data, file_to_load.data_len, loaded_file->pixel_pack);
+                        _golf_pixel_pack_unload(loaded_file->pixel_pack);
+                        _golf_pixel_pack_load(file.path, file_to_load.data, file_to_load.data_len, loaded_file->pixel_pack);
                         break;
                     case GOLF_DATA_CONFIG:
-                        _golf_data_config_unload(loaded_file->config);
-                        _golf_data_config_load(file.path, file_to_load.data, file_to_load.data_len, loaded_file->config);
+                        _golf_config_unload(loaded_file->config);
+                        _golf_config_load(file.path, file_to_load.data, file_to_load.data_len, loaded_file->config);
                         break;
                 }
 
@@ -999,11 +1003,11 @@ void golf_data_update(float dt) {
     }
 }
 
-void golf_data_load_file(const char *path) {
+void golf_data_load(const char *path) {
     golf_log_note("Loading file %s", path);
 
     {
-        golf_data_file_t *loaded_file = map_get(&_golf_data.loaded_files, path);
+        golf_data_t *loaded_file = map_get(&_loaded_data, path);
         if (loaded_file) {
             loaded_file->load_count++;
             return;
@@ -1020,34 +1024,34 @@ void golf_data_load_file(const char *path) {
 
     if (golf_file_load_data(&file_to_load)) {
         bool valid = true;
-        golf_data_file_t loaded_file;
+        golf_data_t loaded_file;
         loaded_file.load_count = 1;
         loaded_file.file = file_to_load;
         golf_file_get_time(&file_to_load, &loaded_file.last_load_time);
 
         if (strcmp(file.ext, ".png") == 0 ||
-                strcmp(file.ext, "jpg") == 0 ||
-                strcmp(file.ext, "bmp") == 0) {
-            golf_data_texture_t *texture = malloc(sizeof(golf_data_texture_t));
-            _golf_data_texture_load(file.path, file_to_load.data, file_to_load.data_len, texture);
+                strcmp(file.ext, ".jpg") == 0 ||
+                strcmp(file.ext, ".bmp") == 0) {
+            golf_texture_t *texture = malloc(sizeof(golf_texture_t));
+            _golf_texture_load(file.path, file_to_load.data, file_to_load.data_len, texture);
             loaded_file.type = GOLF_DATA_TEXTURE;
             loaded_file.texture = texture;
         }
         else if (strcmp(file.ext, ".glsl") == 0) {
-            golf_data_shader_t *shader = malloc(sizeof(golf_data_shader_t));
-            _golf_data_shader_load(file.path, file_to_load.data, file_to_load.data_len, shader);
+            golf_shader_t *shader = malloc(sizeof(golf_shader_t));
+            _golf_shader_load(file.path, file_to_load.data, file_to_load.data_len, shader);
             loaded_file.type = GOLF_DATA_SHADER;
             loaded_file.shader = shader;
         }
         else if (strcmp(file.ext, ".ttf") == 0) {
-            golf_data_font_t *font = malloc(sizeof(golf_data_font_t));
-            _golf_data_font_load(file.path, file_to_load.data, file_to_load.data_len, font);
+            golf_font_t *font = malloc(sizeof(golf_font_t));
+            _golf_font_load(file.path, file_to_load.data, file_to_load.data_len, font);
             loaded_file.type = GOLF_DATA_FONT;
             loaded_file.font = font;
         }
         else if (strcmp(file.ext, ".obj") == 0) {
-            golf_data_model_t *model = malloc(sizeof(golf_data_model_t));
-            _golf_data_model_load(file.path, file_to_load.data, file_to_load.data_len, model);
+            golf_model_t *model = malloc(sizeof(golf_model_t));
+            _golf_model_load(file.path, file_to_load.data, file_to_load.data_len, model);
             loaded_file.type = GOLF_DATA_MODEL;
             loaded_file.model = model;
         }
@@ -1057,7 +1061,7 @@ void golf_data_load_file(const char *path) {
         }
 
         if (valid) {
-            map_set(&_golf_data.loaded_files, path, loaded_file);
+            map_set(&_loaded_data, path, loaded_file);
         }
 
         golf_file_free_data(&file_to_load);
@@ -1067,17 +1071,17 @@ void golf_data_load_file(const char *path) {
     }
 }
 
-void golf_data_unload_file(const char *path) {
+void golf_data_unload(const char *path) {
 }
 
-golf_data_file_t *golf_data_get_file(const char *path) {
-    return map_get(&_golf_data.loaded_files, path);
+golf_data_t *golf_data_get_file(const char *path) {
+    return map_get(&_loaded_data, path);
 }
 
-golf_data_texture_t *golf_data_get_texture(const char *path) {
+golf_texture_t *golf_data_get_texture(const char *path) {
     static const char *fallback_texture = "data/textures/fallback.png";
 
-    golf_data_file_t *data_file = golf_data_get_file(path);
+    golf_data_t *data_file = golf_data_get_file(path);
     if (!data_file || data_file->type != GOLF_DATA_TEXTURE) {
         golf_log_warning("Could not find texture %s. Using fallback", path);
         data_file = golf_data_get_file(fallback_texture);
@@ -1088,10 +1092,10 @@ golf_data_texture_t *golf_data_get_texture(const char *path) {
     return data_file->texture;
 }
 
-golf_data_pixel_pack_t *golf_data_get_pixel_pack(const char *path) {
+golf_pixel_pack_t *golf_data_get_pixel_pack(const char *path) {
     static const char *fallback_pixel_pack = "data/textures/pixel_pack.pixel_pack";
 
-    golf_data_file_t *data_file = golf_data_get_file(path);
+    golf_data_t *data_file = golf_data_get_file(path);
     if (!data_file || data_file->type != GOLF_DATA_PIXEL_PACK) {
         golf_log_warning("Could not find pixel pack %s. Using fallback", path);
         data_file = golf_data_get_file(fallback_pixel_pack);
@@ -1102,10 +1106,10 @@ golf_data_pixel_pack_t *golf_data_get_pixel_pack(const char *path) {
     return data_file->pixel_pack;
 }
 
-golf_data_model_t *golf_data_get_model(const char *path) {
+golf_model_t *golf_data_get_model(const char *path) {
     static const char *fallback = "data/models/cube.obj";
 
-    golf_data_file_t *data_file = golf_data_get_file(path);
+    golf_data_t *data_file = golf_data_get_file(path);
     if (!data_file || data_file->type != GOLF_DATA_MODEL) {
         golf_log_warning("Could not find model %s. Using fallback", path);
         data_file = golf_data_get_file(fallback);
@@ -1116,8 +1120,8 @@ golf_data_model_t *golf_data_get_model(const char *path) {
     return data_file->model;
 }
 
-golf_data_shader_t *golf_data_get_shader(const char *path) {
-    golf_data_file_t *data_file = golf_data_get_file(path);
+golf_shader_t *golf_data_get_shader(const char *path) {
+    golf_data_t *data_file = golf_data_get_file(path);
     if (!data_file || data_file->type != GOLF_DATA_SHADER) {
         golf_log_error("Could not find shader %s.", path);
         return NULL;
@@ -1125,10 +1129,10 @@ golf_data_shader_t *golf_data_get_shader(const char *path) {
     return data_file->shader;
 }
 
-golf_data_font_t *golf_data_get_font(const char *path) {
+golf_font_t *golf_data_get_font(const char *path) {
     static const char *fallback = "data/font/DroidSerif-Bold.ttf";
 
-    golf_data_file_t *data_file = golf_data_get_file(path);
+    golf_data_t *data_file = golf_data_get_file(path);
     if (!data_file || data_file->type != GOLF_DATA_FONT) {
         golf_log_warning("Could not find font %s. Using fallback", path);
         data_file = golf_data_get_file(fallback);
@@ -1139,8 +1143,8 @@ golf_data_font_t *golf_data_get_font(const char *path) {
     return data_file->font;
 }
 
-golf_data_config_t *golf_data_get_config(const char *path) {
-    golf_data_file_t *data_file = golf_data_get_file(path);
+golf_config_t *golf_data_get_config(const char *path) {
+    golf_data_t *data_file = golf_data_get_file(path);
     if (!data_file || data_file->type != GOLF_DATA_CONFIG) {
         golf_log_error("Could not find config file %s", path);
     }
@@ -1153,15 +1157,15 @@ golf_data_config_t *golf_data_get_config(const char *path) {
 void golf_data_debug_console_tab(void) {
     if (igCollapsingHeader_TreeNodeFlags("Textures", ImGuiTreeNodeFlags_None)) {
         const char *key;
-        map_iter_t iter = map_iter(&_golf_data.loaded_files);
+        map_iter_t iter = map_iter(&_loaded_data);
 
-        while ((key = map_next(&_golf_data.loaded_files, &iter))) {
-            golf_data_file_t *loaded_file = map_get(&_golf_data.loaded_files, key);
+        while ((key = map_next(&_loaded_data, &iter))) {
+            golf_data_t *loaded_file = map_get(&_loaded_data, key);
             if (loaded_file->type != GOLF_DATA_TEXTURE) {
                 continue;
             }
 
-            golf_data_texture_t *texture = loaded_file->texture;
+            golf_texture_t *texture = loaded_file->texture;
             if (igTreeNode_Str(key)) {
                 igText("Width: %d", texture->width);
                 igText("Height: %d", texture->height);
@@ -1173,18 +1177,18 @@ void golf_data_debug_console_tab(void) {
 
     if (igCollapsingHeader_TreeNodeFlags("Fonts", ImGuiTreeNodeFlags_None)) {
         const char *key;
-        map_iter_t iter = map_iter(&_golf_data.loaded_files);
+        map_iter_t iter = map_iter(&_loaded_data);
 
-        while ((key = map_next(&_golf_data.loaded_files, &iter))) {
-            golf_data_file_t *loaded_file = map_get(&_golf_data.loaded_files, key);
+        while ((key = map_next(&_loaded_data, &iter))) {
+            golf_data_t *loaded_file = map_get(&_loaded_data, key);
             if (loaded_file->type != GOLF_DATA_FONT) {
                 continue;
             }
 
-            golf_data_font_t *font = loaded_file->font;
+            golf_font_t *font = loaded_file->font;
             if (igTreeNode_Str(key)) {
                 for (int i = 0; i < font->atlases.length; i++) {
-                    golf_data_font_atlas_t *atlas = &font->atlases.data[i];
+                    golf_font_atlas_t *atlas = &font->atlases.data[i];
                     igText("Font Size: %f", atlas->font_size);
                     igImage((ImTextureID)(intptr_t)atlas->sg_image.id, (ImVec2){(float)atlas->size, (float)atlas->size}, (ImVec2){0, 0}, (ImVec2){1, 1}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
                 }
@@ -1195,15 +1199,15 @@ void golf_data_debug_console_tab(void) {
 
     if (igCollapsingHeader_TreeNodeFlags("Models", ImGuiTreeNodeFlags_None)) {
         const char *key;
-        map_iter_t iter = map_iter(&_golf_data.loaded_files);
+        map_iter_t iter = map_iter(&_loaded_data);
 
-        while ((key = map_next(&_golf_data.loaded_files, &iter))) {
-            golf_data_file_t *loaded_file = map_get(&_golf_data.loaded_files, key);
+        while ((key = map_next(&_loaded_data, &iter))) {
+            golf_data_t *loaded_file = map_get(&_loaded_data, key);
             if (loaded_file->type != GOLF_DATA_MODEL) {
                 continue;
             }
 
-            golf_data_model_t *model = loaded_file->model;
+            golf_model_t *model = loaded_file->model;
             if (igTreeNode_Str(key)) {
                 if (igTreeNode_Str("Positions: ")) {
                     for (int i = 0; i < model->positions.length; i++) {
@@ -1233,10 +1237,10 @@ void golf_data_debug_console_tab(void) {
 
     if (igCollapsingHeader_TreeNodeFlags("Shaders", ImGuiTreeNodeFlags_None)) {
         const char *key;
-        map_iter_t iter = map_iter(&_golf_data.loaded_files);
+        map_iter_t iter = map_iter(&_loaded_data);
 
-        while ((key = map_next(&_golf_data.loaded_files, &iter))) {
-            golf_data_file_t *loaded_file = map_get(&_golf_data.loaded_files, key);
+        while ((key = map_next(&_loaded_data, &iter))) {
+            golf_data_t *loaded_file = map_get(&_loaded_data, key);
             if (loaded_file->type != GOLF_DATA_SHADER) {
                 continue;
             }
@@ -1248,16 +1252,16 @@ void golf_data_debug_console_tab(void) {
 
     if (igCollapsingHeader_TreeNodeFlags("Pixel Packs", ImGuiTreeNodeFlags_None)) {
         const char *key;
-        map_iter_t iter = map_iter(&_golf_data.loaded_files);
+        map_iter_t iter = map_iter(&_loaded_data);
 
-        while ((key = map_next(&_golf_data.loaded_files, &iter))) {
-            golf_data_file_t *loaded_file = map_get(&_golf_data.loaded_files, key);
+        while ((key = map_next(&_loaded_data, &iter))) {
+            golf_data_t *loaded_file = map_get(&_loaded_data, key);
             if (loaded_file->type != GOLF_DATA_PIXEL_PACK) {
                 continue;
             }
 
-            golf_data_pixel_pack_t *pp = loaded_file->pixel_pack;
-            golf_data_texture_t *t = pp->texture;
+            golf_pixel_pack_t *pp = loaded_file->pixel_pack;
+            golf_texture_t *t = pp->texture;
 
             if (igTreeNode_Str(key)) {
                 if (igTreeNode_Str("Icons")) {
@@ -1265,7 +1269,7 @@ void golf_data_debug_console_tab(void) {
                     map_iter_t icons_iter = map_iter(&pp->icons);
                     while ((icon_key = map_next(&pp->icons, &icons_iter))) {
                         if (igTreeNode_Str(icon_key)) {
-                            golf_data_pixel_pack_icon_t *i = map_get(&pp->icons, icon_key);
+                            golf_pixel_pack_icon_t *i = map_get(&pp->icons, icon_key);
                             igImage((ImTextureID)(intptr_t)t->sg_image.id, (ImVec2){40, 40}, (ImVec2){i->uv0.x, i->uv0.y}, (ImVec2){i->uv1.x, i->uv1.y}, (ImVec4){1, 1, 1, 1}, (ImVec4){1, 1, 1, 1});
                             igTreePop();
                         }
@@ -1278,7 +1282,7 @@ void golf_data_debug_console_tab(void) {
                     map_iter_t squares_iter = map_iter(&pp->squares);
                     while ((square_key = map_next(&pp->squares, &squares_iter))) {
                         if (igTreeNode_Str(square_key)) {
-                            golf_data_pixel_pack_square_t *s = map_get(&pp->squares, square_key);
+                            golf_pixel_pack_square_t *s = map_get(&pp->squares, square_key);
 
                             igPushStyleVar_Vec2(ImGuiStyleVar_ItemSpacing, (ImVec2){0, 0});
 

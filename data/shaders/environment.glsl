@@ -26,6 +26,8 @@ void main() {
 @end
 
 @fs environment_fs
+uniform sampler2D kd_texture;
+
 in vec3 frag_position;
 in vec2 frag_texturecoord;
 in vec3 frag_normal;
@@ -33,9 +35,9 @@ in vec3 frag_normal;
 out vec4 g_frag_color;
 
 void main() {
-    vec3 color = frag_normal.xyz;
-    color.xy = color.xy + 0.01 * frag_texturecoord.xy;
-    g_frag_color = vec4(abs(color), 1.0);
+    vec3 color = texture(kd_texture, frag_texturecoord).xyz; 
+    color = color + 0.001 * (frag_normal.xyz + frag_position.xyz);
+    g_frag_color = vec4(color, 1.0);
 }
 @end
 
