@@ -1,0 +1,66 @@
+{
+    "materials": [
+        {
+            "name": "wall-side",
+            "texture": "data\/textures\/wood.jpg",
+            "friction": 0,
+            "restitution": 0
+        },
+        {
+            "name": "wall-top",
+            "texture": "data\/textures\/wood.jpg",
+            "friction": 0,
+            "restitution": 0
+        },
+        {
+            "name": "ground",
+            "texture": "data\/textures\/ground.png",
+            "friction": 0,
+            "restitution": 0
+        }
+    ],
+    "entities": [
+        {
+            "type": "model",
+            "name": "testing",
+            "model": "data\/models\/cube.obj",
+            "position": [
+                2,
+                0,
+                2
+            ],
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "rotation": [
+                0,
+                0,
+                0,
+                1
+            ]
+        },
+        {
+            "type": "model",
+            "name": "testing",
+            "model": "data\/levels\/level-1\/level-1.obj",
+            "position": [
+                -2,
+                0,
+                -2
+            ],
+            "scale": [
+                1,
+                1,
+                1
+            ],
+            "rotation": [
+                0,
+                0,
+                0,
+                1
+            ]
+        }
+    ]
+}

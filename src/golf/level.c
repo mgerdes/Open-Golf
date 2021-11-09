@@ -3,6 +3,19 @@
 #include "golf/parson_helper.h"
 
 bool golf_level_save(golf_level_t *level, const char *path) {
+    JSON_Value *json_materials_val = json_value_init_array();
+    JSON_Array *json_materials_arr = json_value_get_array(json_materials_val);
+    for (int i = 0; i < level->materials.length; i++) {
+        golf_material_t *material = &level->materials.data[i];
+        JSON_Value *json_material_val = json_value_init_object();
+        JSON_Object *json_material_obj = json_value_get_object(json_material_val);
+        json_object_set_string(json_material_obj, "name", material->name);
+        json_object_set_string(json_material_obj, "texture", material->texture_name);
+        json_object_set_number(json_material_obj, "friction", material->friction);
+        json_object_set_number(json_material_obj, "restitution", material->restitution);
+        json_array_append_value(json_materials_arr, json_material_val);
+    }
+
     JSON_Value *json_entities_val = json_value_init_array();
     JSON_Array *json_entities_arr = json_value_get_array(json_entities_val);
     for (int i = 0; i < level->entities.length; i++) {
@@ -31,6 +44,7 @@ bool golf_level_save(golf_level_t *level, const char *path) {
 
     JSON_Value *json_val = json_value_init_object();
     JSON_Object *json_obj = json_value_get_object(json_val);
+    json_object_set_value(json_obj, "materials", json_materials_val);
     json_object_set_value(json_obj, "entities", json_entities_val);
     json_serialize_to_file_pretty(json_val, path);
     json_value_free(json_val);
