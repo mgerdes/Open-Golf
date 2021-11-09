@@ -486,54 +486,58 @@ void golf_renderer_draw_editor(void) {
 
     {
         golf_editor_t *editor = golf_editor_get();
-        for (int i = 0; i < editor->entities.length; i++) {
-            golf_editor_entity_t *entity = &editor->entities.data[i];
+        for (int i = 0; i < editor->level->entities.length; i++) {
+            golf_entity_t *entity = &editor->level->entities.data[i];
             if (!entity->active) {
                 continue;
             }
 
-            if (entity->type == MODEL_ENTITY) {
-                golf_model_entity_t *model_entity = &entity->model_data.model;
-                golf_model_t *model = model_entity->model;
-                mat4 model_mat = golf_transform_get_model_mat(model_entity->transform);
+            switch (entity->type) {
+                case MODEL_ENTITY: {
+                    golf_model_entity_t *model_entity = &entity->model;
+                    golf_model_t *model = model_entity->model;
+                    mat4 model_mat = golf_transform_get_model_mat(model_entity->transform);
 
-                environment_vs_params_t vs_params = {
-                    .proj_view_mat = mat4_transpose(renderer.proj_view_mat),
-                    .model_mat = mat4_transpose(model_mat),
-                };
-                sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_environment_vs_params, 
-                        &(sg_range) { &vs_params, sizeof(vs_params) });
-
-                for (int i = 0; i < model->groups.length; i++) {
-                    golf_model_group_t group = model->groups.data[i];
-                    golf_texture_t *texture = golf_data_get_texture("data/textures/fallback.png");
-                    if (strcmp(group.material_name, "ground") == 0) {
-                        texture = golf_data_get_texture("data/textures/ground.png");
-                    }
-                    else if (strcmp(group.material_name, "wall-side") == 0) {
-                        texture = golf_data_get_texture("data/textures/wood.jpg");
-                    }
-                    else if (strcmp(group.material_name, "wall-top") == 0) {
-                        texture = golf_data_get_texture("data/textures/wood.jpg");
-                    }
-                    else if (strcmp(group.material_name, "cube") == 0) {
-                        texture = golf_data_get_texture("data/textures/wood.jpg");
-                    }
-                    else {
-                        texture = golf_data_get_texture("data/textures/fallback.png");
-                    }
-
-                    sg_bindings bindings = {
-                        .vertex_buffers[0] = model->sg_positions_buf,
-                        .vertex_buffers[1] = model->sg_texcoords_buf,
-                        .vertex_buffers[2] = model->sg_normals_buf,
-                        .fs_images[SLOT_kd_texture] = texture->sg_image,
+                    environment_vs_params_t vs_params = {
+                        .proj_view_mat = mat4_transpose(renderer.proj_view_mat),
+                        .model_mat = mat4_transpose(model_mat),
                     };
-                    sg_apply_bindings(&bindings);
-                    sg_draw(group.start_vertex, group.vertex_count, 1);
+                    sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_environment_vs_params, 
+                            &(sg_range) { &vs_params, sizeof(vs_params) });
+
+                    for (int i = 0; i < model->groups.length; i++) {
+                        golf_model_group_t group = model->groups.data[i];
+                        golf_texture_t *texture = golf_data_get_texture("data/textures/fallback.png");
+                        if (strcmp(group.material_name, "ground") == 0) {
+                            texture = golf_data_get_texture("data/textures/ground.png");
+                        }
+                        else if (strcmp(group.material_name, "wall-side") == 0) {
+                            texture = golf_data_get_texture("data/textures/wood.jpg");
+                        }
+                        else if (strcmp(group.material_name, "wall-top") == 0) {
+                            texture = golf_data_get_texture("data/textures/wood.jpg");
+                        }
+                        else if (strcmp(group.material_name, "cube") == 0) {
+                            texture = golf_data_get_texture("data/textures/wood.jpg");
+                        }
+                        else {
+                            texture = golf_data_get_texture("data/textures/fallback.png");
+                        }
+
+                        sg_bindings bindings = {
+                            .vertex_buffers[0] = model->sg_positions_buf,
+                            .vertex_buffers[1] = model->sg_texcoords_buf,
+                            .vertex_buffers[2] = model->sg_normals_buf,
+                            .fs_images[SLOT_kd_texture] = texture->sg_image,
+                        };
+                        sg_apply_bindings(&bindings);
+                        sg_draw(group.start_vertex, group.vertex_count, 1);
+                    }
+                    break;
                 }
-            }
-            else if (entity->type == TERRAIN_ENTITY) {
+                case TERRAIN_ENTITY: {
+                    break;
+                }
             }
         }
     }

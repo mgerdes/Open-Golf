@@ -26,7 +26,9 @@ void golf_editor_init(void) {
     ImGuiIO *IO = igGetIO();
     IO->ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-    vec_init(&editor.entities);
+    editor.level = malloc(sizeof(golf_level_t));
+    vec_init(&editor.level->materials);
+    vec_init(&editor.level->entities);
 
     {
         golf_model_entity_t model;
@@ -36,12 +38,12 @@ void golf_editor_init(void) {
         model.transform.scale = V3(1, 1, 1);
         model.transform.rotation = QUAT(0, 0, 0, 1);
 
-        golf_editor_entity_t entity;
+        golf_entity_t entity;
         entity.active = true;
         entity.type = MODEL_ENTITY;
-        entity.model_data.model = model;
+        entity.model = model;
 
-        vec_push(&editor.entities, entity);
+        vec_push(&editor.level->entities, entity);
     }
 
     {
@@ -52,12 +54,12 @@ void golf_editor_init(void) {
         model.transform.scale = V3(1, 1, 1);
         model.transform.rotation = QUAT(0, 0, 0, 1);
 
-        golf_editor_entity_t entity;
+        golf_entity_t entity;
         entity.active = true;
         entity.type = MODEL_ENTITY;
-        entity.model_data.model = model;
+        entity.model = model;
 
-        vec_push(&editor.entities, entity);
+        vec_push(&editor.level->entities, entity);
     }
 
     vec_init(&editor.actions);
@@ -142,6 +144,8 @@ void golf_editor_update(float dt) {
             if (igMenuItem_Bool("Open", NULL, false, true)) {
             }
             if (igMenuItem_Bool("Save", NULL, false, true)) {
+                golf_log_note("Saving...");
+                golf_level_save(editor.level, "data/levels/level-1/level-1.level");
             }
             if (igMenuItem_Bool("Close", NULL, false, true)) {
             }
@@ -217,7 +221,7 @@ void golf_editor_update(float dt) {
 
     for (int i = 0; i < editor.selected_idxs.length; i++) {
         int idx = editor.selected_idxs.data[i];
-        if (!editor.entities.data[idx].active) {
+        if (!editor.level->entities.data[idx].active) {
             vec_splice(&editor.selected_idxs, i, 1);
             i--;
         }
@@ -260,12 +264,12 @@ void golf_editor_update(float dt) {
 
         for (int i = 0; i < editor.selected_idxs.length; i++) {
             int idx = editor.selected_idxs.data[i];
-            golf_editor_entity_t *entity = &editor.entities.data[idx];
+            golf_entity_t *entity = &editor.level->entities.data[idx];
             switch (entity->type) {
                 case TERRAIN_ENTITY:
                     break;
                 case MODEL_ENTITY: {
-                    vec3 *position = &entity->model_data.model.transform.position;
+                    vec3 *position = &entity->model.transform.position;
                     *position = vec3_add(*position, delta_translation);
                     break;
                 }
@@ -425,14 +429,46 @@ void golf_editor_update(float dt) {
 
     {
         igBegin("Right", NULL, ImGuiWindowFlags_NoTitleBar);
-        for (int i = 0; i < editor.entities.length; i++) {
-            golf_editor_entity_t *entity = &editor.entities.data[i];
-            switch (entity->type) {
-                case MODEL_ENTITY: {
-                  golf_model_entity_t *model_entity = &entity->model_data.model;
-                  break;
+        if (igBeginTabBar("", ImGuiTabBarFlags_None)) {
+            if (igBeginTabItem("Entities", NULL, ImGuiTabItemFlags_None)) {
+                for (int i = 0; i < editor.level->entities.length; i++) {
+                    golf_entity_t *entity = &editor.level->entities.data[i];
+                    switch (entity->type) {
+                        case MODEL_ENTITY: {
+                            golf_model_entity_t *model_entity = &entity->model;
+                            break;
+                        }
+                    }
                 }
+                igEndTabItem();
             }
+
+            if (igBeginTabItem("Materials", NULL, ImGuiTabItemFlags_None)) {
+                for (int i = 0; i < editor.level->materials.length; i++) {
+                    igPushID_Int(i);
+                    golf_material_t *material = &editor.level->materials.data[i];
+                    if (igTreeNodeEx_StrStr("material", ImGuiTreeNodeFlags_None, "%s", material->name)) {
+                        igInputText("Name", material->name, GOLF_MATERIAL_NAME_MAX_LEN ,ImGuiInputTextFlags_None, NULL, NULL);
+                        igInputText("Texture", material->texture_name, GOLF_FILE_MAX_PATH ,ImGuiInputTextFlags_None, NULL, NULL);
+                        if (igButton("Delete Material", (ImVec2){0, 0})) {
+                            vec_splice(&editor.level->materials, i, 1);
+                            i--;
+                        }
+                        igTreePop();
+                    }
+                    igPopID();
+                }
+
+                if (igButton("Create Material", (ImVec2){0, 0})) {
+                    golf_material_t new_material;
+                    memset(&new_material, 0, sizeof(golf_material_t));
+                    snprintf(new_material.name, GOLF_MATERIAL_NAME_MAX_LEN, "%s", "default");
+                    snprintf(new_material.texture_name, GOLF_FILE_MAX_PATH, "%s", "data/textures/fallback.png");
+                    vec_push(&editor.level->materials, new_material);
+                }
+                igEndTabItem();
+            }
+            igEndTabBar();
         }
         igEnd();
     }
@@ -446,15 +482,15 @@ void golf_editor_update(float dt) {
         vec_int_t entity_idxs;
         vec_init(&entity_idxs);
 
-        for (int i = 0; i < editor.entities.length; i++) {
-            golf_editor_entity_t *entity = &editor.entities.data[i];
+        for (int i = 0; i < editor.level->entities.length; i++) {
+            golf_entity_t *entity = &editor.level->entities.data[i];
             if (!entity->active) {
                 continue;
             }
 
             switch (entity->type) {
                 case MODEL_ENTITY: {
-                    golf_model_entity_t *model_entity = &entity->model_data.model;
+                    golf_model_entity_t *model_entity = &entity->model;
                     golf_model_t *model = model_entity->model;
                     mat4 model_mat = golf_transform_get_model_mat(model_entity->transform);
                     for (int j = 0; j < model->positions.length; j++) {
@@ -493,8 +529,8 @@ void golf_editor_update(float dt) {
 
             if (editor.selected_idxs.length == 1) {
                 int idx = editor.selected_idxs.data[0];
-                golf_editor_entity_t *entity = &editor.entities.data[idx];
-                editor.gizmo.model_mat = golf_transform_get_model_mat(entity->model_data.model.transform);
+                golf_entity_t *entity = &editor.level->entities.data[idx];
+                editor.gizmo.model_mat = golf_transform_get_model_mat(entity->model.transform);
             }
             else {
             }

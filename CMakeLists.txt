@@ -45,6 +45,7 @@ add_library(golf_lib STATIC
     src/golf/level.c
     src/golf/log.c
     src/golf/maths.c
+    src/golf/parson_helper.c
     src/golf/renderer.c
     src/golf/string.c
     src/golf/ui.c)

@@ -6,6 +6,16 @@
 #include "golf/file.h"
 #include "golf/maths.h"
 
+#define GOLF_MATERIAL_NAME_MAX_LEN 64
+typedef struct golf_material {
+    char name[GOLF_MATERIAL_NAME_MAX_LEN];
+    char texture_name[GOLF_FILE_MAX_PATH];
+    golf_texture_t *texture;
+    float friction;
+    float restitution;
+} golf_material_t;
+typedef vec_t(golf_material_t) vec_golf_material_t;
+
 typedef struct golf_transform {
     vec3 position;
     quat rotation;
@@ -44,9 +54,18 @@ typedef enum golf_entity_type {
     MODEL_ENTITY,
 } golf_entity_type_t;
 
+typedef struct golf_entity {
+    bool active;
+    golf_entity_type_t type;
+    union {
+        golf_model_entity_t model;
+    };
+} golf_entity_t;
+typedef vec_t(golf_entity_t) vec_golf_entity_t;
+
 typedef struct golf_level {
-    vec_golf_model_entity_t model_entities;
-    vec_golf_terrain_entity_t terrain_entities;
+    vec_golf_material_t materials;
+    vec_golf_entity_t entities;
 } golf_level_t;
 
 bool golf_level_save(golf_level_t *level, const char *path);

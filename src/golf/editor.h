@@ -9,22 +9,6 @@
 #include "golf/level.h"
 #include "golf/maths.h"
 
-typedef struct golf_editor_entity {
-    bool active;
-    golf_entity_type_t type;
-
-    union {
-        struct {
-            golf_model_entity_t model;
-        } model_data;
-
-        struct {
-            golf_terrain_entity_t terrain;
-        } terrain_data;
-    };
-} golf_editor_entity_t;
-typedef vec_t(golf_editor_entity_t) vec_golf_editor_entity_t;
-
 typedef struct golf_editor_action {
     int data_size;
     char *data;
@@ -33,7 +17,7 @@ typedef struct golf_editor_action {
 typedef vec_t(golf_editor_action_t) vec_golf_editor_action_t;
 
 typedef struct golf_editor {
-    vec_golf_editor_entity_t entities;
+    golf_level_t *level;
 
     bool started_action;
     golf_editor_action_t cur_action;
