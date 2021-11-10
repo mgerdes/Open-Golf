@@ -27,6 +27,16 @@ vec4 golf_json_object_get_vec4(JSON_Object *obj, const char *name) {
     return v;
 }
 
+quat golf_json_object_get_quat(JSON_Object *obj, const char *name) {
+    JSON_Array *array = json_object_get_array(obj, name);
+    quat q;
+    q.x = (float)json_array_get_number(array, 0);
+    q.y = (float)json_array_get_number(array, 1);
+    q.z = (float)json_array_get_number(array, 2);
+    q.w = (float)json_array_get_number(array, 3);
+    return q;
+}
+
 void golf_json_object_set_vec2(JSON_Object *obj, const char *name, vec2 v) {
     JSON_Value *val = json_value_init_array();
     JSON_Array *arr = json_value_get_array(val);

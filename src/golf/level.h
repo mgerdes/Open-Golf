@@ -9,7 +9,7 @@
 #define GOLF_MATERIAL_NAME_MAX_LEN 64
 typedef struct golf_material {
     char name[GOLF_MATERIAL_NAME_MAX_LEN];
-    char texture_name[GOLF_FILE_MAX_PATH];
+    char texture_path[GOLF_FILE_MAX_PATH];
     golf_texture_t *texture;
     float friction;
     float restitution;
@@ -71,5 +71,7 @@ typedef struct golf_level {
 bool golf_level_save(golf_level_t *level, const char *path);
 bool golf_level_load(golf_level_t *level, const char *path, char *data, int data_len);
 bool golf_level_unload(golf_level_t *level);
+bool golf_level_get_material(golf_level_t *level, const char *material_name, golf_material_t *material);
+
 
 #endif

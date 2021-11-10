@@ -17,6 +17,12 @@
             "texture": "data\/textures\/ground.png",
             "friction": 0,
             "restitution": 0
+        },
+        {
+            "name": "cube",
+            "texture": "data\/textures\/ground.png",
+            "friction": 0,
+            "restitution": 0
         }
     ],
     "entities": [

@@ -506,21 +506,14 @@ void golf_renderer_draw_editor(void) {
                             &(sg_range) { &vs_params, sizeof(vs_params) });
 
                     for (int i = 0; i < model->groups.length; i++) {
+                        golf_texture_t *texture;
                         golf_model_group_t group = model->groups.data[i];
-                        golf_texture_t *texture = golf_data_get_texture("data/textures/fallback.png");
-                        if (strcmp(group.material_name, "ground") == 0) {
-                            texture = golf_data_get_texture("data/textures/ground.png");
-                        }
-                        else if (strcmp(group.material_name, "wall-side") == 0) {
-                            texture = golf_data_get_texture("data/textures/wood.jpg");
-                        }
-                        else if (strcmp(group.material_name, "wall-top") == 0) {
-                            texture = golf_data_get_texture("data/textures/wood.jpg");
-                        }
-                        else if (strcmp(group.material_name, "cube") == 0) {
-                            texture = golf_data_get_texture("data/textures/wood.jpg");
+                        golf_material_t material;
+                        if (golf_level_get_material(editor->level, group.material_name, &material)) {
+                            texture = material.texture;
                         }
                         else {
+                            golf_log_warning("Could not find material %s", group.material_name);
                             texture = golf_data_get_texture("data/textures/fallback.png");
                         }
 

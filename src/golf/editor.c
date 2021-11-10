@@ -26,40 +26,16 @@ void golf_editor_init(void) {
     ImGuiIO *IO = igGetIO();
     IO->ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-    editor.level = malloc(sizeof(golf_level_t));
-    vec_init(&editor.level->materials);
-    vec_init(&editor.level->entities);
-
     {
-        golf_model_entity_t model;
-        snprintf(model.model_path, GOLF_FILE_MAX_PATH, "%s", "data/models/cube.obj");
-        model.model = golf_data_get_model(model.model_path);
-        model.transform.position = V3(2, 0, 2);
-        model.transform.scale = V3(1, 1, 1);
-        model.transform.rotation = QUAT(0, 0, 0, 1);
-
-        golf_entity_t entity;
-        entity.active = true;
-        entity.type = MODEL_ENTITY;
-        entity.model = model;
-
-        vec_push(&editor.level->entities, entity);
-    }
-
-    {
-        golf_model_entity_t model;
-        snprintf(model.model_path, GOLF_FILE_MAX_PATH, "%s", "data/levels/level-1/level-1.obj");
-        model.model = golf_data_get_model(model.model_path);
-        model.transform.position = V3(-2, 0, -2);
-        model.transform.scale = V3(1, 1, 1);
-        model.transform.rotation = QUAT(0, 0, 0, 1);
-
-        golf_entity_t entity;
-        entity.active = true;
-        entity.type = MODEL_ENTITY;
-        entity.model = model;
-
-        vec_push(&editor.level->entities, entity);
+        editor.level = malloc(sizeof(golf_level_t));
+        golf_file_t file = golf_file("data/levels/level-1/level-1.level");
+        if (golf_file_load_data(&file)) {
+            golf_level_load(editor.level, file.path, file.data, file.data_len);
+            golf_file_free_data(&file);
+        }
+        else {
+            golf_log_error("unable to load level file");
+        }
     }
 
     vec_init(&editor.actions);
@@ -449,7 +425,10 @@ void golf_editor_update(float dt) {
                     golf_material_t *material = &editor.level->materials.data[i];
                     if (igTreeNodeEx_StrStr("material", ImGuiTreeNodeFlags_None, "%s", material->name)) {
                         igInputText("Name", material->name, GOLF_MATERIAL_NAME_MAX_LEN ,ImGuiInputTextFlags_None, NULL, NULL);
-                        igInputText("Texture", material->texture_name, GOLF_FILE_MAX_PATH ,ImGuiInputTextFlags_None, NULL, NULL);
+                        igInputText("Texture", material->texture_path, GOLF_FILE_MAX_PATH ,ImGuiInputTextFlags_None, NULL, NULL);
+                        if (igIsItemDeactivatedAfterEdit()) {
+                            material->texture = golf_data_get_texture(material->texture_path);
+                        }
                         if (igButton("Delete Material", (ImVec2){0, 0})) {
                             vec_splice(&editor.level->materials, i, 1);
                             i--;
@@ -463,7 +442,8 @@ void golf_editor_update(float dt) {
                     golf_material_t new_material;
                     memset(&new_material, 0, sizeof(golf_material_t));
                     snprintf(new_material.name, GOLF_MATERIAL_NAME_MAX_LEN, "%s", "default");
-                    snprintf(new_material.texture_name, GOLF_FILE_MAX_PATH, "%s", "data/textures/fallback.png");
+                    snprintf(new_material.texture_path, GOLF_FILE_MAX_PATH, "%s", "data/textures/fallback.png");
+                    new_material.texture = golf_data_get_texture(new_material.texture_path);
                     vec_push(&editor.level->materials, new_material);
                 }
                 igEndTabItem();
