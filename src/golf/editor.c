@@ -181,12 +181,14 @@ void golf_editor_update(float dt) {
             igDockBuilderAddNode(dock_main_id, ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_DockSpace);
             igDockBuilderSetNodeSize(dock_main_id, viewport->Size);
 
-            ImGuiID dock_id_right = igDockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.30f, NULL, &dock_main_id);
+            ImGuiID dock_id_right_top = igDockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.30f, NULL, &dock_main_id);
+            ImGuiID dock_id_right_bottom = igDockBuilderSplitNode(dock_id_right_top, ImGuiDir_Down, 0.60f, NULL, &dock_id_right_top);
             ImGuiID dock_id_top = igDockBuilderSplitNode(dock_main_id, ImGuiDir_Up, 0.05f, NULL, &dock_main_id);
 
             igDockBuilderDockWindow("Viewport", dock_main_id);
             igDockBuilderDockWindow("Top", dock_id_top);
-            igDockBuilderDockWindow("Right", dock_id_right);
+            igDockBuilderDockWindow("RightTop", dock_id_right_top);
+            igDockBuilderDockWindow("RightBottom", dock_id_right_bottom);
             igDockBuilderFinish(dock_main_id);
         }
 
@@ -404,7 +406,7 @@ void golf_editor_update(float dt) {
     }
 
     {
-        igBegin("Right", NULL, ImGuiWindowFlags_NoTitleBar);
+        igBegin("RightTop", NULL, ImGuiWindowFlags_NoTitleBar);
         if (igBeginTabBar("", ImGuiTabBarFlags_None)) {
             if (igBeginTabItem("Entities", NULL, ImGuiTabItemFlags_None)) {
                 for (int i = 0; i < editor.level->entities.length; i++) {
@@ -412,6 +414,7 @@ void golf_editor_update(float dt) {
                     switch (entity->type) {
                         case MODEL_ENTITY: {
                             golf_model_entity_t *model_entity = &entity->model;
+                            igSelectable_Bool("Model entity", false, ImGuiSelectableFlags_None, (ImVec2){0, 0});
                             break;
                         }
                     }
@@ -449,6 +452,25 @@ void golf_editor_update(float dt) {
                 igEndTabItem();
             }
             igEndTabBar();
+        }
+        igEnd();
+    }
+
+    {
+        igBegin("RightBottom", NULL, ImGuiWindowFlags_NoTitleBar);
+        if (editor.selected_idxs.length == 1) {
+            int idx = editor.selected_idxs.data[0];
+            golf_entity_t *entity = &editor.level->entities.data[idx];
+            switch (entity->type) {
+                case MODEL_ENTITY: {
+                    golf_model_entity_t *model_entity = &entity->model;
+                    igText("TYPE: Model Entity");
+                    igInputFloat3("Position", (float*)&model_entity->transform.position, "%.3f", ImGuiInputTextFlags_None);
+                    break;
+                }
+            }
+        }
+        else {
         }
         igEnd();
     }

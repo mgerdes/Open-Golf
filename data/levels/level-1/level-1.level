@@ -31,7 +31,7 @@
             "name": "testing",
             "model": "data\/models\/cube.obj",
             "position": [
-                2,
+                0,
                 0,
                 2
             ],
@@ -52,9 +52,9 @@
             "name": "testing",
             "model": "data\/levels\/level-1\/level-1.obj",
             "position": [
-                -2,
                 0,
-                -2
+                0,
+                0
             ],
             "scale": [
                 1,
