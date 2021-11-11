@@ -56,22 +56,47 @@ void golf_editor_init(void) {
     editor.gizmo.model_mat = mat4_identity();
 }
 
-static void _golf_editor_start_action(void *data, int data_size) {
+static void _golf_editor_start_action(const char *action_name) {
     if (editor.started_action) {
-        golf_log_warning("Starting modify data action with one already started");
+        golf_log_warning("Starting action with one already started");
         return;
     }
 
+    printf("Starting: %s\n", action_name);
     editor.started_action = true;
-    editor.cur_action.data_size = data_size;
-    editor.cur_action.data = data;
-    editor.cur_action.data_copy = malloc(data_size);
-    memcpy(editor.cur_action.data_copy, data, data_size);
+    vec_init(&editor.cur_action.datas);
+}
+
+static void _golf_editor_push_action_data(void *data, int data_size) {
+    if (!editor.started_action) {
+        golf_log_warning("Pushing action without one started");
+        return;
+    }
+
+    golf_editor_action_data_t action_data; 
+    action_data.size = data_size;
+    action_data.ptr = data;
+    action_data.copy = malloc(data_size);
+    memcpy(action_data.copy, action_data.ptr, data_size);
+    vec_push(&editor.cur_action.datas, action_data);
+}
+
+static void _golf_editor_decommit_action(void) {
+    if (!editor.started_action) {
+        golf_log_warning("Decommiting action without one started");
+        return;
+    }
+
+    editor.started_action = false;
+    for (int i = 0; i < editor.cur_action.datas.length; i++) {
+        free(editor.cur_action.datas.data[i].copy);
+    }
+    vec_deinit(&editor.cur_action.datas);
 }
 
 static void _golf_editor_commit_action(void) {
     if (!editor.started_action) {
-        golf_log_warning("Commiting modify data action without one started");
+        golf_log_warning("Commiting action without one started");
         return;
     }
 
@@ -82,20 +107,75 @@ static void _golf_editor_commit_action(void) {
 static void _golf_editor_fix_actions(char *new_ptr, char *old_ptr_start, char *old_ptr_end) {
     for (int i = 0; i < editor.actions.length; i++) {
         golf_editor_action_t *action = &editor.actions.data[i];
-        if (action->data >= old_ptr_start && action->data < old_ptr_end) {
-            action->data = new_ptr + (action->data - old_ptr_start);
+        for (int i = 0; i < action->datas.length; i++) {
+            golf_editor_action_data_t *action_data = &action->datas.data[i];
+            if (action_data->ptr >= old_ptr_start && action_data->ptr < old_ptr_end) {
+                action_data->ptr = new_ptr + (action_data->ptr - old_ptr_start);
+            }
         }
     }
 }
+
+#define _golf_editor_vec_push_and_fix_actions(v, val)\
+    do {\
+        char *old_ptr = (char*)(v)->data;\
+        vec_push(v, val); \
+        if ((char*)(v)->data != old_ptr)\
+            _golf_editor_fix_actions((char*)(v)->data, old_ptr, old_ptr + sizeof(val) * ((v)->length - 1));\
+    } while(0)
 
 static void _golf_editor_undo_action(void) {
     if (editor.actions.length == 0) {
         return;
     }
 
-    golf_editor_action_t action = vec_pop(&editor.actions); 
-    memcpy(action.data, action.data_copy, action.data_size);
-    //free(action.data_copy);
+    golf_editor_action_t *action = &vec_pop(&editor.actions); 
+    for (int i = 0; i < action->datas.length; i++) {
+        golf_editor_action_data_t *action_data = &action->datas.data[i];
+        memcpy(action_data->ptr, action_data->copy, action_data->size);
+    }
+}
+
+#if 0
+#define _GOLF_EDITOR_IMGUI_UNDOABLE_BEGIN(buf, buf_size) {\
+    char *__buf_copy = malloc(buf_size);\
+    memcpy(__buf_copy, buf, buf_size);
+
+#define _GOLF_EDITOR_IMGUI_UNDOABLE_END(buf, buf_size)\
+    if (igIsItemEdited()) {\
+
+    memcpy(buf, __buf_copy, buf_size);\
+    free(__buf_copy);\
+}
+#endif
+
+static void _golf_editor_undoable_input_text(const char *label, char *buf, size_t buf_size, const char *action_name, bool *item_edited, bool *action_started) {
+    char *buf_copy = malloc(buf_size);
+    memcpy(buf_copy, buf, buf_size);
+    igInputText(label, buf_copy, buf_size, ImGuiInputTextFlags_None, NULL, NULL);
+
+    if (action_started) {
+        *action_started = false;
+    }
+    if (igIsItemEdited()) {
+        if (!*item_edited) {
+            _golf_editor_start_action(action_name);
+            _golf_editor_push_action_data(buf, (int)buf_size);
+            *item_edited = true;
+            if (action_started) {
+                *action_started = true;
+            }
+        }
+    }
+    if (igIsItemDeactivated()) {
+        if (*item_edited) {
+            _golf_editor_commit_action();
+            *item_edited = false;
+        }
+    }
+
+    memcpy(buf, buf_copy, buf_size);
+    free(buf_copy);
 }
 
 void golf_editor_update(float dt) {
@@ -243,16 +323,28 @@ void golf_editor_update(float dt) {
         for (int i = 0; i < editor.selected_idxs.length; i++) {
             int idx = editor.selected_idxs.data[i];
             golf_entity_t *entity = &editor.level->entities.data[idx];
-            switch (entity->type) {
-                case TERRAIN_ENTITY:
-                    break;
-                case MODEL_ENTITY: {
-                    vec3 *position = &entity->model.transform.position;
-                    *position = vec3_add(*position, delta_translation);
-                    break;
+            golf_transform_t *transform = golf_entity_get_transform(entity);
+            if (transform) {
+                transform->position = vec3_add(transform->position, delta_translation);
+            }
+        }
+
+        bool is_using = ImGuizmo_IsUsing();
+        if (!editor.gizmo.is_using && is_using) {
+            _golf_editor_start_action("Edit Entity Position");
+            for (int i = 0; i < editor.selected_idxs.length; i++) {
+                int idx = editor.selected_idxs.data[i];
+                golf_entity_t *entity = &editor.level->entities.data[idx];
+                golf_transform_t *transform = golf_entity_get_transform(entity);
+                if (transform) {
+                    _golf_editor_push_action_data(transform, sizeof(golf_transform_t));
                 }
             }
         }
+        if (editor.gizmo.is_using && !is_using) {
+            _golf_editor_commit_action();
+        }
+        editor.gizmo.is_using = is_using;
     }
 
     {
@@ -293,7 +385,7 @@ void golf_editor_update(float dt) {
             }
             if (igIsItemHovered(ImGuiHoveredFlags_None)) {
                 igBeginTooltip();
-                igText("Rotate (E}");
+                igText("Rotate (E)");
                 igEndTooltip();
             }
         }
@@ -427,11 +519,19 @@ void golf_editor_update(float dt) {
                     igPushID_Int(i);
                     golf_material_t *material = &editor.level->materials.data[i];
                     if (igTreeNodeEx_StrStr("material", ImGuiTreeNodeFlags_None, "%s", material->name)) {
-                        igInputText("Name", material->name, GOLF_MATERIAL_NAME_MAX_LEN ,ImGuiInputTextFlags_None, NULL, NULL);
-                        igInputText("Texture", material->texture_path, GOLF_FILE_MAX_PATH ,ImGuiInputTextFlags_None, NULL, NULL);
-                        if (igIsItemDeactivatedAfterEdit()) {
+                        static bool material_name_edited = false;
+                        _golf_editor_undoable_input_text("Name", material->name, GOLF_MATERIAL_NAME_MAX_LEN, "Edit Material Name", &material_name_edited, NULL);
+
+                        bool action_started = false;
+                        static bool texture_path_edited = false;
+                        _golf_editor_undoable_input_text("Texture", material->texture_path, GOLF_FILE_MAX_PATH, "Edit Texture Path", &texture_path_edited, &action_started);
+                        if (action_started) {
+                            _golf_editor_push_action_data(&material->texture, sizeof(material->texture));
+                        }
+                        if (igIsItemDeactivated()) {
                             material->texture = golf_data_get_texture(material->texture_path);
                         }
+
                         if (igButton("Delete Material", (ImVec2){0, 0})) {
                             vec_splice(&editor.level->materials, i, 1);
                             i--;
@@ -447,7 +547,7 @@ void golf_editor_update(float dt) {
                     snprintf(new_material.name, GOLF_MATERIAL_NAME_MAX_LEN, "%s", "default");
                     snprintf(new_material.texture_path, GOLF_FILE_MAX_PATH, "%s", "data/textures/fallback.png");
                     new_material.texture = golf_data_get_texture(new_material.texture_path);
-                    vec_push(&editor.level->materials, new_material);
+                    _golf_editor_vec_push_and_fix_actions(&editor.level->materials, new_material);
                 }
                 igEndTabItem();
             }
@@ -465,7 +565,6 @@ void golf_editor_update(float dt) {
                 case MODEL_ENTITY: {
                     golf_model_entity_t *model_entity = &entity->model;
                     igText("TYPE: Model Entity");
-                    igInputFloat3("Position", (float*)&model_entity->transform.position, "%.3f", ImGuiInputTextFlags_None);
                     break;
                 }
             }

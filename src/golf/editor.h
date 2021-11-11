@@ -9,18 +9,23 @@
 #include "golf/level.h"
 #include "golf/maths.h"
 
+typedef struct golf_editor_action_data {
+    int size;
+    char *ptr;
+    char *copy;
+} golf_editor_action_data_t;
+typedef vec_t(golf_editor_action_data_t) vec_golf_editor_action_data_t;
+
 typedef struct golf_editor_action {
-    int data_size;
-    char *data;
-    char *data_copy;
+    vec_golf_editor_action_data_t datas;
 } golf_editor_action_t;
 typedef vec_t(golf_editor_action_t) vec_golf_editor_action_t;
 
 typedef struct golf_editor {
     golf_level_t *level;
 
-    bool started_action;
-    golf_editor_action_t cur_action;
+    bool started_action, has_queued_action;
+    golf_editor_action_t cur_action, queued_action;
     vec_golf_editor_action_t actions;
 
     int hovered_idx;

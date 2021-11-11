@@ -97,8 +97,8 @@ void golf_renderer_init(void) {
 
     renderer.cam_azimuth_angle = 0.5f*MF_PI;
     renderer.cam_inclination_angle = 0;
-    renderer.cam_pos = V3(0, 0, 5);
-    renderer.cam_dir = V3(0, 0, -1);
+    renderer.cam_pos = V3(5, 5, 5);
+    renderer.cam_dir = vec3_normalize(V3(-5, -5, -5));
 
     {
         float x = renderer.cam_dir.x;
@@ -107,7 +107,7 @@ void golf_renderer_init(void) {
         renderer.cam_inclination_angle = acosf(y);
         renderer.cam_azimuth_angle = atan2f(z, x);
         if (x < 0) {
-            renderer.cam_inclination_angle += MF_PI;
+            //renderer.cam_inclination_angle += MF_PI;
         }
 
         float theta = renderer.cam_inclination_angle;
@@ -526,9 +526,6 @@ void golf_renderer_draw_editor(void) {
                         sg_apply_bindings(&bindings);
                         sg_draw(group.start_vertex, group.vertex_count, 1);
                     }
-                    break;
-                }
-                case TERRAIN_ENTITY: {
                     break;
                 }
             }

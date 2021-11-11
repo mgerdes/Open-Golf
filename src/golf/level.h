@@ -23,25 +23,6 @@ typedef struct golf_transform {
 } golf_transform_t;
 mat4 golf_transform_get_model_mat(golf_transform_t transform);
 
-typedef struct golf_terrain_entity_vertex {
-    vec3 position;
-    vec2 texturecoord;
-} golf_terrain_entity_vertex_t;
-typedef vec_t(golf_terrain_entity_vertex_t) vec_golf_terrain_entity_vertex_t;
-
-typedef struct golf_terrain_entity_face {
-    int num_vertices;
-    int vertex_idxs[4];
-} golf_terrain_entity_face_t;
-typedef vec_t(golf_terrain_entity_face_t) vec_golf_terrain_entity_face_t;
-
-typedef struct golf_terrain_entity {
-    golf_transform_t transform;
-    vec_golf_terrain_entity_vertex_t vertices;
-    vec_golf_terrain_entity_face_t faces;
-} golf_terrain_entity_t;
-typedef vec_t(golf_terrain_entity_t) vec_golf_terrain_entity_t;
-
 typedef struct golf_model_entity {
     golf_transform_t transform;
     char model_path[GOLF_FILE_MAX_PATH];
@@ -50,7 +31,6 @@ typedef struct golf_model_entity {
 typedef vec_t(golf_model_entity_t) vec_golf_model_entity_t;
 
 typedef enum golf_entity_type {
-    TERRAIN_ENTITY,
     MODEL_ENTITY,
 } golf_entity_type_t;
 
@@ -73,5 +53,6 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
 bool golf_level_unload(golf_level_t *level);
 bool golf_level_get_material(golf_level_t *level, const char *material_name, golf_material_t *material);
 
+golf_transform_t *golf_entity_get_transform(golf_entity_t *entity);
 
 #endif
