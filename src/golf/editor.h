@@ -24,7 +24,7 @@ typedef vec_t(golf_editor_action_t) vec_golf_editor_action_t;
 typedef struct golf_editor {
     golf_level_t *level;
 
-    bool started_action, has_queued_action;
+    bool started_action, has_queued_action, has_queued_commit, has_queued_decommit;
     golf_editor_action_t cur_action, queued_action;
     vec_golf_editor_action_t actions;
 
