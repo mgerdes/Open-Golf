@@ -493,9 +493,14 @@ void golf_editor_update(float dt) {
                             igSelectable_Bool("Model Entity", false, ImGuiSelectableFlags_None, (ImVec2){0, 0});
                             break;
                         }
-                        case BALL_START_ENTITY:
+                        case BALL_START_ENTITY: {
                             igSelectable_Bool("Ball Start Entity", false, ImGuiSelectableFlags_None, (ImVec2){0, 0});
                             break;
+                        }
+                        case HOLE_ENTITY: {
+                            igSelectable_Bool("Hole Entity", false, ImGuiSelectableFlags_None, (ImVec2){0, 0});
+                            break;
+                        }
                     }
                 }
                 igEndTabItem();
@@ -506,6 +511,33 @@ void golf_editor_update(float dt) {
                     igPushID_Int(i);
                     golf_material_t *material = &editor.level->materials.data[i];
                     if (igTreeNodeEx_StrStr("material", ImGuiTreeNodeFlags_None, "%s", material->name)) {
+                        golf_material_type_t material_type_before = material->type;
+                        const char *items[] = { "Texture", "Color" };
+                        igCombo_Str_arr("Type", (int*)&material->type, items, 2, 0);
+                        if (material_type_before != material->type) {
+                            golf_material_type_t material_type_after = material->type;
+                            material->type = material_type_before;
+
+                            golf_editor_action_t action;
+                            _golf_editor_action_init(&action);
+                            _golf_editor_action_push_data(&action, material, sizeof(golf_material_t)); 
+                            _golf_editor_start_action(action);
+                            _golf_editor_commit_action();
+
+                            material->type = material_type_after;
+                            switch (material->type) {
+                                case GOLF_MATERIAL_TEXTURE: {
+                                    snprintf(material->texture_path, GOLF_FILE_MAX_PATH, "%s", "data/textures/fallback.png");
+                                    material->texture = golf_data_get_texture("data/textures/fallback.png");
+                                    break;
+                                }
+                                case GOLF_MATERIAL_COLOR: {
+                                    material->color = V3(1, 0, 0);
+                                    break;
+                                }
+                            }
+                        }
+
                         igInputText("Name", material->name, GOLF_MATERIAL_NAME_MAX_LEN, ImGuiInputTextFlags_None, NULL, NULL);
                         if (igIsItemActivated()) {
                             golf_editor_action_t action;
@@ -522,21 +554,44 @@ void golf_editor_update(float dt) {
                             }
                         }
 
-                        igInputText("Texture", material->texture_path, GOLF_FILE_MAX_PATH, ImGuiInputTextFlags_None, NULL, NULL);
-                        if (igIsItemActivated()) {
-                            golf_editor_action_t action;
-                            _golf_editor_action_init(&action);
-                            _golf_editor_action_push_data(&action, material->texture_path, GOLF_FILE_MAX_PATH);
-                            _golf_editor_action_push_data(&action, &material->texture, sizeof(material->texture));
-                            _golf_editor_queue_start_action(action);
-                        }
-                        if (igIsItemDeactivated()) {
-                            material->texture = golf_data_get_texture(material->texture_path);
-                            if (igIsItemDeactivatedAfterEdit()) {
-                                _golf_editor_queue_commit_action();
+                        switch (material->type) {
+                            case GOLF_MATERIAL_TEXTURE: {
+                                igInputText("Texture", material->texture_path, GOLF_FILE_MAX_PATH, ImGuiInputTextFlags_None, NULL, NULL);
+                                if (igIsItemActivated()) {
+                                    golf_editor_action_t action;
+                                    _golf_editor_action_init(&action);
+                                    _golf_editor_action_push_data(&action, material->texture_path, GOLF_FILE_MAX_PATH);
+                                    _golf_editor_action_push_data(&action, &material->texture, sizeof(material->texture));
+                                    _golf_editor_queue_start_action(action);
+                                }
+                                if (igIsItemDeactivated()) {
+                                    material->texture = golf_data_get_texture(material->texture_path);
+                                    if (igIsItemDeactivatedAfterEdit()) {
+                                        _golf_editor_queue_commit_action();
+                                    }
+                                    else {
+                                        _golf_editor_queue_decommit_action();
+                                    }
+                                }
+                                break;
                             }
-                            else {
-                                _golf_editor_queue_decommit_action();
+                            case GOLF_MATERIAL_COLOR: {
+                                igInputFloat3("Color", (float*)&material->color, "%.3f", ImGuiInputTextFlags_None);
+                                if (igIsItemActivated()) {
+                                    golf_editor_action_t action;
+                                    _golf_editor_action_init(&action);
+                                    _golf_editor_action_push_data(&action, &material->color, sizeof(material->color));
+                                    _golf_editor_queue_start_action(action);
+                                }
+                                if (igIsItemDeactivated()) {
+                                    if (igIsItemDeactivatedAfterEdit()) {
+                                        _golf_editor_queue_commit_action();
+                                    }
+                                    else {
+                                        _golf_editor_queue_decommit_action();
+                                    }
+                                }
+                                break;
                             }
                         }
 
@@ -552,9 +607,9 @@ void golf_editor_update(float dt) {
                 if (igButton("Create Material", (ImVec2){0, 0})) {
                     golf_material_t new_material;
                     memset(&new_material, 0, sizeof(golf_material_t));
-                    snprintf(new_material.name, GOLF_MATERIAL_NAME_MAX_LEN, "%s", "default");
-                    snprintf(new_material.texture_path, GOLF_FILE_MAX_PATH, "%s", "data/textures/fallback.png");
-                    new_material.texture = golf_data_get_texture(new_material.texture_path);
+                    snprintf(new_material.name, GOLF_MATERIAL_NAME_MAX_LEN, "%s", "new");
+                    new_material.type = GOLF_MATERIAL_COLOR;
+                    new_material.color = V3(1, 0, 0);
                     _golf_editor_vec_push_and_fix_actions(&editor.level->materials, new_material);
                 }
                 igEndTabItem();
@@ -590,8 +645,12 @@ void golf_editor_update(float dt) {
                     }
                     break;
                 }
-                case BALL_START_ENTITY:
+                case BALL_START_ENTITY: {
                     break;
+                }
+                case HOLE_ENTITY: {
+                    break;
+                }
             }
         }
         else {
@@ -630,34 +689,36 @@ void golf_editor_update(float dt) {
             }
 
             switch (entity->type) {
-                case MODEL_ENTITY: {
-                    golf_model_entity_t *model_entity = &entity->model;
-                    golf_model_t *model = model_entity->model;
-                    mat4 model_mat = golf_transform_get_model_mat(model_entity->transform);
-                    for (int j = 0; j < model->positions.length; j++) {
-                        vec3 p0 = vec3_apply_mat4(model->positions.data[j + 0], 1, model_mat);
-                        vec3 p1 = vec3_apply_mat4(model->positions.data[j + 1], 1, model_mat);
-                        vec3 p2 = vec3_apply_mat4(model->positions.data[j + 2], 1, model_mat);
-                        vec_push(&triangles, p0);
-                        vec_push(&triangles, p1);
-                        vec_push(&triangles, p2);
-                        vec_push(&entity_idxs, i);
+                case MODEL_ENTITY: 
+                case BALL_START_ENTITY:
+                case HOLE_ENTITY: {
+                    golf_model_t *model = NULL;
+                    if (entity->type == MODEL_ENTITY) {
+                        model = entity->model.model;
                     }
-                    break;
-                }
-                case BALL_START_ENTITY: {
-                    golf_model_t *model = golf_data_get_model("data/models/sphere.obj");
-                    mat4 model_mat = golf_transform_get_model_mat(entity->ball_start.transform);
-                    for (int j = 0; j < model->positions.length; j++) {
-                        vec3 p0 = vec3_apply_mat4(model->positions.data[j + 0], 1, model_mat);
-                        vec3 p1 = vec3_apply_mat4(model->positions.data[j + 1], 1, model_mat);
-                        vec3 p2 = vec3_apply_mat4(model->positions.data[j + 2], 1, model_mat);
-                        vec_push(&triangles, p0);
-                        vec_push(&triangles, p1);
-                        vec_push(&triangles, p2);
-                        vec_push(&entity_idxs, i);
+                    else if (entity->type == BALL_START_ENTITY) {
+                        model = golf_data_get_model("data/models/sphere.obj");
                     }
-                    break;
+                    else if (entity->type == HOLE_ENTITY) {
+                        model = golf_data_get_model("data/models/sphere.obj");
+                    }
+
+                    golf_transform_t *transform = golf_entity_get_transform(entity);
+                    if (!transform) {
+                        golf_log_warning("Could not get transform for entity");
+                    }
+                    else {
+                        mat4 model_mat = golf_transform_get_model_mat(*transform);
+                        for (int j = 0; j < model->positions.length; j++) {
+                            vec3 p0 = vec3_apply_mat4(model->positions.data[j + 0], 1, model_mat);
+                            vec3 p1 = vec3_apply_mat4(model->positions.data[j + 1], 1, model_mat);
+                            vec3 p2 = vec3_apply_mat4(model->positions.data[j + 2], 1, model_mat);
+                            vec_push(&triangles, p0);
+                            vec_push(&triangles, p1);
+                            vec_push(&triangles, p2);
+                            vec_push(&entity_idxs, i);
+                        }
+                    }
                 }
             }
         }

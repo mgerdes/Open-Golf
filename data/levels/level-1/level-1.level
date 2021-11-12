@@ -1,24 +1,28 @@
 {
     "materials": [
+		{
+			"type": "texture",
+			"name": "wall-side",
+			"texture": "data\/textures\/wood.jpg",
+			"friction": 0,
+			"restitution": 0
+		},
         {
-            "name": "wall-side",
-            "texture": "data\/textures\/wood.jpg",
-            "friction": 0,
-            "restitution": 0
-        },
-        {
+			"type": "texture",
             "name": "wall-top",
             "texture": "data\/textures\/wood.jpg",
             "friction": 0,
             "restitution": 0
         },
         {
+			"type": "texture",
             "name": "ground",
             "texture": "data\/textures\/ground.png",
             "friction": 0,
             "restitution": 0
         },
         {
+			"type": "texture",
             "name": "cube",
             "texture": "data\/textures\/ground.png",
             "friction": 0,
@@ -28,6 +32,26 @@
     "entities": [
         {
             "type": "ball_start",
+            "name": "testing",
+            "position": [
+                0,
+                0,
+                0
+            ],
+            "scale": [
+                0.2,
+                0.2,
+                0.2
+            ],
+            "rotation": [
+                0,
+                0,
+                0,
+                1
+            ]
+        },
+        {
+            "type": "hole",
             "name": "testing",
             "position": [
                 0,

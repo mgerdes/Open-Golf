@@ -15,6 +15,7 @@
 #include "golf/ui.h"
 
 #include "golf/shaders/environment.glsl.h"
+#include "golf/shaders/solid_color_material.glsl.h"
 #include "golf/shaders/ui_sprite.glsl.h"
 
 static golf_renderer_t renderer;
@@ -43,9 +44,8 @@ golf_renderer_t *golf_renderer_get(void) {
 }
 
 void golf_renderer_init(void) {
-    map_init(&renderer.pipelines_map);
-
     golf_data_load("data/shaders/environment.glsl");
+    golf_data_load("data/shaders/solid_color_material.glsl");
     golf_data_load("data/shaders/ui_sprite.glsl");
 
     {
@@ -67,8 +67,25 @@ void golf_renderer_init(void) {
                 .write_enabled = true,
             },
         };
-        sg_pipeline pipeline = sg_make_pipeline(&pipeline_desc);
-        map_set(&renderer.pipelines_map, "environment", pipeline);
+        renderer.environment_pipeline = sg_make_pipeline(&pipeline_desc);
+    }
+
+    {
+        golf_shader_t *shader = golf_data_get_shader("data/shaders/solid_color_material.glsl");
+        sg_pipeline_desc pipeline_desc = {
+            .shader = shader->sg_shader,
+            .layout = {
+                .attrs = {
+                    [ATTR_environment_vs_position] 
+                        = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                },
+            },
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = true,
+            },
+        };
+        renderer.solid_color_material_pipeline = sg_make_pipeline(&pipeline_desc);
     }
 
     {
@@ -91,8 +108,7 @@ void golf_renderer_init(void) {
                 },
             },
         };
-        sg_pipeline pipeline = sg_make_pipeline(&pipeline_desc);
-        map_set(&renderer.pipelines_map, "ui_sprites", pipeline);
+        renderer.ui_sprites_pipeline = sg_make_pipeline(&pipeline_desc);
     }
 
     renderer.cam_azimuth_angle = 0.5f*MF_PI;
@@ -413,11 +429,7 @@ static void _draw_ui(void) {
         };
         sg_begin_default_pass(&action, sapp_width(), sapp_height());
 
-        sg_pipeline *ui_sprites_pipeline = map_get(&renderer.pipelines_map, "ui_sprites");
-        if (!ui_sprites_pipeline) {
-            golf_log_error("Could not fine 'ui_sprites' pipeline");
-        }
-        sg_apply_pipeline(*ui_sprites_pipeline);
+        sg_apply_pipeline(renderer.ui_sprites_pipeline);
     }
 
     for (int i = 0; i < ui->entities.length; i++) {
@@ -449,6 +461,70 @@ void golf_renderer_draw(void) {
     _draw_ui();
 }
 
+static void _golf_renderer_draw_model(golf_model_t *model, mat4 model_mat, golf_material_t *material_override, golf_level_t *level) {
+    for (int i = 0; i < model->groups.length; i++) {
+        golf_model_group_t group = model->groups.data[i];
+        golf_material_t material;
+        if (material_override) {
+            material = *material_override;
+        }
+        else if (!golf_level_get_material(level, group.material_name, &material)) {
+            golf_log_warning("Could not find material %s", group.material_name);
+            material.type = GOLF_MATERIAL_TEXTURE;
+            material.texture = golf_data_get_texture("data/textures/fallback.png");
+        }
+
+        switch (material.type) {
+            case GOLF_MATERIAL_TEXTURE: {
+                sg_apply_pipeline(renderer.environment_pipeline);
+
+                environment_vs_params_t vs_params = {
+                    .proj_view_mat = mat4_transpose(renderer.proj_view_mat),
+                    .model_mat = mat4_transpose(model_mat),
+                };
+                sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_environment_vs_params, 
+                        &(sg_range) { &vs_params, sizeof(vs_params) });
+
+                sg_bindings bindings = {
+                    .vertex_buffers[0] = model->sg_positions_buf,
+                    .vertex_buffers[1] = model->sg_texcoords_buf,
+                    .vertex_buffers[2] = model->sg_normals_buf,
+                    .fs_images[SLOT_kd_texture] = material.texture->sg_image,
+                };
+                sg_apply_bindings(&bindings);
+
+                sg_draw(group.start_vertex, group.vertex_count, 1);
+
+                break;
+            }
+            case GOLF_MATERIAL_COLOR: {
+                sg_apply_pipeline(renderer.solid_color_material_pipeline);
+
+                solid_color_material_vs_params_t vs_params = {
+                    .mvp_mat = mat4_transpose(mat4_multiply(renderer.proj_view_mat, model_mat)),
+                };
+                sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_solid_color_material_vs_params,
+                        &(sg_range) { &vs_params, sizeof(vs_params) });
+
+                solid_color_material_fs_params_t fs_params = {
+                    .color = material.color,
+                };
+                sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_solid_color_material_fs_params,
+                        &(sg_range) { &fs_params, sizeof(fs_params) });
+
+                sg_bindings bindings = {
+                    .vertex_buffers[0] = model->sg_positions_buf,
+                };
+                sg_apply_bindings(&bindings);
+
+                sg_draw(group.start_vertex, group.vertex_count, 1);
+
+                break;
+            }
+        }
+    }
+}
+
 void golf_renderer_draw_editor(void) {
     {
         float theta = renderer.cam_inclination_angle;
@@ -476,12 +552,6 @@ void golf_renderer_draw_editor(void) {
         sg_begin_default_pass(&action, sapp_width(), sapp_height());
         sg_apply_viewportf(renderer.viewport_pos.x, renderer.viewport_pos.y, 
                 renderer.viewport_size.x, renderer.viewport_size.y, true);
-
-        sg_pipeline *environment_pipeline = map_get(&renderer.pipelines_map, "environment");
-        if (!environment_pipeline) {
-            golf_log_error("Could not fine 'environment' pipeline");
-        }
-        sg_apply_pipeline(*environment_pipeline);
     }
 
     {
@@ -494,65 +564,24 @@ void golf_renderer_draw_editor(void) {
 
             switch (entity->type) {
                 case MODEL_ENTITY: {
-                    golf_model_entity_t *model_entity = &entity->model;
-                    golf_model_t *model = model_entity->model;
-                    mat4 model_mat = golf_transform_get_model_mat(model_entity->transform);
-
-                    environment_vs_params_t vs_params = {
-                        .proj_view_mat = mat4_transpose(renderer.proj_view_mat),
-                        .model_mat = mat4_transpose(model_mat),
-                    };
-                    sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_environment_vs_params, 
-                            &(sg_range) { &vs_params, sizeof(vs_params) });
-
-                    for (int i = 0; i < model->groups.length; i++) {
-                        golf_texture_t *texture;
-                        golf_model_group_t group = model->groups.data[i];
-                        golf_material_t material;
-                        if (golf_level_get_material(editor->level, group.material_name, &material)) {
-                            texture = material.texture;
-                        }
-                        else {
-                            golf_log_warning("Could not find material %s", group.material_name);
-                            texture = golf_data_get_texture("data/textures/fallback.png");
-                        }
-
-                        sg_bindings bindings = {
-                            .vertex_buffers[0] = model->sg_positions_buf,
-                            .vertex_buffers[1] = model->sg_texcoords_buf,
-                            .vertex_buffers[2] = model->sg_normals_buf,
-                            .fs_images[SLOT_kd_texture] = texture->sg_image,
-                        };
-                        sg_apply_bindings(&bindings);
-                        sg_draw(group.start_vertex, group.vertex_count, 1);
-                    }
+                    golf_model_t *model = entity->model.model;
+                    mat4 model_mat = golf_transform_get_model_mat(entity->model.transform);
+                    _golf_renderer_draw_model(model, model_mat, NULL, editor->level);
                     break;
                 }
                 case BALL_START_ENTITY: {
-                    golf_ball_start_entity_t *ball_start = &entity->ball_start;
-                    mat4 model_mat = golf_transform_get_model_mat(ball_start->transform);
-
-                    environment_vs_params_t vs_params = {
-                        .proj_view_mat = mat4_transpose(renderer.proj_view_mat),
-                        .model_mat = mat4_transpose(model_mat),
-                    };
-                    sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_environment_vs_params, 
-                            &(sg_range) { &vs_params, sizeof(vs_params) });
-
-
                     golf_model_t *model = golf_data_get_model("data/models/sphere.obj");
-                    golf_texture_t *texture = golf_data_get_texture("data/textures/fallback.png");
-                    for (int i = 0; i < model->groups.length; i++) {
-                        golf_model_group_t group = model->groups.data[i];
-                        sg_bindings bindings = {
-                            .vertex_buffers[0] = model->sg_positions_buf,
-                            .vertex_buffers[1] = model->sg_texcoords_buf,
-                            .vertex_buffers[2] = model->sg_normals_buf,
-                            .fs_images[SLOT_kd_texture] = texture->sg_image,
-                        };
-                        sg_apply_bindings(&bindings);
-                        sg_draw(group.start_vertex, group.vertex_count, 1);
-                    }
+                    mat4 model_mat = golf_transform_get_model_mat(entity->ball_start.transform);
+                    golf_material_t material = golf_material_color(V3(1, 0, 0));
+                    _golf_renderer_draw_model(model, model_mat, &material, editor->level);
+                    break;
+                }
+                case HOLE_ENTITY: {
+                    golf_model_t *model = golf_data_get_model("data/models/sphere.obj");
+                    mat4 model_mat = golf_transform_get_model_mat(entity->ball_start.transform);
+                    golf_material_t material = golf_material_color(V3(1, 0, 0));
+                    _golf_renderer_draw_model(model, model_mat, &material, editor->level);
+                    break;
                 }
             }
         }

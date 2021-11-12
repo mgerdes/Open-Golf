@@ -13,7 +13,10 @@ typedef struct golf_renderer {
     mat4 ui_proj_mat, proj_mat, view_mat, proj_view_mat;
     float cam_azimuth_angle, cam_inclination_angle;
     vec3 cam_pos, cam_dir, cam_up;
-    map_sg_pipeline_t pipelines_map;
+
+    sg_pipeline environment_pipeline,
+                solid_color_material_pipeline,
+                ui_sprites_pipeline;
 } golf_renderer_t;
 
 golf_renderer_t *golf_renderer_get(void);

@@ -6,15 +6,29 @@
 #include "golf/file.h"
 #include "golf/maths.h"
 
+typedef enum golf_material_type {
+    GOLF_MATERIAL_TEXTURE,
+    GOLF_MATERIAL_COLOR,
+} golf_material_type_t;
+
 #define GOLF_MATERIAL_NAME_MAX_LEN 64
 typedef struct golf_material {
     char name[GOLF_MATERIAL_NAME_MAX_LEN];
-    char texture_path[GOLF_FILE_MAX_PATH];
-    golf_texture_t *texture;
     float friction;
     float restitution;
+
+    golf_material_type_t type; 
+    union {
+        struct {
+            char texture_path[GOLF_FILE_MAX_PATH];
+            golf_texture_t *texture;
+        };
+        vec3 color;
+    };
 } golf_material_t;
 typedef vec_t(golf_material_t) vec_golf_material_t;
+
+golf_material_t golf_material_color(vec3 color);
 
 typedef struct golf_transform {
     vec3 position;
@@ -34,9 +48,14 @@ typedef struct golf_model_entity {
 } golf_model_entity_t;
 typedef vec_t(golf_model_entity_t) vec_golf_model_entity_t;
 
+typedef struct golf_hole_entity {
+    golf_transform_t transform;
+} golf_hole_entity_t;
+
 typedef enum golf_entity_type {
     MODEL_ENTITY,
     BALL_START_ENTITY,
+    HOLE_ENTITY,
 } golf_entity_type_t;
 
 typedef struct golf_entity {
@@ -45,6 +64,7 @@ typedef struct golf_entity {
     union {
         golf_model_entity_t model;
         golf_ball_start_entity_t ball_start;
+        golf_hole_entity_t hole;
     };
 } golf_entity_t;
 typedef vec_t(golf_entity_t) vec_golf_entity_t;

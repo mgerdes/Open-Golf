@@ -49,23 +49,6 @@ add_library(golf_lib STATIC
     src/golf/renderer.c
     src/golf/string.c
     src/golf/ui.c)
-target_compile_options(golf_lib PRIVATE 
-    -Wall
-    -Wextra
-    -Wwrite-strings
-    -Winit-self
-    -Wcast-align
-    -Wcast-qual
-    -Wpointer-arith
-    -Wstrict-aliasing
-    -Wformat=2
-    -Wmissing-declarations
-    -Wmissing-include-dirs
-    -Wno-unused-parameter
-    -Wuninitialized
-    -Wold-style-definition
-    -Wstrict-prototypes
-    -Wmissing-prototypes)
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
     target_link_libraries(golf_lib PUBLIC
         ${GOLF_BASE_LIBRARIES})
@@ -93,6 +76,23 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
         -lasound)
     target_compile_definitions(golf_lib PUBLIC
         GOLF_PLATFORM_LINUX)
+    target_compile_options(golf_lib PRIVATE 
+        -Wall
+        -Wextra
+        -Wwrite-strings
+        -Winit-self
+        -Wcast-align
+        -Wcast-qual
+        -Wpointer-arith
+        -Wstrict-aliasing
+        -Wformat=2
+        -Wmissing-declarations
+        -Wmissing-include-dirs
+        -Wno-unused-parameter
+        -Wuninitialized
+        -Wold-style-definition
+        -Wstrict-prototypes
+        -Wmissing-prototypes)
 elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
     target_link_libraries(golf_lib PUBLIC
         ${GOLF_BASE_LIBRARIES}

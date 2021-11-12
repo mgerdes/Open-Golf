@@ -11,9 +11,18 @@ bool golf_level_save(golf_level_t *level, const char *path) {
         JSON_Value *json_material_val = json_value_init_object();
         JSON_Object *json_material_obj = json_value_get_object(json_material_val);
         json_object_set_string(json_material_obj, "name", material->name);
-        json_object_set_string(json_material_obj, "texture", material->texture_path);
         json_object_set_number(json_material_obj, "friction", material->friction);
         json_object_set_number(json_material_obj, "restitution", material->restitution);
+
+        switch (material->type) {
+            case GOLF_MATERIAL_TEXTURE: 
+                json_object_set_string(json_material_obj, "texture", material->texture_path);
+                break;
+            case GOLF_MATERIAL_COLOR:
+                golf_json_object_set_vec3(json_material_obj, "color", material->color);
+                break;
+        }
+
         json_array_append_value(json_materials_arr, json_material_val);
     }
 
@@ -44,6 +53,15 @@ bool golf_level_save(golf_level_t *level, const char *path) {
                 golf_json_object_set_quat(json_entity_obj, "rotation", ball_start->transform.rotation);
                 break;
             }
+            case HOLE_ENTITY: {
+                golf_hole_entity_t *hole = &entity->hole;
+                json_object_set_string(json_entity_obj, "type", "hole");
+                json_object_set_string(json_entity_obj, "name", "testing");
+                golf_json_object_set_vec3(json_entity_obj, "position", hole->transform.position);
+                golf_json_object_set_vec3(json_entity_obj, "scale", hole->transform.scale);
+                golf_json_object_set_quat(json_entity_obj, "rotation", hole->transform.rotation);
+                break;
+            }
         }
 
         json_array_append_value(json_entities_arr, json_entity_val);
@@ -67,18 +85,35 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
     JSON_Array *json_materials_arr = json_object_get_array(json_obj, "materials");
     for (int i = 0; i < (int)json_array_get_count(json_materials_arr); i++) {
         JSON_Object *obj = json_array_get_object(json_materials_arr, i);
+        const char *type = json_object_get_string(obj, "type");
         const char *name = json_object_get_string(obj, "name");
-        const char *texture_path = json_object_get_string(obj, "texture");
         float friction = (float)json_object_get_number(obj, "friction");
         float restitution = (float)json_object_get_number(obj, "restitution");
 
+        bool valid_material = false;
         golf_material_t material;
         snprintf(material.name, GOLF_MATERIAL_NAME_MAX_LEN, "%s", name);
-        snprintf(material.texture_path, GOLF_FILE_MAX_PATH, "%s", texture_path);
-        material.texture = golf_data_get_texture(material.texture_path);
         material.friction = friction;
         material.restitution = restitution;
-        vec_push(&level->materials, material);
+        if (type && strcmp(type, "texture") == 0) {
+            material.type = GOLF_MATERIAL_TEXTURE;
+            const char *texture_path = json_object_get_string(obj, "texture");
+            snprintf(material.texture_path, GOLF_FILE_MAX_PATH, "%s", texture_path);
+            material.texture = golf_data_get_texture(material.texture_path);
+            valid_material = true;
+        }
+        else if (type && strcmp(type, "color") == 0) {
+            material.type = GOLF_MATERIAL_COLOR;
+            material.color = golf_json_object_get_vec3(obj, "color");
+            valid_material = true;
+        }
+
+        if (valid_material) {
+            vec_push(&level->materials, material);
+        }
+        else {
+            golf_log_warning("Invalid material. type: %s, name: %s", type, name);
+        }
     }
 
     JSON_Array *json_entities_arr = json_object_get_array(json_obj, "entities");
@@ -87,9 +122,9 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
         const char *type = json_object_get_string(obj, "type");
         const char *name = json_object_get_string(obj, "name");
 
-        golf_entity_t entity;  
         bool valid_entity = false;
-        if (strcmp(type, "model") == 0) {
+        golf_entity_t entity;  
+        if (type && strcmp(type, "model") == 0) {
             const char *model_path = json_object_get_string(obj, "model");
             vec3 position = golf_json_object_get_vec3(obj, "position");
             vec3 scale = golf_json_object_get_vec3(obj, "scale");
@@ -107,7 +142,7 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
             entity.model = model;
             valid_entity = true;
         }
-        else if (strcmp(type, "ball_start") == 0) {
+        else if (type && strcmp(type, "ball_start") == 0) {
             vec3 position = golf_json_object_get_vec3(obj, "position");
             vec3 scale = golf_json_object_get_vec3(obj, "scale");
             quat rotation = golf_json_object_get_quat(obj, "rotation");
@@ -120,6 +155,21 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
             entity.active = true;
             entity.type = BALL_START_ENTITY;
             entity.ball_start = ball_start;
+            valid_entity = true;
+        }
+        else if (type && strcmp(type, "hole") == 0) {
+            vec3 position = golf_json_object_get_vec3(obj, "position");
+            vec3 scale = golf_json_object_get_vec3(obj, "scale");
+            quat rotation = golf_json_object_get_quat(obj, "rotation");
+
+            golf_hole_entity_t hole;
+            hole.transform.position = position;
+            hole.transform.scale = scale;
+            hole.transform.rotation = rotation;
+
+            entity.active = true;
+            entity.type = HOLE_ENTITY;
+            entity.hole = hole;
             valid_entity = true;
         }
 
@@ -137,6 +187,13 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
 
 bool golf_level_unload(golf_level_t *level) {
     return false;
+}
+
+golf_material_t golf_material_color(vec3 color) {
+    golf_material_t material;
+    material.type = GOLF_MATERIAL_COLOR;
+    material.color = color;
+    return material;
 }
 
 mat4 golf_transform_get_model_mat(golf_transform_t transform) {
@@ -163,6 +220,9 @@ golf_transform_t *golf_entity_get_transform(golf_entity_t *entity) {
         }
         case BALL_START_ENTITY: {
             return &entity->ball_start.transform;
+        }
+        case HOLE_ENTITY: {
+            return &entity->hole.transform;
         }
     }
     return NULL;
