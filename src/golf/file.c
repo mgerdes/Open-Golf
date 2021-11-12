@@ -94,7 +94,7 @@ golf_file_t golf_file_new_ext(golf_file_t *file, const char *ext) {
 golf_file_t golf_file_append_extension(const char *path, const char *ext) {
     golf_file_t file = golf_file(path);
 
-    int ext_len = (int) strlen(file.ext);
+    //int ext_len = (int) strlen(file.ext);
     int path_len = (int) strlen(file.path);
     int name_len = (int) strlen(file.name);
 

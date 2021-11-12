@@ -1,12 +1,12 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include "golf/data.h"
 
-#include "3rd_party/fast_obj/fast_obj.h"
-#include "3rd_party/map/map.h"
-#include "3rd_party/parson/parson.h"
-#include "3rd_party/stb/stb_image.h"
-#include "3rd_party/stb/stb_image_write.h"
-#include "3rd_party/stb/stb_truetype.h"
+#include "fast_obj/fast_obj.h"
+#include "map/map.h"
+#include "parson/parson.h"
+#include "stb/stb_image.h"
+#include "stb/stb_image_write.h"
+#include "stb/stb_truetype.h"
 #include "golf/base64.h"
 #include "golf/file.h"
 #include "golf/log.h"
@@ -27,9 +27,9 @@ typedef bool (*golf_data_importer_t)(const char *path, char *data, int data_len)
 static void _golf_data_json_object_get_data(JSON_Object *obj, const char *name, unsigned char **data, int *data_len) {
     const char *enc_data = json_object_get_string(obj, name); 
     int enc_len = (int)strlen(enc_data);
-    *data_len = golf_base64_decode_out_len(enc_data, enc_len);
+    *data_len = golf_base64_decode_out_len((const unsigned char*)enc_data, enc_len);
     *data = malloc(*data_len);
-    if (!golf_base64_decode(enc_data, enc_len, *data)) {
+    if (!golf_base64_decode((const unsigned char*)enc_data, enc_len, *data)) {
         golf_log_warning("Failed to decode data in field %s", name);
     }
 }
@@ -37,7 +37,7 @@ static void _golf_data_json_object_get_data(JSON_Object *obj, const char *name, 
 static void _golf_data_json_object_set_data(JSON_Object *obj, const char *name, unsigned char *data, int data_len) {
     int enc_len = golf_base64_encode_out_len(data, data_len);
     char *enc_data = malloc(enc_len);
-    if (!golf_base64_encode(data, data_len, enc_data)) {
+    if (!golf_base64_encode(data, data_len, (unsigned char*)enc_data)) {
         golf_log_warning("Failed to encode data in field %s", name);
     }
     json_object_set_string(obj, name, enc_data);
@@ -93,7 +93,7 @@ static bool _golf_texture_import(const char *path, char *data, int data_len) {
         json_object_set_string(obj, "filter", "linear");
     }
 
-    _golf_data_json_object_set_data(obj, "img_data", data, data_len);
+    _golf_data_json_object_set_data(obj, "img_data", (unsigned char*)data, data_len);
 
     json_serialize_to_file_pretty(val, import_texture_file_path.cstr);
 
@@ -212,7 +212,7 @@ static JSON_Value *_golf_shader_import_bare(const char *base_name, const char *n
     return val;
 }
 
-bool _golf_shader_import(const char *path, char *data, int data_len) {
+static bool _golf_shader_import(const char *path, char *data, int data_len) {
     golf_file_t file = golf_file(path);
     static const char *slangs = "glsl330:glsl300es";
     JSON_Value *val = json_value_init_object();
@@ -227,7 +227,7 @@ bool _golf_shader_import(const char *path, char *data, int data_len) {
         golf_string_appendf(&cmd, "tools\\sokol-tools\\win32\\sokol-shdc --input %s --output src/golf/shaders/%s.h --slang %s", file.path, file.name, slangs);
 #elif GOLF_PLATFORM_MACOS
 #endif
-        int ret = system(cmd.cstr);
+        system(cmd.cstr);
         golf_string_deinit(&cmd);
     }
 
@@ -323,10 +323,10 @@ static JSON_Value *_golf_font_atlas_import(const char *file_data, int font_size,
     unsigned char *bitmap = malloc(img_size * img_size);
     stbtt_bakedchar cdata[96];
     memset(cdata, 0, sizeof(cdata));
-    stbtt_BakeFontBitmap(file_data, 0, (float)-font_size, bitmap, img_size, img_size, 32, 95, cdata);
+    stbtt_BakeFontBitmap((const unsigned char*)file_data, 0, (float)-font_size, bitmap, img_size, img_size, 32, 95, cdata);
 
     float ascent, descent, linegap;
-    stbtt_GetScaledFontVMetrics(file_data, 0, (float)-font_size, &ascent, &descent, &linegap);
+    stbtt_GetScaledFontVMetrics((const unsigned char*)file_data, 0, (float)-font_size, &ascent, &descent, &linegap);
 
     JSON_Value *val = json_value_init_object();
     JSON_Object *obj = json_value_get_object(val);
@@ -357,7 +357,7 @@ static JSON_Value *_golf_font_atlas_import(const char *file_data, int font_size,
         vec_char_t img;
         vec_init(&img);
         stbi_write_png_to_func(_stbi_write_func, &img, img_size, img_size, 1, bitmap, img_size);
-        _golf_data_json_object_set_data(obj, "img_data", img.data, img.length);
+        _golf_data_json_object_set_data(obj, "img_data", (unsigned char*)img.data, img.length);
         vec_deinit(&img);
     }
 
@@ -365,7 +365,7 @@ static JSON_Value *_golf_font_atlas_import(const char *file_data, int font_size,
     return val;
 }
 
-bool _golf_font_import(const char *path, char *data, int data_len) {
+static bool _golf_font_import(const char *path, char *data, int data_len) {
     JSON_Value *val = json_value_init_object();
     JSON_Object *obj = json_value_get_object(val);
 
@@ -443,7 +443,7 @@ static void _golf_font_load_atlas(JSON_Object *atlas_obj, golf_font_atlas_t *atl
     free(stb_data);
 }
 
-bool _golf_font_load(const char *path, char *data, int data_len, golf_font_t *font) {
+static bool _golf_font_load(const char *path, char *data, int data_len, golf_font_t *font) {
     JSON_Value *val = json_parse_string(data);
     JSON_Object *obj = json_value_get_object(val);
     if (!val) {
@@ -465,7 +465,7 @@ bool _golf_font_load(const char *path, char *data, int data_len, golf_font_t *fo
     return true;
 }
 
-bool _golf_font_unload(golf_font_t *font) {
+static bool _golf_font_unload(golf_font_t *font) {
     for (int i = 0; i < font->atlases.length; i++) {
         golf_font_atlas_t atlas = font->atlases.data[i];
         sg_destroy_image(atlas.sg_image);
@@ -484,7 +484,7 @@ typedef struct _model_material_data {
 } _model_material_data_t;
 typedef vec_t(_model_material_data_t) _vec_model_material_data;
 
-bool _golf_model_import(const char *path, char *data, int data_len) {
+static bool _golf_model_import(const char *path, char *data, int data_len) {
     _vec_model_material_data model_materials;
     vec_init(&model_materials);
 
@@ -599,7 +599,7 @@ bool _golf_model_import(const char *path, char *data, int data_len) {
     return true;
 }
 
-bool _golf_model_load(const char *path, char *data, int data_len, golf_model_t *model) {
+static bool _golf_model_load(const char *path, char *data, int data_len, golf_model_t *model) {
     JSON_Value *val = json_parse_string(data);
     JSON_Object *obj = json_value_get_object(val);
     if (!val) {
@@ -666,7 +666,7 @@ bool _golf_model_load(const char *path, char *data, int data_len, golf_model_t *
     return true;
 }
 
-bool _golf_model_unload(golf_model_t *model) {
+static bool _golf_model_unload(golf_model_t *model) {
     vec_deinit(&model->positions);
     vec_deinit(&model->normals);
     vec_deinit(&model->texcoords);
@@ -901,7 +901,7 @@ void golf_data_init(void) {
     map_init(&_loaded_data);
 }
 
-golf_data_importer_t _golf_data_get_importer(const char *ext) { 
+static golf_data_importer_t _golf_data_get_importer(const char *ext) { 
     if ((strcmp(ext, ".png") == 0) ||
             (strcmp(ext, ".jpg") == 0) ||
             (strcmp(ext, ".bmp") == 0)) {
@@ -1152,7 +1152,7 @@ golf_config_t *golf_data_get_config(const char *path) {
 }
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
-#include "3rd_party/cimgui/cimgui.h"
+#include "cimgui/cimgui.h"
 
 void golf_data_debug_console_tab(void) {
     if (igCollapsingHeader_TreeNodeFlags("Textures", ImGuiTreeNodeFlags_None)) {

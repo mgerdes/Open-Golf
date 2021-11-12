@@ -1,7 +1,7 @@
 #ifndef _GOLF_PARSON_HELPER_H
 #define _GOLF_PARSON_HELPER_H
 
-#include "3rd_party/parson/parson.h"
+#include "parson/parson.h"
 #include "golf/maths.h"
 
 vec2 golf_json_object_get_vec2(JSON_Object *obj, const char *name);

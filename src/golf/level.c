@@ -35,6 +35,8 @@ bool golf_level_save(golf_level_t *level, const char *path) {
                 golf_json_object_set_quat(json_entity_obj, "rotation", model->transform.rotation);
                 break;
             }
+            case BALL_START_ENTITY:
+                break;
         }
 
         json_array_append_value(json_entities_arr, json_entity_val);
@@ -136,6 +138,9 @@ golf_transform_t *golf_entity_get_transform(golf_entity_t *entity) {
     switch (entity->type) {
         case MODEL_ENTITY: {
             return &entity->model.transform;
+        }
+        case BALL_START_ENTITY: {
+            return &entity->ball_start.transform;
         }
     }
     return NULL;

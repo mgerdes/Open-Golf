@@ -1,7 +1,7 @@
 #include "golf/ui.h"
 
 #include <assert.h>
-#include "3rd_party/parson/parson.h"
+#include "parson/parson.h"
 #include "golf/config.h"
 #include "golf/data.h"
 #include "golf/inputs.h"
@@ -196,6 +196,10 @@ void golf_ui_update(float dt) {
                 break;
             case GOLF_UI_TEXT:
                 free(entity.text.string);
+                break;
+            case GOLF_UI_PIXEL_PACK_ICON:
+            case GOLF_UI_SCROLL_LIST_BEGIN:
+            case GOLF_UI_SCROLL_LIST_END:
                 break;
         }
     }

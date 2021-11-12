@@ -32,10 +32,10 @@ int golf_base64_encode_out_len(const unsigned char *src, int len) {
 int golf_base64_decode_out_len(const unsigned char *src, int len) {
     unsigned char dtable[256];
     int i, count, olen;
-    int pad = 0;
+    //int pad = 0;
 
     memset(dtable, 0x80, 256);
-    for (i = 0; i < sizeof(base64_table) - 1; i++)
+    for (i = 0; i < (int)sizeof(base64_table) - 1; i++)
         dtable[base64_table[i]] = (unsigned char) i;
     dtable['='] = 0;
 
@@ -123,7 +123,7 @@ bool golf_base64_decode(const unsigned char *src, int len, unsigned char *out) {
     int pad = 0;
 
     memset(dtable, 0x80, 256);
-    for (i = 0; i < sizeof(base64_table) - 1; i++)
+    for (i = 0; i < (int)sizeof(base64_table) - 1; i++)
         dtable[base64_table[i]] = (unsigned char) i;
     dtable['='] = 0;
 

@@ -3,12 +3,12 @@
 #include <assert.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
-#include "3rd_party/cimgui/cimgui.h"
-#include "3rd_party/cimgui/cimgui.h"
-#include "3rd_party/cimguizmo/cimguizmo.h"
-#include "3rd_party/stb/stb_image.h"
-#include "3rd_party/sokol/sokol_app.h"
-#include "3rd_party/sokol/sokol_gfx.h"
+#include "cimgui/cimgui.h"
+#include "cimgui/cimgui.h"
+#include "cimguizmo/cimguizmo.h"
+#include "stb/stb_image.h"
+#include "sokol/sokol_app.h"
+#include "sokol/sokol_gfx.h"
 #include "golf/editor.h"
 #include "golf/log.h"
 #include "golf/maths.h"
@@ -153,7 +153,7 @@ static void _draw_ui_text(golf_ui_text_t text) {
     float width = 0.0f;
     while (text.string[i]) {
         char c = text.string[i];
-        width += sz_scale * atlas.char_data[c].xadvance;
+        width += sz_scale * atlas.char_data[(int)c].xadvance;
         i++;
     }
 
@@ -185,13 +185,13 @@ static void _draw_ui_text(golf_ui_text_t text) {
     while (text.string[i]) {
         char c = text.string[i];
 
-        int x0 = (int)atlas.char_data[c].x0;
-        int x1 = (int)atlas.char_data[c].x1;
-        int y0 = (int)atlas.char_data[c].y0;
-        int y1 = (int)atlas.char_data[c].y1;
-        float xoff = atlas.char_data[c].xoff;
-        float yoff = atlas.char_data[c].yoff;
-        float xadvance = atlas.char_data[c].xadvance;
+        int x0 = (int)atlas.char_data[(int)c].x0;
+        int x1 = (int)atlas.char_data[(int)c].x1;
+        int y0 = (int)atlas.char_data[(int)c].y0;
+        int y1 = (int)atlas.char_data[(int)c].y1;
+        float xoff = atlas.char_data[(int)c].xoff;
+        float yoff = atlas.char_data[(int)c].yoff;
+        float xadvance = atlas.char_data[(int)c].xadvance;
 
         int round_x = (int)floor((cur_x + xoff) + 0.5f);
         int round_y = (int)floor((cur_y - yoff) + 0.5f);
@@ -235,7 +235,7 @@ static void _draw_ui_text(golf_ui_text_t text) {
 
         sg_draw(0, square_model->positions.length, 1);
 
-        cur_x += sz_scale * atlas.char_data[c].xadvance;
+        cur_x += sz_scale * xadvance;
 
         i++;
     }
@@ -528,6 +528,8 @@ void golf_renderer_draw_editor(void) {
                     }
                     break;
                 }
+                case BALL_START_ENTITY:
+                    break;
             }
         }
     }

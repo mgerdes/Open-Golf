@@ -1,7 +1,7 @@
 #ifndef _GOLF_INPUTS_H
 #define _GOLF_INPUTS_H
 
-#include "3rd_party/sokol/sokol_app.h"
+#include "sokol/sokol_app.h"
 #include "golf/maths.h"
 
 typedef struct golf_inputs {

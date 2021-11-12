@@ -26,7 +26,7 @@
 	Fredrik Kihlander
  */
 
-#include <3rd_party/dbgtools/callstack.h>
+#include <dbgtools/callstack.h>
 
 #if defined( __unix__ ) || defined(unix) || defined(__unix) || ( defined(__APPLE__) && defined(__MACH__) )
 #  define DBG_TOOLS_CALLSTACK_UNIX

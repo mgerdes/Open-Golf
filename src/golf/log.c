@@ -3,7 +3,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "3rd_party/dbgtools/callstack.h"
+#include "dbgtools/callstack.h"
+#include "golf/log.h"
 
 typedef struct _golf_log_entry {
     char msg[1024];
@@ -26,7 +27,7 @@ void golf_log_init(void) {
     _state.entry_count = 0;
 }
 
-static void _print_callstack() {
+static void _print_callstack(void) {
     void *addresses[256];
     int i;
     int num_addresses = callstack(3, addresses, 256);

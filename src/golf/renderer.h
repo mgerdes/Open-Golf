@@ -1,9 +1,9 @@
 #ifndef _GOLF_RENDERER_H
 #define _GOLF_RENDERER_H
 
-#include "3rd_party/map/map.h"
-#include "3rd_party/sokol/sokol_gfx.h"
-#include "3rd_party/vec/vec.h"
+#include "map/map.h"
+#include "sokol/sokol_gfx.h"
+#include "vec/vec.h"
 #include "golf/maths.h"
 
 typedef map_t(sg_pipeline) map_sg_pipeline_t;

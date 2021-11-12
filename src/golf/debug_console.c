@@ -1,7 +1,7 @@
 #include "golf/debug_console.h"
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
-#include "3rd_party/cimgui/cimgui.h"
+#include "cimgui/cimgui.h"
 #include "golf/config.h"
 #include "golf/data.h"
 #include "golf/inputs.h"
@@ -10,11 +10,11 @@
 
 static golf_inputs_t *inputs; 
 
-void golf_debug_console_init() {
+void golf_debug_console_init(void) {
     inputs = golf_inputs_get();
 }
 
-static void _debug_console_main_tab() {
+static void _debug_console_main_tab(void) {
     igText("Frame Rate: %0.3f\n", igGetIO()->Framerate);
     igText("Mouse Pos: <%0.3f, %0.3f>\n", inputs->mouse_pos.x, inputs->mouse_pos.y);
 }

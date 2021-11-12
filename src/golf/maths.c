@@ -511,7 +511,7 @@ bool mat4_equal(mat4 m0, mat4 m1) {
     return true;
 }
 
-mat4 mat4_zero() {
+mat4 mat4_zero(void) {
     return mat4_create(
             0.0, 0.0, 0.0, 0.0,
             0.0, 0.0, 0.0, 0.0,
@@ -519,7 +519,7 @@ mat4 mat4_zero() {
             0.0, 0.0, 0.0, 0.0);
 }
 
-mat4 mat4_identity() {
+mat4 mat4_identity(void) {
     return mat4_create(
             1.0, 0.0, 0.0, 0.0,
             0.0, 1.0, 0.0, 0.0,
@@ -1446,7 +1446,7 @@ vec3 closest_point_point_obb(vec3 p, vec3 bc, vec3 bx, vec3 by, vec3 bz, float b
     return q;
 }
 
-float clamp(float n, float min, float max) {
+static float clamp(float n, float min, float max) {
     if (n < min) return min;
     if (n > max) return max;
     return n;

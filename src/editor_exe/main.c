@@ -3,15 +3,15 @@
 #include <stdio.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
-#include "3rd_party/cimgui/cimgui.h"
-#include "3rd_party/cimguizmo/cimguizmo.h"
-#include "3rd_party/IconsFontAwesome5/IconsFontAwesome5.h"
-#include "3rd_party/sokol/sokol_app.h"
-#include "3rd_party/sokol/sokol_audio.h"
-#include "3rd_party/sokol/sokol_gfx.h"
-#include "3rd_party/sokol/sokol_glue.h"
-#include "3rd_party/sokol/sokol_imgui.h"
-#include "3rd_party/sokol/sokol_time.h"
+#include "cimgui/cimgui.h"
+#include "cimguizmo/cimguizmo.h"
+#include "IconsFontAwesome5/IconsFontAwesome5.h"
+#include "sokol/sokol_app.h"
+#include "sokol/sokol_audio.h"
+#include "sokol/sokol_gfx.h"
+#include "sokol/sokol_glue.h"
+#include "sokol/sokol_imgui.h"
+#include "sokol/sokol_time.h"
 #include "golf/config.h"
 #include "golf/data.h"
 #include "golf/editor.h"
@@ -193,5 +193,5 @@ sapp_desc sokol_main(int argc, char *argv[]) {
 
 #define SOKOL_WIN32_FORCE_MAIN
 #define SOKOL_IMPL
-#include "3rd_party/sokol/sokol_app.h"
+#include "sokol/sokol_app.h"
 

@@ -1,7 +1,7 @@
 #ifndef _GOLF_LEVEL_H
 #define _GOLF_LEVEL_H
 
-#include "3rd_party/vec/vec.h"
+#include "vec/vec.h"
 #include "golf/data.h"
 #include "golf/file.h"
 #include "golf/maths.h"
@@ -23,6 +23,10 @@ typedef struct golf_transform {
 } golf_transform_t;
 mat4 golf_transform_get_model_mat(golf_transform_t transform);
 
+typedef struct golf_ball_start_entity {
+    golf_transform_t transform;
+} golf_ball_start_entity_t;
+
 typedef struct golf_model_entity {
     golf_transform_t transform;
     char model_path[GOLF_FILE_MAX_PATH];
@@ -32,6 +36,7 @@ typedef vec_t(golf_model_entity_t) vec_golf_model_entity_t;
 
 typedef enum golf_entity_type {
     MODEL_ENTITY,
+    BALL_START_ENTITY,
 } golf_entity_type_t;
 
 typedef struct golf_entity {
@@ -39,6 +44,7 @@ typedef struct golf_entity {
     golf_entity_type_t type;
     union {
         golf_model_entity_t model;
+        golf_ball_start_entity_t ball_start;
     };
 } golf_entity_t;
 typedef vec_t(golf_entity_t) vec_golf_entity_t;

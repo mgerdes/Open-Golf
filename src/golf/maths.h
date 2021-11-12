@@ -8,8 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "3rd_party/map/map.h"
-#include "3rd_party/vec/vec.h"
+#include "map/map.h"
+#include "vec/vec.h"
 
 #define MF_PI ((float) M_PI)
 #define DEGREES_PER_RADIAN 0.01745329251f
@@ -110,6 +110,7 @@ vec2 vec2_set_length(vec2 v, float l);
 vec2 vec2_isometric_projection(vec2 v, float scale, float angle);
 bool vec2_point_left_of_line(vec2 point, vec2 line_p0, vec2 line_p1);
 bool vec2_point_right_of_line(vec2 point, vec2 line_p0, vec2 line_p1);
+bool vec2_lines_intersect(vec2 line0_p0, vec2 line0_p1, vec2 line1_p0, vec2 line1_p1);
 bool vec2_point_on_line(vec2 point, vec2 line_p0, vec2 line_p1);
 bool vec2_point_in_polygon(vec2 point, int num_poly_points, vec2 *poly_points);
 vec2 vec2_bezier(vec2 p0, vec2 p1, vec2 p2, vec2 p3, float t);
@@ -166,7 +167,7 @@ mat4 mat4_create(float a, float b, float c, float d,
         float m, float n, float o, float p);
 bool mat4_equal(mat4 m0, mat4 m1);
 mat4 mat4_zero(void);
-mat4 mat4_identity();
+mat4 mat4_identity(void);
 mat4 mat4_translation(vec3 v);
 mat4 mat4_scale(vec3 v);
 mat4 mat4_rotation_x(float theta);

@@ -3,7 +3,7 @@
 #ifndef CIMGUIZMO_INCLUDED
 #define CIMGUIZMO_INCLUDED
 
-#include "3rd_party/cimgui/cimgui.h"
+#include "cimgui/cimgui.h"
 
 #ifdef CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 

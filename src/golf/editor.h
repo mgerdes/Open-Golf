@@ -2,9 +2,9 @@
 #define _GOLF_EDITOR_H
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
-#include "3rd_party/cimgui/cimgui.h"
-#include "3rd_party/cimguizmo/cimguizmo.h"
-#include "3rd_party/vec/vec.h"
+#include "cimgui/cimgui.h"
+#include "cimguizmo/cimguizmo.h"
+#include "vec/vec.h"
 #include "golf/file.h"
 #include "golf/level.h"
 #include "golf/maths.h"

@@ -8,7 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "3rd_party/vec/vec.h"
+#include "vec/vec.h"
 
 typedef struct golf_filetime {
     uint64_t unix_time;

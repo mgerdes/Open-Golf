@@ -3,9 +3,9 @@
 #include <string.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
-#include "3rd_party/cimgui/cimgui.h"
-#include "3rd_party/cimguizmo/cimguizmo.h"
-#include "3rd_party/IconsFontAwesome5/IconsFontAwesome5.h"
+#include "cimgui/cimgui.h"
+#include "cimguizmo/cimguizmo.h"
+#include "IconsFontAwesome5/IconsFontAwesome5.h"
 #include "golf/data.h"
 #include "golf/inputs.h"
 #include "golf/log.h"
@@ -490,10 +490,12 @@ void golf_editor_update(float dt) {
                     golf_entity_t *entity = &editor.level->entities.data[i];
                     switch (entity->type) {
                         case MODEL_ENTITY: {
-                            golf_model_entity_t *model_entity = &entity->model;
+                            //golf_model_entity_t *model_entity = &entity->model;
                             igSelectable_Bool("Model entity", false, ImGuiSelectableFlags_None, (ImVec2){0, 0});
                             break;
                         }
+                        case BALL_START_ENTITY:
+                            break;
                     }
                 }
                 igEndTabItem();
@@ -588,6 +590,8 @@ void golf_editor_update(float dt) {
                     }
                     break;
                 }
+                case BALL_START_ENTITY:
+                    break;
             }
         }
         else {
@@ -641,6 +645,8 @@ void golf_editor_update(float dt) {
                     }
                     break;
                 }
+                case BALL_START_ENTITY:
+                    break;
             }
         }
 

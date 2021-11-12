@@ -1,4 +1,4 @@
-#include "3rd_party/glad/glad.h"
+#include "glad/glad.h"
 
 #define LIGHTMAPPER_IMPLEMENTATION
-#include "3rd_party/lightmapper/lightmapper.h"
+#include "lightmapper/lightmapper.h"
