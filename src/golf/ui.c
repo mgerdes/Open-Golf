@@ -193,13 +193,12 @@ void golf_ui_update(float dt) {
         golf_ui_entity_t entity = ui.entities.data[i];
         switch (entity.type) {
             case GOLF_UI_PIXEL_PACK_SQUARE:
-                break;
-            case GOLF_UI_TEXT:
-                free(entity.text.string);
-                break;
             case GOLF_UI_PIXEL_PACK_ICON:
             case GOLF_UI_SCROLL_LIST_BEGIN:
             case GOLF_UI_SCROLL_LIST_END:
+                break;
+            case GOLF_UI_TEXT:
+                free(entity.text.string);
                 break;
         }
     }

@@ -35,8 +35,15 @@ bool golf_level_save(golf_level_t *level, const char *path) {
                 golf_json_object_set_quat(json_entity_obj, "rotation", model->transform.rotation);
                 break;
             }
-            case BALL_START_ENTITY:
+            case BALL_START_ENTITY: {
+                golf_ball_start_entity_t *ball_start = &entity->ball_start;
+                json_object_set_string(json_entity_obj, "type", "ball_start");
+                json_object_set_string(json_entity_obj, "name", "testing");
+                golf_json_object_set_vec3(json_entity_obj, "position", ball_start->transform.position);
+                golf_json_object_set_vec3(json_entity_obj, "scale", ball_start->transform.scale);
+                golf_json_object_set_quat(json_entity_obj, "rotation", ball_start->transform.rotation);
                 break;
+            }
         }
 
         json_array_append_value(json_entities_arr, json_entity_val);
@@ -98,6 +105,21 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
             entity.active = true;
             entity.type = MODEL_ENTITY;
             entity.model = model;
+            valid_entity = true;
+        }
+        else if (strcmp(type, "ball_start") == 0) {
+            vec3 position = golf_json_object_get_vec3(obj, "position");
+            vec3 scale = golf_json_object_get_vec3(obj, "scale");
+            quat rotation = golf_json_object_get_quat(obj, "rotation");
+
+            golf_ball_start_entity_t ball_start;
+            ball_start.transform.position = position;
+            ball_start.transform.scale = scale;
+            ball_start.transform.rotation = rotation;
+
+            entity.active = true;
+            entity.type = BALL_START_ENTITY;
+            entity.ball_start = ball_start;
             valid_entity = true;
         }
 

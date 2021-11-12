@@ -528,8 +528,32 @@ void golf_renderer_draw_editor(void) {
                     }
                     break;
                 }
-                case BALL_START_ENTITY:
-                    break;
+                case BALL_START_ENTITY: {
+                    golf_ball_start_entity_t *ball_start = &entity->ball_start;
+                    mat4 model_mat = golf_transform_get_model_mat(ball_start->transform);
+
+                    environment_vs_params_t vs_params = {
+                        .proj_view_mat = mat4_transpose(renderer.proj_view_mat),
+                        .model_mat = mat4_transpose(model_mat),
+                    };
+                    sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_environment_vs_params, 
+                            &(sg_range) { &vs_params, sizeof(vs_params) });
+
+
+                    golf_model_t *model = golf_data_get_model("data/models/sphere.obj");
+                    golf_texture_t *texture = golf_data_get_texture("data/textures/fallback.png");
+                    for (int i = 0; i < model->groups.length; i++) {
+                        golf_model_group_t group = model->groups.data[i];
+                        sg_bindings bindings = {
+                            .vertex_buffers[0] = model->sg_positions_buf,
+                            .vertex_buffers[1] = model->sg_texcoords_buf,
+                            .vertex_buffers[2] = model->sg_normals_buf,
+                            .fs_images[SLOT_kd_texture] = texture->sg_image,
+                        };
+                        sg_apply_bindings(&bindings);
+                        sg_draw(group.start_vertex, group.vertex_count, 1);
+                    }
+                }
             }
         }
     }

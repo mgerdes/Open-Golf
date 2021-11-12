@@ -490,11 +490,11 @@ void golf_editor_update(float dt) {
                     golf_entity_t *entity = &editor.level->entities.data[i];
                     switch (entity->type) {
                         case MODEL_ENTITY: {
-                            //golf_model_entity_t *model_entity = &entity->model;
-                            igSelectable_Bool("Model entity", false, ImGuiSelectableFlags_None, (ImVec2){0, 0});
+                            igSelectable_Bool("Model Entity", false, ImGuiSelectableFlags_None, (ImVec2){0, 0});
                             break;
                         }
                         case BALL_START_ENTITY:
+                            igSelectable_Bool("Ball Start Entity", false, ImGuiSelectableFlags_None, (ImVec2){0, 0});
                             break;
                     }
                 }
@@ -645,15 +645,27 @@ void golf_editor_update(float dt) {
                     }
                     break;
                 }
-                case BALL_START_ENTITY:
+                case BALL_START_ENTITY: {
+                    golf_model_t *model = golf_data_get_model("data/models/sphere.obj");
+                    mat4 model_mat = golf_transform_get_model_mat(entity->ball_start.transform);
+                    for (int j = 0; j < model->positions.length; j++) {
+                        vec3 p0 = vec3_apply_mat4(model->positions.data[j + 0], 1, model_mat);
+                        vec3 p1 = vec3_apply_mat4(model->positions.data[j + 1], 1, model_mat);
+                        vec3 p2 = vec3_apply_mat4(model->positions.data[j + 2], 1, model_mat);
+                        vec_push(&triangles, p0);
+                        vec_push(&triangles, p1);
+                        vec_push(&triangles, p2);
+                        vec_push(&entity_idxs, i);
+                    }
                     break;
+                }
             }
         }
 
         editor.hovered_idx = -1;
         float t;
         int idx;
-        if (ray_intersect_triangles(inputs->mouse_ray_orig, inputs->mouse_ray_dir, triangles.data, triangles.length, mat4_identity(), &t, &idx)) {
+        if (ray_intersect_triangles(inputs->mouse_ray_orig, inputs->mouse_ray_dir, triangles.data, triangles.length, &t, &idx)) {
             editor.hovered_idx = entity_idxs.data[idx];
         }
 

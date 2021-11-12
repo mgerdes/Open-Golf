@@ -101,6 +101,7 @@ static void frame(void) {
         golf_data_load("data/models/ui_sprite_square.obj");
         golf_data_load("data/models/cube.obj");
         golf_data_load("data/models/teapot.obj");
+        golf_data_load("data/models/sphere.obj");
         golf_data_load("data/levels/level-1/level-1.obj");
         golf_data_load("data/textures/fallback.png");
         golf_data_load("data/textures/wood.jpg");
