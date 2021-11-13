@@ -8,6 +8,10 @@ bool golf_level_save(golf_level_t *level, const char *path) {
     JSON_Array *json_materials_arr = json_value_get_array(json_materials_val);
     for (int i = 0; i < level->materials.length; i++) {
         golf_material_t *material = &level->materials.data[i];
+        if (!material->active) {
+            continue;
+        }
+
         JSON_Value *json_material_val = json_value_init_object();
         JSON_Object *json_material_obj = json_value_get_object(json_material_val);
         json_object_set_string(json_material_obj, "name", material->name);
@@ -32,6 +36,10 @@ bool golf_level_save(golf_level_t *level, const char *path) {
     JSON_Array *json_entities_arr = json_value_get_array(json_entities_val);
     for (int i = 0; i < level->entities.length; i++) {
         golf_entity_t *entity = &level->entities.data[i];
+        if (!entity->active) {
+            continue;
+        }
+
         JSON_Value *json_entity_val = json_value_init_object();
         JSON_Object *json_entity_obj = json_value_get_object(json_entity_val);
 
@@ -94,6 +102,8 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
 
         bool valid_material = false;
         golf_material_t material;
+        memset(&material, 0, sizeof(golf_material_t));
+        material.active = true;
         snprintf(material.name, GOLF_MATERIAL_NAME_MAX_LEN, "%s", name);
         material.friction = friction;
         material.restitution = restitution;
@@ -207,6 +217,9 @@ mat4 golf_transform_get_model_mat(golf_transform_t transform) {
 
 bool golf_level_get_material(golf_level_t *level, const char *material_name, golf_material_t *material) {
     for (int i = 0; i < level->materials.length; i++) {
+        if (!level->materials.data[i].active) {
+            continue;
+        }
         if (strcmp(level->materials.data[i].name, material_name) == 0) {
             *material = level->materials.data[i];
             return true;

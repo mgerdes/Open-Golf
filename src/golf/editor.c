@@ -107,6 +107,13 @@ static void _golf_editor_start_action(golf_editor_action_t action) {
     editor.cur_action = action;
 }
 
+static void _golf_editor_start_action_with_data(void *data, int data_len) {
+    golf_editor_action_t action;
+    _golf_editor_action_init(&action);
+    _golf_editor_action_push_data(&action, data, data_len);
+    _golf_editor_start_action(action);
+}
+
 static void _golf_editor_commit_action(void) {
     if (!editor.started_action) {
         golf_log_warning("Commiting action without one started");
@@ -158,6 +165,70 @@ static void _golf_editor_undo_action(void) {
     for (int i = 0; i < action->datas.length; i++) {
         golf_editor_action_data_t *action_data = &action->datas.data[i];
         memcpy(action_data->ptr, action_data->copy, action_data->size);
+    }
+}
+
+static void _golf_editor_undoable_igInputText(const char *label, char *buf, int buf_len, bool *edit_done, void *additional_buf, int additional_buf_len) {
+    if (edit_done) {
+        *edit_done = false;
+    }
+
+    igInputText(label, buf, buf_len, ImGuiInputTextFlags_None, NULL, NULL);
+    if (igIsItemActivated()) {
+        golf_editor_action_t action;
+        _golf_editor_action_init(&action);
+        _golf_editor_action_push_data(&action, buf, buf_len);
+        if (additional_buf) {
+            _golf_editor_action_push_data(&action, additional_buf, additional_buf_len);
+        }
+        _golf_editor_queue_start_action(action);
+    }
+    if (igIsItemDeactivated()) {
+        if (edit_done) {
+            *edit_done = true;
+        }
+        if (igIsItemDeactivatedAfterEdit()) {
+            _golf_editor_queue_commit_action();
+        }
+        else {
+            _golf_editor_queue_decommit_action();
+        }
+    }
+}
+
+static void _golf_editor_undoable_igInputFloat3(const char *label, float *f3) {
+    igInputFloat3(label, f3, "%.3f", ImGuiInputTextFlags_None);
+    if (igIsItemActivated()) {
+        golf_editor_action_t action;
+        _golf_editor_action_init(&action);
+        _golf_editor_action_push_data(&action, f3, 3 * sizeof(float));
+        _golf_editor_queue_start_action(action);
+    }
+    if (igIsItemDeactivated()) {
+        if (igIsItemDeactivatedAfterEdit()) {
+            _golf_editor_queue_commit_action();
+        }
+        else {
+            _golf_editor_queue_decommit_action();
+        }
+    }
+}
+
+static void _golf_editor_undoable_igInputFloat4(const char *label, float *f4) {
+    igInputFloat4(label, f4, "%.3f", ImGuiInputTextFlags_None);
+    if (igIsItemActivated()) {
+        golf_editor_action_t action;
+        _golf_editor_action_init(&action);
+        _golf_editor_action_push_data(&action, f4, 4 * sizeof(float));
+        _golf_editor_queue_start_action(action);
+    }
+    if (igIsItemDeactivated()) {
+        if (igIsItemDeactivatedAfterEdit()) {
+            _golf_editor_queue_commit_action();
+        }
+        else {
+            _golf_editor_queue_decommit_action();
+        }
     }
 }
 
@@ -508,23 +579,24 @@ void golf_editor_update(float dt) {
 
             if (igBeginTabItem("Materials", NULL, ImGuiTabItemFlags_None)) {
                 for (int i = 0; i < editor.level->materials.length; i++) {
-                    igPushID_Int(i);
                     golf_material_t *material = &editor.level->materials.data[i];
+                    if (!material->active) {
+                        continue;
+                    }
+
+                    igPushID_Int(i);
                     if (igTreeNodeEx_StrStr("material", ImGuiTreeNodeFlags_None, "%s", material->name)) {
                         golf_material_type_t material_type_before = material->type;
                         const char *items[] = { "Texture", "Color" };
                         igCombo_Str_arr("Type", (int*)&material->type, items, 2, 0);
                         if (material_type_before != material->type) {
                             golf_material_type_t material_type_after = material->type;
+
                             material->type = material_type_before;
-
-                            golf_editor_action_t action;
-                            _golf_editor_action_init(&action);
-                            _golf_editor_action_push_data(&action, material, sizeof(golf_material_t)); 
-                            _golf_editor_start_action(action);
+                            _golf_editor_start_action_with_data(material, sizeof(golf_material_t));
                             _golf_editor_commit_action();
-
                             material->type = material_type_after;
+
                             switch (material->type) {
                                 case GOLF_MATERIAL_TEXTURE: {
                                     snprintf(material->texture_path, GOLF_FILE_MAX_PATH, "%s", "data/textures/fallback.png");
@@ -538,66 +610,27 @@ void golf_editor_update(float dt) {
                             }
                         }
 
-                        igInputText("Name", material->name, GOLF_MATERIAL_NAME_MAX_LEN, ImGuiInputTextFlags_None, NULL, NULL);
-                        if (igIsItemActivated()) {
-                            golf_editor_action_t action;
-                            _golf_editor_action_init(&action);
-                            _golf_editor_action_push_data(&action, material->name, GOLF_MATERIAL_NAME_MAX_LEN);
-                            _golf_editor_queue_start_action(action);
-                        }
-                        if (igIsItemDeactivated()) {
-                            if (igIsItemDeactivatedAfterEdit()) {
-                                _golf_editor_queue_commit_action();
-                            }
-                            else {
-                                _golf_editor_queue_decommit_action();
-                            }
-                        }
+                        _golf_editor_undoable_igInputText("Name", material->name, GOLF_MATERIAL_NAME_MAX_LEN, NULL, NULL, 0);
 
                         switch (material->type) {
                             case GOLF_MATERIAL_TEXTURE: {
-                                igInputText("Texture", material->texture_path, GOLF_FILE_MAX_PATH, ImGuiInputTextFlags_None, NULL, NULL);
-                                if (igIsItemActivated()) {
-                                    golf_editor_action_t action;
-                                    _golf_editor_action_init(&action);
-                                    _golf_editor_action_push_data(&action, material->texture_path, GOLF_FILE_MAX_PATH);
-                                    _golf_editor_action_push_data(&action, &material->texture, sizeof(material->texture));
-                                    _golf_editor_queue_start_action(action);
-                                }
-                                if (igIsItemDeactivated()) {
+                                bool edit_done = false;
+                                _golf_editor_undoable_igInputText("Texture", material->texture_path, GOLF_FILE_MAX_PATH, &edit_done, &material->texture, sizeof(material->texture));
+                                if (edit_done) {
                                     material->texture = golf_data_get_texture(material->texture_path);
-                                    if (igIsItemDeactivatedAfterEdit()) {
-                                        _golf_editor_queue_commit_action();
-                                    }
-                                    else {
-                                        _golf_editor_queue_decommit_action();
-                                    }
                                 }
                                 break;
                             }
                             case GOLF_MATERIAL_COLOR: {
-                                igInputFloat3("Color", (float*)&material->color, "%.3f", ImGuiInputTextFlags_None);
-                                if (igIsItemActivated()) {
-                                    golf_editor_action_t action;
-                                    _golf_editor_action_init(&action);
-                                    _golf_editor_action_push_data(&action, &material->color, sizeof(material->color));
-                                    _golf_editor_queue_start_action(action);
-                                }
-                                if (igIsItemDeactivated()) {
-                                    if (igIsItemDeactivatedAfterEdit()) {
-                                        _golf_editor_queue_commit_action();
-                                    }
-                                    else {
-                                        _golf_editor_queue_decommit_action();
-                                    }
-                                }
+                                _golf_editor_undoable_igInputFloat3("Color", (float*)&material->color);
                                 break;
                             }
                         }
 
                         if (igButton("Delete Material", (ImVec2){0, 0})) {
-                            vec_splice(&editor.level->materials, i, 1);
-                            i--;
+                            _golf_editor_start_action_with_data(&material->active, sizeof(material->active));
+                            material->active = false;
+                            _golf_editor_commit_action();
                         }
                         igTreePop();
                     }
@@ -607,10 +640,17 @@ void golf_editor_update(float dt) {
                 if (igButton("Create Material", (ImVec2){0, 0})) {
                     golf_material_t new_material;
                     memset(&new_material, 0, sizeof(golf_material_t));
+                    new_material.active = true;
                     snprintf(new_material.name, GOLF_MATERIAL_NAME_MAX_LEN, "%s", "new");
                     new_material.type = GOLF_MATERIAL_COLOR;
                     new_material.color = V3(1, 0, 0);
                     _golf_editor_vec_push_and_fix_actions(&editor.level->materials, new_material);
+
+                    golf_material_t *material = &vec_last(&editor.level->materials);
+                    material->active = false;
+                    _golf_editor_start_action_with_data(&material->active, sizeof(material->active));
+                    material->active = true;
+                    _golf_editor_commit_action();
                 }
                 igEndTabItem();
             }
@@ -626,63 +666,27 @@ void golf_editor_update(float dt) {
             golf_entity_t *entity = &editor.level->entities.data[idx];
             switch (entity->type) {
                 case MODEL_ENTITY: {
-                    golf_model_entity_t *model_entity = &entity->model;
+                    golf_model_entity_t *model = &entity->model;
                     igText("TYPE: Model");
-                    igInputFloat3("Position", (float*)&model_entity->transform.position, "%.3f", ImGuiInputTextFlags_None);
-                    if (igIsItemActivated()) {
-                        golf_editor_action_t action;
-                        _golf_editor_action_init(&action);
-                        _golf_editor_action_push_data(&action, &model_entity->transform.position, sizeof(model_entity->transform.position));
-                        _golf_editor_queue_start_action(action);
-                    }
-                    if (igIsItemDeactivated()) {
-                        if (igIsItemDeactivatedAfterEdit()) {
-                            _golf_editor_queue_commit_action();
-                        }
-                        else {
-                            _golf_editor_queue_decommit_action();
-                        }
-                    }
+                    _golf_editor_undoable_igInputFloat3("Position", (float*)&model->transform.position);
+                    _golf_editor_undoable_igInputFloat3("Scale", (float*)&model->transform.scale);
+                    _golf_editor_undoable_igInputFloat4("Rotation", (float*)&model->transform.rotation);
                     break;
                 }
                 case BALL_START_ENTITY: {
                     golf_ball_start_entity_t *ball_start = &entity->ball_start;
                     igText("TYPE: Ball Start");
-                    igInputFloat3("Position", (float*)&ball_start->transform.position, "%.3f", ImGuiInputTextFlags_None);
-                    if (igIsItemActivated()) {
-                        golf_editor_action_t action;
-                        _golf_editor_action_init(&action);
-                        _golf_editor_action_push_data(&action, &ball_start->transform.position, sizeof(ball_start->transform.position));
-                        _golf_editor_queue_start_action(action);
-                    }
-                    if (igIsItemDeactivated()) {
-                        if (igIsItemDeactivatedAfterEdit()) {
-                            _golf_editor_queue_commit_action();
-                        }
-                        else {
-                            _golf_editor_queue_decommit_action();
-                        }
-                    }
+                    _golf_editor_undoable_igInputFloat3("Position", (float*)&ball_start->transform.position);
+                    _golf_editor_undoable_igInputFloat3("Scale", (float*)&ball_start->transform.scale);
+                    _golf_editor_undoable_igInputFloat4("Rotation", (float*)&ball_start->transform.rotation);
                     break;
                 }
                 case HOLE_ENTITY: {
                     golf_hole_entity_t *hole = &entity->hole;
                     igText("TYPE: Hole");
-                    igInputFloat3("Position", (float*)&hole->transform.position, "%.3f", ImGuiInputTextFlags_None);
-                    if (igIsItemActivated()) {
-                        golf_editor_action_t action;
-                        _golf_editor_action_init(&action);
-                        _golf_editor_action_push_data(&action, &hole->transform.position, sizeof(hole->transform.position));
-                        _golf_editor_queue_start_action(action);
-                    }
-                    if (igIsItemDeactivated()) {
-                        if (igIsItemDeactivatedAfterEdit()) {
-                            _golf_editor_queue_commit_action();
-                        }
-                        else {
-                            _golf_editor_queue_decommit_action();
-                        }
-                    }
+                    _golf_editor_undoable_igInputFloat3("Position", (float*)&hole->transform.position);
+                    _golf_editor_undoable_igInputFloat3("Scale", (float*)&hole->transform.scale);
+                    _golf_editor_undoable_igInputFloat4("Rotation", (float*)&hole->transform.rotation);
                     break;
                 }
             }

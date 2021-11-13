@@ -13,6 +13,7 @@ typedef enum golf_material_type {
 
 #define GOLF_MATERIAL_NAME_MAX_LEN 64
 typedef struct golf_material {
+    bool active;
     char name[GOLF_MATERIAL_NAME_MAX_LEN];
     float friction;
     float restitution;
