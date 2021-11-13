@@ -1,32 +1,32 @@
 {
     "materials": [
-		{
-			"type": "texture",
-			"name": "wall-side",
-			"texture": "data\/textures\/wood.jpg",
-			"friction": 0,
-			"restitution": 0
-		},
         {
-			"type": "texture",
+            "name": "wall-side",
+            "friction": 0,
+            "restitution": 0,
+            "type": "texture",
+            "texture": "data\/textures\/wood.jpg"
+        },
+        {
             "name": "wall-top",
-            "texture": "data\/textures\/wood.jpg",
             "friction": 0,
-            "restitution": 0
+            "restitution": 0,
+            "type": "texture",
+            "texture": "data\/textures\/wood.jpg"
         },
         {
-			"type": "texture",
             "name": "ground",
-            "texture": "data\/textures\/ground.png",
             "friction": 0,
-            "restitution": 0
+            "restitution": 0,
+            "type": "texture",
+            "texture": "data\/textures\/ground.png"
         },
         {
-			"type": "texture",
             "name": "cube",
-            "texture": "data\/textures\/ground.png",
             "friction": 0,
-            "restitution": 0
+            "restitution": 0,
+            "type": "texture",
+            "texture": "data\/textures\/ground.png"
         }
     ],
     "entities": [
@@ -34,9 +34,9 @@
             "type": "ball_start",
             "name": "testing",
             "position": [
+                2,
                 0,
-                0,
-                0
+                2
             ],
             "scale": [
                 0.2,
@@ -54,9 +54,9 @@
             "type": "hole",
             "name": "testing",
             "position": [
+                2,
                 0,
-                0,
-                0
+                12
             ],
             "scale": [
                 0.2,
@@ -98,7 +98,7 @@
             "position": [
                 0,
                 0,
-                0
+                -3.7253e-09
             ],
             "scale": [
                 1,

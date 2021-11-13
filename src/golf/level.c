@@ -16,9 +16,11 @@ bool golf_level_save(golf_level_t *level, const char *path) {
 
         switch (material->type) {
             case GOLF_MATERIAL_TEXTURE: 
+                json_object_set_string(json_material_obj, "type", "texture");
                 json_object_set_string(json_material_obj, "texture", material->texture_path);
                 break;
             case GOLF_MATERIAL_COLOR:
+                json_object_set_string(json_material_obj, "type", "color");
                 golf_json_object_set_vec3(json_material_obj, "color", material->color);
                 break;
         }

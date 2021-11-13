@@ -627,7 +627,7 @@ void golf_editor_update(float dt) {
             switch (entity->type) {
                 case MODEL_ENTITY: {
                     golf_model_entity_t *model_entity = &entity->model;
-                    igText("TYPE: Model Entity");
+                    igText("TYPE: Model");
                     igInputFloat3("Position", (float*)&model_entity->transform.position, "%.3f", ImGuiInputTextFlags_None);
                     if (igIsItemActivated()) {
                         golf_editor_action_t action;
@@ -646,9 +646,43 @@ void golf_editor_update(float dt) {
                     break;
                 }
                 case BALL_START_ENTITY: {
+                    golf_ball_start_entity_t *ball_start = &entity->ball_start;
+                    igText("TYPE: Ball Start");
+                    igInputFloat3("Position", (float*)&ball_start->transform.position, "%.3f", ImGuiInputTextFlags_None);
+                    if (igIsItemActivated()) {
+                        golf_editor_action_t action;
+                        _golf_editor_action_init(&action);
+                        _golf_editor_action_push_data(&action, &ball_start->transform.position, sizeof(ball_start->transform.position));
+                        _golf_editor_queue_start_action(action);
+                    }
+                    if (igIsItemDeactivated()) {
+                        if (igIsItemDeactivatedAfterEdit()) {
+                            _golf_editor_queue_commit_action();
+                        }
+                        else {
+                            _golf_editor_queue_decommit_action();
+                        }
+                    }
                     break;
                 }
                 case HOLE_ENTITY: {
+                    golf_hole_entity_t *hole = &entity->hole;
+                    igText("TYPE: Hole");
+                    igInputFloat3("Position", (float*)&hole->transform.position, "%.3f", ImGuiInputTextFlags_None);
+                    if (igIsItemActivated()) {
+                        golf_editor_action_t action;
+                        _golf_editor_action_init(&action);
+                        _golf_editor_action_push_data(&action, &hole->transform.position, sizeof(hole->transform.position));
+                        _golf_editor_queue_start_action(action);
+                    }
+                    if (igIsItemDeactivated()) {
+                        if (igIsItemDeactivatedAfterEdit()) {
+                            _golf_editor_queue_commit_action();
+                        }
+                        else {
+                            _golf_editor_queue_decommit_action();
+                        }
+                    }
                     break;
                 }
             }
@@ -763,7 +797,7 @@ void golf_editor_update(float dt) {
         }
     }
 
-    float cam_speed = 2.0f;
+    float cam_speed = 8.0f;
     if (!IO->WantCaptureKeyboard) {
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_W]) {
             renderer->cam_pos.x += cam_speed * dt * cosf(renderer->cam_azimuth_angle);
