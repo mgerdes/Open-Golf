@@ -19,14 +19,21 @@ bool golf_level_save(golf_level_t *level, const char *path) {
         json_object_set_number(json_material_obj, "restitution", material->restitution);
 
         switch (material->type) {
-            case GOLF_MATERIAL_TEXTURE: 
+            case GOLF_MATERIAL_TEXTURE: {
                 json_object_set_string(json_material_obj, "type", "texture");
                 json_object_set_string(json_material_obj, "texture", material->texture_path);
                 break;
-            case GOLF_MATERIAL_COLOR:
+            }
+            case GOLF_MATERIAL_COLOR: {
                 json_object_set_string(json_material_obj, "type", "color");
                 golf_json_object_set_vec3(json_material_obj, "color", material->color);
                 break;
+            }
+            case GOLF_MATERIAL_DIFFUSE_COLOR: {
+                json_object_set_string(json_material_obj, "type", "diffuse_color");
+                golf_json_object_set_vec3(json_material_obj, "color", material->color);
+                break;
+            }
         }
 
         json_array_append_value(json_materials_arr, json_material_val);
@@ -116,6 +123,11 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
         }
         else if (type && strcmp(type, "color") == 0) {
             material.type = GOLF_MATERIAL_COLOR;
+            material.color = golf_json_object_get_vec3(obj, "color");
+            valid_material = true;
+        }
+        else if (type && strcmp(type, "diffuse_color") == 0) {
+            material.type = GOLF_MATERIAL_DIFFUSE_COLOR;
             material.color = golf_json_object_get_vec3(obj, "color");
             valid_material = true;
         }

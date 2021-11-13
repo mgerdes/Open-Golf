@@ -1,0 +1,10 @@
+{
+    "glsl300es": {
+        "fs": "#version 300 es\nprecision mediump float;\nprecision highp int;\n\nuniform highp vec4 diffuse_color_material_fs_params[1];\nin highp vec3 frag_normal;\nlayout(location = 0) out highp vec4 g_frag_color;\n\nvoid main()\n{\n    g_frag_color = vec4(diffuse_color_material_fs_params[0].xyz * max(dot(frag_normal, vec3(0.57735025882720947265625)), 0.0), 1.0);\n}\n\n",
+        "vs": "#version 300 es\n\nuniform vec4 diffuse_color_material_vs_params[8];\nout vec3 frag_normal;\nlayout(location = 1) in vec3 normal;\nlayout(location = 0) in vec3 position;\n\nvoid main()\n{\n    mat4 _21 = mat4(diffuse_color_material_vs_params[4], diffuse_color_material_vs_params[5], diffuse_color_material_vs_params[6], diffuse_color_material_vs_params[7]);\n    frag_normal = normalize((transpose(inverse(_21)) * vec4(normal, 0.0)).xyz);\n    gl_Position = (mat4(diffuse_color_material_vs_params[0], diffuse_color_material_vs_params[1], diffuse_color_material_vs_params[2], diffuse_color_material_vs_params[3]) * _21) * vec4(position, 1.0);\n}\n\n"
+    },
+    "glsl330": {
+        "fs": "#version 330\n\nuniform vec4 diffuse_color_material_fs_params[1];\nin vec3 frag_normal;\nlayout(location = 0) out vec4 g_frag_color;\n\nvoid main()\n{\n    g_frag_color = vec4(diffuse_color_material_fs_params[0].xyz * max(dot(frag_normal, vec3(0.57735025882720947265625)), 0.0), 1.0);\n}\n\n",
+        "vs": "#version 330\n\nuniform vec4 diffuse_color_material_vs_params[8];\nout vec3 frag_normal;\nlayout(location = 1) in vec3 normal;\nlayout(location = 0) in vec3 position;\n\nvoid main()\n{\n    mat4 _21 = mat4(diffuse_color_material_vs_params[4], diffuse_color_material_vs_params[5], diffuse_color_material_vs_params[6], diffuse_color_material_vs_params[7]);\n    frag_normal = normalize((transpose(inverse(_21)) * vec4(normal, 0.0)).xyz);\n    gl_Position = (mat4(diffuse_color_material_vs_params[0], diffuse_color_material_vs_params[1], diffuse_color_material_vs_params[2], diffuse_color_material_vs_params[3]) * _21) * vec4(position, 1.0);\n}\n\n"
+    }
+}

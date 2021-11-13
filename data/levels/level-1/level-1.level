@@ -27,6 +27,17 @@
             "restitution": 0,
             "type": "texture",
             "texture": "data\/textures\/ground.png"
+        },
+        {
+            "name": "bake",
+            "friction": 0,
+            "restitution": 0,
+            "type": "diffuse_color",
+            "color": [
+                1,
+                1,
+                1
+            ]
         }
     ],
     "entities": [
@@ -56,12 +67,12 @@
             "position": [
                 2,
                 0,
-                12
+                18
             ],
             "scale": [
-                0.2,
-                0.2,
-                0.2
+                1,
+                1,
+                1
             ],
             "rotation": [
                 0,

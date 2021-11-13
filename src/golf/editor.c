@@ -587,8 +587,8 @@ void golf_editor_update(float dt) {
                     igPushID_Int(i);
                     if (igTreeNodeEx_StrStr("material", ImGuiTreeNodeFlags_None, "%s", material->name)) {
                         golf_material_type_t material_type_before = material->type;
-                        const char *items[] = { "Texture", "Color" };
-                        igCombo_Str_arr("Type", (int*)&material->type, items, 2, 0);
+                        const char *items[] = { "Texture", "Color", "Diffuse" };
+                        igCombo_Str_arr("Type", (int*)&material->type, items, 3, 0);
                         if (material_type_before != material->type) {
                             golf_material_type_t material_type_after = material->type;
 
@@ -607,6 +607,10 @@ void golf_editor_update(float dt) {
                                     material->color = V3(1, 0, 0);
                                     break;
                                 }
+                                case GOLF_MATERIAL_DIFFUSE_COLOR: {
+                                    material->color = V3(1, 0, 0);
+                                    break;;
+                                }
                             }
                         }
 
@@ -622,6 +626,10 @@ void golf_editor_update(float dt) {
                                 break;
                             }
                             case GOLF_MATERIAL_COLOR: {
+                                _golf_editor_undoable_igInputFloat3("Color", (float*)&material->color);
+                                break;
+                            }
+                            case GOLF_MATERIAL_DIFFUSE_COLOR: {
                                 _golf_editor_undoable_igInputFloat3("Color", (float*)&material->color);
                                 break;
                             }
@@ -738,7 +746,7 @@ void golf_editor_update(float dt) {
                         model = golf_data_get_model("data/models/sphere.obj");
                     }
                     else if (entity->type == HOLE_ENTITY) {
-                        model = golf_data_get_model("data/models/sphere.obj");
+                        model = golf_data_get_model("data/models/hole.obj");
                     }
 
                     golf_transform_t *transform = golf_entity_get_transform(entity);

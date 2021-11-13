@@ -14,6 +14,7 @@
 #include "golf/maths.h"
 #include "golf/ui.h"
 
+#include "golf/shaders/diffuse_color_material.glsl.h"
 #include "golf/shaders/environment.glsl.h"
 #include "golf/shaders/solid_color_material.glsl.h"
 #include "golf/shaders/ui_sprite.glsl.h"
@@ -44,9 +45,30 @@ golf_renderer_t *golf_renderer_get(void) {
 }
 
 void golf_renderer_init(void) {
+    golf_data_load("data/shaders/diffuse_color_material.glsl");
     golf_data_load("data/shaders/environment.glsl");
     golf_data_load("data/shaders/solid_color_material.glsl");
     golf_data_load("data/shaders/ui_sprite.glsl");
+
+    {
+        golf_shader_t *shader = golf_data_get_shader("data/shaders/diffuse_color_material.glsl");
+        sg_pipeline_desc pipeline_desc = {
+            .shader = shader->sg_shader,
+            .layout = {
+                .attrs = {
+                    [ATTR_diffuse_color_material_vs_position] 
+                        = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                    [ATTR_diffuse_color_material_vs_normal] 
+                        = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 1 },
+                },
+            },
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = true,
+            },
+        };
+        renderer.diffuse_color_material_pipeline = sg_make_pipeline(&pipeline_desc);
+    }
 
     {
         golf_shader_t *shader = golf_data_get_shader("data/shaders/environment.glsl");
@@ -76,7 +98,7 @@ void golf_renderer_init(void) {
             .shader = shader->sg_shader,
             .layout = {
                 .attrs = {
-                    [ATTR_environment_vs_position] 
+                    [ATTR_solid_color_material_vs_position] 
                         = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
                 },
             },
@@ -521,6 +543,32 @@ static void _golf_renderer_draw_model(golf_model_t *model, mat4 model_mat, golf_
 
                 break;
             }
+            case GOLF_MATERIAL_DIFFUSE_COLOR: {
+                sg_apply_pipeline(renderer.diffuse_color_material_pipeline);
+
+                diffuse_color_material_vs_params_t vs_params = {
+                    .proj_view_mat = mat4_transpose(renderer.proj_view_mat),
+                    .model_mat =mat4_transpose(model_mat), 
+                };
+                sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_diffuse_color_material_vs_params,
+                        &(sg_range) { &vs_params, sizeof(vs_params) });
+
+                diffuse_color_material_fs_params_t fs_params = {
+                    .color = material.color,
+                };
+                sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_diffuse_color_material_fs_params,
+                        &(sg_range) { &fs_params, sizeof(fs_params) });
+
+                sg_bindings bindings = {
+                    .vertex_buffers[0] = model->sg_positions_buf,
+                    .vertex_buffers[1] = model->sg_normals_buf,
+                };
+                sg_apply_bindings(&bindings);
+
+                sg_draw(group.start_vertex, group.vertex_count, 1);
+
+                break;
+            }
         }
     }
 }
@@ -577,10 +625,11 @@ void golf_renderer_draw_editor(void) {
                     break;
                 }
                 case HOLE_ENTITY: {
-                    golf_model_t *model = golf_data_get_model("data/models/sphere.obj");
+                    //golf_model_t *sphere_model = golf_data_get_model("data/models/sphere.obj");
+                    golf_model_t *hole_model = golf_data_get_model("data/models/hole.obj");
                     mat4 model_mat = golf_transform_get_model_mat(entity->ball_start.transform);
-                    golf_material_t material = golf_material_color(V3(1, 0, 0));
-                    _golf_renderer_draw_model(model, model_mat, &material, editor->level);
+                    //golf_material_t material = golf_material_color(V3(1, 0, 0));
+                    _golf_renderer_draw_model(hole_model, model_mat, NULL, editor->level);
                     break;
                 }
             }

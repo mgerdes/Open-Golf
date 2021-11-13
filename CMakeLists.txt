@@ -54,6 +54,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL Windows)
         ${GOLF_BASE_LIBRARIES})
     target_compile_definitions(golf_lib PUBLIC
         GOLF_PLATFORM_WINDOWS)
+    target_compile_options(golf_lib PRIVATE 
+        /W3
+        /w34061
+        /w34062
+        )
 elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
     target_link_libraries(golf_lib PUBLIC
         ${GOLF_BASE_LIBRARIES}

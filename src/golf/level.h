@@ -9,6 +9,7 @@
 typedef enum golf_material_type {
     GOLF_MATERIAL_TEXTURE,
     GOLF_MATERIAL_COLOR,
+    GOLF_MATERIAL_DIFFUSE_COLOR,
 } golf_material_type_t;
 
 #define GOLF_MATERIAL_NAME_MAX_LEN 64

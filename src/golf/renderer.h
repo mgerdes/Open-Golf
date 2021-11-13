@@ -14,7 +14,8 @@ typedef struct golf_renderer {
     float cam_azimuth_angle, cam_inclination_angle;
     vec3 cam_pos, cam_dir, cam_up;
 
-    sg_pipeline environment_pipeline,
+    sg_pipeline diffuse_color_material_pipeline,
+                environment_pipeline,
                 solid_color_material_pipeline,
                 ui_sprites_pipeline;
 } golf_renderer_t;
