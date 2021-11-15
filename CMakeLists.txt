@@ -22,6 +22,7 @@ set(GOLF_BASE_LIBRARIES
     dbgtools
     fast_obj
     glad
+    glfw
     lightmapper
     map
     mattiasgustavsson_libs
@@ -43,6 +44,7 @@ add_library(golf_lib STATIC
     src/golf/game.c
     src/golf/inputs.c
     src/golf/level.c
+    src/golf/lightmap.c
     src/golf/log.c
     src/golf/maths.c
     src/golf/parson_helper.c
@@ -57,8 +59,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL Windows)
     target_compile_options(golf_lib PRIVATE 
         /W3
         /w34061
-        /w34062
-        )
+        /w34062)
 elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
     target_link_libraries(golf_lib PUBLIC
         ${GOLF_BASE_LIBRARIES}
@@ -138,12 +139,56 @@ add_library(dbgtools STATIC
     src/3rd_party/dbgtools/callstack.cpp)
 target_compile_options(dbgtools PRIVATE 
     -std=c++11)
+target_compile_definitions(dbgtools PRIVATE 
+    _CRT_SECURE_NO_WARNINGS)
 
 add_library(fast_obj STATIC
     src/3rd_party/fast_obj/fast_obj.c)
+target_compile_definitions(fast_obj PRIVATE 
+    _CRT_SECURE_NO_WARNINGS)
 
 add_library(glad STATIC
     src/3rd_party/glad/glad.c)
+
+add_library(glfw STATIC
+    src/3rd_party/glfw/include/GLFW/glfw3.h
+    src/3rd_party/glfw/include/GLFW/glfw3native.h
+    src/3rd_party/glfw/src/internal.h 
+    src/3rd_party/glfw/src/platform.h 
+    src/3rd_party/glfw/src/mappings.h
+    src/3rd_party/glfw/src/context.c 
+    src/3rd_party/glfw/src/init.c 
+    src/3rd_party/glfw/src/input.c 
+    src/3rd_party/glfw/src/monitor.c 
+    src/3rd_party/glfw/src/platform.c 
+    src/3rd_party/glfw/src/vulkan.c 
+    src/3rd_party/glfw/src/window.c
+    src/3rd_party/glfw/src/egl_context.c 
+    src/3rd_party/glfw/src/osmesa_context.c 
+    src/3rd_party/glfw/src/null_platform.h 
+    src/3rd_party/glfw/src/null_joystick.h
+    src/3rd_party/glfw/src/null_init.c 
+    src/3rd_party/glfw/src/null_monitor.c 
+    src/3rd_party/glfw/src/null_window.c 
+    src/3rd_party/glfw/src/null_joystick.c)
+if (CMAKE_SYSTEM_NAME STREQUAL Windows)
+    target_sources(glfw PRIVATE 
+        src/3rd_party/glfw/src/win32_time.h
+        src/3rd_party/glfw/src/win32_thread.h
+        src/3rd_party/glfw/src/win32_module.c
+        src/3rd_party/glfw/src/win32_time.c
+        src/3rd_party/glfw/src/win32_thread.c
+        src/3rd_party/glfw/src/win32_platform.h
+        src/3rd_party/glfw/src/win32_joystick.h
+        src/3rd_party/glfw/src/win32_init.c
+        src/3rd_party/glfw/src/win32_joystick.c
+        src/3rd_party/glfw/src/win32_monitor.c
+        src/3rd_party/glfw/src/win32_window.c
+        src/3rd_party/glfw/src/wgl_context.c)
+    target_compile_definitions(glfw PRIVATE 
+        _CRT_SECURE_NO_WARNINGS _GLFW_WIN32)
+    include_directories(SYSTEM src/3rd_party/glfw/include)
+endif()
 
 add_library(imgui STATIC
     src/3rd_party/imgui/imgui.cpp

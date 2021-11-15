@@ -5,6 +5,7 @@
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "cimgui/cimgui.h"
 #include "cimguizmo/cimguizmo.h"
+#include "glad/glad.h"
 #include "IconsFontAwesome5/IconsFontAwesome5.h"
 #include "sokol/sokol_app.h"
 #include "sokol/sokol_audio.h"
@@ -18,11 +19,17 @@
 #include "golf/debug_console.h"
 #include "golf/game.h"
 #include "golf/inputs.h"
+#include "golf/lightmap.h"
 #include "golf/log.h"
 #include "golf/renderer.h"
 #include "golf/ui.h"
 
 static void init(void) {
+    int load_gl = gladLoadGL();
+    if (!load_gl) {
+        golf_log_error("Unable to load GL");
+    }
+
     stm_setup();
     sg_setup(&(sg_desc){ 
             .buffer_pool_size = 2048, 
@@ -113,8 +120,14 @@ static void frame(void) {
         golf_game_init();
         golf_ui_init();
         golf_renderer_init();
-
         golf_editor_init();
+
+        {
+            golf_lightmap_generator_t generator;
+            golf_lightmap_generator_init(&generator, true, true, 1.0f, 1, 1, 1); 
+            golf_lightmap_generator_start(&generator);
+        }
+
         inited = true;
     }
 
@@ -194,6 +207,7 @@ sapp_desc sokol_main(int argc, char *argv[]) {
     };
 }
 
+#define SOKOL_EXTERNAL_GL_LOADER
 #define SOKOL_WIN32_FORCE_MAIN
 #define SOKOL_IMPL
 #include "sokol/sokol_app.h"
