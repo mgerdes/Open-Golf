@@ -7,6 +7,24 @@
 #include "xatlas/xatlas_wrapper.h"
 #include "golf/log.h"
 
+static void _lm_gen_set_is_running(golf_lightmap_generator_t *generator, bool is_running) {
+    thread_mutex_lock(&generator->lock);
+    generator->is_running = is_running;
+    thread_mutex_unlock(&generator->lock);
+}
+
+static void _lm_gen_inc_uv_gen_progress(golf_lightmap_generator_t *generator) {
+    thread_mutex_lock(&generator->lock);
+    generator->uv_gen_progress = generator->uv_gen_progress + 1;
+    thread_mutex_unlock(&generator->lock);
+}
+
+static void _lm_gen_inc_lm_gen_progress(golf_lightmap_generator_t *generator) {
+    thread_mutex_lock(&generator->lock);
+    generator->lm_gen_progress = generator->lm_gen_progress + 1;
+    thread_mutex_unlock(&generator->lock);
+}
+
 void golf_lightmap_generator_init(golf_lightmap_generator_t *generator,
         bool reset_lightmaps, bool create_uvs, float gamma, 
         int num_iterations, int num_dilates, int num_smooths) {
@@ -16,7 +34,12 @@ void golf_lightmap_generator_init(golf_lightmap_generator_t *generator,
     generator->num_iterations = num_iterations;
     generator->num_dilates = num_dilates;
     generator->num_smooths = num_smooths;
-    thread_atomic_int_store(&generator->is_running, 0);
+
+    thread_mutex_init(&generator->lock);
+    generator->is_running = false;
+    generator->uv_gen_progress = 0;
+    generator->lm_gen_progress = 0;
+    generator->lm_gen_progress_pct = 0;
 }
 
 static GLuint _load_shader(GLenum type, const char *source) {
@@ -32,7 +55,6 @@ static GLuint _load_shader(GLenum type, const char *source) {
 
 static int _lightmap_generator_run(void *user_data) {
     golf_lightmap_generator_t *generator = (golf_lightmap_generator_t*)user_data;
-    thread_atomic_int_store(&generator->is_running, 1);
 
     bool init = glfwInit();
     assert(init);
@@ -106,9 +128,8 @@ static int _lightmap_generator_run(void *user_data) {
         golf_lightmap_entity_t *entity = &generator->entities.data[i];
 
         vec_vec3_t *positions = &entity->positions;
-        vec_vec3_t *normals = &entity->normals;
         vec_vec2_t *lightmap_uvs = &entity->lightmap_uvs;
-        thread_atomic_int_inc(&generator->uv_gen_progress_idx);
+        _lm_gen_inc_uv_gen_progress(generator);
         if (generator->create_uvs) {
             xatlas_wrapper_generate_lightmap_uvs(lightmap_uvs->data, positions->data, positions->length);
         }
@@ -149,7 +170,7 @@ static int _lightmap_generator_run(void *user_data) {
     lm_context *ctx = lmCreate(64, 0.01f, 100.0f, 1.0f, 1.0f, 1.0f, 2, 0.01f, 0.0f);
     for (int b = 0; b < generator->num_iterations; b++) {
         for (int i = 0; i < generator->entities.length; i++) {
-            thread_atomic_int_inc(&generator->lm_gen_progress_idx);
+            _lm_gen_inc_lm_gen_progress(generator);
             golf_lightmap_entity_t *entity = &generator->entities.data[i];
             if (entity->positions.length == 0) {
                 continue;
@@ -221,8 +242,8 @@ static int _lightmap_generator_run(void *user_data) {
                 lmImageDilate(temp, lm_data, lm_size, lm_size, 1);
             }
             for (int i = 0; i < generator->num_smooths; i++) {
-                lmImageDilate(lm_data, temp, lm_size, lm_size, 1);
-                lmImageDilate(temp, lm_data, lm_size, lm_size, 1);
+                lmImageSmooth(lm_data, temp, lm_size, lm_size, 1);
+                lmImageSmooth(temp, lm_data, lm_size, lm_size, 1);
             }
             lmImagePower(lm_data, lm_size, lm_size, 1, generator->gamma, LM_ALL_CHANNELS);
 
@@ -234,16 +255,19 @@ static int _lightmap_generator_run(void *user_data) {
     }
 
     for (int i = 0; i < generator->entities.length; i++) {
-        glDeleteBuffers(1, &generator->entities.data[i].gl_position_vbo);
-        glDeleteBuffers(1, &generator->entities.data[i].gl_lightmap_uv_vbo);
-        glDeleteTextures(1, &generator->entities.data[i].gl_tex);
+        golf_lightmap_entity_t *entity = &generator->entities.data[i];
+        glDeleteBuffers(1, (GLuint*)&entity->gl_position_vbo);
+        glDeleteBuffers(1, (GLuint*)&entity->gl_lightmap_uv_vbo);
+        glDeleteTextures(1, (GLuint*)&entity->gl_tex);
+
+        lmImageSaveTGAf("lm.tga", entity->lightmap_data, entity->lightmap_size, entity->lightmap_size, 1, 1.0f);
     }
     glDeleteVertexArrays(1, &dummy_vao);
     glDeleteProgram(program);
     lmDestroy(ctx);
     glfwTerminate();
 
-    thread_atomic_int_store(&generator->is_running, 0);
+    _lm_gen_set_is_running(generator, false);
     return 0;
 }
 
@@ -252,10 +276,12 @@ void golf_lightmap_generator_start(golf_lightmap_generator_t *generator) {
         golf_log_error("Cannot start lightmap generator when it's already running.");
     }
 
+    _lm_gen_set_is_running(generator, true);
     generator->thread = thread_create0(_lightmap_generator_run, generator, "Lightmap Generator", THREAD_STACK_SIZE_DEFAULT);
 }
 
 void golf_lightmap_generator_add_entity(golf_lightmap_generator_t *generator, golf_model_t *model, mat4 model_mat, vec_vec2_t lightmap_uvs, int lightmap_size, float *lightmap_data) {
+    assert((lightmap_uvs.length == model->positions.length) && (lightmap_uvs.length == model->normals.length));
     golf_lightmap_entity_t entity;
     vec_init(&entity.positions);
     vec_init(&entity.normals);
@@ -277,6 +303,23 @@ void golf_lightmap_generator_deinit(golf_lightmap_generator_t *generator) {
     thread_destroy(generator->thread);
 }
 
+int golf_lightmap_generator_get_lm_gen_progress(golf_lightmap_generator_t *generator) {
+    thread_mutex_lock(&generator->lock);
+    int lm_gen_progress = generator->lm_gen_progress;
+    thread_mutex_unlock(&generator->lock);
+    return lm_gen_progress;
+}
+
+int golf_lightmap_generator_get_uv_gen_progress(golf_lightmap_generator_t *generator) {
+    thread_mutex_lock(&generator->lock);
+    int uv_gen_progress = generator->uv_gen_progress;
+    thread_mutex_unlock(&generator->lock);
+    return uv_gen_progress;
+}
+
 bool golf_lightmap_generator_is_running(golf_lightmap_generator_t *generator) {
-    return thread_atomic_int_load(&generator->is_running) == 1;
+    thread_mutex_lock(&generator->lock);
+    bool is_running = generator->is_running;
+    thread_mutex_unlock(&generator->lock);
+    return is_running;
 }

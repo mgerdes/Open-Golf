@@ -6,6 +6,14 @@
 #include "golf/file.h"
 #include "golf/maths.h"
 
+typedef struct golf_lightmap {
+    int size;
+    char *data;
+    sg_image sg_image;
+    vec_vec2_t uvs;
+} golf_lightmap_t;
+void golf_lightmap_init(golf_lightmap_t *lightmap, int size, char *data);
+
 typedef enum golf_material_type {
     GOLF_MATERIAL_TEXTURE,
     GOLF_MATERIAL_COLOR,
@@ -29,7 +37,6 @@ typedef struct golf_material {
     };
 } golf_material_t;
 typedef vec_t(golf_material_t) vec_golf_material_t;
-
 golf_material_t golf_material_color(vec3 color);
 
 typedef struct golf_transform {
@@ -52,6 +59,7 @@ typedef vec_t(golf_model_entity_t) vec_golf_model_entity_t;
 
 typedef struct golf_hole_entity {
     golf_transform_t transform;
+    golf_lightmap_t lightmap;
 } golf_hole_entity_t;
 
 typedef enum golf_entity_type {
@@ -70,17 +78,15 @@ typedef struct golf_entity {
     };
 } golf_entity_t;
 typedef vec_t(golf_entity_t) vec_golf_entity_t;
+golf_transform_t *golf_entity_get_transform(golf_entity_t *entity);
 
 typedef struct golf_level {
     vec_golf_material_t materials;
     vec_golf_entity_t entities;
 } golf_level_t;
-
 bool golf_level_save(golf_level_t *level, const char *path);
 bool golf_level_load(golf_level_t *level, const char *path, char *data, int data_len);
 bool golf_level_unload(golf_level_t *level);
 bool golf_level_get_material(golf_level_t *level, const char *material_name, golf_material_t *material);
-
-golf_transform_t *golf_entity_get_transform(golf_entity_t *entity);
 
 #endif

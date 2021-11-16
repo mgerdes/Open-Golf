@@ -24,6 +24,8 @@
 #include "golf/renderer.h"
 #include "golf/ui.h"
 
+#include "mattiasgustavsson_libs/thread.h"
+
 static void init(void) {
     int load_gl = gladLoadGL();
     if (!load_gl) {
@@ -126,6 +128,32 @@ static void frame(void) {
             golf_lightmap_generator_t generator;
             golf_lightmap_generator_init(&generator, true, true, 1.0f, 1, 1, 1); 
             golf_lightmap_generator_start(&generator);
+
+            {
+                golf_model_t *hole_model = golf_data_get_model("data/models/hole.obj");
+                mat4 model_mat = mat4_identity();
+                vec_vec2_t lightmap_uvs;
+                vec_init(&lightmap_uvs);
+                for (int i = 0; i < hole_model->positions.length; i++) {
+                    vec_push(&lightmap_uvs, V2(0, 0));
+                }
+                int lightmap_size = 256;
+                float *lightmap_data = malloc(sizeof(float) * lightmap_size * lightmap_size);
+                for (int i = 0; i < lightmap_size * lightmap_size; i++) {
+                    lightmap_data[i] = 0.0;
+                }
+                golf_lightmap_generator_add_entity(&generator, hole_model,
+                        model_mat, lightmap_uvs, lightmap_size, lightmap_data);
+            }
+
+            while (golf_lightmap_generator_is_running(&generator)) {
+            }
+
+            for (int i = 0; i < generator.entities.length; i++) {
+                golf_lightmap_entity_t *entity = &generator.entities.data[i];
+            }
+
+            golf_lightmap_generator_deinit(&generator);
         }
 
         inited = true;

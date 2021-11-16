@@ -3,6 +3,19 @@
 #include "golf/log.h"
 #include "golf/parson_helper.h"
 
+void golf_lightmap_init(golf_lightmap_t *lightmap, int size, char *data) {
+    lightmap->data = malloc(sizeof(char) * size * size);
+    lightmap->size = size;
+    vec_init(&lightmap->uvs);
+}
+
+golf_material_t golf_material_color(vec3 color) {
+    golf_material_t material;
+    material.type = GOLF_MATERIAL_COLOR;
+    material.color = color;
+    return material;
+}
+
 bool golf_level_save(golf_level_t *level, const char *path) {
     JSON_Value *json_materials_val = json_value_init_array();
     JSON_Array *json_materials_arr = json_value_get_array(json_materials_val);
@@ -211,13 +224,6 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
 
 bool golf_level_unload(golf_level_t *level) {
     return false;
-}
-
-golf_material_t golf_material_color(vec3 color) {
-    golf_material_t material;
-    material.type = GOLF_MATERIAL_COLOR;
-    material.color = color;
-    return material;
 }
 
 mat4 golf_transform_get_model_mat(golf_transform_t transform) {

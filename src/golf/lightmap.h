@@ -23,11 +23,16 @@ typedef struct golf_lightmap_generator {
     vec_golf_lightmap_entity_t entities;
 
     thread_ptr_t thread;
-    thread_atomic_int_t is_running, uv_gen_progress_idx, lm_gen_progress_idx, lm_gen_progress_pct;
+    thread_mutex_t lock;
+    bool is_running;
+    int uv_gen_progress, lm_gen_progress, lm_gen_progress_pct;
 } golf_lightmap_generator_t;
 
 void golf_lightmap_generator_init(golf_lightmap_generator_t *generator, bool reset_lightmaps, bool create_uvs, float gamma, int num_iterations, int num_dilates, int num_smooths);
 void golf_lightmap_generator_deinit(golf_lightmap_generator_t *generator);
+void golf_lightmap_generator_add_entity(golf_lightmap_generator_t *generator, golf_model_t *model, mat4 model_mat, vec_vec2_t lightmap_uvs, int lightmap_size, float *lightmap_data);
+int golf_lightmap_generator_get_lm_gen_progress(golf_lightmap_generator_t *generator);
+int golf_lightmap_generator_get_uv_gen_progress(golf_lightmap_generator_t *generator);
 bool golf_lightmap_generator_is_running(golf_lightmap_generator_t *generator);
 void golf_lightmap_generator_start(golf_lightmap_generator_t *generator);
 

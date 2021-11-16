@@ -171,6 +171,7 @@ add_library(glfw STATIC
     src/3rd_party/glfw/src/null_monitor.c 
     src/3rd_party/glfw/src/null_window.c 
     src/3rd_party/glfw/src/null_joystick.c)
+include_directories(SYSTEM src/3rd_party/glfw/include)
 if (CMAKE_SYSTEM_NAME STREQUAL Windows)
     target_sources(glfw PRIVATE 
         src/3rd_party/glfw/src/win32_time.h
@@ -187,7 +188,23 @@ if (CMAKE_SYSTEM_NAME STREQUAL Windows)
         src/3rd_party/glfw/src/wgl_context.c)
     target_compile_definitions(glfw PRIVATE 
         _CRT_SECURE_NO_WARNINGS _GLFW_WIN32)
-    include_directories(SYSTEM src/3rd_party/glfw/include)
+elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
+    target_sources(glfw PRIVATE 
+        src/3rd_party/glfw/src/posix_time.h
+        src/3rd_party/glfw/src/posix_thread.h 
+        src/3rd_party/glfw/src/posix_module.c
+        src/3rd_party/glfw/src/posix_time.c 
+        src/3rd_party/glfw/src/posix_thread.c
+        src/3rd_party/glfw/src/linux_joystick.h 
+        src/3rd_party/glfw/src/linux_joystick.c
+        src/3rd_party/glfw/src/x11_platform.h
+        src/3rd_party/glfw/src/xkb_unicode.h
+        src/3rd_party/glfw/src/x11_init.c
+        src/3rd_party/glfw/src/x11_monitor.c 
+        src/3rd_party/glfw/src/x11_window.c
+        src/3rd_party/glfw/src/xkb_unicode.c
+        src/3rd_party/glfw/src/glx_context.c)
+    target_compile_definitions(glfw PRIVATE _GLFW_X11)
 endif()
 
 add_library(imgui STATIC
