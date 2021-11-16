@@ -1,11 +1,42 @@
 #include "golf/parson_helper.h"
 
+#include "golf/base64.h"
+#include "golf/log.h"
+
+void golf_json_object_get_data(JSON_Object *obj, const char *name, unsigned char **data, int *data_len) {
+    const char *enc_data = json_object_get_string(obj, name); 
+    int enc_len = (int)strlen(enc_data);
+    *data_len = golf_base64_decode_out_len((const unsigned char*)enc_data, enc_len);
+    *data = malloc(*data_len);
+    if (!golf_base64_decode((const unsigned char*)enc_data, enc_len, *data)) {
+        golf_log_warning("Failed to decode data in field %s", name);
+    }
+}
+
+void golf_json_object_set_data(JSON_Object *obj, const char *name, unsigned char *data, int data_len) {
+    int enc_len = golf_base64_encode_out_len(data, data_len);
+    char *enc_data = malloc(enc_len);
+    if (!golf_base64_encode(data, data_len, (unsigned char*)enc_data)) {
+        golf_log_warning("Failed to encode data in field %s", name);
+    }
+    json_object_set_string(obj, name, enc_data);
+    free(enc_data);
+}
+
 vec2 golf_json_object_get_vec2(JSON_Object *obj, const char *name) {
     JSON_Array *array = json_object_get_array(obj, name);
     vec2 v;
     v.x = (float)json_array_get_number(array, 0);
     v.y = (float)json_array_get_number(array, 1);
     return v;
+}
+
+void golf_json_object_set_vec2(JSON_Object *obj, const char *name, vec2 v) {
+    JSON_Value *val = json_value_init_array();
+    JSON_Array *arr = json_value_get_array(val);
+    json_array_append_number(arr, v.x);
+    json_array_append_number(arr, v.y);
+    json_object_set_value(obj, name, val);
 }
 
 vec3 golf_json_object_get_vec3(JSON_Object *obj, const char *name) {
@@ -15,6 +46,15 @@ vec3 golf_json_object_get_vec3(JSON_Object *obj, const char *name) {
     v.y = (float)json_array_get_number(array, 1);
     v.z = (float)json_array_get_number(array, 2);
     return v;
+}
+
+void golf_json_object_set_vec3(JSON_Object *obj, const char *name, vec3 v) {
+    JSON_Value *val = json_value_init_array();
+    JSON_Array *arr = json_value_get_array(val);
+    json_array_append_number(arr, v.x);
+    json_array_append_number(arr, v.y);
+    json_array_append_number(arr, v.z);
+    json_object_set_value(obj, name, val);
 }
 
 vec4 golf_json_object_get_vec4(JSON_Object *obj, const char *name) {
@@ -27,33 +67,6 @@ vec4 golf_json_object_get_vec4(JSON_Object *obj, const char *name) {
     return v;
 }
 
-quat golf_json_object_get_quat(JSON_Object *obj, const char *name) {
-    JSON_Array *array = json_object_get_array(obj, name);
-    quat q;
-    q.x = (float)json_array_get_number(array, 0);
-    q.y = (float)json_array_get_number(array, 1);
-    q.z = (float)json_array_get_number(array, 2);
-    q.w = (float)json_array_get_number(array, 3);
-    return q;
-}
-
-void golf_json_object_set_vec2(JSON_Object *obj, const char *name, vec2 v) {
-    JSON_Value *val = json_value_init_array();
-    JSON_Array *arr = json_value_get_array(val);
-    json_array_append_number(arr, v.x);
-    json_array_append_number(arr, v.y);
-    json_object_set_value(obj, name, val);
-}
-
-void golf_json_object_set_vec3(JSON_Object *obj, const char *name, vec3 v) {
-    JSON_Value *val = json_value_init_array();
-    JSON_Array *arr = json_value_get_array(val);
-    json_array_append_number(arr, v.x);
-    json_array_append_number(arr, v.y);
-    json_array_append_number(arr, v.z);
-    json_object_set_value(obj, name, val);
-}
-
 void golf_json_object_set_vec4(JSON_Object *obj, const char *name, vec4 v) {
     JSON_Value *val = json_value_init_array();
     JSON_Array *arr = json_value_get_array(val);
@@ -64,6 +77,16 @@ void golf_json_object_set_vec4(JSON_Object *obj, const char *name, vec4 v) {
     json_object_set_value(obj, name, val);
 }
 
+quat golf_json_object_get_quat(JSON_Object *obj, const char *name) {
+    JSON_Array *array = json_object_get_array(obj, name);
+    quat q;
+    q.x = (float)json_array_get_number(array, 0);
+    q.y = (float)json_array_get_number(array, 1);
+    q.z = (float)json_array_get_number(array, 2);
+    q.w = (float)json_array_get_number(array, 3);
+    return q;
+}
+
 void golf_json_object_set_quat(JSON_Object *obj, const char *name, quat q) {
     JSON_Value *val = json_value_init_array();
     JSON_Array *arr = json_value_get_array(val);
@@ -72,4 +95,39 @@ void golf_json_object_set_quat(JSON_Object *obj, const char *name, quat q) {
     json_array_append_number(arr, q.z);
     json_array_append_number(arr, q.w);
     json_object_set_value(obj, name, val);
+}
+
+void golf_json_object_get_transform(JSON_Object *obj, const char *name, golf_transform_t *transform) {
+}
+
+void golf_json_object_set_transform(JSON_Object *obj, const char *name, golf_transform_t *transform) {
+    JSON_Value *transform_val = json_value_init_object();
+    JSON_Object *transform_obj = json_value_get_object(transform_val);
+
+    golf_json_object_set_vec3(transform_obj, "position", transform->position);
+    golf_json_object_set_vec3(transform_obj, "scale", transform->scale);
+    golf_json_object_set_quat(transform_obj, "rotation", transform->rotation);
+
+    json_object_set_value(obj, name, transform_val);
+}
+
+void golf_json_object_get_lightmap(JSON_Object *obj, const char *name, golf_lightmap_t *lightmap) {
+}
+
+void golf_json_object_set_lightmap(JSON_Object *obj, const char *name, golf_lightmap_t *lightmap) {
+    JSON_Value *lightmap_val = json_value_init_object();
+    JSON_Object *lightmap_obj = json_value_get_object(lightmap_val);
+
+    json_object_set_number(lightmap_obj, "size", lightmap->size);
+    golf_json_object_set_data(lightmap_obj, "data", lightmap->data, sizeof(char) * lightmap->size * lightmap->size);
+
+    JSON_Value *uvs_val = json_value_init_array();
+    JSON_Array *uvs_arr = json_value_get_array(uvs_val);
+    for (int i = 0; i < lightmap->uvs.length; i++) {
+        json_array_append_number(uvs_arr, lightmap->uvs.data[i].x);
+        json_array_append_number(uvs_arr, lightmap->uvs.data[i].y);
+    }
+    json_object_set_value(lightmap_obj, "uvs", uvs_val);
+
+    json_object_set_value(obj, name, lightmap_val);
 }

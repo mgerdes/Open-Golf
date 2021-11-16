@@ -94,6 +94,16 @@ bool golf_level_save(golf_level_t *level, const char *path) {
             }
         }
 
+        golf_transform_t *transform = golf_entity_get_transform(entity);
+        if (transform) {
+            golf_json_object_set_transform(json_entity_obj, "transform", transform);
+        }
+
+        golf_lightmap_t *lightmap = golf_entity_get_lightmap(entity);
+        if (lightmap) {
+            golf_json_object_set_lightmap(json_entity_obj, "lightmap", lightmap);
+        }
+
         json_array_append_value(json_entities_arr, json_entity_val);
     }
 
@@ -200,6 +210,9 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
             quat rotation = golf_json_object_get_quat(obj, "rotation");
 
             golf_hole_entity_t hole;
+            hole.lightmap.size = 256;
+            hole.lightmap.data = malloc(sizeof(char) * 256 * 256);
+            vec_init(&hole.lightmap.uvs);
             hole.transform.position = position;
             hole.transform.scale = scale;
             hole.transform.rotation = rotation;
@@ -256,6 +269,21 @@ golf_transform_t *golf_entity_get_transform(golf_entity_t *entity) {
         }
         case HOLE_ENTITY: {
             return &entity->hole.transform;
+        }
+    }
+    return NULL;
+}
+
+golf_lightmap_t *golf_entity_get_lightmap(golf_entity_t *entity) {
+    switch (entity->type) {
+        case MODEL_ENTITY: {
+            return NULL;
+        }
+        case HOLE_ENTITY: {
+            return &entity->hole.lightmap;
+        }
+        case BALL_START_ENTITY: {
+            return NULL;
         }
     }
     return NULL;

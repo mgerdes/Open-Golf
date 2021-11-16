@@ -34,6 +34,7 @@ void golf_lightmap_generator_init(golf_lightmap_generator_t *generator,
     generator->num_iterations = num_iterations;
     generator->num_dilates = num_dilates;
     generator->num_smooths = num_smooths;
+    vec_init(&generator->entities);
 
     thread_mutex_init(&generator->lock);
     generator->is_running = false;

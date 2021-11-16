@@ -79,6 +79,7 @@ typedef struct golf_entity {
 } golf_entity_t;
 typedef vec_t(golf_entity_t) vec_golf_entity_t;
 golf_transform_t *golf_entity_get_transform(golf_entity_t *entity);
+golf_lightmap_t *golf_entity_get_lightmap(golf_entity_t *entity);
 
 typedef struct golf_level {
     vec_golf_material_t materials;
