@@ -11,6 +11,7 @@
 #include "golf/file.h"
 #include "golf/log.h"
 #include "golf/maths.h"
+#include "golf/parson_helper.h"
 #include "golf/string.h"
 
 #include "golf/shaders/diffuse_color_material.glsl.h"
@@ -21,57 +22,6 @@
 static map_golf_data_t _loaded_data;
 
 typedef bool (*golf_data_importer_t)(const char *path, char *data, int data_len);
-
-//
-// PARSON HELPERS
-//
-
-static void _golf_data_json_object_get_data(JSON_Object *obj, const char *name, unsigned char **data, int *data_len) {
-    const char *enc_data = json_object_get_string(obj, name); 
-    int enc_len = (int)strlen(enc_data);
-    *data_len = golf_base64_decode_out_len((const unsigned char*)enc_data, enc_len);
-    *data = malloc(*data_len);
-    if (!golf_base64_decode((const unsigned char*)enc_data, enc_len, *data)) {
-        golf_log_warning("Failed to decode data in field %s", name);
-    }
-}
-
-static void _golf_data_json_object_set_data(JSON_Object *obj, const char *name, unsigned char *data, int data_len) {
-    int enc_len = golf_base64_encode_out_len(data, data_len);
-    char *enc_data = malloc(enc_len);
-    if (!golf_base64_encode(data, data_len, (unsigned char*)enc_data)) {
-        golf_log_warning("Failed to encode data in field %s", name);
-    }
-    json_object_set_string(obj, name, enc_data);
-    free(enc_data);
-}
-
-static vec2 _golf_data_json_object_get_vec2(JSON_Object *obj, const char *name) {
-    JSON_Array *array = json_object_get_array(obj, name);
-    vec2 v;
-    v.x = (float)json_array_get_number(array, 0);
-    v.y = (float)json_array_get_number(array, 1);
-    return v;
-}
-
-static vec3 _golf_data_json_object_get_vec3(JSON_Object *obj, const char *name) {
-    JSON_Array *array = json_object_get_array(obj, name);
-    vec3 v;
-    v.x = (float)json_array_get_number(array, 0);
-    v.y = (float)json_array_get_number(array, 1);
-    v.z = (float)json_array_get_number(array, 2);
-    return v;
-}
-
-static vec4 _golf_data_json_object_get_vec4(JSON_Object *obj, const char *name) {
-    JSON_Array *array = json_object_get_array(obj, name);
-    vec4 v;
-    v.x = (float)json_array_get_number(array, 0);
-    v.y = (float)json_array_get_number(array, 1);
-    v.z = (float)json_array_get_number(array, 2);
-    v.w = (float)json_array_get_number(array, 3);
-    return v;
-}
 
 //
 // TEXTURES
@@ -95,7 +45,7 @@ static bool _golf_texture_import(const char *path, char *data, int data_len) {
         json_object_set_string(obj, "filter", "linear");
     }
 
-    _golf_data_json_object_set_data(obj, "img_data", (unsigned char*)data, data_len);
+    golf_json_object_set_data(obj, "img_data", (unsigned char*)data, data_len);
 
     json_serialize_to_file_pretty(val, import_texture_file_path.cstr);
 
@@ -135,7 +85,7 @@ static bool _golf_texture_load(const char *path, char *data, int data_len, golf_
     {
         int img_data_len;
         unsigned char *img_data;
-        _golf_data_json_object_get_data(obj, "img_data", &img_data, &img_data_len);
+        golf_json_object_get_data(obj, "img_data", &img_data, &img_data_len);
 
         int x, y, n;
         int force_channels = 4;
@@ -365,7 +315,7 @@ static JSON_Value *_golf_font_atlas_import(const char *file_data, int font_size,
         vec_char_t img;
         vec_init(&img);
         stbi_write_png_to_func(_stbi_write_func, &img, img_size, img_size, 1, bitmap, img_size);
-        _golf_data_json_object_set_data(obj, "img_data", (unsigned char*)img.data, img.length);
+        golf_json_object_set_data(obj, "img_data", (unsigned char*)img.data, img.length);
         vec_deinit(&img);
     }
 
@@ -423,7 +373,7 @@ static void _golf_font_load_atlas(JSON_Object *atlas_obj, golf_font_atlas_t *atl
 
     unsigned char *img_data = NULL;
     int img_data_len;
-    _golf_data_json_object_get_data(atlas_obj, "img_data", &img_data, &img_data_len);
+    golf_json_object_get_data(atlas_obj, "img_data", &img_data, &img_data_len);
 
     int x, y, n;
     int force_channels = 4;
@@ -433,19 +383,20 @@ static void _golf_font_load_atlas(JSON_Object *atlas_obj, golf_font_atlas_t *atl
         golf_log_error("STB Failed to load image");
     }
 
-    atlas->sg_image = sg_make_image(&(sg_image_desc) {
-            .width = atlas->size,
-            .height = atlas->size,
-            .pixel_format = SG_PIXELFORMAT_RGBA8,
-            .min_filter = SG_FILTER_LINEAR,
-            .mag_filter = SG_FILTER_LINEAR,
-            .wrap_u = SG_WRAP_CLAMP_TO_EDGE,
-            .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
-            .data.subimage[0][0] = {
+    sg_image_desc img_desc = {
+        .width = atlas->size,
+        .height = atlas->size,
+        .pixel_format = SG_PIXELFORMAT_RGBA8,
+        .min_filter = SG_FILTER_LINEAR,
+        .mag_filter = SG_FILTER_LINEAR,
+        .wrap_u = SG_WRAP_CLAMP_TO_EDGE,
+        .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
+        .data.subimage[0][0] = {
             .ptr = stb_data,
             .size = 4*sizeof(char)*x*y,
-            },
-            });
+        }
+    };
+    atlas->sg_image = sg_make_image(&img_desc); 
 
     free(img_data);
     free(stb_data);
@@ -713,7 +664,7 @@ static bool _golf_pixel_pack_load(const char *path, char *data, int data_len, go
     for (int i = 0; i < (int)json_array_get_count(icons_array); i++) {
         JSON_Object *icon_obj = json_array_get_object(icons_array, i);
         const char *name = json_object_get_string(icon_obj, "name");
-        vec2 pos = _golf_data_json_object_get_vec2(icon_obj, "pos");
+        vec2 pos = golf_json_object_get_vec2(icon_obj, "pos");
 
         golf_pixel_pack_icon_t icon;
         _golf_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, pos, &icon.uv0, &icon.uv1);
@@ -724,15 +675,15 @@ static bool _golf_pixel_pack_load(const char *path, char *data, int data_len, go
     for (int i = 0; i < (int)json_array_get_count(squares_array); i++) {
         JSON_Object *square_obj = json_array_get_object(squares_array, i);
         const char *name = json_object_get_string(square_obj, "name");
-        vec2 tl = _golf_data_json_object_get_vec2(square_obj, "top_left");
-        vec2 tm = _golf_data_json_object_get_vec2(square_obj, "top_mid");
-        vec2 tr = _golf_data_json_object_get_vec2(square_obj, "top_right");
-        vec2 ml = _golf_data_json_object_get_vec2(square_obj, "mid_left");
-        vec2 mm = _golf_data_json_object_get_vec2(square_obj, "mid_mid");
-        vec2 mr = _golf_data_json_object_get_vec2(square_obj, "mid_right");
-        vec2 bl = _golf_data_json_object_get_vec2(square_obj, "bot_left");
-        vec2 bm = _golf_data_json_object_get_vec2(square_obj, "bot_mid");
-        vec2 br = _golf_data_json_object_get_vec2(square_obj, "bot_right");
+        vec2 tl = golf_json_object_get_vec2(square_obj, "top_left");
+        vec2 tm = golf_json_object_get_vec2(square_obj, "top_mid");
+        vec2 tr = golf_json_object_get_vec2(square_obj, "top_right");
+        vec2 ml = golf_json_object_get_vec2(square_obj, "mid_left");
+        vec2 mm = golf_json_object_get_vec2(square_obj, "mid_mid");
+        vec2 mr = golf_json_object_get_vec2(square_obj, "mid_right");
+        vec2 bl = golf_json_object_get_vec2(square_obj, "bot_left");
+        vec2 bm = golf_json_object_get_vec2(square_obj, "bot_mid");
+        vec2 br = golf_json_object_get_vec2(square_obj, "bot_right");
 
         golf_pixel_pack_square_t square;
         _golf_pixel_pack_pos_to_uvs(pixel_pack, tex->width, tex->height, tl, &square.tl_uv0, &square.tl_uv1);
@@ -796,17 +747,17 @@ static bool _golf_config_load(const char *path, char *data, int data_len, golf_c
             JSON_Array *prop_array = json_value_get_array(prop_val);
             if (json_array_get_count(prop_array) == 2) {
                 data_property.type = GOLF_CONFIG_PROPERTY_VEC2;
-                data_property.vec2_val = _golf_data_json_object_get_vec2(obj, name);
+                data_property.vec2_val = golf_json_object_get_vec2(obj, name);
                 valid_property = true;
             }
             else if (json_array_get_count(prop_array) == 3) {
                 data_property.type = GOLF_CONFIG_PROPERTY_VEC3;
-                data_property.vec3_val = _golf_data_json_object_get_vec3(obj, name);
+                data_property.vec3_val = golf_json_object_get_vec3(obj, name);
                 valid_property = true;
             }
             else if (json_array_get_count(prop_array) == 4) {
                 data_property.type = GOLF_CONFIG_PROPERTY_VEC4;
-                data_property.vec4_val = _golf_data_json_object_get_vec4(obj, name);
+                data_property.vec4_val = golf_json_object_get_vec4(obj, name);
                 valid_property = true;
             }
         }

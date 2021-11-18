@@ -23,7 +23,4 @@ void golf_json_object_set_quat(JSON_Object *obj, const char *name, quat q);
 void golf_json_object_get_transform(JSON_Object *obj, const char *name, golf_transform_t *transform);
 void golf_json_object_set_transform(JSON_Object *obj, const char *name, golf_transform_t *transform);
 
-void golf_json_object_get_lightmap(JSON_Object *obj, const char *name, golf_lightmap_t *lightmap);
-void golf_json_object_set_lightmap(JSON_Object *obj, const char *name, golf_lightmap_t *lightmap);
-
 #endif

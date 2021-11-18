@@ -7,6 +7,7 @@
 #include "vec/vec.h"
 #include "golf/file.h"
 #include "golf/level.h"
+#include "golf/lightmap.h"
 #include "golf/maths.h"
 
 typedef struct golf_editor_action_data {
@@ -30,6 +31,9 @@ typedef struct golf_editor {
 
     int hovered_idx;
     vec_int_t selected_idxs;
+
+    bool lightmap_generator_running;
+    golf_lightmap_generator_t lightmap_generator;
 
     struct {
         bool is_using;

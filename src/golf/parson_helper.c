@@ -6,17 +6,16 @@
 void golf_json_object_get_data(JSON_Object *obj, const char *name, unsigned char **data, int *data_len) {
     const char *enc_data = json_object_get_string(obj, name); 
     int enc_len = (int)strlen(enc_data);
-    *data_len = golf_base64_decode_out_len((const unsigned char*)enc_data, enc_len);
-    *data = malloc(*data_len);
-    if (!golf_base64_decode((const unsigned char*)enc_data, enc_len, *data)) {
+    *data = golf_base64_decode((const unsigned char*)enc_data, enc_len, data_len);
+    if (!data) {
         golf_log_warning("Failed to decode data in field %s", name);
     }
 }
 
 void golf_json_object_set_data(JSON_Object *obj, const char *name, unsigned char *data, int data_len) {
-    int enc_len = golf_base64_encode_out_len(data, data_len);
-    char *enc_data = malloc(enc_len);
-    if (!golf_base64_encode(data, data_len, (unsigned char*)enc_data)) {
+    int enc_len;
+    unsigned char *enc_data = golf_base64_encode(data, data_len, &enc_len);
+    if (!enc_data) {
         golf_log_warning("Failed to encode data in field %s", name);
     }
     json_object_set_string(obj, name, enc_data);
@@ -109,25 +108,4 @@ void golf_json_object_set_transform(JSON_Object *obj, const char *name, golf_tra
     golf_json_object_set_quat(transform_obj, "rotation", transform->rotation);
 
     json_object_set_value(obj, name, transform_val);
-}
-
-void golf_json_object_get_lightmap(JSON_Object *obj, const char *name, golf_lightmap_t *lightmap) {
-}
-
-void golf_json_object_set_lightmap(JSON_Object *obj, const char *name, golf_lightmap_t *lightmap) {
-    JSON_Value *lightmap_val = json_value_init_object();
-    JSON_Object *lightmap_obj = json_value_get_object(lightmap_val);
-
-    json_object_set_number(lightmap_obj, "size", lightmap->size);
-    golf_json_object_set_data(lightmap_obj, "data", lightmap->data, sizeof(char) * lightmap->size * lightmap->size);
-
-    JSON_Value *uvs_val = json_value_init_array();
-    JSON_Array *uvs_arr = json_value_get_array(uvs_val);
-    for (int i = 0; i < lightmap->uvs.length; i++) {
-        json_array_append_number(uvs_arr, lightmap->uvs.data[i].x);
-        json_array_append_number(uvs_arr, lightmap->uvs.data[i].y);
-    }
-    json_object_set_value(lightmap_obj, "uvs", uvs_val);
-
-    json_object_set_value(obj, name, lightmap_val);
 }

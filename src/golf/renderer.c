@@ -82,6 +82,8 @@ void golf_renderer_init(void) {
                         = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
                     [ATTR_environment_vs_normal] 
                         = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 2 },
+                    [ATTR_environment_vs_lightmap_uv] 
+                        = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 3 },
                 },
             },
             .depth = {
@@ -483,7 +485,7 @@ void golf_renderer_draw(void) {
     _draw_ui();
 }
 
-static void _golf_renderer_draw_model(golf_model_t *model, mat4 model_mat, golf_material_t *material_override, golf_level_t *level) {
+static void _golf_renderer_draw_model(golf_model_t *model, mat4 model_mat, golf_lightmap_t *lightmap, golf_material_t *material_override, golf_level_t *level) {
     for (int i = 0; i < model->groups.length; i++) {
         golf_model_group_t group = model->groups.data[i];
         golf_material_t material;
@@ -511,7 +513,9 @@ static void _golf_renderer_draw_model(golf_model_t *model, mat4 model_mat, golf_
                     .vertex_buffers[0] = model->sg_positions_buf,
                     .vertex_buffers[1] = model->sg_texcoords_buf,
                     .vertex_buffers[2] = model->sg_normals_buf,
+                    .vertex_buffers[3] = lightmap->sg_uvs_buf,
                     .fs_images[SLOT_kd_texture] = material.texture->sg_image,
+                    .fs_images[SLOT_lightmap_texture] = lightmap->sg_image,
                 };
                 sg_apply_bindings(&bindings);
 
@@ -614,22 +618,23 @@ void golf_renderer_draw_editor(void) {
                 case MODEL_ENTITY: {
                     golf_model_t *model = entity->model.model;
                     mat4 model_mat = golf_transform_get_model_mat(entity->model.transform);
-                    _golf_renderer_draw_model(model, model_mat, NULL, editor->level);
+                    _golf_renderer_draw_model(model, model_mat, NULL, NULL, editor->level);
                     break;
                 }
                 case BALL_START_ENTITY: {
                     golf_model_t *model = golf_data_get_model("data/models/sphere.obj");
                     mat4 model_mat = golf_transform_get_model_mat(entity->ball_start.transform);
                     golf_material_t material = golf_material_color(V3(1, 0, 0));
-                    _golf_renderer_draw_model(model, model_mat, &material, editor->level);
+                    _golf_renderer_draw_model(model, model_mat, NULL, &material, editor->level);
                     break;
                 }
                 case HOLE_ENTITY: {
                     //golf_model_t *sphere_model = golf_data_get_model("data/models/sphere.obj");
                     golf_model_t *hole_model = golf_data_get_model("data/models/hole.obj");
-                    mat4 model_mat = golf_transform_get_model_mat(entity->ball_start.transform);
+                    mat4 model_mat = golf_transform_get_model_mat(entity->hole.transform);
                     //golf_material_t material = golf_material_color(V3(1, 0, 0));
-                    _golf_renderer_draw_model(hole_model, model_mat, NULL, editor->level);
+                    golf_lightmap_t *lightmap = &entity->hole.lightmap;
+                    _golf_renderer_draw_model(hole_model, model_mat, lightmap, NULL, editor->level);
                     break;
                 }
             }

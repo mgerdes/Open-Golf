@@ -8,11 +8,12 @@
 
 typedef struct golf_lightmap {
     int size;
-    char *data;
+    unsigned char *data;
     sg_image sg_image;
     vec_vec2_t uvs;
+    sg_buffer sg_uvs_buf;
 } golf_lightmap_t;
-void golf_lightmap_init(golf_lightmap_t *lightmap, int size, char *data);
+void golf_lightmap_init(golf_lightmap_t *lightmap, int size);
 
 typedef enum golf_material_type {
     GOLF_MATERIAL_TEXTURE,
@@ -80,6 +81,7 @@ typedef struct golf_entity {
 typedef vec_t(golf_entity_t) vec_golf_entity_t;
 golf_transform_t *golf_entity_get_transform(golf_entity_t *entity);
 golf_lightmap_t *golf_entity_get_lightmap(golf_entity_t *entity);
+golf_model_t *golf_entity_get_model(golf_entity_t *entity);
 
 typedef struct golf_level {
     vec_golf_material_t materials;

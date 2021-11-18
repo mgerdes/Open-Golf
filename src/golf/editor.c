@@ -298,6 +298,31 @@ void golf_editor_update(float dt) {
                 }
                 */
             }
+            if (igMenuItem_Bool("Generate Lightmaps", NULL, false, true)) {
+                if (!editor.lightmap_generator_running) {
+                    golf_log_note("Lightmap Generator Started");
+                    golf_lightmap_generator_t *generator = &editor.lightmap_generator;  
+                    bool reset_lightmaps = true;
+                    bool create_uvs = true;
+                    float gamma = 1.0f;
+                    int num_iterations = 1;
+                    int num_dilates = 0;
+                    int num_smooths = 1;
+                    golf_lightmap_generator_init(generator, reset_lightmaps, create_uvs, gamma, num_iterations, num_dilates, num_smooths); 
+                    for (int i = 0; i < editor.level->entities.length; i++) {
+                        golf_entity_t *entity = &editor.level->entities.data[i];
+                        golf_lightmap_t *lightmap = golf_entity_get_lightmap(entity);
+                        golf_transform_t *transform = golf_entity_get_transform(entity);
+                        golf_model_t *model = golf_entity_get_model(entity);
+                        if (lightmap && transform && model) {
+                            mat4 model_mat = golf_transform_get_model_mat(*transform);
+                            golf_lightmap_generator_add_entity(generator, model, model_mat, lightmap);
+                        }
+                    }
+                    golf_lightmap_generator_start(generator);
+                    editor.lightmap_generator_running = true;
+                }
+            }
             igEndMenu();
         }
         igEndMenuBar();
@@ -800,6 +825,31 @@ void golf_editor_update(float dt) {
 
         vec_deinit(&triangles);
         vec_deinit(&entity_idxs);
+    }
+
+    if (editor.lightmap_generator_running) {
+        golf_lightmap_generator_t *generator = &editor.lightmap_generator;
+        if (!golf_lightmap_generator_is_running(generator)) {
+            golf_log_note("Lightmap Generator Finished");
+
+            for (int i = 0; i < generator->entities.length; i++) {
+                golf_lightmap_entity_t *lm_entity = &generator->entities.data[i];
+                golf_lightmap_t *lm = lm_entity->lightmap;
+
+                for (int i = 0; i < lm->size * lm->size; i++) {
+                    float a = lm_entity->lightmap_data[i];
+                    if (a > 1.0f) a = 1.0f;
+                    if (a < 0.0f) a = 0.0f;
+                    lm->data[i] = (unsigned char)(0xFF * a);
+                }
+
+                lm->uvs.length = 0;
+                vec_pusharr(&lm->uvs, lm_entity->lightmap_uvs.data, lm_entity->lightmap_uvs.length);
+            }
+
+            golf_lightmap_generator_deinit(generator);
+            editor.lightmap_generator_running = false;
+        }
     }
 
     if (!IO->WantCaptureMouse) {

@@ -260,8 +260,6 @@ static int _lightmap_generator_run(void *user_data) {
         glDeleteBuffers(1, (GLuint*)&entity->gl_position_vbo);
         glDeleteBuffers(1, (GLuint*)&entity->gl_lightmap_uv_vbo);
         glDeleteTextures(1, (GLuint*)&entity->gl_tex);
-
-        lmImageSaveTGAf("lm.tga", entity->lightmap_data, entity->lightmap_size, entity->lightmap_size, 1, 1.0f);
     }
     glDeleteVertexArrays(1, &dummy_vao);
     glDeleteProgram(program);
@@ -281,20 +279,25 @@ void golf_lightmap_generator_start(golf_lightmap_generator_t *generator) {
     generator->thread = thread_create0(_lightmap_generator_run, generator, "Lightmap Generator", THREAD_STACK_SIZE_DEFAULT);
 }
 
-void golf_lightmap_generator_add_entity(golf_lightmap_generator_t *generator, golf_model_t *model, mat4 model_mat, vec_vec2_t lightmap_uvs, int lightmap_size, float *lightmap_data) {
-    assert((lightmap_uvs.length == model->positions.length) && (lightmap_uvs.length == model->normals.length));
+void golf_lightmap_generator_add_entity(golf_lightmap_generator_t *generator, golf_model_t *model, mat4 model_mat, golf_lightmap_t *lightmap) {
     golf_lightmap_entity_t entity;
     vec_init(&entity.positions);
     vec_init(&entity.normals);
     vec_init(&entity.lightmap_uvs);
-    entity.lightmap_data = malloc(sizeof(float) * lightmap_size * lightmap_size);
+    entity.lightmap_data = malloc(sizeof(float) * lightmap->size * lightmap->size);
 
     entity.model_mat = model_mat;
     vec_pusharr(&entity.positions, model->positions.data, model->positions.length);
     vec_pusharr(&entity.normals, model->normals.data, model->normals.length);
-    vec_pusharr(&entity.lightmap_uvs, lightmap_uvs.data, lightmap_uvs.length);
-    entity.lightmap_size = lightmap_size;
-    memcpy(entity.lightmap_data, lightmap_data, sizeof(float) * lightmap_size * lightmap_size);
+    vec_pusharr(&entity.lightmap_uvs, lightmap->uvs.data, lightmap->uvs.length);
+    for (int i = entity.lightmap_uvs.length; i < entity.positions.length; i++) {
+        vec_push(&entity.lightmap_uvs, V2(0, 0));
+    }
+    entity.lightmap_size = lightmap->size;
+    for (int i = 0; i < lightmap->size * lightmap->size; i++) {
+        entity.lightmap_data[i] = ((float)lightmap->data[i]) / 0xFF;
+    }
+    entity.lightmap = lightmap;
 
     vec_push(&generator->entities, entity);
 }

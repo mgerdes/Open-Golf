@@ -1,12 +1,95 @@
 #include "golf/level.h"
 
+#include "stb/stb_image.h"
+#include "stb/stb_image_write.h"
 #include "golf/log.h"
 #include "golf/parson_helper.h"
 
-void golf_lightmap_init(golf_lightmap_t *lightmap, int size, char *data) {
-    lightmap->data = malloc(sizeof(char) * size * size);
+void golf_lightmap_init(golf_lightmap_t *lightmap, int size) {
+    lightmap->data = malloc(sizeof(unsigned char) * size * size);
+    for (int i = 0; i < size * size; i++) {
+        lightmap->data[i] = 0xFF;
+    }
     lightmap->size = size;
     vec_init(&lightmap->uvs);
+}
+
+static void _golf_json_object_get_lightmap(JSON_Object *obj, const char *name, golf_lightmap_t *lightmap) {
+    JSON_Object *lightmap_obj = json_object_get_object(obj, name);
+
+    int size = (int)json_object_get_number(lightmap_obj, "size");
+    unsigned char *data;
+    int data_len;
+    golf_json_object_get_data(lightmap_obj, "data", &data, &data_len);
+    int x, y, c;
+    unsigned char *img_data = stbi_load_from_memory(data, data_len, &x, &y, &c, 1);
+    free(data);
+
+    lightmap->size = size;
+    lightmap->data = img_data;
+    if (x * y != size * size) {
+        golf_log_error("Lightmap with invalid data? Expected size: %d. Got size: %d", sizeof(unsigned char) * size * size, data_len);
+    }
+
+    sg_image_desc img_desc = {
+        .width = x,
+        .height = y,
+        .pixel_format = SG_PIXELFORMAT_R8,
+        .min_filter = SG_FILTER_LINEAR,
+        .mag_filter = SG_FILTER_LINEAR,
+        .wrap_u = SG_WRAP_CLAMP_TO_EDGE,
+        .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
+        .data.subimage[0][0] = {
+            .ptr = img_data,
+            .size = x * y * c,
+        },
+    };
+    lightmap->sg_image = sg_make_image(&img_desc);
+
+    JSON_Array *uvs_arr = json_object_get_array(lightmap_obj, "uvs");
+    vec_init(&lightmap->uvs);
+    for (int i = 0; i < (int)json_array_get_count(uvs_arr); i += 2) {
+        float x = (float)json_array_get_number(uvs_arr, i + 0);
+        float y = (float)json_array_get_number(uvs_arr, i + 1);
+        vec_push(&lightmap->uvs, V2(x, y));
+    }
+
+    sg_buffer_desc desc = {
+        .type = SG_BUFFERTYPE_VERTEXBUFFER,
+        .data = {
+            .size = sizeof(vec2) * lightmap->uvs.length,
+            .ptr = lightmap->uvs.data,
+        },
+    };
+    lightmap->sg_uvs_buf = sg_make_buffer(&desc);
+}
+
+static void _stbi_write_func(void *context, void *data, int size) {
+    vec_char_t *v = (vec_char_t*)context;
+    vec_pusharr(v, (char*)data, size);
+}
+
+static void _golf_json_object_set_lightmap(JSON_Object *obj, const char *name, golf_lightmap_t *lightmap) {
+    JSON_Value *lightmap_val = json_value_init_object();
+    JSON_Object *lightmap_obj = json_value_get_object(lightmap_val);
+
+    json_object_set_number(lightmap_obj, "size", lightmap->size);
+
+    vec_char_t png_data;
+    vec_init(&png_data);
+    stbi_write_png_to_func(_stbi_write_func, &png_data, lightmap->size, lightmap->size, 1, lightmap->data, lightmap->size);
+    golf_json_object_set_data(lightmap_obj, "data", png_data.data, sizeof(unsigned char) * png_data.length);
+    vec_deinit(&png_data);
+
+    JSON_Value *uvs_val = json_value_init_array();
+    JSON_Array *uvs_arr = json_value_get_array(uvs_val);
+    for (int i = 0; i < lightmap->uvs.length; i++) {
+        json_array_append_number(uvs_arr, lightmap->uvs.data[i].x);
+        json_array_append_number(uvs_arr, lightmap->uvs.data[i].y);
+    }
+    json_object_set_value(lightmap_obj, "uvs", uvs_val);
+
+    json_object_set_value(obj, name, lightmap_val);
 }
 
 golf_material_t golf_material_color(vec3 color) {
@@ -101,7 +184,7 @@ bool golf_level_save(golf_level_t *level, const char *path) {
 
         golf_lightmap_t *lightmap = golf_entity_get_lightmap(entity);
         if (lightmap) {
-            golf_json_object_set_lightmap(json_entity_obj, "lightmap", lightmap);
+            _golf_json_object_set_lightmap(json_entity_obj, "lightmap", lightmap);
         }
 
         json_array_append_value(json_entities_arr, json_entity_val);
@@ -210,9 +293,7 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
             quat rotation = golf_json_object_get_quat(obj, "rotation");
 
             golf_hole_entity_t hole;
-            hole.lightmap.size = 256;
-            hole.lightmap.data = malloc(sizeof(char) * 256 * 256);
-            vec_init(&hole.lightmap.uvs);
+            _golf_json_object_get_lightmap(obj, "lightmap", &hole.lightmap);
             hole.transform.position = position;
             hole.transform.scale = scale;
             hole.transform.rotation = rotation;
@@ -284,6 +365,21 @@ golf_lightmap_t *golf_entity_get_lightmap(golf_entity_t *entity) {
         }
         case BALL_START_ENTITY: {
             return NULL;
+        }
+    }
+    return NULL;
+}
+
+golf_model_t *golf_entity_get_model(golf_entity_t *entity) {
+    switch (entity->type) {
+        case MODEL_ENTITY: {
+            return entity->model.model;
+        }
+        case HOLE_ENTITY: {
+            return golf_data_get_model("data/models/hole.obj");
+        }
+        case BALL_START_ENTITY: {
+            return golf_data_get_model("data/models/sphere.obj");
         }
     }
     return NULL;
