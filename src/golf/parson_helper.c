@@ -18,7 +18,7 @@ void golf_json_object_set_data(JSON_Object *obj, const char *name, unsigned char
     if (!enc_data) {
         golf_log_warning("Failed to encode data in field %s", name);
     }
-    json_object_set_string(obj, name, enc_data);
+    json_object_set_string(obj, name, (char*)enc_data);
     free(enc_data);
 }
 

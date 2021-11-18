@@ -108,7 +108,7 @@ unsigned char * golf_base64_decode(const unsigned char *src, int len,
     int pad = 0;
 
     memset(dtable, 0x80, 256);
-    for (i = 0; i < sizeof(base64_table) - 1; i++)
+    for (i = 0; i < (int)sizeof(base64_table) - 1; i++)
         dtable[base64_table[i]] = (unsigned char) i;
     dtable['='] = 0;
 

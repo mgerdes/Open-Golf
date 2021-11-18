@@ -78,7 +78,7 @@ static void _golf_json_object_set_lightmap(JSON_Object *obj, const char *name, g
     vec_char_t png_data;
     vec_init(&png_data);
     stbi_write_png_to_func(_stbi_write_func, &png_data, lightmap->size, lightmap->size, 1, lightmap->data, lightmap->size);
-    golf_json_object_set_data(lightmap_obj, "data", png_data.data, sizeof(unsigned char) * png_data.length);
+    golf_json_object_set_data(lightmap_obj, "data", (unsigned char*)png_data.data, sizeof(unsigned char) * png_data.length);
     vec_deinit(&png_data);
 
     JSON_Value *uvs_val = json_value_init_array();
