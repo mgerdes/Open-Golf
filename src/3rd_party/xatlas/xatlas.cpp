@@ -9524,7 +9524,7 @@ const char *StringForEnum(ProgressCategory::Enum category)
 #include "golf/maths.h"
 #include <assert.h>
 
-extern "C" bool xatlas_wrapper_generate_lightmap_uvs(vec2 *lightmap_uv, vec3 *vertices, int num_vertices) {
+extern "C" bool xatlas_wrapper_generate_lightmap_uvs(int resolution, vec2 *lightmap_uv, vec3 *vertices, int num_vertices, int *atlas_width, int *atlas_height) {
     xatlas::Atlas *atlas = xatlas::Create();
     xatlas::MeshDecl meshDecl;
     meshDecl.vertexCount = num_vertices;
@@ -9537,6 +9537,8 @@ extern "C" bool xatlas_wrapper_generate_lightmap_uvs(vec2 *lightmap_uv, vec3 *ve
     }
     xatlas::PackOptions packOptions;
     packOptions.padding = 8;
+    packOptions.bruteForce = false;
+    packOptions.resolution = resolution;
     xatlas::Generate(atlas, xatlas::ChartOptions(), nullptr, packOptions);
     assert(atlas->meshCount == 1);
     const xatlas::Mesh &mesh = atlas->meshes[0];
@@ -9549,6 +9551,8 @@ extern "C" bool xatlas_wrapper_generate_lightmap_uvs(vec2 *lightmap_uv, vec3 *ve
         lightmap_uv[i].x = lightmap_tx; 
         lightmap_uv[i].y = lightmap_ty; 
     }
+    *atlas_width = atlas->width;
+    *atlas_height = atlas->height;
     xatlas::Destroy(atlas);
     return true;
 }

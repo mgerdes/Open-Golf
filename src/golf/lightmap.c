@@ -132,7 +132,18 @@ static int _lightmap_generator_run(void *user_data) {
         vec_vec2_t *lightmap_uvs = &entity->lightmap_uvs;
         _lm_gen_inc_uv_gen_progress(generator);
         if (generator->create_uvs) {
-            xatlas_wrapper_generate_lightmap_uvs(lightmap_uvs->data, positions->data, positions->length);
+            int resolution = entity->resolution;
+            int *image_width = &entity->image_width;
+            int *image_height = &entity->image_height;
+            vec2 *lightmap_uv = lightmap_uvs->data;
+            vec3 *vertices = positions->data;
+            int num_vertices = positions->length;
+            xatlas_wrapper_generate_lightmap_uvs(resolution, lightmap_uv, vertices, num_vertices, image_width, image_height);
+
+            entity->image_data = malloc(sizeof(float) * entity->image_width * entity->image_height);
+            for (int i = 0; i < entity->image_width * entity->image_height; i++) {
+                entity->image_data[i] = 1.0f;
+            }
         }
 
         GLuint positions_vbo;
@@ -145,18 +156,19 @@ static int _lightmap_generator_run(void *user_data) {
         glBindBuffer(GL_ARRAY_BUFFER, lightmap_uvs_vbo);
         glBufferData(GL_ARRAY_BUFFER, sizeof(vec2) * lightmap_uvs->length, lightmap_uvs->data, GL_STATIC_DRAW);
 
-        int lightmap_size = entity->lightmap_size;
-        float *lightmap_data = entity->lightmap_data;
+        int image_width = entity->image_width;
+        int image_height = entity->image_height;
+        float *image_data = entity->image_data;
         if (generator->reset_lightmaps) {
-            for (int i = 0; i < lightmap_size * lightmap_size; i++) {
-                lightmap_data[i] = 0.0f;
+            for (int i = 0; i < image_width * image_height; i++) {
+                image_data[i] = 0.0f;
             }
         }
 
         GLuint tex;
         glGenTextures(1, &tex);
         glBindTexture(GL_TEXTURE_2D, tex);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, lightmap_size, lightmap_size, 0, GL_RED, GL_FLOAT, lightmap_data);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, image_width, image_height, 0, GL_RED, GL_FLOAT, image_data);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -168,7 +180,7 @@ static int _lightmap_generator_run(void *user_data) {
         entity->gl_tex = tex;
     }
 
-    lm_context *ctx = lmCreate(64, 0.01f, 100.0f, 1.0f, 1.0f, 1.0f, 2, 0.01f, 0.0f);
+    lm_context *ctx = lmCreate(128, 0.001f, 10.0f, 1.0f, 1.0f, 1.0f, 4, 0.01f, 0.0f);
     for (int b = 0; b < generator->num_iterations; b++) {
         for (int i = 0; i < generator->entities.length; i++) {
             _lm_gen_inc_lm_gen_progress(generator);
@@ -177,13 +189,14 @@ static int _lightmap_generator_run(void *user_data) {
                 continue;
             }
 
-            float *lm_data = entity->lightmap_data;
-            int lm_size = entity->lightmap_size;
+            float *image_data = entity->image_data;
+            int image_width = entity->image_width;
+            int image_height = entity->image_height;
 
-            for (int i = 0; i < lm_size * lm_size; i++) {
-                lm_data[i] = 0.0f;
+            for (int i = 0; i < image_width * image_height; i++) {
+                image_data[i] = 0.0f;
             }
-            lmSetTargetLightmap(ctx, lm_data, lm_size, lm_size, 1);
+            lmSetTargetLightmap(ctx, image_data, image_width, image_height, 1);
             lmSetGeometry(ctx, mat4_transpose(entity->model_mat).m,
                     LM_FLOAT, entity->positions.data, sizeof(vec3),
                     LM_FLOAT, entity->normals.data, sizeof(vec3),
@@ -235,24 +248,31 @@ static int _lightmap_generator_run(void *user_data) {
 
         for (int i = 0; i < generator->entities.length; i++) {
             golf_lightmap_entity_t *entity = &generator->entities.data[i];
-            int lm_size = entity->lightmap_size;
-            float *lm_data = entity->lightmap_data;
-            float *temp = malloc(sizeof(float) * lm_size * lm_size);
-            for (int i = 0; i < generator->num_dilates; i++) {
-                lmImageDilate(lm_data, temp, lm_size, lm_size, 1);
-                lmImageDilate(temp, lm_data, lm_size, lm_size, 1);
-            }
-            for (int i = 0; i < generator->num_smooths; i++) {
-                lmImageSmooth(lm_data, temp, lm_size, lm_size, 1);
-                lmImageSmooth(temp, lm_data, lm_size, lm_size, 1);
-            }
-            lmImagePower(lm_data, lm_size, lm_size, 1, generator->gamma, LM_ALL_CHANNELS);
-
+            int image_width = entity->image_width;
+            int image_height = entity->image_height;
+            float *image_data = entity->image_data;
             glBindTexture(GL_TEXTURE_2D, entity->gl_tex);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_FLOAT, lm_size, lm_size, 0, GL_RED, GL_FLOAT, lm_data);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_FLOAT, image_width, image_height, 0, GL_RED, GL_FLOAT, image_data);
             glBindTexture(GL_TEXTURE_2D, 0);
-            free(temp);
         }
+    }
+
+    for (int i = 0; i < generator->entities.length; i++) {
+        golf_lightmap_entity_t *entity = &generator->entities.data[i];
+        int image_width = entity->image_width;
+        int image_height = entity->image_height;
+        float *image_data = entity->image_data;
+        float *temp = malloc(sizeof(float) * image_width * image_height);
+        for (int i = 0; i < generator->num_dilates; i++) {
+            lmImageDilate(image_data, temp, image_width, image_height, 1);
+            lmImageDilate(temp, image_data, image_width, image_height, 1);
+        }
+        for (int i = 0; i < generator->num_smooths; i++) {
+            lmImageSmooth(image_data, temp, image_width, image_height, 1);
+            lmImageSmooth(temp, image_data, image_width, image_height, 1);
+        }
+        lmImagePower(image_data, image_width, image_height, 1, generator->gamma, LM_ALL_CHANNELS);
+        free(temp);
     }
 
     for (int i = 0; i < generator->entities.length; i++) {
@@ -284,7 +304,7 @@ void golf_lightmap_generator_add_entity(golf_lightmap_generator_t *generator, go
     vec_init(&entity.positions);
     vec_init(&entity.normals);
     vec_init(&entity.lightmap_uvs);
-    entity.lightmap_data = malloc(sizeof(float) * lightmap->size * lightmap->size);
+    //entity.image_data = malloc(sizeof(float) * lightmap->image_width * lightmap->image_height);
 
     entity.model_mat = model_mat;
     vec_pusharr(&entity.positions, model->positions.data, model->positions.length);
@@ -293,10 +313,12 @@ void golf_lightmap_generator_add_entity(golf_lightmap_generator_t *generator, go
     for (int i = entity.lightmap_uvs.length; i < entity.positions.length; i++) {
         vec_push(&entity.lightmap_uvs, V2(0, 0));
     }
-    entity.lightmap_size = lightmap->size;
-    for (int i = 0; i < lightmap->size * lightmap->size; i++) {
-        entity.lightmap_data[i] = ((float)lightmap->data[i]) / 0xFF;
-    }
+    entity.resolution = lightmap->resolution;
+    //entity.image_width = lightmap->image_width;
+    //entity.image_height = lightmap->image_height;
+    //for (int i = 0; i < lightmap->image_width * lightmap->image_height; i++) {
+        //entity.image_data[i] = ((float)lightmap->image_data[i]) / 0xFF;
+    //}
     entity.lightmap = lightmap;
 
     vec_push(&generator->entities, entity);

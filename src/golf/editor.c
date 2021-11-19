@@ -232,6 +232,50 @@ static void _golf_editor_undoable_igInputFloat4(const char *label, float *f4) {
     }
 }
 
+static void _golf_editor_edit_lightmap(golf_lightmap_t *lightmap) {
+    bool queue_action = false;
+    bool queue_commit = false;
+    bool queue_decommit = false;
+
+    igInputInt("Resolution", &lightmap->resolution, 0, 0, ImGuiInputTextFlags_None);
+    if (igIsItemActivated()) {
+        queue_action = true;
+    }
+    if (igIsItemDeactivated()) {
+        if (igIsItemDeactivatedAfterEdit()) {
+            queue_commit = true;
+        }
+        else {
+            queue_decommit = true;
+        }
+    }
+
+    igText("Image Size <%d, %d>", lightmap->image_width, lightmap->image_height);
+    igImage((ImTextureID)(uintptr_t)lightmap->sg_image.id, 
+            (ImVec2){(float)lightmap->image_width, (float)lightmap->image_height},
+            (ImVec2){0, 0},
+            (ImVec2){1, 1}, 
+            (ImVec4){1, 1, 1, 1},
+            (ImVec4){1, 1, 1, 1});
+
+    if (queue_action) {
+        golf_editor_action_t action;
+        _golf_editor_action_init(&action);
+        _golf_editor_action_push_data(&action, lightmap, sizeof(golf_lightmap_t));
+        _golf_editor_queue_start_action(action);
+    }
+    if (queue_commit) {
+        unsigned char *data = malloc(lightmap->image_width * lightmap->image_height);  
+        memset(data, 0xFF, lightmap->image_width * lightmap->image_height);
+        golf_lightmap_init(lightmap, lightmap->resolution, lightmap->image_width, lightmap->image_height, data, lightmap->uvs);
+        free(data);
+        _golf_editor_queue_commit_action();
+    }
+    if (queue_decommit) {
+        _golf_editor_queue_decommit_action();
+    }
+}
+
 void golf_editor_update(float dt) {
     ImGuiIO *IO = igGetIO();
     ImGuiViewport* viewport = igGetMainViewport();
@@ -306,7 +350,7 @@ void golf_editor_update(float dt) {
                     bool create_uvs = true;
                     float gamma = 1.0f;
                     int num_iterations = 1;
-                    int num_dilates = 0;
+                    int num_dilates = 1;
                     int num_smooths = 1;
                     golf_lightmap_generator_init(generator, reset_lightmaps, create_uvs, gamma, num_iterations, num_dilates, num_smooths); 
                     for (int i = 0; i < editor.level->entities.length; i++) {
@@ -720,6 +764,7 @@ void golf_editor_update(float dt) {
                     _golf_editor_undoable_igInputFloat3("Position", (float*)&hole->transform.position);
                     _golf_editor_undoable_igInputFloat3("Scale", (float*)&hole->transform.scale);
                     _golf_editor_undoable_igInputFloat4("Rotation", (float*)&hole->transform.rotation);
+                    _golf_editor_edit_lightmap(&hole->lightmap);
                     break;
                 }
             }
@@ -832,20 +877,25 @@ void golf_editor_update(float dt) {
         if (!golf_lightmap_generator_is_running(generator)) {
             golf_log_note("Lightmap Generator Finished");
 
+            golf_editor_action_t action;
+            _golf_editor_action_init(&action);
             for (int i = 0; i < generator->entities.length; i++) {
                 golf_lightmap_entity_t *lm_entity = &generator->entities.data[i];
-                golf_lightmap_t *lm = lm_entity->lightmap;
 
-                for (int i = 0; i < lm->size * lm->size; i++) {
-                    float a = lm_entity->lightmap_data[i];
+                unsigned char *data = malloc(lm_entity->image_width * lm_entity->image_height);
+                for (int i = 0; i < lm_entity->image_width * lm_entity->image_height; i++) {
+                    float a = lm_entity->image_data[i];
                     if (a > 1.0f) a = 1.0f;
                     if (a < 0.0f) a = 0.0f;
-                    lm->data[i] = (unsigned char)(0xFF * a);
+                    data[i] = (unsigned char)(0xFF * a);
                 }
 
-                lm->uvs.length = 0;
-                vec_pusharr(&lm->uvs, lm_entity->lightmap_uvs.data, lm_entity->lightmap_uvs.length);
+                _golf_editor_action_push_data(&action, lm_entity->lightmap, sizeof(golf_lightmap_t));
+                golf_lightmap_init(lm_entity->lightmap, lm_entity->resolution, lm_entity->image_width, lm_entity->image_height, data, lm_entity->lightmap_uvs);
+                free(data);
             }
+            _golf_editor_start_action(action);
+            _golf_editor_commit_action();
 
             golf_lightmap_generator_deinit(generator);
             editor.lightmap_generator_running = false;

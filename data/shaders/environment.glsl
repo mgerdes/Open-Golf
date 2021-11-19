@@ -44,6 +44,8 @@ void main() {
     vec3 color = texture(kd_texture, frag_texturecoord).xyz; 
     color = color + 0.001 * (frag_normal.xyz + frag_position.xyz);
     g_frag_color = vec4(gi * color, 1.0);
+    //g_frag_color *= 0.001;
+    //g_frag_color += vec4(frag_lightmap_uv, 0.0, 1.0);
 }
 @end
 

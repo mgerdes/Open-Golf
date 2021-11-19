@@ -10,8 +10,8 @@ typedef struct golf_lightmap_entity {
     mat4 model_mat;
     vec_vec3_t positions, normals;
     vec_vec2_t lightmap_uvs;
-    int lightmap_size;
-    float *lightmap_data;
+    int resolution, image_width, image_height;
+    float *image_data;
     golf_lightmap_t *lightmap;
     int gl_position_vbo, gl_lightmap_uv_vbo, gl_tex;
 } golf_lightmap_entity_t;

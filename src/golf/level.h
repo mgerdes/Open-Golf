@@ -7,13 +7,14 @@
 #include "golf/maths.h"
 
 typedef struct golf_lightmap {
-    int size;
-    unsigned char *data;
+    int resolution;
+    unsigned char *image_data;
+    int image_width, image_height;
     sg_image sg_image;
     vec_vec2_t uvs;
     sg_buffer sg_uvs_buf;
 } golf_lightmap_t;
-void golf_lightmap_init(golf_lightmap_t *lightmap, int size);
+void golf_lightmap_init(golf_lightmap_t *lightmap, int resolution, int image_width, int image_height, unsigned char *image_data, vec_vec2_t uvs);
 
 typedef enum golf_material_type {
     GOLF_MATERIAL_TEXTURE,
