@@ -46,6 +46,20 @@ typedef struct golf_editor {
         float rotate_snap;
         mat4 model_mat;
     } gizmo;
+
+    struct {
+        bool open_popup;
+        int num_iterations, 
+            num_dilates,
+            num_smooths,
+            hemisphere_size,
+            interpolation_passes;
+        float gamma,
+              z_near,
+              z_far,
+              interpolation_threshold,
+              camera_to_surface_distance_modifier;
+    } gi;
 } golf_editor_t;
 
 golf_editor_t *golf_editor_get(void);

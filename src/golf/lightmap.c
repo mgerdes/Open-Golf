@@ -27,13 +27,22 @@ static void _lm_gen_inc_lm_gen_progress(golf_lightmap_generator_t *generator) {
 
 void golf_lightmap_generator_init(golf_lightmap_generator_t *generator,
         bool reset_lightmaps, bool create_uvs, float gamma, 
-        int num_iterations, int num_dilates, int num_smooths) {
+        int num_iterations, int num_dilates, int num_smooths,
+        int hemisphere_size, float z_near, float z_far,
+        int interpolation_passes, float interpolation_threshold,
+        float camera_to_surface_distance_modifier) {
     generator->reset_lightmaps = reset_lightmaps;
     generator->create_uvs = create_uvs;
     generator->gamma = gamma;
     generator->num_iterations = num_iterations;
     generator->num_dilates = num_dilates;
     generator->num_smooths = num_smooths;
+    generator->hemisphere_size = hemisphere_size;
+    generator->z_near = z_near;
+    generator->z_far = z_far;
+    generator->interpolation_passes = interpolation_passes;
+    generator->interpolation_threshold = interpolation_threshold;
+    generator->camera_to_surface_distance_modifier = camera_to_surface_distance_modifier;
     vec_init(&generator->entities);
 
     thread_mutex_init(&generator->lock);
@@ -180,7 +189,13 @@ static int _lightmap_generator_run(void *user_data) {
         entity->gl_tex = tex;
     }
 
-    lm_context *ctx = lmCreate(128, 0.001f, 10.0f, 1.0f, 1.0f, 1.0f, 4, 0.01f, 0.0f);
+    lm_context *ctx = lmCreate(generator->hemisphere_size,
+            generator->z_near, 
+            generator->z_far,
+            1.0f, 1.0f, 1.0f,
+            generator->interpolation_passes,
+            generator->interpolation_threshold,
+            generator->camera_to_surface_distance_modifier);
     for (int b = 0; b < generator->num_iterations; b++) {
         for (int i = 0; i < generator->entities.length; i++) {
             _lm_gen_inc_lm_gen_progress(generator);

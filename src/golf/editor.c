@@ -26,6 +26,8 @@ void golf_editor_init(void) {
     ImGuiIO *IO = igGetIO();
     IO->ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
+    memset(&editor, 0, sizeof(editor));
+
     {
         editor.level = malloc(sizeof(golf_level_t));
         golf_file_t file = golf_file("data/levels/level-1/level-1.level");
@@ -36,24 +38,38 @@ void golf_editor_init(void) {
         else {
             golf_log_error("unable to load level file");
         }
+
+        vec_init(&editor.actions);
+        editor.started_action = false;
+
+        editor.hovered_idx = -1;
+        vec_init(&editor.selected_idxs);
     }
 
-    vec_init(&editor.actions);
-    editor.started_action = false;
+    {
+        editor.gizmo.is_using = false;
+        editor.gizmo.bounds_mode_on = false;
+        editor.gizmo.operation = TRANSLATE;
+        editor.gizmo.mode = LOCAL;
+        editor.gizmo.use_snap = false;
+        editor.gizmo.translate_snap = 1;
+        editor.gizmo.scale_snap = 1;
+        editor.gizmo.rotate_snap = 1;
+        editor.gizmo.model_mat = mat4_identity();
+    }
 
-    editor.hovered_idx = -1;
-    vec_init(&editor.selected_idxs);
-
-    memset(&editor.gizmo, 0, sizeof(editor.gizmo));
-    editor.gizmo.is_using = false;
-    editor.gizmo.bounds_mode_on = false;
-    editor.gizmo.operation = TRANSLATE;
-    editor.gizmo.mode = LOCAL;
-    editor.gizmo.use_snap = false;
-    editor.gizmo.translate_snap = 1;
-    editor.gizmo.scale_snap = 1;
-    editor.gizmo.rotate_snap = 1;
-    editor.gizmo.model_mat = mat4_identity();
+    {
+        editor.gi.num_iterations = 1;
+        editor.gi.num_dilates = 1;
+        editor.gi.num_smooths = 1;
+        editor.gi.gamma = 1;
+        editor.gi.hemisphere_size = 128;
+        editor.gi.z_near = 0.001f;
+        editor.gi.z_far = 10.0f;
+        editor.gi.interpolation_passes = 4;
+        editor.gi.interpolation_threshold = 0.01f;
+        editor.gi.camera_to_surface_distance_modifier = 0.0f;
+    }
 }
 
 static void _golf_editor_queue_start_action(golf_editor_action_t action) {
@@ -196,6 +212,42 @@ static void _golf_editor_undoable_igInputText(const char *label, char *buf, int 
     }
 }
 
+static void _golf_editor_undoable_igInputInt(const char *label, int *i) {
+    igInputInt(label, i, 0, 0, ImGuiInputTextFlags_None);
+    if (igIsItemActivated()) {
+        golf_editor_action_t action;
+        _golf_editor_action_init(&action);
+        _golf_editor_action_push_data(&action, i, sizeof(int));
+        _golf_editor_queue_start_action(action);
+    }
+    if (igIsItemDeactivated()) {
+        if (igIsItemDeactivatedAfterEdit()) {
+            _golf_editor_queue_commit_action();
+        }
+        else {
+            _golf_editor_queue_decommit_action();
+        }
+    }
+}
+
+static void _golf_editor_undoable_igInputFloat(const char *label, float *f) {
+    igInputFloat(label, f, 0, 0, "%.3f", ImGuiInputTextFlags_None);
+    if (igIsItemActivated()) {
+        golf_editor_action_t action;
+        _golf_editor_action_init(&action);
+        _golf_editor_action_push_data(&action, f, sizeof(float));
+        _golf_editor_queue_start_action(action);
+    }
+    if (igIsItemDeactivated()) {
+        if (igIsItemDeactivatedAfterEdit()) {
+            _golf_editor_queue_commit_action();
+        }
+        else {
+            _golf_editor_queue_decommit_action();
+        }
+    }
+}
+
 static void _golf_editor_undoable_igInputFloat3(const char *label, float *f3) {
     igInputFloat3(label, f3, "%.3f", ImGuiInputTextFlags_None);
     if (igIsItemActivated()) {
@@ -232,31 +284,44 @@ static void _golf_editor_undoable_igInputFloat4(const char *label, float *f4) {
     }
 }
 
+static void _golf_editor_edit_transform(golf_transform_t *transform) {
+    if (igTreeNode_Str("Transform")) {
+        _golf_editor_undoable_igInputFloat3("Position", (float*)&transform->position);
+        _golf_editor_undoable_igInputFloat3("Scale", (float*)&transform->scale);
+        _golf_editor_undoable_igInputFloat4("Rotation", (float*)&transform->rotation);
+        igTreePop();
+    }
+}
+
 static void _golf_editor_edit_lightmap(golf_lightmap_t *lightmap) {
     bool queue_action = false;
     bool queue_commit = false;
     bool queue_decommit = false;
 
-    igInputInt("Resolution", &lightmap->resolution, 0, 0, ImGuiInputTextFlags_None);
-    if (igIsItemActivated()) {
-        queue_action = true;
-    }
-    if (igIsItemDeactivated()) {
-        if (igIsItemDeactivatedAfterEdit()) {
-            queue_commit = true;
+    if (igTreeNode_Str("Lightmap")) {
+        igInputInt("Resolution", &lightmap->resolution, 0, 0, ImGuiInputTextFlags_None);
+        if (igIsItemActivated()) {
+            queue_action = true;
         }
-        else {
-            queue_decommit = true;
+        if (igIsItemDeactivated()) {
+            if (igIsItemDeactivatedAfterEdit()) {
+                queue_commit = true;
+            }
+            else {
+                queue_decommit = true;
+            }
         }
-    }
 
-    igText("Image Size <%d, %d>", lightmap->image_width, lightmap->image_height);
-    igImage((ImTextureID)(uintptr_t)lightmap->sg_image.id, 
-            (ImVec2){(float)lightmap->image_width, (float)lightmap->image_height},
-            (ImVec2){0, 0},
-            (ImVec2){1, 1}, 
-            (ImVec4){1, 1, 1, 1},
-            (ImVec4){1, 1, 1, 1});
+        igText("Image Size <%d, %d>", lightmap->image_width, lightmap->image_height);
+        igImage((ImTextureID)(uintptr_t)lightmap->sg_image.id, 
+                (ImVec2){(float)lightmap->image_width, (float)lightmap->image_height},
+                (ImVec2){0, 0},
+                (ImVec2){1, 1}, 
+                (ImVec4){1, 1, 1, 1},
+                (ImVec4){1, 1, 1, 1});
+
+        igTreePop();
+    }
 
     if (queue_action) {
         golf_editor_action_t action;
@@ -345,6 +410,7 @@ void golf_editor_update(float dt) {
             if (igMenuItem_Bool("Generate Lightmaps", NULL, false, true)) {
                 if (!editor.lightmap_generator_running) {
                     golf_log_note("Lightmap Generator Started");
+                    /*
                     golf_lightmap_generator_t *generator = &editor.lightmap_generator;  
                     bool reset_lightmaps = true;
                     bool create_uvs = true;
@@ -365,6 +431,7 @@ void golf_editor_update(float dt) {
                     }
                     golf_lightmap_generator_start(generator);
                     editor.lightmap_generator_running = true;
+                    */
                 }
             }
             igEndMenu();
@@ -619,6 +686,114 @@ void golf_editor_update(float dt) {
             igPopItemWidth();
         }
 
+        // Settings Button
+        {
+            igSameLine(0, 10);
+            if (igButton(ICON_FA_COG, (ImVec2){20, 20})) {
+                //editor.gizmo.use_snap = !editor.gizmo.use_snap;
+                igOpenPopup_Str("settings_popup", ImGuiPopupFlags_None);
+            }
+            if (igBeginPopup("settings_popup", ImGuiWindowFlags_None)) {
+                if (igTreeNode_Str("Global Illumination")) {
+                    igPushItemWidth(75);
+
+                    _golf_editor_undoable_igInputInt("Num Iterations", &editor.gi.num_iterations);
+                    _golf_editor_undoable_igInputInt("Num Dilates", &editor.gi.num_dilates);
+                    _golf_editor_undoable_igInputInt("Num Smooths", &editor.gi.num_smooths);
+                    _golf_editor_undoable_igInputFloat("Gamma", &editor.gi.gamma);
+
+                    _golf_editor_undoable_igInputInt("Hemisphere Size", &editor.gi.hemisphere_size);
+                    if (igIsItemHovered(ImGuiHoveredFlags_None)) {
+                        igBeginTooltip();
+                        igText("Resolution of the hemisphere renderings. must be a power of two! typical: 64.");
+                        igEndTooltip();
+                    }
+
+                    _golf_editor_undoable_igInputFloat("Z Near", &editor.gi.z_near);
+                    if (igIsItemHovered(ImGuiHoveredFlags_None)) {
+                        igBeginTooltip();
+                        igText("Hemisphere min draw distances.");
+                        igEndTooltip();
+                    }
+
+                    _golf_editor_undoable_igInputFloat("Z Far", &editor.gi.z_far);
+                    if (igIsItemHovered(ImGuiHoveredFlags_None)) {
+                        igBeginTooltip();
+                        igText("Hemisphere max draw distances.");
+                        igEndTooltip();
+                    }
+
+                    _golf_editor_undoable_igInputInt("Interpolation Passes", &editor.gi.interpolation_passes);
+                    if (igIsItemHovered(ImGuiHoveredFlags_None)) {
+                        igBeginTooltip();
+                        igText("Hierarchical selective interpolation passes (0-8; initial step size = 2^passes).");
+                        igEndTooltip();
+                    }
+
+                    _golf_editor_undoable_igInputFloat("Interpolation Threshold", &editor.gi.interpolation_threshold);
+                    if (igIsItemHovered(ImGuiHoveredFlags_None)) {
+                        igBeginTooltip();
+                        igText("Error value below which lightmap pixels are interpolated instead of rendered.");
+                        igText("Use output image from LM_DEBUG_INTERPOLATION to determine a good value.");
+                        igText("Values around and below 0.01 are probably ok.");
+                        igText("The lower the value, the more hemispheres are rendered -> sower, but possibly better quality.");
+                        igEndTooltip();
+                    }
+
+                    _golf_editor_undoable_igInputFloat("Camera to Surface Distance Modifier", &editor.gi.camera_to_surface_distance_modifier);
+                    if (igIsItemHovered(ImGuiHoveredFlags_None)) {
+                        igBeginTooltip();
+                        igText("Modifier for the height of the rendered hemispheres above the sruface.");
+                        igText("-1.0f => stick to surface.");
+                        igText("0.0f => minimum height for interpolated surface normals.");
+                        igText("> 0.0f => improves gradients on surfaces with interpolated normals due to the flat surface horizion.");
+                        igText("But may introduce other artifacts.");
+                        igEndTooltip();
+                    }
+
+                    if (igButton("Bake Lightmaps", (ImVec2){0, 0})) {
+                        if (!editor.lightmap_generator_running) {
+                            golf_log_note("Lightmap Generator Started");
+                            golf_lightmap_generator_t *generator = &editor.lightmap_generator;  
+                            golf_lightmap_generator_init(generator, true, true, 
+                                    editor.gi.gamma,
+                                    editor.gi.num_iterations,
+                                    editor.gi.num_dilates,
+                                    editor.gi.num_smooths,
+                                    editor.gi.hemisphere_size,
+                                    editor.gi.z_near,
+                                    editor.gi.z_far,
+                                    editor.gi.interpolation_passes,
+                                    editor.gi.interpolation_threshold,
+                                    editor.gi.camera_to_surface_distance_modifier);
+                            for (int i = 0; i < editor.level->entities.length; i++) {
+                                golf_entity_t *entity = &editor.level->entities.data[i];
+                                golf_lightmap_t *lightmap = golf_entity_get_lightmap(entity);
+                                golf_transform_t *transform = golf_entity_get_transform(entity);
+                                golf_model_t *model = golf_entity_get_model(entity);
+                                if (lightmap && transform && model) {
+                                    mat4 model_mat = golf_transform_get_model_mat(*transform);
+                                    golf_lightmap_generator_add_entity(generator, model, model_mat, lightmap);
+                                }
+                            }
+                            golf_lightmap_generator_start(generator);
+                            editor.lightmap_generator_running = true;
+                            editor.gi.open_popup = true;
+                        }
+                    }
+
+                    igPopItemWidth();
+                    igTreePop();
+                }
+                igEndPopup();
+            }
+            if (igIsItemHovered(ImGuiHoveredFlags_None)) {
+                igBeginTooltip();
+                igText("Settings");
+                igEndTooltip();
+            }
+        }
+
         igEnd();
     }
 
@@ -761,9 +936,7 @@ void golf_editor_update(float dt) {
                 case HOLE_ENTITY: {
                     golf_hole_entity_t *hole = &entity->hole;
                     igText("TYPE: Hole");
-                    _golf_editor_undoable_igInputFloat3("Position", (float*)&hole->transform.position);
-                    _golf_editor_undoable_igInputFloat3("Scale", (float*)&hole->transform.scale);
-                    _golf_editor_undoable_igInputFloat4("Rotation", (float*)&hole->transform.rotation);
+                    _golf_editor_edit_transform(&hole->transform);
                     _golf_editor_edit_lightmap(&hole->lightmap);
                     break;
                 }
@@ -772,6 +945,19 @@ void golf_editor_update(float dt) {
         else {
         }
         igEnd();
+    }
+
+    if (editor.gi.open_popup) {
+        igOpenPopup_Str("Lightmap Generator Running", ImGuiPopupFlags_None);
+        editor.gi.open_popup = false;
+    }
+    if (igBeginPopupModal("Lightmap Generator Running", NULL, ImGuiWindowFlags_None)) {
+        igText("Progress: 1 / 10");
+        if (editor.lightmap_generator_running && 
+                !golf_lightmap_generator_is_running(&editor.lightmap_generator)) {
+            igCloseCurrentPopup();
+        }
+        igEndPopup();
     }
 
     igEnd();
@@ -898,6 +1084,7 @@ void golf_editor_update(float dt) {
             _golf_editor_commit_action();
 
             golf_lightmap_generator_deinit(generator);
+
             editor.lightmap_generator_running = false;
         }
     }
