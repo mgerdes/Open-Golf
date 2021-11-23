@@ -328,19 +328,22 @@ static void _golf_editor_undoable_igInputFloat4(const char *label, float *f4, co
 }
 
 static void _golf_editor_duplicate_selected_entities(void) {
-    golf_editor_action_t action;
-    _golf_editor_action_init(&action, "Duplicate entities");
-
     for (int i = 0; i < editor.selected_idxs.length; i++) {
         int idx = editor.selected_idxs.data[i];
         golf_entity_t *selected_entity = &editor.level->entities.data[idx];
         golf_entity_t entity_copy = golf_entity_make_copy(selected_entity);
         _golf_editor_vec_push_and_fix_actions(&editor.level->entities, entity_copy);
+    }
 
-        golf_entity_t *new_entity = &vec_last(&editor.level->entities);
-        new_entity->active = false;
-        _golf_editor_action_push_data(&action, &new_entity->active, sizeof(new_entity->active));
-        new_entity->active = true;
+    golf_editor_action_t action;
+    _golf_editor_action_init(&action, "Duplicate entities");
+
+    for (int i = 0; i < editor.selected_idxs.length; i++) {
+        int idx = editor.level->entities.length - i - 1;
+        golf_entity_t *entity = &editor.level->entities.data[idx];
+        entity->active = false;
+        _golf_editor_action_push_data(&action, &entity->active, sizeof(entity->active));
+        entity->active = true;
     }
 
     _golf_editor_start_action(action);
