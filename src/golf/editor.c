@@ -39,7 +39,8 @@ void golf_editor_init(void) {
             golf_log_error("unable to load level file");
         }
 
-        vec_init(&editor.actions);
+        vec_init(&editor.undo_actions);
+        vec_init(&editor.redo_actions);
         editor.started_action = false;
 
         editor.hovered_idx = -1;
@@ -100,8 +101,17 @@ static void _golf_editor_queue_decommit_action(void) {
     editor.has_queued_decommit = true;
 }
 
-static void _golf_editor_action_init(golf_editor_action_t *action) {
+static void _golf_editor_action_init(golf_editor_action_t *action, const char *name) {
+    action->name = name;
     vec_init(&action->datas);
+}
+
+static void _golf_editor_action_deinit(golf_editor_action_t *action) {
+    for (int i = 0; i < action->datas.length; i++) {
+        golf_editor_action_data_t data = action->datas.data[i];
+        free(data.copy);
+    }
+    vec_deinit(&action->datas);
 }
 
 static void _golf_editor_action_push_data(golf_editor_action_t *action, void *data, int data_size) {
@@ -123,9 +133,9 @@ static void _golf_editor_start_action(golf_editor_action_t action) {
     editor.cur_action = action;
 }
 
-static void _golf_editor_start_action_with_data(void *data, int data_len) {
+static void _golf_editor_start_action_with_data(void *data, int data_len, const char *name) {
     golf_editor_action_t action;
-    _golf_editor_action_init(&action);
+    _golf_editor_action_init(&action, name);
     _golf_editor_action_push_data(&action, data, data_len);
     _golf_editor_start_action(action);
 }
@@ -137,7 +147,11 @@ static void _golf_editor_commit_action(void) {
     }
 
     editor.started_action = false;
-    vec_push(&editor.actions, editor.cur_action);
+    vec_push(&editor.undo_actions, editor.cur_action);
+    for (int i = 0; i < editor.redo_actions.length; i++) {
+        _golf_editor_action_deinit(&editor.redo_actions.data[i]);
+    }
+    editor.redo_actions.length = 0;
 }
 
 static void _golf_editor_decommit_action(void) {
@@ -146,15 +160,13 @@ static void _golf_editor_decommit_action(void) {
         return;
     }
 
-    for (int i = 0; i < editor.cur_action.datas.length; i++) {
-        free(editor.cur_action.datas.data[i].copy);
-    }
+    _golf_editor_action_deinit(&editor.cur_action);
     editor.started_action = false;
 }
 
 static void _golf_editor_fix_actions(char *new_ptr, char *old_ptr_start, char *old_ptr_end) {
-    for (int i = 0; i < editor.actions.length; i++) {
-        golf_editor_action_t *action = &editor.actions.data[i];
+    for (int i = 0; i < editor.undo_actions.length; i++) {
+        golf_editor_action_t *action = &editor.undo_actions.data[i];
         for (int i = 0; i < action->datas.length; i++) {
             golf_editor_action_data_t *action_data = &action->datas.data[i];
             if (action_data->ptr >= old_ptr_start && action_data->ptr < old_ptr_end) {
@@ -173,18 +185,40 @@ static void _golf_editor_fix_actions(char *new_ptr, char *old_ptr_start, char *o
     } while(0)
 
 static void _golf_editor_undo_action(void) {
-    if (editor.actions.length == 0) {
+    if (editor.undo_actions.length == 0) {
         return;
     }
 
-    golf_editor_action_t *action = &vec_pop(&editor.actions); 
-    for (int i = 0; i < action->datas.length; i++) {
-        golf_editor_action_data_t *action_data = &action->datas.data[i];
-        memcpy(action_data->ptr, action_data->copy, action_data->size);
+    golf_editor_action_t *undo_action = &vec_pop(&editor.undo_actions);
+    golf_editor_action_t redo_action;
+    _golf_editor_action_init(&redo_action, undo_action->name);
+    for (int i = 0; i < undo_action->datas.length; i++) {
+        golf_editor_action_data_t *data = &undo_action->datas.data[i];
+        _golf_editor_action_push_data(&redo_action, data->ptr, data->size);
+        memcpy(data->ptr, data->copy, data->size);
     }
+    vec_push(&editor.redo_actions, redo_action);
+    _golf_editor_action_deinit(undo_action);
 }
 
-static void _golf_editor_undoable_igInputText(const char *label, char *buf, int buf_len, bool *edit_done, void *additional_buf, int additional_buf_len) {
+static void _golf_editor_redo_action(void) {
+    if (editor.redo_actions.length == 0) {
+        return;
+    }
+
+    golf_editor_action_t *redo_action = &vec_pop(&editor.redo_actions);
+    golf_editor_action_t undo_action;
+    _golf_editor_action_init(&undo_action, redo_action->name);
+    for (int i = 0; i < redo_action->datas.length; i++) {
+        golf_editor_action_data_t *data = &redo_action->datas.data[i];
+        _golf_editor_action_push_data(&undo_action, data->ptr, data->size);
+        memcpy(data->ptr, data->copy, data->size);
+    }
+    vec_push(&editor.undo_actions, undo_action);
+    _golf_editor_action_deinit(redo_action);
+}
+
+static void _golf_editor_undoable_igInputText(const char *label, char *buf, int buf_len, bool *edit_done, void *additional_buf, int additional_buf_len, const char *action_name) {
     if (edit_done) {
         *edit_done = false;
     }
@@ -192,7 +226,7 @@ static void _golf_editor_undoable_igInputText(const char *label, char *buf, int 
     igInputText(label, buf, buf_len, ImGuiInputTextFlags_None, NULL, NULL);
     if (igIsItemActivated()) {
         golf_editor_action_t action;
-        _golf_editor_action_init(&action);
+        _golf_editor_action_init(&action, action_name);
         _golf_editor_action_push_data(&action, buf, buf_len);
         if (additional_buf) {
             _golf_editor_action_push_data(&action, additional_buf, additional_buf_len);
@@ -212,11 +246,11 @@ static void _golf_editor_undoable_igInputText(const char *label, char *buf, int 
     }
 }
 
-static void _golf_editor_undoable_igInputInt(const char *label, int *i) {
+static void _golf_editor_undoable_igInputInt(const char *label, int *i, const char *action_name) {
     igInputInt(label, i, 0, 0, ImGuiInputTextFlags_None);
     if (igIsItemActivated()) {
         golf_editor_action_t action;
-        _golf_editor_action_init(&action);
+        _golf_editor_action_init(&action, action_name);
         _golf_editor_action_push_data(&action, i, sizeof(int));
         _golf_editor_queue_start_action(action);
     }
@@ -230,11 +264,11 @@ static void _golf_editor_undoable_igInputInt(const char *label, int *i) {
     }
 }
 
-static void _golf_editor_undoable_igInputFloat(const char *label, float *f) {
-    igInputFloat(label, f, 0, 0, "%.3f", ImGuiInputTextFlags_None);
+static void _golf_editor_undoable_igInputFloat(const char *label, float *f, const char *action_name) {
+    igInputFloat(label, f, 0, 0, "%.4f", ImGuiInputTextFlags_None);
     if (igIsItemActivated()) {
         golf_editor_action_t action;
-        _golf_editor_action_init(&action);
+        _golf_editor_action_init(&action, action_name);
         _golf_editor_action_push_data(&action, f, sizeof(float));
         _golf_editor_queue_start_action(action);
     }
@@ -248,11 +282,11 @@ static void _golf_editor_undoable_igInputFloat(const char *label, float *f) {
     }
 }
 
-static void _golf_editor_undoable_igInputFloat3(const char *label, float *f3) {
-    igInputFloat3(label, f3, "%.3f", ImGuiInputTextFlags_None);
+static void _golf_editor_undoable_igInputFloat3(const char *label, float *f3, const char *action_name) {
+    igInputFloat3(label, f3, "%.4f", ImGuiInputTextFlags_None);
     if (igIsItemActivated()) {
         golf_editor_action_t action;
-        _golf_editor_action_init(&action);
+        _golf_editor_action_init(&action, action_name);
         _golf_editor_action_push_data(&action, f3, 3 * sizeof(float));
         _golf_editor_queue_start_action(action);
     }
@@ -266,11 +300,11 @@ static void _golf_editor_undoable_igInputFloat3(const char *label, float *f3) {
     }
 }
 
-static void _golf_editor_undoable_igInputFloat4(const char *label, float *f4) {
-    igInputFloat4(label, f4, "%.3f", ImGuiInputTextFlags_None);
+static void _golf_editor_undoable_igInputFloat4(const char *label, float *f4, const char *action_name) {
+    igInputFloat4(label, f4, "%.4f", ImGuiInputTextFlags_None);
     if (igIsItemActivated()) {
         golf_editor_action_t action;
-        _golf_editor_action_init(&action);
+        _golf_editor_action_init(&action, action_name);
         _golf_editor_action_push_data(&action, f4, 4 * sizeof(float));
         _golf_editor_queue_start_action(action);
     }
@@ -286,9 +320,9 @@ static void _golf_editor_undoable_igInputFloat4(const char *label, float *f4) {
 
 static void _golf_editor_edit_transform(golf_transform_t *transform) {
     if (igTreeNode_Str("Transform")) {
-        _golf_editor_undoable_igInputFloat3("Position", (float*)&transform->position);
-        _golf_editor_undoable_igInputFloat3("Scale", (float*)&transform->scale);
-        _golf_editor_undoable_igInputFloat4("Rotation", (float*)&transform->rotation);
+        _golf_editor_undoable_igInputFloat3("Position", (float*)&transform->position, "Modify transform position");
+        _golf_editor_undoable_igInputFloat3("Scale", (float*)&transform->scale, "Modify transform scale");
+        _golf_editor_undoable_igInputFloat4("Rotation", (float*)&transform->rotation, "Modify transform rotation");
         igTreePop();
     }
 }
@@ -325,7 +359,7 @@ static void _golf_editor_edit_lightmap(golf_lightmap_t *lightmap) {
 
     if (queue_action) {
         golf_editor_action_t action;
-        _golf_editor_action_init(&action);
+        _golf_editor_action_init(&action, "Modify lightmap");
         _golf_editor_action_push_data(&action, lightmap, sizeof(golf_lightmap_t));
         _golf_editor_queue_start_action(action);
     }
@@ -376,6 +410,26 @@ void golf_editor_update(float dt) {
                 _golf_editor_undo_action();
             }
             if (igMenuItem_Bool("Redo", NULL, false, true)) {
+                _golf_editor_redo_action();
+            }
+            if (igBeginMenu("History", true)) {
+                int ig_id = 0;
+                for (int i = 0; i < editor.undo_actions.length; i++) {
+                    igPushID_Int(ig_id++);
+                    golf_editor_action_t *action = &editor.undo_actions.data[i];
+                    if (igMenuItem_Bool(action->name, NULL, false, true)) {
+                    }
+                    igPopID();
+                }
+                igSeparator();
+                for (int i = editor.redo_actions.length - 1; i >= 0; i--) {
+                    igPushID_Int(ig_id++);
+                    golf_editor_action_t *action = &editor.redo_actions.data[i];
+                    if (igMenuItem_Bool(action->name, NULL, false, true)) {
+                    }
+                    igPopID();
+                }
+                igEndMenu();
             }
             if (igMenuItem_Bool("Duplicate", NULL, false, true)) {
                 /*
@@ -406,33 +460,6 @@ void golf_editor_update(float dt) {
                     }
                 }
                 */
-            }
-            if (igMenuItem_Bool("Generate Lightmaps", NULL, false, true)) {
-                if (!editor.lightmap_generator_running) {
-                    golf_log_note("Lightmap Generator Started");
-                    /*
-                    golf_lightmap_generator_t *generator = &editor.lightmap_generator;  
-                    bool reset_lightmaps = true;
-                    bool create_uvs = true;
-                    float gamma = 1.0f;
-                    int num_iterations = 1;
-                    int num_dilates = 1;
-                    int num_smooths = 1;
-                    golf_lightmap_generator_init(generator, reset_lightmaps, create_uvs, gamma, num_iterations, num_dilates, num_smooths); 
-                    for (int i = 0; i < editor.level->entities.length; i++) {
-                        golf_entity_t *entity = &editor.level->entities.data[i];
-                        golf_lightmap_t *lightmap = golf_entity_get_lightmap(entity);
-                        golf_transform_t *transform = golf_entity_get_transform(entity);
-                        golf_model_t *model = golf_entity_get_model(entity);
-                        if (lightmap && transform && model) {
-                            mat4 model_mat = golf_transform_get_model_mat(*transform);
-                            golf_lightmap_generator_add_entity(generator, model, model_mat, lightmap);
-                        }
-                    }
-                    golf_lightmap_generator_start(generator);
-                    editor.lightmap_generator_running = true;
-                    */
-                }
             }
             igEndMenu();
         }
@@ -522,7 +549,7 @@ void golf_editor_update(float dt) {
         bool is_using = ImGuizmo_IsUsing();
         if (!editor.gizmo.is_using && is_using) {
             golf_editor_action_t action;
-            _golf_editor_action_init(&action);
+            _golf_editor_action_init(&action, "Modify transform position");
             for (int i = 0; i < editor.selected_idxs.length; i++) {
                 int idx = editor.selected_idxs.data[i];
                 golf_entity_t *entity = &editor.level->entities.data[idx];
@@ -697,40 +724,40 @@ void golf_editor_update(float dt) {
                 if (igTreeNode_Str("Global Illumination")) {
                     igPushItemWidth(75);
 
-                    _golf_editor_undoable_igInputInt("Num Iterations", &editor.gi.num_iterations);
-                    _golf_editor_undoable_igInputInt("Num Dilates", &editor.gi.num_dilates);
-                    _golf_editor_undoable_igInputInt("Num Smooths", &editor.gi.num_smooths);
-                    _golf_editor_undoable_igInputFloat("Gamma", &editor.gi.gamma);
+                    _golf_editor_undoable_igInputInt("Num Iterations", &editor.gi.num_iterations, "Modify GI Settings - Num Iterations");
+                    _golf_editor_undoable_igInputInt("Num Dilates", &editor.gi.num_dilates, "Modify GI Settings - Num Dilates");
+                    _golf_editor_undoable_igInputInt("Num Smooths", &editor.gi.num_smooths, "Modify GI Settings - Num Smooths");
+                    _golf_editor_undoable_igInputFloat("Gamma", &editor.gi.gamma, "Modify GI Settigs - Gamma");
 
-                    _golf_editor_undoable_igInputInt("Hemisphere Size", &editor.gi.hemisphere_size);
+                    _golf_editor_undoable_igInputInt("Hemisphere Size", &editor.gi.hemisphere_size, "Modify GI Settings - Hemisphere Size");
                     if (igIsItemHovered(ImGuiHoveredFlags_None)) {
                         igBeginTooltip();
                         igText("Resolution of the hemisphere renderings. must be a power of two! typical: 64.");
                         igEndTooltip();
                     }
 
-                    _golf_editor_undoable_igInputFloat("Z Near", &editor.gi.z_near);
+                    _golf_editor_undoable_igInputFloat("Z Near", &editor.gi.z_near, "Modify GI Settings - Z Near");
                     if (igIsItemHovered(ImGuiHoveredFlags_None)) {
                         igBeginTooltip();
                         igText("Hemisphere min draw distances.");
                         igEndTooltip();
                     }
 
-                    _golf_editor_undoable_igInputFloat("Z Far", &editor.gi.z_far);
+                    _golf_editor_undoable_igInputFloat("Z Far", &editor.gi.z_far, "Modify GI Settings - Z Far");
                     if (igIsItemHovered(ImGuiHoveredFlags_None)) {
                         igBeginTooltip();
                         igText("Hemisphere max draw distances.");
                         igEndTooltip();
                     }
 
-                    _golf_editor_undoable_igInputInt("Interpolation Passes", &editor.gi.interpolation_passes);
+                    _golf_editor_undoable_igInputInt("Interpolation Passes", &editor.gi.interpolation_passes, "Modify GI Settings - Interpolation Passes");
                     if (igIsItemHovered(ImGuiHoveredFlags_None)) {
                         igBeginTooltip();
                         igText("Hierarchical selective interpolation passes (0-8; initial step size = 2^passes).");
                         igEndTooltip();
                     }
 
-                    _golf_editor_undoable_igInputFloat("Interpolation Threshold", &editor.gi.interpolation_threshold);
+                    _golf_editor_undoable_igInputFloat("Interpolation Threshold", &editor.gi.interpolation_threshold, "Modify GI Settings - Interpolation Threshold");
                     if (igIsItemHovered(ImGuiHoveredFlags_None)) {
                         igBeginTooltip();
                         igText("Error value below which lightmap pixels are interpolated instead of rendered.");
@@ -740,7 +767,7 @@ void golf_editor_update(float dt) {
                         igEndTooltip();
                     }
 
-                    _golf_editor_undoable_igInputFloat("Camera to Surface Distance Modifier", &editor.gi.camera_to_surface_distance_modifier);
+                    _golf_editor_undoable_igInputFloat("Camera to Surface Distance Modifier", &editor.gi.camera_to_surface_distance_modifier, "Modify GI Settings - Camera to Surface Distance Modifier");
                     if (igIsItemHovered(ImGuiHoveredFlags_None)) {
                         igBeginTooltip();
                         igText("Modifier for the height of the rendered hemispheres above the sruface.");
@@ -837,7 +864,7 @@ void golf_editor_update(float dt) {
                             golf_material_type_t material_type_after = material->type;
 
                             material->type = material_type_before;
-                            _golf_editor_start_action_with_data(material, sizeof(golf_material_t));
+                            _golf_editor_start_action_with_data(material, sizeof(golf_material_t), "Change material type");
                             _golf_editor_commit_action();
                             material->type = material_type_after;
 
@@ -858,29 +885,29 @@ void golf_editor_update(float dt) {
                             }
                         }
 
-                        _golf_editor_undoable_igInputText("Name", material->name, GOLF_MATERIAL_NAME_MAX_LEN, NULL, NULL, 0);
+                        _golf_editor_undoable_igInputText("Name", material->name, GOLF_MATERIAL_NAME_MAX_LEN, NULL, NULL, 0, "Modify material name");
 
                         switch (material->type) {
                             case GOLF_MATERIAL_TEXTURE: {
                                 bool edit_done = false;
-                                _golf_editor_undoable_igInputText("Texture", material->texture_path, GOLF_FILE_MAX_PATH, &edit_done, &material->texture, sizeof(material->texture));
+                                _golf_editor_undoable_igInputText("Texture", material->texture_path, GOLF_FILE_MAX_PATH, &edit_done, &material->texture, sizeof(material->texture), "Modify material texture");
                                 if (edit_done) {
                                     material->texture = golf_data_get_texture(material->texture_path);
                                 }
                                 break;
                             }
                             case GOLF_MATERIAL_COLOR: {
-                                _golf_editor_undoable_igInputFloat3("Color", (float*)&material->color);
+                                _golf_editor_undoable_igInputFloat3("Color", (float*)&material->color, "Modify material color");
                                 break;
                             }
                             case GOLF_MATERIAL_DIFFUSE_COLOR: {
-                                _golf_editor_undoable_igInputFloat3("Color", (float*)&material->color);
+                                _golf_editor_undoable_igInputFloat3("Color", (float*)&material->color, "Modify material color");
                                 break;
                             }
                         }
 
                         if (igButton("Delete Material", (ImVec2){0, 0})) {
-                            _golf_editor_start_action_with_data(&material->active, sizeof(material->active));
+                            _golf_editor_start_action_with_data(&material->active, sizeof(material->active), "Delete material");
                             material->active = false;
                             _golf_editor_commit_action();
                         }
@@ -900,7 +927,7 @@ void golf_editor_update(float dt) {
 
                     golf_material_t *material = &vec_last(&editor.level->materials);
                     material->active = false;
-                    _golf_editor_start_action_with_data(&material->active, sizeof(material->active));
+                    _golf_editor_start_action_with_data(&material->active, sizeof(material->active), "Create material");
                     material->active = true;
                     _golf_editor_commit_action();
                 }
@@ -920,17 +947,13 @@ void golf_editor_update(float dt) {
                 case MODEL_ENTITY: {
                     golf_model_entity_t *model = &entity->model;
                     igText("TYPE: Model");
-                    _golf_editor_undoable_igInputFloat3("Position", (float*)&model->transform.position);
-                    _golf_editor_undoable_igInputFloat3("Scale", (float*)&model->transform.scale);
-                    _golf_editor_undoable_igInputFloat4("Rotation", (float*)&model->transform.rotation);
+                    _golf_editor_edit_transform(&model->transform);
                     break;
                 }
                 case BALL_START_ENTITY: {
                     golf_ball_start_entity_t *ball_start = &entity->ball_start;
                     igText("TYPE: Ball Start");
-                    _golf_editor_undoable_igInputFloat3("Position", (float*)&ball_start->transform.position);
-                    _golf_editor_undoable_igInputFloat3("Scale", (float*)&ball_start->transform.scale);
-                    _golf_editor_undoable_igInputFloat4("Rotation", (float*)&ball_start->transform.rotation);
+                    _golf_editor_edit_transform(&ball_start->transform);
                     break;
                 }
                 case HOLE_ENTITY: {
@@ -1064,7 +1087,7 @@ void golf_editor_update(float dt) {
             golf_log_note("Lightmap Generator Finished");
 
             golf_editor_action_t action;
-            _golf_editor_action_init(&action);
+            _golf_editor_action_init(&action, "Create lightmap");
             for (int i = 0; i < generator->entities.length; i++) {
                 golf_lightmap_entity_t *lm_entity = &generator->entities.data[i];
 
@@ -1122,6 +1145,9 @@ void golf_editor_update(float dt) {
         }
         if (inputs->button_down[SAPP_KEYCODE_LEFT_CONTROL] && inputs->button_clicked[SAPP_KEYCODE_Z]) {
             _golf_editor_undo_action();
+        }
+        if (inputs->button_down[SAPP_KEYCODE_LEFT_CONTROL] && inputs->button_clicked[SAPP_KEYCODE_Y]) {
+            _golf_editor_redo_action();
         }
     }
 }

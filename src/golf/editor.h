@@ -18,6 +18,7 @@ typedef struct golf_editor_action_data {
 typedef vec_t(golf_editor_action_data_t) vec_golf_editor_action_data_t;
 
 typedef struct golf_editor_action {
+    const char *name;
     vec_golf_editor_action_data_t datas;
 } golf_editor_action_t;
 typedef vec_t(golf_editor_action_t) vec_golf_editor_action_t;
@@ -27,7 +28,7 @@ typedef struct golf_editor {
 
     bool started_action, has_queued_action, has_queued_commit, has_queued_decommit;
     golf_editor_action_t cur_action, queued_action;
-    vec_golf_editor_action_t actions;
+    vec_golf_editor_action_t undo_actions, redo_actions;
 
     int hovered_idx;
     vec_int_t selected_idxs;
