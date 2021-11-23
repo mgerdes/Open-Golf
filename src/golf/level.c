@@ -5,9 +5,6 @@
 #include "golf/log.h"
 #include "golf/parson_helper.h"
 
-static void _golf_lightmap_update_sg_image(golf_lightmap_t *lightmap) {
-}
-
 void golf_lightmap_init(golf_lightmap_t *lightmap, int resolution, int image_width, int image_height, unsigned char *image_data, vec_vec2_t uvs) {
     lightmap->resolution = resolution;
     lightmap->image_width = image_width;
@@ -109,6 +106,14 @@ golf_material_t golf_material_color(vec3 color) {
     material.type = GOLF_MATERIAL_COLOR;
     material.color = color;
     return material;
+}
+
+golf_transform_t golf_transform(vec3 position, vec3 scale, quat rotation) {
+    golf_transform_t transform;
+    transform.position = position;
+    transform.scale = scale;
+    transform.rotation = rotation;
+    return transform;
 }
 
 bool golf_level_save(golf_level_t *level, const char *path) {
@@ -267,52 +272,38 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
         bool valid_entity = false;
         golf_entity_t entity;  
         if (type && strcmp(type, "model") == 0) {
-            const char *model_path = json_object_get_string(obj, "model");
             vec3 position = golf_json_object_get_vec3(obj, "position");
             vec3 scale = golf_json_object_get_vec3(obj, "scale");
             quat rotation = golf_json_object_get_quat(obj, "rotation");
+            golf_transform_t transform = golf_transform(position, scale, rotation);
 
-            golf_model_entity_t model;
-            snprintf(model.model_path, GOLF_FILE_MAX_PATH, "%s", model_path);
-            model.model = golf_data_get_model(model.model_path);
-            model.transform.position = position;
-            model.transform.scale = scale;
-            model.transform.rotation = rotation;
+            const char *model_path = json_object_get_string(obj, "model");
 
-            entity.active = true;
-            entity.type = MODEL_ENTITY;
-            entity.model = model;
+            golf_lightmap_t lightmap;
+            _golf_json_object_get_lightmap(obj, "lightmap", &lightmap);
+
+            entity = golf_entity_model(transform, model_path, lightmap);
             valid_entity = true;
         }
         else if (type && strcmp(type, "ball_start") == 0) {
             vec3 position = golf_json_object_get_vec3(obj, "position");
             vec3 scale = golf_json_object_get_vec3(obj, "scale");
             quat rotation = golf_json_object_get_quat(obj, "rotation");
+            golf_transform_t transform = golf_transform(position, scale, rotation);
 
-            golf_ball_start_entity_t ball_start;
-            ball_start.transform.position = position;
-            ball_start.transform.scale = scale;
-            ball_start.transform.rotation = rotation;
-
-            entity.active = true;
-            entity.type = BALL_START_ENTITY;
-            entity.ball_start = ball_start;
+            entity = golf_entity_ball_start(transform);
             valid_entity = true;
         }
         else if (type && strcmp(type, "hole") == 0) {
             vec3 position = golf_json_object_get_vec3(obj, "position");
             vec3 scale = golf_json_object_get_vec3(obj, "scale");
             quat rotation = golf_json_object_get_quat(obj, "rotation");
+            golf_transform_t transform = golf_transform(position, scale, rotation);
 
-            golf_hole_entity_t hole;
-            _golf_json_object_get_lightmap(obj, "lightmap", &hole.lightmap);
-            hole.transform.position = position;
-            hole.transform.scale = scale;
-            hole.transform.rotation = rotation;
+            golf_lightmap_t lightmap;
+            _golf_json_object_get_lightmap(obj, "lightmap", &lightmap);
 
-            entity.active = true;
-            entity.type = HOLE_ENTITY;
-            entity.hole = hole;
+            entity = golf_entity_hole(transform, lightmap);
             valid_entity = true;
         }
 
@@ -352,6 +343,51 @@ bool golf_level_get_material(golf_level_t *level, const char *material_name, gol
     return false;
 }
 
+golf_entity_t golf_entity_model(golf_transform_t transform, const char *model_path, golf_lightmap_t lightmap) {
+    golf_entity_t entity;
+    entity.active = true;
+    entity.type = MODEL_ENTITY;
+    entity.model.transform = transform;
+    snprintf(entity.model.model_path, GOLF_FILE_MAX_PATH, "%s", model_path);
+    entity.model.model = golf_data_get_model(model_path);
+    entity.model.lightmap = lightmap;
+    return entity;
+}
+
+golf_entity_t golf_entity_hole(golf_transform_t transform, golf_lightmap_t lightmap) {
+    golf_entity_t entity;
+    entity.active = true;
+    entity.type = HOLE_ENTITY;
+    entity.hole.transform = transform;
+    entity.hole.lightmap = lightmap;
+    return entity;
+}
+
+golf_entity_t golf_entity_ball_start(golf_transform_t transform) {
+    golf_entity_t entity;
+    entity.active = true;
+    entity.type = BALL_START_ENTITY;
+    entity.ball_start.transform = transform;
+    return entity;
+}
+
+golf_entity_t golf_entity_make_copy(golf_entity_t *entity) {
+    golf_entity_t entity_copy = *entity;
+
+    golf_lightmap_t *lightmap = golf_entity_get_lightmap(entity);
+    golf_lightmap_t *lightmap_copy = golf_entity_get_lightmap(&entity_copy);
+    if (lightmap) {
+        golf_lightmap_init(lightmap_copy, 
+                lightmap->resolution,
+                lightmap->image_width,
+                lightmap->image_height,
+                lightmap->image_data,
+                lightmap->uvs);
+    }
+
+    return entity_copy;
+}
+
 golf_transform_t *golf_entity_get_transform(golf_entity_t *entity) {
     switch (entity->type) {
         case MODEL_ENTITY: {
@@ -370,7 +406,7 @@ golf_transform_t *golf_entity_get_transform(golf_entity_t *entity) {
 golf_lightmap_t *golf_entity_get_lightmap(golf_entity_t *entity) {
     switch (entity->type) {
         case MODEL_ENTITY: {
-            return NULL;
+            return &entity->model.lightmap;
         }
         case HOLE_ENTITY: {
             return &entity->hole.lightmap;

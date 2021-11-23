@@ -618,7 +618,8 @@ void golf_renderer_draw_editor(void) {
                 case MODEL_ENTITY: {
                     golf_model_t *model = entity->model.model;
                     mat4 model_mat = golf_transform_get_model_mat(entity->model.transform);
-                    _golf_renderer_draw_model(model, model_mat, NULL, NULL, editor->level);
+                    golf_lightmap_t *lightmap = &entity->model.lightmap;
+                    _golf_renderer_draw_model(model, model_mat, lightmap, NULL, editor->level);
                     break;
                 }
                 case BALL_START_ENTITY: {

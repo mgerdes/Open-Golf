@@ -46,6 +46,7 @@ typedef struct golf_transform {
     quat rotation;
     vec3 scale;
 } golf_transform_t;
+golf_transform_t golf_transform(vec3 position, vec3 scale, quat rotation);
 mat4 golf_transform_get_model_mat(golf_transform_t transform);
 
 typedef struct golf_ball_start_entity {
@@ -54,6 +55,7 @@ typedef struct golf_ball_start_entity {
 
 typedef struct golf_model_entity {
     golf_transform_t transform;
+    golf_lightmap_t lightmap;
     char model_path[GOLF_FILE_MAX_PATH];
     golf_model_t *model;
 } golf_model_entity_t;
@@ -80,6 +82,10 @@ typedef struct golf_entity {
     };
 } golf_entity_t;
 typedef vec_t(golf_entity_t) vec_golf_entity_t;
+golf_entity_t golf_entity_model(golf_transform_t transform, const char *model_path, golf_lightmap_t lightmap);
+golf_entity_t golf_entity_hole(golf_transform_t transform, golf_lightmap_t lightmap);
+golf_entity_t golf_entity_ball_start(golf_transform_t transform);
+golf_entity_t golf_entity_make_copy(golf_entity_t *entity);
 golf_transform_t *golf_entity_get_transform(golf_entity_t *entity);
 golf_lightmap_t *golf_entity_get_lightmap(golf_entity_t *entity);
 golf_model_t *golf_entity_get_model(golf_entity_t *entity);

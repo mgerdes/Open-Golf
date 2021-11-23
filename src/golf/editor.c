@@ -164,6 +164,15 @@ static void _golf_editor_decommit_action(void) {
     editor.started_action = false;
 }
 
+// Assumes you just pushed a new entity onto the level's entities vec
+static void _golf_editor_commit_entity_create_action(void) {
+    golf_entity_t *entity = &vec_last(&editor.level->entities);
+    entity->active = false;
+    _golf_editor_start_action_with_data(&entity->active, sizeof(entity->active), "Create entity");
+    entity->active = true;
+    _golf_editor_commit_action();
+}
+
 static void _golf_editor_fix_actions(char *new_ptr, char *old_ptr_start, char *old_ptr_end) {
     for (int i = 0; i < editor.undo_actions.length; i++) {
         golf_editor_action_t *action = &editor.undo_actions.data[i];
@@ -318,6 +327,26 @@ static void _golf_editor_undoable_igInputFloat4(const char *label, float *f4, co
     }
 }
 
+static void _golf_editor_duplicate_selected_entities(void) {
+    golf_editor_action_t action;
+    _golf_editor_action_init(&action, "Duplicate entities");
+
+    for (int i = 0; i < editor.selected_idxs.length; i++) {
+        int idx = editor.selected_idxs.data[i];
+        golf_entity_t *selected_entity = &editor.level->entities.data[idx];
+        golf_entity_t entity_copy = golf_entity_make_copy(selected_entity);
+        _golf_editor_vec_push_and_fix_actions(&editor.level->entities, entity_copy);
+
+        golf_entity_t *new_entity = &vec_last(&editor.level->entities);
+        new_entity->active = false;
+        _golf_editor_action_push_data(&action, &new_entity->active, sizeof(new_entity->active));
+        new_entity->active = true;
+    }
+
+    _golf_editor_start_action(action);
+    _golf_editor_commit_action();
+}
+
 static void _golf_editor_edit_transform(golf_transform_t *transform) {
     if (igTreeNode_Str("Transform")) {
         _golf_editor_undoable_igInputFloat3("Position", (float*)&transform->position, "Modify transform position");
@@ -432,34 +461,7 @@ void golf_editor_update(float dt) {
                 igEndMenu();
             }
             if (igMenuItem_Bool("Duplicate", NULL, false, true)) {
-                /*
-                for (int i = 0; i < editor.selected_idxs.length; i++) {
-                    int idx = editor.selected_idxs.data[i];
-                    golf_entity_t selected_entity = editor.entities.data[idx];
-                    if (selected_entity.type == MODEL_ENTITY) {
-                        golf_model_entity_t model_entity = selected_entity.model;
-
-                        golf_entity_t new_entity;
-                        new_entity.type = MODEL_ENTITY;
-                        memcpy(&new_entity.model, &model_entity, sizeof(golf_model_entity_t));
-
-                        char *entity_active_ptr = (char*)editor.entity_active.data;
-                        char *entity_ptr = (char*)editor.entities.data;
-                        vec_push(&editor.entity_active, false);
-                        vec_push(&editor.entities, new_entity);
-                        if (entity_active_ptr != (char*)editor.entity_active.data) {
-                            _golf_editor_fix_actions((char*)editor.entity_active.data, entity_active_ptr, entity_active_ptr + sizeof(bool) * (editor.entity_active.length - 1));
-                        }
-                        if (entity_ptr != (char*)editor.entities.data) {
-                            _golf_editor_fix_actions((char*)editor.entities.data, entity_ptr, entity_ptr + sizeof(golf_entity_t) * (editor.entities.length - 1));
-                        }
-
-                        _golf_editor_start_action((char*)&vec_last(&editor.entity_active), sizeof(bool));
-                        vec_last(&editor.entity_active) = true;
-                        _golf_editor_commit_action();
-                    }
-                }
-                */
+                _golf_editor_duplicate_selected_entities();
             }
             igEndMenu();
         }
@@ -795,6 +797,7 @@ void golf_editor_update(float dt) {
                                     editor.gi.camera_to_surface_distance_modifier);
                             for (int i = 0; i < editor.level->entities.length; i++) {
                                 golf_entity_t *entity = &editor.level->entities.data[i];
+                                if (!entity->active) continue;
                                 golf_lightmap_t *lightmap = golf_entity_get_lightmap(entity);
                                 golf_transform_t *transform = golf_entity_get_transform(entity);
                                 golf_model_t *model = golf_entity_get_model(entity);
@@ -830,6 +833,7 @@ void golf_editor_update(float dt) {
             if (igBeginTabItem("Entities", NULL, ImGuiTabItemFlags_None)) {
                 for (int i = 0; i < editor.level->entities.length; i++) {
                     golf_entity_t *entity = &editor.level->entities.data[i];
+                    if (!entity->active) continue;
                     switch (entity->type) {
                         case MODEL_ENTITY: {
                             igSelectable_Bool("Model Entity", false, ImGuiSelectableFlags_None, (ImVec2){0, 0});
@@ -845,6 +849,34 @@ void golf_editor_update(float dt) {
                         }
                     }
                 }
+
+                if (igButton("Create Model Entity", (ImVec2){0, 0})) {
+                    golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
+
+                    golf_lightmap_t lightmap;
+                    {
+                        const char *model_path = "data/models/cube.obj";
+                        golf_model_t *model = golf_data_get_model(model_path);
+                        unsigned char image_data[1] = { 0xFF };
+
+                        vec_vec2_t uvs;
+                        vec_init(&uvs);
+                        for (int i = 0; i < model->positions.length; i++) {
+                            vec_push(&uvs, V2(0, 0));
+                        }
+
+                        golf_lightmap_init(&lightmap, 256, 1, 1, image_data, uvs);
+                        vec_deinit(&uvs);
+                    }
+
+                    golf_entity_t entity = golf_entity_model(transform, "data/models/cube.obj", lightmap);
+                    _golf_editor_vec_push_and_fix_actions(&editor.level->entities, entity);
+                    _golf_editor_commit_entity_create_action();
+                }
+
+                if (igButton("Create Hole Entity", (ImVec2){0, 0})) {
+                }
+
                 igEndTabItem();
             }
 
@@ -945,24 +977,38 @@ void golf_editor_update(float dt) {
             golf_entity_t *entity = &editor.level->entities.data[idx];
             switch (entity->type) {
                 case MODEL_ENTITY: {
-                    golf_model_entity_t *model = &entity->model;
                     igText("TYPE: Model");
-                    _golf_editor_edit_transform(&model->transform);
+                    bool edit_done = false;
+                    _golf_editor_undoable_igInputText("Model", entity->model.model_path, GOLF_FILE_MAX_PATH, &edit_done, &entity->model.model, sizeof(entity->model.model), "Modify model");
+                    if (edit_done) {
+                        entity->model.model = golf_data_get_model(entity->model.model_path);
+                    }
                     break;
                 }
                 case BALL_START_ENTITY: {
-                    golf_ball_start_entity_t *ball_start = &entity->ball_start;
                     igText("TYPE: Ball Start");
-                    _golf_editor_edit_transform(&ball_start->transform);
                     break;
                 }
                 case HOLE_ENTITY: {
-                    golf_hole_entity_t *hole = &entity->hole;
                     igText("TYPE: Hole");
-                    _golf_editor_edit_transform(&hole->transform);
-                    _golf_editor_edit_lightmap(&hole->lightmap);
                     break;
                 }
+            }
+
+            golf_transform_t *transform = golf_entity_get_transform(entity);
+            if (transform) {
+                _golf_editor_edit_transform(transform);
+            }
+
+            golf_lightmap_t *lightmap = golf_entity_get_lightmap(entity);
+            if (lightmap) {
+                _golf_editor_edit_lightmap(lightmap);
+            }
+
+            if (igButton("Delete Entity", (ImVec2){0, 0})) {
+                _golf_editor_start_action_with_data(&entity->active, sizeof(entity->active), "Delete entity");
+                entity->active = false;
+                _golf_editor_commit_action();
             }
         }
         else {
@@ -1009,9 +1055,7 @@ void golf_editor_update(float dt) {
 
         for (int i = 0; i < editor.level->entities.length; i++) {
             golf_entity_t *entity = &editor.level->entities.data[i];
-            if (!entity->active) {
-                continue;
-            }
+            if (!entity->active) continue;
 
             switch (entity->type) {
                 case MODEL_ENTITY: 
@@ -1148,6 +1192,9 @@ void golf_editor_update(float dt) {
         }
         if (inputs->button_down[SAPP_KEYCODE_LEFT_CONTROL] && inputs->button_clicked[SAPP_KEYCODE_Y]) {
             _golf_editor_redo_action();
+        }
+        if (inputs->button_down[SAPP_KEYCODE_LEFT_CONTROL] && inputs->button_clicked[SAPP_KEYCODE_D]) {
+            _golf_editor_duplicate_selected_entities();
         }
     }
 }
