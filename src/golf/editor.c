@@ -847,7 +847,10 @@ void golf_editor_update(float dt) {
                             break;
                         }
                         case HOLE_ENTITY: {
-                            igSelectable_Bool("Hole Entity", false, ImGuiSelectableFlags_None, (ImVec2){0, 0});
+                            if (igSelectable_Bool("Hole Entity", false, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
+                                editor.selected_idxs.length = 0;
+                                vec_push(&editor.selected_idxs, i);
+                            }
                             break;
                         }
                     }

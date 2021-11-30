@@ -47,12 +47,12 @@
         {
             "type": "hole",
             "name": "testing",
-            "position": [0, 0, 0],
-            "scale": [1, 1, 1],
+            "position": [1.5, 3.5, 11.5],
+            "scale": [0.4, 0.4, 0.4],
             "rotation": [0, 0, 0, 1],
             "transform": {
-                "position": [0, 0, 0],
-                "scale": [1, 1, 1],
+                "position": [1.5, 3.5, 11.5],
+                "scale": [0.4, 0.4, 0.4],
                 "rotation": [0, 0, 0, 1]
             },
             "lightmap": {
