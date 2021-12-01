@@ -117,6 +117,7 @@ static void frame(void) {
         golf_data_load("data/textures/fallback.png");
         golf_data_load("data/textures/wood.jpg");
         golf_data_load("data/textures/ground.png");
+        golf_data_load("data/textures/hole_lightmap.png");
 
         golf_inputs_init();
         golf_game_init();

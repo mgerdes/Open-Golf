@@ -6,6 +6,7 @@
 #include "cimgui/cimgui.h"
 #include "cimguizmo/cimguizmo.h"
 #include "IconsFontAwesome5/IconsFontAwesome5.h"
+#include "stb/stb_image_write.h"
 #include "golf/data.h"
 #include "golf/inputs.h"
 #include "golf/log.h"
@@ -70,6 +71,19 @@ void golf_editor_init(void) {
         editor.gi_state.interpolation_passes = 4;
         editor.gi_state.interpolation_threshold = 0.01f;
         editor.gi_state.camera_to_surface_distance_modifier = 0.0f;
+
+        {
+            char image_data[] = { 0xFF };
+
+            golf_model_t *model = golf_data_get_model("data/models/hole.obj");
+            vec_vec2_t uvs;
+            vec_init(&uvs);
+            for (int i = 0; i < model->positions.length; i++) {
+                vec_push(&uvs, V2(0, 0));
+            }
+
+            golf_lightmap_init(&editor.gi_state.hole_lightmap, 256, 1, 1, image_data, uvs);
+        }
     }
 }
 
@@ -812,6 +826,34 @@ void golf_editor_update(float dt) {
                             golf_gi_start(gi);
                             editor.gi_running = true;
                             editor.gi_state.open_popup = true;
+                            editor.gi_state.creating_hole = false;
+                        }
+                    }
+
+                    if (igButton("Create Hole", (ImVec2){0, 0})) {
+                        if (!editor.gi_running) {
+                            golf_log_note("Creating hole model and lightmaps");
+                            golf_gi_t *gi = &editor.gi;
+                            golf_gi_init(gi, true, true, 
+                                    editor.gi_state.gamma,
+                                    editor.gi_state.num_iterations,
+                                    editor.gi_state.num_dilates,
+                                    editor.gi_state.num_smooths,
+                                    editor.gi_state.hemisphere_size,
+                                    editor.gi_state.z_near,
+                                    editor.gi_state.z_far,
+                                    editor.gi_state.interpolation_passes,
+                                    editor.gi_state.interpolation_threshold,
+                                    editor.gi_state.camera_to_surface_distance_modifier);
+                            {
+                                golf_model_t *model = golf_data_get_model("data/models/hole.obj");
+                                mat4 model_mat = mat4_identity();
+                                golf_gi_add_entity(gi, model, model_mat, &editor.gi_state.hole_lightmap);
+                            }
+                            golf_gi_start(gi);
+                            editor.gi_running = true;
+                            editor.gi_state.open_popup = true;
+                            editor.gi_state.creating_hole = true;
                         }
                     }
 
@@ -1028,8 +1070,7 @@ void golf_editor_update(float dt) {
     }
     if (igBeginPopupModal("Lightmap Generator Running", NULL, ImGuiWindowFlags_None)) {
         igText("Progress: 1 / 10");
-        if (editor.gi_running && 
-                !golf_gi_is_running(&editor.gi)) {
+        if (editor.gi_running && !golf_gi_is_running(&editor.gi)) {
             igCloseCurrentPopup();
         }
         igEndPopup();
@@ -1136,25 +1177,69 @@ void golf_editor_update(float dt) {
         if (!golf_gi_is_running(gi)) {
             golf_log_note("Lightmap Generator Finished");
 
-            golf_editor_action_t action;
-            _golf_editor_action_init(&action, "Create lightmap");
-            for (int i = 0; i < gi->entities.length; i++) {
-                golf_gi_entity_t *lm_entity = &gi->entities.data[i];
+            if (editor.gi_state.creating_hole) {
+                golf_gi_entity_t *gi_entity = &gi->entities.data[0];
+                int w = gi_entity->image_width;
+                int h = gi_entity->image_height;
 
-                unsigned char *data = malloc(lm_entity->image_width * lm_entity->image_height);
-                for (int i = 0; i < lm_entity->image_width * lm_entity->image_height; i++) {
-                    float a = lm_entity->image_data[i];
+                unsigned char *data = malloc(w * h);
+                for (int i = 0; i < w * h; i++) {
+                    float a = gi_entity->image_data[i];
                     if (a > 1.0f) a = 1.0f;
-                    if (a < 0.0f) a = 0.0f;
+                    if ( a < 0.0f) a = 0.0f;
                     data[i] = (unsigned char)(0xFF * a);
                 }
 
-                _golf_editor_action_push_data(&action, lm_entity->lightmap, sizeof(golf_lightmap_t));
-                golf_lightmap_init(lm_entity->lightmap, lm_entity->resolution, lm_entity->image_width, lm_entity->image_height, data, lm_entity->lightmap_uvs);
+                stbi_write_png("data/textures/hole_lightmap.png", w, h, 1, data, w);
+
+                golf_string_t obj_data;
+                golf_string_init(&obj_data, "mtllib hole.mtl\no hole\n");
+                golf_model_t *model = golf_data_get_model("data/models/hole.obj");
+                for (int i = 0; i < model->positions.length; i++) {
+                    vec3 p = model->positions.data[i];
+                    golf_string_appendf(&obj_data, "v %f %f %f\n", p.x, p.y, p.z);
+                }
+                for (int i = 0; i < gi_entity->lightmap_uvs.length; i++) {
+                    vec2 vt = gi_entity->lightmap_uvs.data[i];
+                    golf_string_appendf(&obj_data, "vt %f %f\n", vt.x, vt.y);
+                }
+                for (int i = 0; i < model->normals.length; i++) {
+                    vec3 n = model->normals.data[i];
+                    golf_string_appendf(&obj_data, "vn %f %f %f\n", n.x, n.y, n.z);
+                }
+                golf_string_appendf(&obj_data, "usemtl hole\ns 1\n");
+                for (int i = 0; i < model->positions.length; i += 3) {
+                    golf_string_appendf(&obj_data, "f %d/%d/%d %d/%d/%d %d/%d/%d\n",
+                            i + 1, i + 1, i + 1, i + 2, i + 2, i + 2, i + 3, i + 3, i + 3);
+                }
+
+                golf_file_t file = golf_file("data/models/hole.obj");
+                golf_file_set_data(&file, obj_data.cstr, obj_data.len);
+
+                golf_string_deinit(&obj_data);
                 free(data);
             }
-            _golf_editor_start_action(action);
-            _golf_editor_commit_action();
+            else {
+                golf_editor_action_t action;
+                _golf_editor_action_init(&action, "Create lightmap");
+                for (int i = 0; i < gi->entities.length; i++) {
+                    golf_gi_entity_t *gi_entity = &gi->entities.data[i];
+
+                    unsigned char *data = malloc(gi_entity->image_width * gi_entity->image_height);
+                    for (int i = 0; i < gi_entity->image_width * gi_entity->image_height; i++) {
+                        float a = gi_entity->image_data[i];
+                        if (a > 1.0f) a = 1.0f;
+                        if (a < 0.0f) a = 0.0f;
+                        data[i] = (unsigned char)(0xFF * a);
+                    }
+
+                    _golf_editor_action_push_data(&action, gi_entity->lightmap, sizeof(golf_lightmap_t));
+                    golf_lightmap_init(gi_entity->lightmap, gi_entity->resolution, gi_entity->image_width, gi_entity->image_height, data, gi_entity->lightmap_uvs);
+                    free(data);
+                }
+                _golf_editor_start_action(action);
+                _golf_editor_commit_action();
+            }
 
             golf_gi_deinit(gi);
 

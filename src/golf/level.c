@@ -108,6 +108,14 @@ golf_material_t golf_material_color(vec3 color) {
     return material;
 }
 
+golf_material_t golf_material_texture(const char *texture_path) {
+    golf_material_t material;
+    material.type = GOLF_MATERIAL_TEXTURE;
+    snprintf(material.texture_path, GOLF_FILE_MAX_PATH, "%s", texture_path);
+    material.texture = golf_data_get_texture(texture_path);
+    return material;
+}
+
 golf_transform_t golf_transform(vec3 position, vec3 scale, quat rotation) {
     golf_transform_t transform;
     transform.position = position;
@@ -300,10 +308,7 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
             quat rotation = golf_json_object_get_quat(obj, "rotation");
             golf_transform_t transform = golf_transform(position, scale, rotation);
 
-            golf_lightmap_t lightmap;
-            _golf_json_object_get_lightmap(obj, "lightmap", &lightmap);
-
-            entity = golf_entity_hole(transform, lightmap);
+            entity = golf_entity_hole(transform);
             valid_entity = true;
         }
 
@@ -354,12 +359,11 @@ golf_entity_t golf_entity_model(golf_transform_t transform, const char *model_pa
     return entity;
 }
 
-golf_entity_t golf_entity_hole(golf_transform_t transform, golf_lightmap_t lightmap) {
+golf_entity_t golf_entity_hole(golf_transform_t transform) {
     golf_entity_t entity;
     entity.active = true;
     entity.type = HOLE_ENTITY;
     entity.hole.transform = transform;
-    entity.hole.lightmap = lightmap;
     return entity;
 }
 
@@ -408,9 +412,7 @@ golf_lightmap_t *golf_entity_get_lightmap(golf_entity_t *entity) {
         case MODEL_ENTITY: {
             return &entity->model.lightmap;
         }
-        case HOLE_ENTITY: {
-            return &entity->hole.lightmap;
-        }
+        case HOLE_ENTITY:
         case BALL_START_ENTITY: {
             return NULL;
         }

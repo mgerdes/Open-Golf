@@ -17,6 +17,7 @@ typedef struct golf_renderer {
     sg_pipeline diffuse_color_material_pipeline,
                 environment_pipeline,
                 solid_color_material_pipeline,
+                texture_material_pipeline,
                 ui_sprites_pipeline,
                 hole_pass1_pipeline,
                 hole_pass2_pipeline;

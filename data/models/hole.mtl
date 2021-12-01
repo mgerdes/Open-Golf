@@ -1,7 +1,7 @@
 # Blender MTL File: 'None'
 # Material Count: 1
 
-newmtl bake
+newmtl hole
 Ns 500.000001
 Ka 1.000000 1.000000 1.000000
 Kd 0.800000 0.800000 0.800000

@@ -40,6 +40,7 @@ typedef struct golf_material {
 } golf_material_t;
 typedef vec_t(golf_material_t) vec_golf_material_t;
 golf_material_t golf_material_color(vec3 color);
+golf_material_t golf_material_texture(const char *texture_path);
 
 typedef struct golf_transform {
     vec3 position;
@@ -55,6 +56,11 @@ typedef struct golf_ball_start_entity {
 
 typedef struct golf_model_entity {
     golf_transform_t transform;
+
+    int lightmap_idx;
+    vec_vec2_t lightmap_uvs;
+    sg_buffer sg_lightmap_uvs_buf;
+
     golf_lightmap_t lightmap;
     char model_path[GOLF_FILE_MAX_PATH];
     golf_model_t *model;
@@ -63,7 +69,6 @@ typedef vec_t(golf_model_entity_t) vec_golf_model_entity_t;
 
 typedef struct golf_hole_entity {
     golf_transform_t transform;
-    golf_lightmap_t lightmap;
 } golf_hole_entity_t;
 
 typedef enum golf_entity_type {
@@ -83,7 +88,7 @@ typedef struct golf_entity {
 } golf_entity_t;
 typedef vec_t(golf_entity_t) vec_golf_entity_t;
 golf_entity_t golf_entity_model(golf_transform_t transform, const char *model_path, golf_lightmap_t lightmap);
-golf_entity_t golf_entity_hole(golf_transform_t transform, golf_lightmap_t lightmap);
+golf_entity_t golf_entity_hole(golf_transform_t transform);
 golf_entity_t golf_entity_ball_start(golf_transform_t transform);
 golf_entity_t golf_entity_make_copy(golf_entity_t *entity);
 golf_transform_t *golf_entity_get_transform(golf_entity_t *entity);
