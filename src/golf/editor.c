@@ -60,16 +60,16 @@ void golf_editor_init(void) {
     }
 
     {
-        editor.gi.num_iterations = 1;
-        editor.gi.num_dilates = 1;
-        editor.gi.num_smooths = 1;
-        editor.gi.gamma = 1;
-        editor.gi.hemisphere_size = 128;
-        editor.gi.z_near = 0.001f;
-        editor.gi.z_far = 10.0f;
-        editor.gi.interpolation_passes = 4;
-        editor.gi.interpolation_threshold = 0.01f;
-        editor.gi.camera_to_surface_distance_modifier = 0.0f;
+        editor.gi_state.num_iterations = 1;
+        editor.gi_state.num_dilates = 1;
+        editor.gi_state.num_smooths = 1;
+        editor.gi_state.gamma = 1;
+        editor.gi_state.hemisphere_size = 128;
+        editor.gi_state.z_near = 0.001f;
+        editor.gi_state.z_far = 10.0f;
+        editor.gi_state.interpolation_passes = 4;
+        editor.gi_state.interpolation_threshold = 0.01f;
+        editor.gi_state.camera_to_surface_distance_modifier = 0.0f;
     }
 }
 
@@ -729,40 +729,40 @@ void golf_editor_update(float dt) {
                 if (igTreeNode_Str("Global Illumination")) {
                     igPushItemWidth(75);
 
-                    _golf_editor_undoable_igInputInt("Num Iterations", &editor.gi.num_iterations, "Modify GI Settings - Num Iterations");
-                    _golf_editor_undoable_igInputInt("Num Dilates", &editor.gi.num_dilates, "Modify GI Settings - Num Dilates");
-                    _golf_editor_undoable_igInputInt("Num Smooths", &editor.gi.num_smooths, "Modify GI Settings - Num Smooths");
-                    _golf_editor_undoable_igInputFloat("Gamma", &editor.gi.gamma, "Modify GI Settigs - Gamma");
+                    _golf_editor_undoable_igInputInt("Num Iterations", &editor.gi_state.num_iterations, "Modify GI Settings - Num Iterations");
+                    _golf_editor_undoable_igInputInt("Num Dilates", &editor.gi_state.num_dilates, "Modify GI Settings - Num Dilates");
+                    _golf_editor_undoable_igInputInt("Num Smooths", &editor.gi_state.num_smooths, "Modify GI Settings - Num Smooths");
+                    _golf_editor_undoable_igInputFloat("Gamma", &editor.gi_state.gamma, "Modify GI Settigs - Gamma");
 
-                    _golf_editor_undoable_igInputInt("Hemisphere Size", &editor.gi.hemisphere_size, "Modify GI Settings - Hemisphere Size");
+                    _golf_editor_undoable_igInputInt("Hemisphere Size", &editor.gi_state.hemisphere_size, "Modify GI Settings - Hemisphere Size");
                     if (igIsItemHovered(ImGuiHoveredFlags_None)) {
                         igBeginTooltip();
                         igText("Resolution of the hemisphere renderings. must be a power of two! typical: 64.");
                         igEndTooltip();
                     }
 
-                    _golf_editor_undoable_igInputFloat("Z Near", &editor.gi.z_near, "Modify GI Settings - Z Near");
+                    _golf_editor_undoable_igInputFloat("Z Near", &editor.gi_state.z_near, "Modify GI Settings - Z Near");
                     if (igIsItemHovered(ImGuiHoveredFlags_None)) {
                         igBeginTooltip();
                         igText("Hemisphere min draw distances.");
                         igEndTooltip();
                     }
 
-                    _golf_editor_undoable_igInputFloat("Z Far", &editor.gi.z_far, "Modify GI Settings - Z Far");
+                    _golf_editor_undoable_igInputFloat("Z Far", &editor.gi_state.z_far, "Modify GI Settings - Z Far");
                     if (igIsItemHovered(ImGuiHoveredFlags_None)) {
                         igBeginTooltip();
                         igText("Hemisphere max draw distances.");
                         igEndTooltip();
                     }
 
-                    _golf_editor_undoable_igInputInt("Interpolation Passes", &editor.gi.interpolation_passes, "Modify GI Settings - Interpolation Passes");
+                    _golf_editor_undoable_igInputInt("Interpolation Passes", &editor.gi_state.interpolation_passes, "Modify GI Settings - Interpolation Passes");
                     if (igIsItemHovered(ImGuiHoveredFlags_None)) {
                         igBeginTooltip();
                         igText("Hierarchical selective interpolation passes (0-8; initial step size = 2^passes).");
                         igEndTooltip();
                     }
 
-                    _golf_editor_undoable_igInputFloat("Interpolation Threshold", &editor.gi.interpolation_threshold, "Modify GI Settings - Interpolation Threshold");
+                    _golf_editor_undoable_igInputFloat("Interpolation Threshold", &editor.gi_state.interpolation_threshold, "Modify GI Settings - Interpolation Threshold");
                     if (igIsItemHovered(ImGuiHoveredFlags_None)) {
                         igBeginTooltip();
                         igText("Error value below which lightmap pixels are interpolated instead of rendered.");
@@ -772,7 +772,7 @@ void golf_editor_update(float dt) {
                         igEndTooltip();
                     }
 
-                    _golf_editor_undoable_igInputFloat("Camera to Surface Distance Modifier", &editor.gi.camera_to_surface_distance_modifier, "Modify GI Settings - Camera to Surface Distance Modifier");
+                    _golf_editor_undoable_igInputFloat("Camera to Surface Distance Modifier", &editor.gi_state.camera_to_surface_distance_modifier, "Modify GI Settings - Camera to Surface Distance Modifier");
                     if (igIsItemHovered(ImGuiHoveredFlags_None)) {
                         igBeginTooltip();
                         igText("Modifier for the height of the rendered hemispheres above the sruface.");
@@ -784,20 +784,20 @@ void golf_editor_update(float dt) {
                     }
 
                     if (igButton("Bake Lightmaps", (ImVec2){0, 0})) {
-                        if (!editor.lightmap_generator_running) {
+                        if (!editor.gi_running) {
                             golf_log_note("Lightmap Generator Started");
-                            golf_lightmap_generator_t *generator = &editor.lightmap_generator;  
-                            golf_lightmap_generator_init(generator, true, true, 
-                                    editor.gi.gamma,
-                                    editor.gi.num_iterations,
-                                    editor.gi.num_dilates,
-                                    editor.gi.num_smooths,
-                                    editor.gi.hemisphere_size,
-                                    editor.gi.z_near,
-                                    editor.gi.z_far,
-                                    editor.gi.interpolation_passes,
-                                    editor.gi.interpolation_threshold,
-                                    editor.gi.camera_to_surface_distance_modifier);
+                            golf_gi_t *gi = &editor.gi;  
+                            golf_gi_init(gi, true, true, 
+                                    editor.gi_state.gamma,
+                                    editor.gi_state.num_iterations,
+                                    editor.gi_state.num_dilates,
+                                    editor.gi_state.num_smooths,
+                                    editor.gi_state.hemisphere_size,
+                                    editor.gi_state.z_near,
+                                    editor.gi_state.z_far,
+                                    editor.gi_state.interpolation_passes,
+                                    editor.gi_state.interpolation_threshold,
+                                    editor.gi_state.camera_to_surface_distance_modifier);
                             for (int i = 0; i < editor.level->entities.length; i++) {
                                 golf_entity_t *entity = &editor.level->entities.data[i];
                                 if (!entity->active) continue;
@@ -806,12 +806,12 @@ void golf_editor_update(float dt) {
                                 golf_model_t *model = golf_entity_get_model(entity);
                                 if (lightmap && transform && model) {
                                     mat4 model_mat = golf_transform_get_model_mat(*transform);
-                                    golf_lightmap_generator_add_entity(generator, model, model_mat, lightmap);
+                                    golf_gi_add_entity(gi, model, model_mat, lightmap);
                                 }
                             }
-                            golf_lightmap_generator_start(generator);
-                            editor.lightmap_generator_running = true;
-                            editor.gi.open_popup = true;
+                            golf_gi_start(gi);
+                            editor.gi_running = true;
+                            editor.gi_state.open_popup = true;
                         }
                     }
 
@@ -1022,14 +1022,14 @@ void golf_editor_update(float dt) {
         igEnd();
     }
 
-    if (editor.gi.open_popup) {
+    if (editor.gi_state.open_popup) {
         igOpenPopup_Str("Lightmap Generator Running", ImGuiPopupFlags_None);
-        editor.gi.open_popup = false;
+        editor.gi_state.open_popup = false;
     }
     if (igBeginPopupModal("Lightmap Generator Running", NULL, ImGuiWindowFlags_None)) {
         igText("Progress: 1 / 10");
-        if (editor.lightmap_generator_running && 
-                !golf_lightmap_generator_is_running(&editor.lightmap_generator)) {
+        if (editor.gi_running && 
+                !golf_gi_is_running(&editor.gi)) {
             igCloseCurrentPopup();
         }
         igEndPopup();
@@ -1131,15 +1131,15 @@ void golf_editor_update(float dt) {
         vec_deinit(&entity_idxs);
     }
 
-    if (editor.lightmap_generator_running) {
-        golf_lightmap_generator_t *generator = &editor.lightmap_generator;
-        if (!golf_lightmap_generator_is_running(generator)) {
+    if (editor.gi_running) {
+        golf_gi_t *gi = &editor.gi;
+        if (!golf_gi_is_running(gi)) {
             golf_log_note("Lightmap Generator Finished");
 
             golf_editor_action_t action;
             _golf_editor_action_init(&action, "Create lightmap");
-            for (int i = 0; i < generator->entities.length; i++) {
-                golf_lightmap_entity_t *lm_entity = &generator->entities.data[i];
+            for (int i = 0; i < gi->entities.length; i++) {
+                golf_gi_entity_t *lm_entity = &gi->entities.data[i];
 
                 unsigned char *data = malloc(lm_entity->image_width * lm_entity->image_height);
                 for (int i = 0; i < lm_entity->image_width * lm_entity->image_height; i++) {
@@ -1156,9 +1156,9 @@ void golf_editor_update(float dt) {
             _golf_editor_start_action(action);
             _golf_editor_commit_action();
 
-            golf_lightmap_generator_deinit(generator);
+            golf_gi_deinit(gi);
 
-            editor.lightmap_generator_running = false;
+            editor.gi_running = false;
         }
     }
 

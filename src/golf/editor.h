@@ -6,8 +6,8 @@
 #include "cimguizmo/cimguizmo.h"
 #include "vec/vec.h"
 #include "golf/file.h"
+#include "golf/gi.h"
 #include "golf/level.h"
-#include "golf/lightmap.h"
 #include "golf/maths.h"
 
 typedef struct golf_editor_action_data {
@@ -33,8 +33,8 @@ typedef struct golf_editor {
     int hovered_idx;
     vec_int_t selected_idxs;
 
-    bool lightmap_generator_running;
-    golf_lightmap_generator_t lightmap_generator;
+    bool gi_running;
+    golf_gi_t gi;
 
     struct {
         bool is_using;
@@ -60,7 +60,7 @@ typedef struct golf_editor {
               z_far,
               interpolation_threshold,
               camera_to_surface_distance_modifier;
-    } gi;
+    } gi_state;
 } golf_editor_t;
 
 golf_editor_t *golf_editor_get(void);

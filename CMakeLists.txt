@@ -42,9 +42,9 @@ add_library(golf_lib STATIC
     src/golf/editor.c
     src/golf/file.c
     src/golf/game.c
+    src/golf/gi.c
     src/golf/inputs.c
     src/golf/level.c
-    src/golf/lightmap.c
     src/golf/log.c
     src/golf/maths.c
     src/golf/parson_helper.c

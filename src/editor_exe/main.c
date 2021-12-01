@@ -20,7 +20,6 @@
 #include "golf/debug_console.h"
 #include "golf/game.h"
 #include "golf/inputs.h"
-#include "golf/lightmap.h"
 #include "golf/log.h"
 #include "golf/renderer.h"
 #include "golf/ui.h"

@@ -1,4 +1,4 @@
-#include "golf/lightmap.h"
+#include "golf/gi.h"
 
 #include <assert.h>
 #include "glad/glad.h"
@@ -7,49 +7,49 @@
 #include "xatlas/xatlas_wrapper.h"
 #include "golf/log.h"
 
-static void _lm_gen_set_is_running(golf_lightmap_generator_t *generator, bool is_running) {
-    thread_mutex_lock(&generator->lock);
-    generator->is_running = is_running;
-    thread_mutex_unlock(&generator->lock);
+static void _gi_set_is_running(golf_gi_t *gi, bool is_running) {
+    thread_mutex_lock(&gi->lock);
+    gi->is_running = is_running;
+    thread_mutex_unlock(&gi->lock);
 }
 
-static void _lm_gen_inc_uv_gen_progress(golf_lightmap_generator_t *generator) {
-    thread_mutex_lock(&generator->lock);
-    generator->uv_gen_progress = generator->uv_gen_progress + 1;
-    thread_mutex_unlock(&generator->lock);
+static void _gi_inc_uv_gen_progress(golf_gi_t *gi) {
+    thread_mutex_lock(&gi->lock);
+    gi->uv_gen_progress = gi->uv_gen_progress + 1;
+    thread_mutex_unlock(&gi->lock);
 }
 
-static void _lm_gen_inc_lm_gen_progress(golf_lightmap_generator_t *generator) {
-    thread_mutex_lock(&generator->lock);
-    generator->lm_gen_progress = generator->lm_gen_progress + 1;
-    thread_mutex_unlock(&generator->lock);
+static void _gi_inc_lm_gen_progress(golf_gi_t *gi) {
+    thread_mutex_lock(&gi->lock);
+    gi->lm_gen_progress = gi->lm_gen_progress + 1;
+    thread_mutex_unlock(&gi->lock);
 }
 
-void golf_lightmap_generator_init(golf_lightmap_generator_t *generator,
+void golf_gi_init(golf_gi_t *gi,
         bool reset_lightmaps, bool create_uvs, float gamma, 
         int num_iterations, int num_dilates, int num_smooths,
         int hemisphere_size, float z_near, float z_far,
         int interpolation_passes, float interpolation_threshold,
         float camera_to_surface_distance_modifier) {
-    generator->reset_lightmaps = reset_lightmaps;
-    generator->create_uvs = create_uvs;
-    generator->gamma = gamma;
-    generator->num_iterations = num_iterations;
-    generator->num_dilates = num_dilates;
-    generator->num_smooths = num_smooths;
-    generator->hemisphere_size = hemisphere_size;
-    generator->z_near = z_near;
-    generator->z_far = z_far;
-    generator->interpolation_passes = interpolation_passes;
-    generator->interpolation_threshold = interpolation_threshold;
-    generator->camera_to_surface_distance_modifier = camera_to_surface_distance_modifier;
-    vec_init(&generator->entities);
+    gi->reset_lightmaps = reset_lightmaps;
+    gi->create_uvs = create_uvs;
+    gi->gamma = gamma;
+    gi->num_iterations = num_iterations;
+    gi->num_dilates = num_dilates;
+    gi->num_smooths = num_smooths;
+    gi->hemisphere_size = hemisphere_size;
+    gi->z_near = z_near;
+    gi->z_far = z_far;
+    gi->interpolation_passes = interpolation_passes;
+    gi->interpolation_threshold = interpolation_threshold;
+    gi->camera_to_surface_distance_modifier = camera_to_surface_distance_modifier;
+    vec_init(&gi->entities);
 
-    thread_mutex_init(&generator->lock);
-    generator->is_running = false;
-    generator->uv_gen_progress = 0;
-    generator->lm_gen_progress = 0;
-    generator->lm_gen_progress_pct = 0;
+    thread_mutex_init(&gi->lock);
+    gi->is_running = false;
+    gi->uv_gen_progress = 0;
+    gi->lm_gen_progress = 0;
+    gi->lm_gen_progress_pct = 0;
 }
 
 static GLuint _load_shader(GLenum type, const char *source) {
@@ -63,8 +63,8 @@ static GLuint _load_shader(GLenum type, const char *source) {
     return shader;
 }
 
-static int _lightmap_generator_run(void *user_data) {
-    golf_lightmap_generator_t *generator = (golf_lightmap_generator_t*)user_data;
+static int _gi_run(void *user_data) {
+    golf_gi_t *gi = (golf_gi_t*)user_data;
 
     bool init = glfwInit();
     assert(init);
@@ -134,13 +134,13 @@ static int _lightmap_generator_run(void *user_data) {
     GLuint dummy_vao;
     glGenVertexArrays(1, &dummy_vao);
 
-    for (int i = 0; i < generator->entities.length; i++) {
-        golf_lightmap_entity_t *entity = &generator->entities.data[i];
+    for (int i = 0; i < gi->entities.length; i++) {
+        golf_gi_entity_t *entity = &gi->entities.data[i];
 
         vec_vec3_t *positions = &entity->positions;
         vec_vec2_t *lightmap_uvs = &entity->lightmap_uvs;
-        _lm_gen_inc_uv_gen_progress(generator);
-        if (generator->create_uvs) {
+        _gi_inc_uv_gen_progress(gi);
+        if (gi->create_uvs) {
             int resolution = entity->resolution;
             int *image_width = &entity->image_width;
             int *image_height = &entity->image_height;
@@ -168,7 +168,7 @@ static int _lightmap_generator_run(void *user_data) {
         int image_width = entity->image_width;
         int image_height = entity->image_height;
         float *image_data = entity->image_data;
-        if (generator->reset_lightmaps) {
+        if (gi->reset_lightmaps) {
             for (int i = 0; i < image_width * image_height; i++) {
                 image_data[i] = 0.0f;
             }
@@ -189,17 +189,17 @@ static int _lightmap_generator_run(void *user_data) {
         entity->gl_tex = tex;
     }
 
-    lm_context *ctx = lmCreate(generator->hemisphere_size,
-            generator->z_near, 
-            generator->z_far,
+    lm_context *ctx = lmCreate(gi->hemisphere_size,
+            gi->z_near, 
+            gi->z_far,
             1.0f, 1.0f, 1.0f,
-            generator->interpolation_passes,
-            generator->interpolation_threshold,
-            generator->camera_to_surface_distance_modifier);
-    for (int b = 0; b < generator->num_iterations; b++) {
-        for (int i = 0; i < generator->entities.length; i++) {
-            _lm_gen_inc_lm_gen_progress(generator);
-            golf_lightmap_entity_t *entity = &generator->entities.data[i];
+            gi->interpolation_passes,
+            gi->interpolation_threshold,
+            gi->camera_to_surface_distance_modifier);
+    for (int b = 0; b < gi->num_iterations; b++) {
+        for (int i = 0; i < gi->entities.length; i++) {
+            _gi_inc_lm_gen_progress(gi);
+            golf_gi_entity_t *entity = &gi->entities.data[i];
             if (entity->positions.length == 0) {
                 continue;
             }
@@ -230,8 +230,8 @@ static int _lightmap_generator_run(void *user_data) {
                 mat4 proj_view_mat = mat4_multiply_n(2, proj, view);
                 glViewport(vp[0], vp[1], vp[2], vp[3]);
 
-                for (int i = 0; i < generator->entities.length; i++) {
-                    golf_lightmap_entity_t *entity = &generator->entities.data[i];
+                for (int i = 0; i < gi->entities.length; i++) {
+                    golf_gi_entity_t *entity = &gi->entities.data[i];
                     if (entity->positions.length == 0) {
                         continue;
                     }
@@ -261,8 +261,8 @@ static int _lightmap_generator_run(void *user_data) {
             }
         }
 
-        for (int i = 0; i < generator->entities.length; i++) {
-            golf_lightmap_entity_t *entity = &generator->entities.data[i];
+        for (int i = 0; i < gi->entities.length; i++) {
+            golf_gi_entity_t *entity = &gi->entities.data[i];
             int image_width = entity->image_width;
             int image_height = entity->image_height;
             float *image_data = entity->image_data;
@@ -272,26 +272,26 @@ static int _lightmap_generator_run(void *user_data) {
         }
     }
 
-    for (int i = 0; i < generator->entities.length; i++) {
-        golf_lightmap_entity_t *entity = &generator->entities.data[i];
+    for (int i = 0; i < gi->entities.length; i++) {
+        golf_gi_entity_t *entity = &gi->entities.data[i];
         int image_width = entity->image_width;
         int image_height = entity->image_height;
         float *image_data = entity->image_data;
         float *temp = malloc(sizeof(float) * image_width * image_height);
-        for (int i = 0; i < generator->num_dilates; i++) {
+        for (int i = 0; i < gi->num_dilates; i++) {
             lmImageDilate(image_data, temp, image_width, image_height, 1);
             lmImageDilate(temp, image_data, image_width, image_height, 1);
         }
-        for (int i = 0; i < generator->num_smooths; i++) {
+        for (int i = 0; i < gi->num_smooths; i++) {
             lmImageSmooth(image_data, temp, image_width, image_height, 1);
             lmImageSmooth(temp, image_data, image_width, image_height, 1);
         }
-        lmImagePower(image_data, image_width, image_height, 1, generator->gamma, LM_ALL_CHANNELS);
+        lmImagePower(image_data, image_width, image_height, 1, gi->gamma, LM_ALL_CHANNELS);
         free(temp);
     }
 
-    for (int i = 0; i < generator->entities.length; i++) {
-        golf_lightmap_entity_t *entity = &generator->entities.data[i];
+    for (int i = 0; i < gi->entities.length; i++) {
+        golf_gi_entity_t *entity = &gi->entities.data[i];
         glDeleteBuffers(1, (GLuint*)&entity->gl_position_vbo);
         glDeleteBuffers(1, (GLuint*)&entity->gl_lightmap_uv_vbo);
         glDeleteTextures(1, (GLuint*)&entity->gl_tex);
@@ -301,21 +301,21 @@ static int _lightmap_generator_run(void *user_data) {
     lmDestroy(ctx);
     glfwTerminate();
 
-    _lm_gen_set_is_running(generator, false);
+    _gi_set_is_running(gi, false);
     return 0;
 }
 
-void golf_lightmap_generator_start(golf_lightmap_generator_t *generator) {
-    if (golf_lightmap_generator_is_running(generator)) {
-        golf_log_error("Cannot start lightmap generator when it's already running.");
+void golf_gi_start(golf_gi_t *gi) {
+    if (golf_gi_is_running(gi)) {
+        golf_log_error("Cannot start gi when it's already running.");
     }
 
-    _lm_gen_set_is_running(generator, true);
-    generator->thread = thread_create0(_lightmap_generator_run, generator, "Lightmap Generator", THREAD_STACK_SIZE_DEFAULT);
+    _gi_set_is_running(gi, true);
+    gi->thread = thread_create0(_gi_run, gi, "gi", THREAD_STACK_SIZE_DEFAULT);
 }
 
-void golf_lightmap_generator_add_entity(golf_lightmap_generator_t *generator, golf_model_t *model, mat4 model_mat, golf_lightmap_t *lightmap) {
-    golf_lightmap_entity_t entity;
+void golf_gi_add_entity(golf_gi_t *gi, golf_model_t *model, mat4 model_mat, golf_lightmap_t *lightmap) {
+    golf_gi_entity_t entity;
     vec_init(&entity.positions);
     vec_init(&entity.normals);
     vec_init(&entity.lightmap_uvs);
@@ -336,31 +336,31 @@ void golf_lightmap_generator_add_entity(golf_lightmap_generator_t *generator, go
     //}
     entity.lightmap = lightmap;
 
-    vec_push(&generator->entities, entity);
+    vec_push(&gi->entities, entity);
 }
 
-void golf_lightmap_generator_deinit(golf_lightmap_generator_t *generator) {
-    thread_join(generator->thread);
-    thread_destroy(generator->thread);
+void golf_gi_deinit(golf_gi_t *gi) {
+    thread_join(gi->thread);
+    thread_destroy(gi->thread);
 }
 
-int golf_lightmap_generator_get_lm_gen_progress(golf_lightmap_generator_t *generator) {
-    thread_mutex_lock(&generator->lock);
-    int lm_gen_progress = generator->lm_gen_progress;
-    thread_mutex_unlock(&generator->lock);
+int golf_gi_get_lm_gen_progress(golf_gi_t *gi) {
+    thread_mutex_lock(&gi->lock);
+    int lm_gen_progress = gi->lm_gen_progress;
+    thread_mutex_unlock(&gi->lock);
     return lm_gen_progress;
 }
 
-int golf_lightmap_generator_get_uv_gen_progress(golf_lightmap_generator_t *generator) {
-    thread_mutex_lock(&generator->lock);
-    int uv_gen_progress = generator->uv_gen_progress;
-    thread_mutex_unlock(&generator->lock);
+int golf_gi_get_uv_gen_progress(golf_gi_t *gi) {
+    thread_mutex_lock(&gi->lock);
+    int uv_gen_progress = gi->uv_gen_progress;
+    thread_mutex_unlock(&gi->lock);
     return uv_gen_progress;
 }
 
-bool golf_lightmap_generator_is_running(golf_lightmap_generator_t *generator) {
-    thread_mutex_lock(&generator->lock);
-    bool is_running = generator->is_running;
-    thread_mutex_unlock(&generator->lock);
+bool golf_gi_is_running(golf_gi_t *gi) {
+    thread_mutex_lock(&gi->lock);
+    bool is_running = gi->is_running;
+    thread_mutex_unlock(&gi->lock);
     return is_running;
 }
