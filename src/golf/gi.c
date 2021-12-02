@@ -43,6 +43,8 @@ void golf_gi_init(golf_gi_t *gi,
     gi->interpolation_passes = interpolation_passes;
     gi->interpolation_threshold = interpolation_threshold;
     gi->camera_to_surface_distance_modifier = camera_to_surface_distance_modifier;
+
+    gi->has_cur_entity = false;
     vec_init(&gi->entities);
 
     thread_mutex_init(&gi->lock);
@@ -212,7 +214,7 @@ static int _gi_run(void *user_data) {
                 image_data[i] = 0.0f;
             }
             lmSetTargetLightmap(ctx, image_data, image_width, image_height, 1);
-            lmSetGeometry(ctx, mat4_transpose(entity->model_mat).m,
+            lmSetGeometry(ctx, mat4_transpose(mat4_identity()).m,
                     LM_FLOAT, entity->positions.data, sizeof(vec3),
                     LM_FLOAT, entity->normals.data, sizeof(vec3),
                     LM_FLOAT, entity->lightmap_uvs.data, sizeof(vec2),
@@ -236,9 +238,7 @@ static int _gi_run(void *user_data) {
                         continue;
                     }
 
-                    mat4 model_mat = entity->model_mat;
-                    mat4 mvp_mat = mat4_multiply(proj_view_mat, model_mat);
-                    glUniformMatrix4fv(mvp_mat_id, 1, GL_TRUE, mvp_mat.m);
+                    glUniformMatrix4fv(mvp_mat_id, 1, GL_TRUE, proj_view_mat.m);
                     glUniform1i(ao_map_id, 0);
 
                     glActiveTexture(GL_TEXTURE0);
@@ -314,29 +314,46 @@ void golf_gi_start(golf_gi_t *gi) {
     gi->thread = thread_create0(_gi_run, gi, "gi", THREAD_STACK_SIZE_DEFAULT);
 }
 
-void golf_gi_add_entity(golf_gi_t *gi, golf_model_t *model, mat4 model_mat, golf_lightmap_t *lightmap) {
+void golf_gi_start_lightmap(golf_gi_t *gi, int resolution, int image_width, int image_height) {
+    if (gi->has_cur_entity) {
+        return;
+    }
+
     golf_gi_entity_t entity;
     vec_init(&entity.positions);
     vec_init(&entity.normals);
     vec_init(&entity.lightmap_uvs);
-    //entity.image_data = malloc(sizeof(float) * lightmap->image_width * lightmap->image_height);
 
-    entity.model_mat = model_mat;
-    vec_pusharr(&entity.positions, model->positions.data, model->positions.length);
-    vec_pusharr(&entity.normals, model->normals.data, model->normals.length);
-    vec_pusharr(&entity.lightmap_uvs, lightmap->uvs.data, lightmap->uvs.length);
-    for (int i = entity.lightmap_uvs.length; i < entity.positions.length; i++) {
-        vec_push(&entity.lightmap_uvs, V2(0, 0));
+    entity.resolution = resolution;
+    entity.image_width = image_width;
+    entity.image_height = image_height;
+
+    gi->has_cur_entity = true;
+    gi->cur_entity = entity;
+}
+
+void golf_gi_end_lightmap(golf_gi_t *gi) {
+    if (!gi->has_cur_entity) {
+        return;
     }
-    entity.resolution = lightmap->resolution;
-    //entity.image_width = lightmap->image_width;
-    //entity.image_height = lightmap->image_height;
-    //for (int i = 0; i < lightmap->image_width * lightmap->image_height; i++) {
-        //entity.image_data[i] = ((float)lightmap->image_data[i]) / 0xFF;
-    //}
-    entity.lightmap = lightmap;
 
-    vec_push(&gi->entities, entity);
+    vec_push(&gi->entities, gi->cur_entity);
+    gi->has_cur_entity = false;
+}
+
+void golf_gi_add_lightmap_section(golf_gi_t *gi, golf_model_t *model, mat4 model_mat) {
+    if (!gi->has_cur_entity) {
+        return;
+    }
+
+    for (int i = 0; i < model->positions.length; i++) {
+        vec3 position = vec3_apply_mat4(model->positions.data[i], 1, model_mat);
+        vec3 normal = model->normals.data[i];
+        vec2 uv = V2(0, 0);
+        vec_push(&gi->cur_entity.positions, position);
+        vec_push(&gi->cur_entity.normals, normal);
+        vec_push(&gi->cur_entity.lightmap_uvs, uv);
+    }
 }
 
 void golf_gi_deinit(golf_gi_t *gi) {

@@ -7,12 +7,10 @@
 #include "golf/maths.h"
 
 typedef struct golf_gi_entity {
-    mat4 model_mat;
     vec_vec3_t positions, normals;
     vec_vec2_t lightmap_uvs;
     int resolution, image_width, image_height;
     float *image_data;
-    golf_lightmap_t *lightmap;
     int gl_position_vbo, gl_lightmap_uv_vbo, gl_tex;
 } golf_gi_entity_t;
 typedef vec_t(golf_gi_entity_t) vec_golf_gi_entity_t;
@@ -22,6 +20,9 @@ typedef struct golf_gi {
 
     float gamma, z_near, z_far, interpolation_threshold, camera_to_surface_distance_modifier;
     int num_iterations, num_dilates, num_smooths, hemisphere_size, interpolation_passes;
+
+    bool has_cur_entity;
+    golf_gi_entity_t cur_entity;
     vec_golf_gi_entity_t entities;
 
     thread_ptr_t thread;
@@ -37,7 +38,9 @@ void golf_gi_init(golf_gi_t *generator,
         int interpolation_passes, float interpolation_threshold,
         float camera_to_surface_distance_modifier);
 void golf_gi_deinit(golf_gi_t *generator);
-void golf_gi_add_entity(golf_gi_t *generator, golf_model_t *model, mat4 model_mat, golf_lightmap_t *lightmap);
+void golf_gi_start_lightmap(golf_gi_t *gi, int resolution, int image_width, int image_height);
+void golf_gi_end_lightmap(golf_gi_t *gi);
+void golf_gi_add_lightmap_section(golf_gi_t *gi, golf_model_t *model, mat4 model_mat);
 int golf_gi_get_lm_gen_progress(golf_gi_t *generator);
 int golf_gi_get_uv_gen_progress(golf_gi_t *generator);
 bool golf_gi_is_running(golf_gi_t *generator);

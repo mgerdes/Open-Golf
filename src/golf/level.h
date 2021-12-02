@@ -8,16 +8,23 @@
 
 #define GOLF_MAX_NAME_LEN 64
 
-typedef struct golf_lightmap2 {
+typedef struct golf_lightmap_image {
     bool active;
     char name[GOLF_MAX_NAME_LEN];
     int resolution;
-    unsigned char *image_data;
-    int image_width, image_height;
+    unsigned char *data;
+    int width, height;
     sg_image sg_image;
-} golf_lightmap2_t;
-typedef vec_t(golf_lightmap2_t) vec_golf_lightmap2_t;
-void golf_lightmap2_init(golf_lightmap2_t *lightmap, const char *name, int resolution, int image_width, int image_height, unsigned char *image_data);
+} golf_lightmap_image_t;
+typedef vec_t(golf_lightmap_image_t) vec_golf_lightmap_image_t;
+void golf_lightmap_image_init(golf_lightmap_image_t *lightmap, const char *name, int resolution, int width, int height, unsigned char *data);
+
+typedef struct golf_lightmap_section {
+    char lightmap_name[GOLF_MAX_NAME_LEN];
+    vec_vec2_t uvs;
+    sg_buffer sg_uvs_buf;
+} golf_lightmap_section_t;
+void golf_lightmap_section_init(golf_lightmap_section_t *section, const char *lightmap_name, vec_vec2_t uvs);
 
 typedef struct golf_lightmap {
     int resolution;
@@ -73,6 +80,7 @@ typedef struct golf_model_entity {
     vec_vec2_t lightmap_uvs;
     sg_buffer sg_lightmap_uvs_buf;
 
+    golf_lightmap_section_t lightmap_section;
     golf_lightmap_t lightmap;
     char model_path[GOLF_FILE_MAX_PATH];
     golf_model_t *model;
@@ -99,16 +107,17 @@ typedef struct golf_entity {
     };
 } golf_entity_t;
 typedef vec_t(golf_entity_t) vec_golf_entity_t;
-golf_entity_t golf_entity_model(golf_transform_t transform, const char *model_path, golf_lightmap_t lightmap);
+golf_entity_t golf_entity_model(golf_transform_t transform, const char *model_path, golf_lightmap_t lightmap, golf_lightmap_section_t lightmap_section);
 golf_entity_t golf_entity_hole(golf_transform_t transform);
 golf_entity_t golf_entity_ball_start(golf_transform_t transform);
 golf_entity_t golf_entity_make_copy(golf_entity_t *entity);
 golf_transform_t *golf_entity_get_transform(golf_entity_t *entity);
 golf_lightmap_t *golf_entity_get_lightmap(golf_entity_t *entity);
+golf_lightmap_section_t *golf_entity_get_lightmap_section(golf_entity_t *entity);
 golf_model_t *golf_entity_get_model(golf_entity_t *entity);
 
 typedef struct golf_level {
-    vec_golf_lightmap2_t lightmaps;
+    vec_golf_lightmap_image_t lightmap_images;
     vec_golf_material_t materials;
     vec_golf_entity_t entities;
 } golf_level_t;

@@ -5,25 +5,25 @@
 #include "golf/log.h"
 #include "golf/parson_helper.h"
 
-void golf_lightmap2_init(golf_lightmap2_t *lightmap, const char *name, int resolution, int image_width, int image_height, unsigned char *image_data) {
+void golf_lightmap_image_init(golf_lightmap_image_t *lightmap, const char *name, int resolution, int width, int height, unsigned char *data) {
     lightmap->active = true;
     snprintf(lightmap->name, GOLF_MAX_NAME_LEN, "%s", name);
     lightmap->resolution = resolution;
-    lightmap->image_width = image_width;
-    lightmap->image_height = image_height;
-    lightmap->image_data = malloc(image_width * image_height);
-    memcpy(lightmap->image_data, image_data, image_width * image_height);
+    lightmap->width = width;
+    lightmap->height = height;
+    lightmap->data = malloc(width * height);
+    memcpy(lightmap->data, data, width * height);
 
-    char *sg_image_data = malloc(4 * image_width * image_height);
-    for (int i = 0; i < 4 * image_width * image_height; i += 4) {
-        sg_image_data[i + 0] = image_data[i / 4];
-        sg_image_data[i + 1] = image_data[i / 4];
-        sg_image_data[i + 2] = image_data[i / 4];
+    char *sg_image_data = malloc(4 * width * height);
+    for (int i = 0; i < 4 * width * height; i += 4) {
+        sg_image_data[i + 0] = data[i / 4];
+        sg_image_data[i + 1] = data[i / 4];
+        sg_image_data[i + 2] = data[i / 4];
         sg_image_data[i + 3] = 0xFF;
     }
     sg_image_desc img_desc = {
-        .width = image_width,
-        .height = image_height,
+        .width = width,
+        .height = height,
         .pixel_format = SG_PIXELFORMAT_RGBA8,
         .min_filter = SG_FILTER_LINEAR,
         .mag_filter = SG_FILTER_LINEAR,
@@ -31,11 +31,25 @@ void golf_lightmap2_init(golf_lightmap2_t *lightmap, const char *name, int resol
         .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
         .data.subimage[0][0] = {
             .ptr = sg_image_data,
-            .size = 4 * image_width * image_height,
+            .size = 4 * width * height,
         },
     };
     lightmap->sg_image = sg_make_image(&img_desc);
     free(sg_image_data);
+}
+
+void golf_lightmap_section_init(golf_lightmap_section_t *section, const char *lightmap_name, vec_vec2_t uvs) {
+    snprintf(section->lightmap_name, GOLF_MAX_NAME_LEN, "%s", lightmap_name);
+    vec_init(&section->uvs);
+    vec_pusharr(&section->uvs, uvs.data, uvs.length);
+    sg_buffer_desc desc = {
+        .type = SG_BUFFERTYPE_VERTEXBUFFER,
+        .data = {
+            .size = sizeof(vec2) * section->uvs.length,
+            .ptr = section->uvs.data,
+        },
+    };
+    section->sg_uvs_buf = sg_make_buffer(&desc);
 }
 
 void golf_lightmap_init(golf_lightmap_t *lightmap, int resolution, int image_width, int image_height, unsigned char *image_data, vec_vec2_t uvs) {
@@ -162,9 +176,7 @@ bool golf_level_save(golf_level_t *level, const char *path) {
     JSON_Array *json_materials_arr = json_value_get_array(json_materials_val);
     for (int i = 0; i < level->materials.length; i++) {
         golf_material_t *material = &level->materials.data[i];
-        if (!material->active) {
-            continue;
-        }
+        if (!material->active) continue;
 
         JSON_Value *json_material_val = json_value_init_object();
         JSON_Object *json_material_obj = json_value_get_object(json_material_val);
@@ -193,13 +205,31 @@ bool golf_level_save(golf_level_t *level, const char *path) {
         json_array_append_value(json_materials_arr, json_material_val);
     }
 
+    JSON_Value *json_lightmap_images_val = json_value_init_array();
+    JSON_Array *json_lightmap_images_arr = json_value_get_array(json_lightmap_images_val);
+    for (int i = 0; i < level->lightmap_images.length; i++) {
+        golf_lightmap_image_t *lightmap_image = &level->lightmap_images.data[i];
+        if (!lightmap_image->active) continue;
+
+        JSON_Value *json_lightmap_image_val = json_value_init_object();
+        JSON_Object *json_lightmap_image_obj = json_value_get_object(json_lightmap_image_val);
+        json_object_set_string(json_lightmap_image_obj, "name", lightmap_image->name);
+        json_object_set_number(json_lightmap_image_obj, "resolution", lightmap_image->resolution);
+
+        vec_char_t png_data;
+        vec_init(&png_data);
+        stbi_write_png_to_func(_stbi_write_func, &png_data, lightmap_image->width, lightmap_image->height, 1, lightmap_image->data, lightmap_image->width);
+        golf_json_object_set_data(json_lightmap_image_obj, "data", (unsigned char*)png_data.data, sizeof(unsigned char) * png_data.length);
+        vec_deinit(&png_data);
+
+        json_array_append_value(json_lightmap_images_arr, json_lightmap_image_val);
+    }
+
     JSON_Value *json_entities_val = json_value_init_array();
     JSON_Array *json_entities_arr = json_value_get_array(json_entities_val);
     for (int i = 0; i < level->entities.length; i++) {
         golf_entity_t *entity = &level->entities.data[i];
-        if (!entity->active) {
-            continue;
-        }
+        if (!entity->active) continue;
 
         JSON_Value *json_entity_val = json_value_init_object();
         JSON_Object *json_entity_obj = json_value_get_object(json_entity_val);
@@ -240,6 +270,23 @@ bool golf_level_save(golf_level_t *level, const char *path) {
             golf_json_object_set_transform(json_entity_obj, "transform", transform);
         }
 
+        golf_lightmap_section_t *lightmap_section = golf_entity_get_lightmap_section(entity);
+        if (lightmap_section) {
+            JSON_Value *val = json_value_init_object();
+            JSON_Object *obj = json_value_get_object(val);
+
+            JSON_Value *uvs_val = json_value_init_array();
+            JSON_Array *uvs_arr = json_value_get_array(uvs_val);
+            for (int i = 0; i < lightmap_section->uvs.length; i++) {
+                json_array_append_number(uvs_arr, lightmap_section->uvs.data[i].x);
+                json_array_append_number(uvs_arr, lightmap_section->uvs.data[i].y);
+            }
+
+            json_object_set_string(obj, "lightmap_name", lightmap_section->lightmap_name);
+            json_object_set_value(obj, "uvs", uvs_val);
+            json_object_set_value(json_entity_obj, "lightmap_section", val);
+        }
+
         golf_lightmap_t *lightmap = golf_entity_get_lightmap(entity);
         if (lightmap) {
             _golf_json_object_set_lightmap(json_entity_obj, "lightmap", lightmap);
@@ -251,6 +298,7 @@ bool golf_level_save(golf_level_t *level, const char *path) {
     JSON_Value *json_val = json_value_init_object();
     JSON_Object *json_obj = json_value_get_object(json_val);
     json_object_set_value(json_obj, "materials", json_materials_val);
+    json_object_set_value(json_obj, "lightmap_images", json_lightmap_images_val);
     json_object_set_value(json_obj, "entities", json_entities_val);
     json_serialize_to_file_pretty(json_val, path);
     json_value_free(json_val);
@@ -258,7 +306,7 @@ bool golf_level_save(golf_level_t *level, const char *path) {
 }
 
 bool golf_level_load(golf_level_t *level, const char *path, char *data, int data_len) {
-    vec_init(&level->lightmaps);
+    vec_init(&level->lightmap_images);
     vec_init(&level->materials);
     vec_init(&level->entities);
 
@@ -305,6 +353,26 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
         }
     }
 
+    JSON_Array *json_lightmap_images_arr = json_object_get_array(json_obj, "lightmap_images");
+    for (int i = 0; i < (int)json_array_get_count(json_lightmap_images_arr); i++) {
+        JSON_Object *obj = json_array_get_object(json_lightmap_images_arr, i);
+        const char *name = json_object_get_string(obj, "name");
+        int resolution = (int)json_object_get_number(obj, "resolution");
+
+        unsigned char *data;
+        int data_len;
+        golf_json_object_get_data(obj, "data", &data, &data_len);
+        int width, height, c;
+        unsigned char *image_data = stbi_load_from_memory(data, data_len, &width, &height, &c, 1);
+
+        golf_lightmap_image_t lightmap_image;
+        golf_lightmap_image_init(&lightmap_image, name, resolution, width, height, image_data);
+        vec_push(&level->lightmap_images, lightmap_image);
+
+        free(data);
+        free(image_data);
+    }
+
     JSON_Array *json_entities_arr = json_object_get_array(json_obj, "entities");
     for (int i = 0; i < (int)json_array_get_count(json_entities_arr); i++) {
         JSON_Object *obj = json_array_get_object(json_entities_arr, i);
@@ -324,7 +392,27 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
             golf_lightmap_t lightmap;
             _golf_json_object_get_lightmap(obj, "lightmap", &lightmap);
 
-            entity = golf_entity_model(transform, model_path, lightmap);
+            golf_lightmap_section_t lightmap_section;
+            {
+                JSON_Object *section_obj = json_object_get_object(obj, "lightmap_section");
+
+                const char *lightmap_name = json_object_get_string(section_obj, "lightmap_name");
+
+                JSON_Array *uvs_arr = json_object_get_array(section_obj, "uvs");
+                vec_vec2_t uvs;
+                vec_init(&uvs);
+                for (int i = 0; i < (int)json_array_get_count(uvs_arr); i += 2) {
+                    float x = (float)json_array_get_number(uvs_arr, i + 0);
+                    float y = (float)json_array_get_number(uvs_arr, i + 1);
+                    vec_push(&uvs, V2(x, y));
+                }
+
+                golf_lightmap_section_init(&lightmap_section, lightmap_name, uvs);
+                vec_deinit(&uvs);
+            }
+            //_golf_json_object_get_lightmap_section(obj, "lightmap_section", &lightmap_section);
+
+            entity = golf_entity_model(transform, model_path, lightmap, lightmap_section);
             valid_entity = true;
         }
         else if (type && strcmp(type, "ball_start") == 0) {
@@ -382,7 +470,7 @@ bool golf_level_get_material(golf_level_t *level, const char *material_name, gol
     return false;
 }
 
-golf_entity_t golf_entity_model(golf_transform_t transform, const char *model_path, golf_lightmap_t lightmap) {
+golf_entity_t golf_entity_model(golf_transform_t transform, const char *model_path, golf_lightmap_t lightmap, golf_lightmap_section_t lightmap_section) {
     golf_entity_t entity;
     entity.active = true;
     entity.type = MODEL_ENTITY;
@@ -390,6 +478,7 @@ golf_entity_t golf_entity_model(golf_transform_t transform, const char *model_pa
     snprintf(entity.model.model_path, GOLF_FILE_MAX_PATH, "%s", model_path);
     entity.model.model = golf_data_get_model(model_path);
     entity.model.lightmap = lightmap;
+    entity.model.lightmap_section = lightmap_section;
     return entity;
 }
 
@@ -445,6 +534,19 @@ golf_lightmap_t *golf_entity_get_lightmap(golf_entity_t *entity) {
     switch (entity->type) {
         case MODEL_ENTITY: {
             return &entity->model.lightmap;
+        }
+        case HOLE_ENTITY:
+        case BALL_START_ENTITY: {
+            return NULL;
+        }
+    }
+    return NULL;
+}
+
+golf_lightmap_section_t *golf_entity_get_lightmap_section(golf_entity_t *entity) {
+    switch (entity->type) {
+        case MODEL_ENTITY: {
+            return &entity->model.lightmap_section;
         }
         case HOLE_ENTITY:
         case BALL_START_ENTITY: {

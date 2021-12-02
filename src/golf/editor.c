@@ -373,6 +373,13 @@ static void _golf_editor_edit_transform(golf_transform_t *transform) {
     }
 }
 
+static void _golf_editor_edit_lightmap_section(golf_lightmap_section_t *lightmap_section) {
+    if (igTreeNode_Str("Lightmap Section")) {
+        _golf_editor_undoable_igInputText("Lightmap Name", lightmap_section->lightmap_name, GOLF_MAX_NAME_LEN, NULL, NULL, 0, "Modify lightmap section's lightmap name");
+        igTreePop();
+    }
+}
+
 static void _golf_editor_edit_lightmap(golf_lightmap_t *lightmap) {
     bool queue_action = false;
     bool queue_commit = false;
@@ -812,17 +819,26 @@ void golf_editor_update(float dt) {
                                     editor.gi_state.interpolation_passes,
                                     editor.gi_state.interpolation_threshold,
                                     editor.gi_state.camera_to_surface_distance_modifier);
-                            for (int i = 0; i < editor.level->entities.length; i++) {
-                                golf_entity_t *entity = &editor.level->entities.data[i];
-                                if (!entity->active) continue;
-                                golf_lightmap_t *lightmap = golf_entity_get_lightmap(entity);
-                                golf_transform_t *transform = golf_entity_get_transform(entity);
-                                golf_model_t *model = golf_entity_get_model(entity);
-                                if (lightmap && transform && model) {
-                                    mat4 model_mat = golf_transform_get_model_mat(*transform);
-                                    golf_gi_add_entity(gi, model, model_mat, lightmap);
+
+                            for (int i = 0; i < editor.level->lightmap_images.length; i++) {
+                                golf_lightmap_image_t *lightmap = &editor.level->lightmap_images.data[i];
+                                if (!lightmap->active) continue;
+
+                                golf_gi_start_lightmap(gi, lightmap->resolution, lightmap->width, lightmap->height);
+                                for (int i = 0; i < editor.level->entities.length; i++) {
+                                    golf_entity_t *entity = &editor.level->entities.data[i];
+                                    golf_lightmap_section_t *lightmap_section = golf_entity_get_lightmap_section(entity);
+                                    golf_transform_t *transform = golf_entity_get_transform(entity);
+                                    golf_model_t *model = golf_entity_get_model(entity);
+                                    if (lightmap_section && transform && model &&
+                                            strcmp(lightmap_section->lightmap_name, lightmap->name) == 0) {
+                                        mat4 model_mat = golf_transform_get_model_mat(*transform);
+                                        golf_gi_add_lightmap_section(gi, model, model_mat);
+                                    }
                                 }
+                                golf_gi_end_lightmap(gi);
                             }
+
                             golf_gi_start(gi);
                             editor.gi_running = true;
                             editor.gi_state.open_popup = true;
@@ -832,6 +848,7 @@ void golf_editor_update(float dt) {
 
                     if (igButton("Create Hole", (ImVec2){0, 0})) {
                         if (!editor.gi_running) {
+                            /*
                             golf_log_note("Creating hole model and lightmaps");
                             golf_gi_t *gi = &editor.gi;
                             golf_gi_init(gi, true, true, 
@@ -854,6 +871,7 @@ void golf_editor_update(float dt) {
                             editor.gi_running = true;
                             editor.gi_state.open_popup = true;
                             editor.gi_state.creating_hole = true;
+                            */
                         }
                     }
 
@@ -902,6 +920,7 @@ void golf_editor_update(float dt) {
                     golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
 
                     golf_lightmap_t lightmap;
+                    golf_lightmap_section_t lightmap_section;
                     {
                         const char *model_path = "data/models/cube.obj";
                         golf_model_t *model = golf_data_get_model(model_path);
@@ -914,10 +933,12 @@ void golf_editor_update(float dt) {
                         }
 
                         golf_lightmap_init(&lightmap, 256, 1, 1, image_data, uvs);
+                        golf_lightmap_section_init(&lightmap_section, "main", uvs);
                         vec_deinit(&uvs);
                     }
 
-                    golf_entity_t entity = golf_entity_model(transform, "data/models/cube.obj", lightmap);
+
+                    golf_entity_t entity = golf_entity_model(transform, "data/models/cube.obj", lightmap, lightmap_section);
                     _golf_editor_vec_push_and_fix_actions(&editor.level->entities, entity);
                     _golf_editor_commit_entity_create_action();
                 }
@@ -1014,19 +1035,19 @@ void golf_editor_update(float dt) {
                 igEndTabItem();
             }
 
-            if (igBeginTabItem("Lightmaps", NULL, ImGuiTabItemFlags_None)) {
-                for (int i = 0; i < editor.level->lightmaps.length; i++) {
-                    golf_lightmap2_t *lightmap = &editor.level->lightmaps.data[i];
-                    if (!lightmap->active) continue;
+            if (igBeginTabItem("Lightmap Images", NULL, ImGuiTabItemFlags_None)) {
+                for (int i = 0; i < editor.level->lightmap_images.length; i++) {
+                    golf_lightmap_image_t *lightmap_image = &editor.level->lightmap_images.data[i];
+                    if (!lightmap_image->active) continue;
 
                     bool queue_action = false;
                     bool queue_commit = false;
                     bool queue_decommit = false;
 
                     igPushID_Int(i);
-                    if (igTreeNodeEx_StrStr("lightmap", ImGuiTreeNodeFlags_None, "%s", lightmap->name)) {
-                        _golf_editor_undoable_igInputText("Name", lightmap->name, GOLF_MAX_NAME_LEN, NULL, NULL, 0, "Modify lightmap name");
-                        igInputInt("Resolution", &lightmap->resolution, 0, 0, ImGuiInputTextFlags_None);
+                    if (igTreeNodeEx_StrStr("lightmap_image", ImGuiTreeNodeFlags_None, "%s", lightmap_image->name)) {
+                        _golf_editor_undoable_igInputText("Name", lightmap_image->name, GOLF_MAX_NAME_LEN, NULL, NULL, 0, "Modify lightmap image name");
+                        igInputInt("Resolution", &lightmap_image->resolution, 0, 0, ImGuiInputTextFlags_None);
                         if (igIsItemActivated()) {
                             queue_action = true;
                         }
@@ -1039,17 +1060,17 @@ void golf_editor_update(float dt) {
                             }
                         }
 
-                        igText("Image Size <%d, %d>", lightmap->image_width, lightmap->image_height);
-                        igImage((ImTextureID)(uintptr_t)lightmap->sg_image.id, 
-                                (ImVec2){(float)lightmap->image_width, (float)lightmap->image_height},
+                        igText("Size <%d, %d>", lightmap_image->width, lightmap_image->height);
+                        igImage((ImTextureID)(uintptr_t)lightmap_image->sg_image.id, 
+                                (ImVec2){(float)lightmap_image->width, (float)lightmap_image->height},
                                 (ImVec2){0, 0},
                                 (ImVec2){1, 1}, 
                                 (ImVec4){1, 1, 1, 1},
                                 (ImVec4){1, 1, 1, 1});
 
                         if (igButton("Delete", (ImVec2){0, 0})) {
-                            _golf_editor_start_action_with_data(&lightmap->active, sizeof(lightmap->active), "Delete lightmap");
-                            lightmap->active = false;
+                            _golf_editor_start_action_with_data(&lightmap_image->active, sizeof(lightmap_image->active), "Delete lightmap image");
+                            lightmap_image->active = false;
                             _golf_editor_commit_action();
                         }
 
@@ -1059,38 +1080,35 @@ void golf_editor_update(float dt) {
 
                     if (queue_action) {
                         golf_editor_action_t action;
-                        _golf_editor_action_init(&action, "Modify lightmap");
-                        _golf_editor_action_push_data(&action, lightmap, sizeof(golf_lightmap_t));
+                        _golf_editor_action_init(&action, "Modify lightmap image");
+                        _golf_editor_action_push_data(&action, lightmap_image, sizeof(golf_lightmap_image_t));
                         _golf_editor_queue_start_action(action);
-                        printf("START ACTION: %d\n", lightmap->resolution);
                     }
                     if (queue_commit) {
-                        unsigned char *data = malloc(lightmap->image_width * lightmap->image_height);  
-                        memset(data, 0xFF, lightmap->image_width * lightmap->image_height);
+                        unsigned char *data = malloc(lightmap_image->width * lightmap_image->height);  
+                        memset(data, 0xFF, lightmap_image->width * lightmap_image->height);
 
                         char name[GOLF_MAX_NAME_LEN];
-                        snprintf(name, GOLF_MAX_NAME_LEN, "%s", lightmap->name);
-                        golf_lightmap2_init(lightmap, name, lightmap->resolution, lightmap->image_width, lightmap->image_height, data);
+                        snprintf(name, GOLF_MAX_NAME_LEN, "%s", lightmap_image->name);
+                        golf_lightmap_image_init(lightmap_image, name, lightmap_image->resolution, lightmap_image->width, lightmap_image->height, data);
                         free(data);
                         _golf_editor_queue_commit_action();
-                        printf("COMMIT ACTION: %d\n", lightmap->resolution);
                     }
                     if (queue_decommit) {
                         _golf_editor_queue_decommit_action();
-                        printf("DECOMMIT ACTION: %d\n", lightmap->resolution);
                     }
                 }
 
-                if (igButton("Create Lightmap", (ImVec2){0, 0})) {
+                if (igButton("Create Lightmap Image", (ImVec2){0, 0})) {
                     unsigned char image_data[1] = { 0xFF };
-                    golf_lightmap2_t new_lightmap;
-                    golf_lightmap2_init(&new_lightmap, "new", 256, 1, 1, image_data);
-                    _golf_editor_vec_push_and_fix_actions(&editor.level->lightmaps, new_lightmap);
+                    golf_lightmap_image_t new_lightmap_image;
+                    golf_lightmap_image_init(&new_lightmap_image, "new", 256, 1, 1, image_data);
+                    _golf_editor_vec_push_and_fix_actions(&editor.level->lightmap_images, new_lightmap_image);
 
-                    golf_lightmap2_t *lightmap = &vec_last(&editor.level->lightmaps);
-                    lightmap->active = false;
-                    _golf_editor_start_action_with_data(&lightmap->active, sizeof(lightmap->active), "Create lightmap");
-                    lightmap->active = true;
+                    golf_lightmap_image_t *lightmap_image = &vec_last(&editor.level->lightmap_images);
+                    lightmap_image->active = false;
+                    _golf_editor_start_action_with_data(&lightmap_image->active, sizeof(lightmap_image->active), "Create lightmap image");
+                    lightmap_image->active = true;
                     _golf_editor_commit_action();
                 }
                 igEndTabItem();
@@ -1134,6 +1152,11 @@ void golf_editor_update(float dt) {
             golf_lightmap_t *lightmap = golf_entity_get_lightmap(entity);
             if (lightmap) {
                 _golf_editor_edit_lightmap(lightmap);
+            }
+
+            golf_lightmap_section_t *lightmap_section = golf_entity_get_lightmap_section(entity);
+            if (lightmap_section) {
+                _golf_editor_edit_lightmap_section(lightmap_section);
             }
 
             if (igButton("Delete Entity", (ImVec2){0, 0})) {
@@ -1260,8 +1283,8 @@ void golf_editor_update(float dt) {
         if (!golf_gi_is_running(gi)) {
             golf_log_note("Lightmap Generator Finished");
 
-            if (editor.gi_state.creating_hole) {
-                golf_gi_entity_t *gi_entity = &gi->entities.data[0];
+            for (int i = 0; i < gi->entities.length; i++) {
+                golf_gi_entity_t *gi_entity = &gi->entities.data[i];
                 int w = gi_entity->image_width;
                 int h = gi_entity->image_height;
 
@@ -1269,60 +1292,87 @@ void golf_editor_update(float dt) {
                 for (int i = 0; i < w * h; i++) {
                     float a = gi_entity->image_data[i];
                     if (a > 1.0f) a = 1.0f;
-                    if ( a < 0.0f) a = 0.0f;
+                    if (a < 0.0f) a = 0.0f;
                     data[i] = (unsigned char)(0xFF * a);
                 }
 
-                stbi_write_png("data/textures/hole_lightmap.png", w, h, 1, data, w);
-
-                golf_string_t obj_data;
-                golf_string_init(&obj_data, "mtllib hole.mtl\no hole\n");
-                golf_model_t *model = golf_data_get_model("data/models/hole.obj");
-                for (int i = 0; i < model->positions.length; i++) {
-                    vec3 p = model->positions.data[i];
-                    golf_string_appendf(&obj_data, "v %f %f %f\n", p.x, p.y, p.z);
+                if (i == 0) {
+                   stbi_write_png("gi0.png", w, h, 1, data, w);
                 }
-                for (int i = 0; i < gi_entity->lightmap_uvs.length; i++) {
-                    vec2 vt = gi_entity->lightmap_uvs.data[i];
-                    golf_string_appendf(&obj_data, "vt %f %f\n", vt.x, vt.y);
-                }
-                for (int i = 0; i < model->normals.length; i++) {
-                    vec3 n = model->normals.data[i];
-                    golf_string_appendf(&obj_data, "vn %f %f %f\n", n.x, n.y, n.z);
-                }
-                golf_string_appendf(&obj_data, "usemtl hole\ns 1\n");
-                for (int i = 0; i < model->positions.length; i += 3) {
-                    golf_string_appendf(&obj_data, "f %d/%d/%d %d/%d/%d %d/%d/%d\n",
-                            i + 1, i + 1, i + 1, i + 2, i + 2, i + 2, i + 3, i + 3, i + 3);
+                else {
+                   stbi_write_png("gi1.png", w, h, 1, data, w);
                 }
 
-                golf_file_t file = golf_file("data/models/hole.obj");
-                golf_file_set_data(&file, obj_data.cstr, obj_data.len);
-
-                golf_string_deinit(&obj_data);
+                //_golf_editor_action_push_data(&action, gi_entity->lightmap, sizeof(golf_lightmap_t));
+                //golf_lightmap_init(gi_entity->lightmap, gi_entity->resolution, gi_entity->image_width, gi_entity->image_height, data, gi_entity->lightmap_uvs);
                 free(data);
             }
-            else {
-                golf_editor_action_t action;
-                _golf_editor_action_init(&action, "Create lightmap");
-                for (int i = 0; i < gi->entities.length; i++) {
-                    golf_gi_entity_t *gi_entity = &gi->entities.data[i];
 
-                    unsigned char *data = malloc(gi_entity->image_width * gi_entity->image_height);
-                    for (int i = 0; i < gi_entity->image_width * gi_entity->image_height; i++) {
-                        float a = gi_entity->image_data[i];
-                        if (a > 1.0f) a = 1.0f;
-                        if (a < 0.0f) a = 0.0f;
-                        data[i] = (unsigned char)(0xFF * a);
-                    }
+            /*
+               if (editor.gi_state.creating_hole) {
+               golf_gi_entity_t *gi_entity = &gi->entities.data[0];
+               int w = gi_entity->image_width;
+               int h = gi_entity->image_height;
 
-                    _golf_editor_action_push_data(&action, gi_entity->lightmap, sizeof(golf_lightmap_t));
-                    golf_lightmap_init(gi_entity->lightmap, gi_entity->resolution, gi_entity->image_width, gi_entity->image_height, data, gi_entity->lightmap_uvs);
-                    free(data);
-                }
-                _golf_editor_start_action(action);
-                _golf_editor_commit_action();
-            }
+               unsigned char *data = malloc(w * h);
+               for (int i = 0; i < w * h; i++) {
+               float a = gi_entity->image_data[i];
+               if (a > 1.0f) a = 1.0f;
+               if ( a < 0.0f) a = 0.0f;
+               data[i] = (unsigned char)(0xFF * a);
+               }
+
+               stbi_write_png("data/textures/hole_lightmap.png", w, h, 1, data, w);
+
+               golf_string_t obj_data;
+               golf_string_init(&obj_data, "mtllib hole.mtl\no hole\n");
+               golf_model_t *model = golf_data_get_model("data/models/hole.obj");
+               for (int i = 0; i < model->positions.length; i++) {
+               vec3 p = model->positions.data[i];
+               golf_string_appendf(&obj_data, "v %f %f %f\n", p.x, p.y, p.z);
+               }
+               for (int i = 0; i < gi_entity->lightmap_uvs.length; i++) {
+               vec2 vt = gi_entity->lightmap_uvs.data[i];
+               golf_string_appendf(&obj_data, "vt %f %f\n", vt.x, vt.y);
+               }
+               for (int i = 0; i < model->normals.length; i++) {
+               vec3 n = model->normals.data[i];
+               golf_string_appendf(&obj_data, "vn %f %f %f\n", n.x, n.y, n.z);
+               }
+               golf_string_appendf(&obj_data, "usemtl hole\ns 1\n");
+               for (int i = 0; i < model->positions.length; i += 3) {
+               golf_string_appendf(&obj_data, "f %d/%d/%d %d/%d/%d %d/%d/%d\n",
+               i + 1, i + 1, i + 1, i + 2, i + 2, i + 2, i + 3, i + 3, i + 3);
+               }
+
+               golf_file_t file = golf_file("data/models/hole.obj");
+               golf_file_set_data(&file, obj_data.cstr, obj_data.len);
+
+               golf_string_deinit(&obj_data);
+               free(data);
+               }
+               else {
+               golf_editor_action_t action;
+               _golf_editor_action_init(&action, "Create lightmap");
+               for (int i = 0; i < gi->entities.length; i++) {
+               golf_gi_entity_t *gi_entity = &gi->entities.data[i];
+
+               unsigned char *data = malloc(gi_entity->image_width * gi_entity->image_height);
+               for (int i = 0; i < gi_entity->image_width * gi_entity->image_height; i++) {
+               float a = gi_entity->image_data[i];
+               if (a > 1.0f) a = 1.0f;
+               if (a < 0.0f) a = 0.0f;
+               data[i] = (unsigned char)(0xFF * a);
+               }
+
+               _golf_editor_action_push_data(&action, gi_entity->lightmap, sizeof(golf_lightmap_t));
+               golf_lightmap_init(gi_entity->lightmap, gi_entity->resolution, gi_entity->image_width, gi_entity->image_height, data, gi_entity->lightmap_uvs);
+               free(data);
+               }
+               _golf_editor_start_action(action);
+               _golf_editor_commit_action();
+               }
+               */
 
             golf_gi_deinit(gi);
 
