@@ -5,6 +5,39 @@
 #include "golf/log.h"
 #include "golf/parson_helper.h"
 
+void golf_lightmap2_init(golf_lightmap2_t *lightmap, const char *name, int resolution, int image_width, int image_height, unsigned char *image_data) {
+    lightmap->active = true;
+    snprintf(lightmap->name, GOLF_MAX_NAME_LEN, "%s", name);
+    lightmap->resolution = resolution;
+    lightmap->image_width = image_width;
+    lightmap->image_height = image_height;
+    lightmap->image_data = malloc(image_width * image_height);
+    memcpy(lightmap->image_data, image_data, image_width * image_height);
+
+    char *sg_image_data = malloc(4 * image_width * image_height);
+    for (int i = 0; i < 4 * image_width * image_height; i += 4) {
+        sg_image_data[i + 0] = image_data[i / 4];
+        sg_image_data[i + 1] = image_data[i / 4];
+        sg_image_data[i + 2] = image_data[i / 4];
+        sg_image_data[i + 3] = 0xFF;
+    }
+    sg_image_desc img_desc = {
+        .width = image_width,
+        .height = image_height,
+        .pixel_format = SG_PIXELFORMAT_RGBA8,
+        .min_filter = SG_FILTER_LINEAR,
+        .mag_filter = SG_FILTER_LINEAR,
+        .wrap_u = SG_WRAP_CLAMP_TO_EDGE,
+        .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
+        .data.subimage[0][0] = {
+            .ptr = sg_image_data,
+            .size = 4 * image_width * image_height,
+        },
+    };
+    lightmap->sg_image = sg_make_image(&img_desc);
+    free(sg_image_data);
+}
+
 void golf_lightmap_init(golf_lightmap_t *lightmap, int resolution, int image_width, int image_height, unsigned char *image_data, vec_vec2_t uvs) {
     lightmap->resolution = resolution;
     lightmap->image_width = image_width;
@@ -225,6 +258,7 @@ bool golf_level_save(golf_level_t *level, const char *path) {
 }
 
 bool golf_level_load(golf_level_t *level, const char *path, char *data, int data_len) {
+    vec_init(&level->lightmaps);
     vec_init(&level->materials);
     vec_init(&level->entities);
 
@@ -242,7 +276,7 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
         golf_material_t material;
         memset(&material, 0, sizeof(golf_material_t));
         material.active = true;
-        snprintf(material.name, GOLF_MATERIAL_NAME_MAX_LEN, "%s", name);
+        snprintf(material.name, GOLF_MAX_NAME_LEN, "%s", name);
         material.friction = friction;
         material.restitution = restitution;
         if (type && strcmp(type, "texture") == 0) {

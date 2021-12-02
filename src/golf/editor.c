@@ -73,7 +73,7 @@ void golf_editor_init(void) {
         editor.gi_state.camera_to_surface_distance_modifier = 0.0f;
 
         {
-            char image_data[] = { 0xFF };
+            unsigned char image_data[] = { 0xFF };
 
             golf_model_t *model = golf_data_get_model("data/models/hole.obj");
             vec_vec2_t uvs;
@@ -965,7 +965,7 @@ void golf_editor_update(float dt) {
                             }
                         }
 
-                        _golf_editor_undoable_igInputText("Name", material->name, GOLF_MATERIAL_NAME_MAX_LEN, NULL, NULL, 0, "Modify material name");
+                        _golf_editor_undoable_igInputText("Name", material->name, GOLF_MAX_NAME_LEN, NULL, NULL, 0, "Modify material name");
 
                         switch (material->type) {
                             case GOLF_MATERIAL_TEXTURE: {
@@ -1000,7 +1000,7 @@ void golf_editor_update(float dt) {
                     golf_material_t new_material;
                     memset(&new_material, 0, sizeof(golf_material_t));
                     new_material.active = true;
-                    snprintf(new_material.name, GOLF_MATERIAL_NAME_MAX_LEN, "%s", "new");
+                    snprintf(new_material.name, GOLF_MAX_NAME_LEN, "%s", "new");
                     new_material.type = GOLF_MATERIAL_COLOR;
                     new_material.color = V3(1, 0, 0);
                     _golf_editor_vec_push_and_fix_actions(&editor.level->materials, new_material);
@@ -1013,6 +1013,89 @@ void golf_editor_update(float dt) {
                 }
                 igEndTabItem();
             }
+
+            if (igBeginTabItem("Lightmaps", NULL, ImGuiTabItemFlags_None)) {
+                for (int i = 0; i < editor.level->lightmaps.length; i++) {
+                    golf_lightmap2_t *lightmap = &editor.level->lightmaps.data[i];
+                    if (!lightmap->active) continue;
+
+                    bool queue_action = false;
+                    bool queue_commit = false;
+                    bool queue_decommit = false;
+
+                    igPushID_Int(i);
+                    if (igTreeNodeEx_StrStr("lightmap", ImGuiTreeNodeFlags_None, "%s", lightmap->name)) {
+                        _golf_editor_undoable_igInputText("Name", lightmap->name, GOLF_MAX_NAME_LEN, NULL, NULL, 0, "Modify lightmap name");
+                        igInputInt("Resolution", &lightmap->resolution, 0, 0, ImGuiInputTextFlags_None);
+                        if (igIsItemActivated()) {
+                            queue_action = true;
+                        }
+                        if (igIsItemDeactivated()) {
+                            if (igIsItemDeactivatedAfterEdit()) {
+                                queue_commit = true;
+                            }
+                            else {
+                                queue_decommit = true;
+                            }
+                        }
+
+                        igText("Image Size <%d, %d>", lightmap->image_width, lightmap->image_height);
+                        igImage((ImTextureID)(uintptr_t)lightmap->sg_image.id, 
+                                (ImVec2){(float)lightmap->image_width, (float)lightmap->image_height},
+                                (ImVec2){0, 0},
+                                (ImVec2){1, 1}, 
+                                (ImVec4){1, 1, 1, 1},
+                                (ImVec4){1, 1, 1, 1});
+
+                        if (igButton("Delete", (ImVec2){0, 0})) {
+                            _golf_editor_start_action_with_data(&lightmap->active, sizeof(lightmap->active), "Delete lightmap");
+                            lightmap->active = false;
+                            _golf_editor_commit_action();
+                        }
+
+                        igTreePop();
+                    }
+                    igPopID();
+
+                    if (queue_action) {
+                        golf_editor_action_t action;
+                        _golf_editor_action_init(&action, "Modify lightmap");
+                        _golf_editor_action_push_data(&action, lightmap, sizeof(golf_lightmap_t));
+                        _golf_editor_queue_start_action(action);
+                        printf("START ACTION: %d\n", lightmap->resolution);
+                    }
+                    if (queue_commit) {
+                        unsigned char *data = malloc(lightmap->image_width * lightmap->image_height);  
+                        memset(data, 0xFF, lightmap->image_width * lightmap->image_height);
+
+                        char name[GOLF_MAX_NAME_LEN];
+                        snprintf(name, GOLF_MAX_NAME_LEN, "%s", lightmap->name);
+                        golf_lightmap2_init(lightmap, name, lightmap->resolution, lightmap->image_width, lightmap->image_height, data);
+                        free(data);
+                        _golf_editor_queue_commit_action();
+                        printf("COMMIT ACTION: %d\n", lightmap->resolution);
+                    }
+                    if (queue_decommit) {
+                        _golf_editor_queue_decommit_action();
+                        printf("DECOMMIT ACTION: %d\n", lightmap->resolution);
+                    }
+                }
+
+                if (igButton("Create Lightmap", (ImVec2){0, 0})) {
+                    unsigned char image_data[1] = { 0xFF };
+                    golf_lightmap2_t new_lightmap;
+                    golf_lightmap2_init(&new_lightmap, "new", 256, 1, 1, image_data);
+                    _golf_editor_vec_push_and_fix_actions(&editor.level->lightmaps, new_lightmap);
+
+                    golf_lightmap2_t *lightmap = &vec_last(&editor.level->lightmaps);
+                    lightmap->active = false;
+                    _golf_editor_start_action_with_data(&lightmap->active, sizeof(lightmap->active), "Create lightmap");
+                    lightmap->active = true;
+                    _golf_editor_commit_action();
+                }
+                igEndTabItem();
+            }
+
             igEndTabBar();
         }
         igEnd();

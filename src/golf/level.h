@@ -6,6 +6,19 @@
 #include "golf/file.h"
 #include "golf/maths.h"
 
+#define GOLF_MAX_NAME_LEN 64
+
+typedef struct golf_lightmap2 {
+    bool active;
+    char name[GOLF_MAX_NAME_LEN];
+    int resolution;
+    unsigned char *image_data;
+    int image_width, image_height;
+    sg_image sg_image;
+} golf_lightmap2_t;
+typedef vec_t(golf_lightmap2_t) vec_golf_lightmap2_t;
+void golf_lightmap2_init(golf_lightmap2_t *lightmap, const char *name, int resolution, int image_width, int image_height, unsigned char *image_data);
+
 typedef struct golf_lightmap {
     int resolution;
     unsigned char *image_data;
@@ -22,10 +35,9 @@ typedef enum golf_material_type {
     GOLF_MATERIAL_DIFFUSE_COLOR,
 } golf_material_type_t;
 
-#define GOLF_MATERIAL_NAME_MAX_LEN 64
 typedef struct golf_material {
     bool active;
-    char name[GOLF_MATERIAL_NAME_MAX_LEN];
+    char name[GOLF_MAX_NAME_LEN];
     float friction;
     float restitution;
 
@@ -96,6 +108,7 @@ golf_lightmap_t *golf_entity_get_lightmap(golf_entity_t *entity);
 golf_model_t *golf_entity_get_model(golf_entity_t *entity);
 
 typedef struct golf_level {
+    vec_golf_lightmap2_t lightmaps;
     vec_golf_material_t materials;
     vec_golf_entity_t entities;
 } golf_level_t;

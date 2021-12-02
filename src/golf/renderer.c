@@ -623,6 +623,7 @@ static void _golf_renderer_draw_with_material(golf_model_t *model, int start, in
     }
 }
 
+/*
 static void _golf_renderer_draw_model(golf_model_t *model, mat4 model_mat, golf_lightmap_t *lightmap, golf_material_t *material_override, golf_level_t *level) {
     for (int i = 0; i < model->groups.length; i++) {
         golf_model_group_t group = model->groups.data[i];
@@ -714,6 +715,7 @@ static void _golf_renderer_draw_model(golf_model_t *model, mat4 model_mat, golf_
         }
     }
 }
+*/
 
 void golf_renderer_draw_editor(void) {
     {
