@@ -348,11 +348,11 @@ void golf_gi_add_lightmap_section(golf_gi_t *gi, golf_lightmap_section_t *lightm
         return;
     }
 
-    golf_gi_lightmap_section_t gi_lightmap_section;
-    gi_lightmap_section.lightmap_section = lightmap_section;
-    gi_lightmap_section.start = gi->cur_entity.positions.length;
-    gi_lightmap_section.count = model->positions.length;
-    vec_push(&gi->cur_entity.gi_lightmap_sections, gi_lightmap_section);
+    golf_gi_lightmap_section_t section;
+    section.start = gi->cur_entity.positions.length;
+    section.count = model->positions.length;
+    section.lightmap_section = lightmap_section;
+    vec_push(&gi->cur_entity.gi_lightmap_sections, section);
 
     for (int i = 0; i < model->positions.length; i++) {
         vec3 position = vec3_apply_mat4(model->positions.data[i], 1, model_mat);

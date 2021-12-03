@@ -20,7 +20,4 @@ void golf_json_object_set_vec4(JSON_Object *obj, const char *name, vec4 v);
 quat golf_json_object_get_quat(JSON_Object *obj, const char *name);
 void golf_json_object_set_quat(JSON_Object *obj, const char *name, quat q);
 
-void golf_json_object_get_transform(JSON_Object *obj, const char *name, golf_transform_t *transform);
-void golf_json_object_set_transform(JSON_Object *obj, const char *name, golf_transform_t *transform);
-
 #endif

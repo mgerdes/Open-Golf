@@ -8,9 +8,27 @@
 
 #define GOLF_MAX_NAME_LEN 64
 
+typedef enum golf_movement_type {
+    GOLF_MOVEMENT_NONE,
+    GOLF_MOVEMENT_LINEAR,
+} golf_movement_type_t;
+
+typedef struct golf_movement {
+    golf_movement_type_t type;  
+    float t, length;
+    union {
+        struct {
+            vec3 p0, p1;
+        } linear;
+    };
+} golf_movement_t;
+golf_movement_t golf_movement_none(void);
+golf_movement_t golf_movement_linear(vec3 p0, vec3 p1, float length);
+
 typedef struct golf_lightmap_image {
     bool active;
     char name[GOLF_MAX_NAME_LEN];
+    int num_samples;
     int resolution;
     unsigned char *data;
     int width, height;
@@ -25,16 +43,6 @@ typedef struct golf_lightmap_section {
     sg_buffer sg_uvs_buf;
 } golf_lightmap_section_t;
 void golf_lightmap_section_init(golf_lightmap_section_t *section, const char *lightmap_name, vec_vec2_t uvs, int start, int count);
-
-typedef struct golf_lightmap {
-    int resolution;
-    unsigned char *image_data;
-    int image_width, image_height;
-    sg_image sg_image;
-    vec_vec2_t uvs;
-    sg_buffer sg_uvs_buf;
-} golf_lightmap_t;
-void golf_lightmap_init(golf_lightmap_t *lightmap, int resolution, int image_width, int image_height, unsigned char *image_data, vec_vec2_t uvs);
 
 typedef enum golf_material_type {
     GOLF_MATERIAL_TEXTURE,
@@ -69,6 +77,7 @@ typedef struct golf_transform {
 } golf_transform_t;
 golf_transform_t golf_transform(vec3 position, vec3 scale, quat rotation);
 mat4 golf_transform_get_model_mat(golf_transform_t transform);
+golf_transform_t golf_transform_apply_movement(golf_transform_t transform, golf_movement_t movement);
 
 typedef struct golf_ball_start_entity {
     golf_transform_t transform;
@@ -76,13 +85,8 @@ typedef struct golf_ball_start_entity {
 
 typedef struct golf_model_entity {
     golf_transform_t transform;
-
-    int lightmap_idx;
-    vec_vec2_t lightmap_uvs;
-    sg_buffer sg_lightmap_uvs_buf;
-
     golf_lightmap_section_t lightmap_section;
-    golf_lightmap_t lightmap;
+    golf_movement_t movement;
     char model_path[GOLF_FILE_MAX_PATH];
     golf_model_t *model;
 } golf_model_entity_t;
@@ -108,12 +112,12 @@ typedef struct golf_entity {
     };
 } golf_entity_t;
 typedef vec_t(golf_entity_t) vec_golf_entity_t;
-golf_entity_t golf_entity_model(golf_transform_t transform, const char *model_path, golf_lightmap_t lightmap, golf_lightmap_section_t lightmap_section);
+golf_entity_t golf_entity_model(golf_transform_t transform, const char *model_path, golf_lightmap_section_t lightmap_section, golf_movement_t movement);
 golf_entity_t golf_entity_hole(golf_transform_t transform);
 golf_entity_t golf_entity_ball_start(golf_transform_t transform);
 golf_entity_t golf_entity_make_copy(golf_entity_t *entity);
+golf_movement_t *golf_entity_get_movement(golf_entity_t *entity);
 golf_transform_t *golf_entity_get_transform(golf_entity_t *entity);
-golf_lightmap_t *golf_entity_get_lightmap(golf_entity_t *entity);
 golf_lightmap_section_t *golf_entity_get_lightmap_section(golf_entity_t *entity);
 golf_model_t *golf_entity_get_model(golf_entity_t *entity);
 

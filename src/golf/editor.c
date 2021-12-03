@@ -65,25 +65,12 @@ void golf_editor_init(void) {
         editor.gi_state.num_dilates = 1;
         editor.gi_state.num_smooths = 1;
         editor.gi_state.gamma = 1;
-        editor.gi_state.hemisphere_size = 128;
-        editor.gi_state.z_near = 0.001f;
-        editor.gi_state.z_far = 10.0f;
+        editor.gi_state.hemisphere_size = 16;
+        editor.gi_state.z_near = 0.0005f;
+        editor.gi_state.z_far = 5.0f;
         editor.gi_state.interpolation_passes = 4;
         editor.gi_state.interpolation_threshold = 0.01f;
         editor.gi_state.camera_to_surface_distance_modifier = 0.0f;
-
-        {
-            unsigned char image_data[] = { 0xFF };
-
-            golf_model_t *model = golf_data_get_model("data/models/hole.obj");
-            vec_vec2_t uvs;
-            vec_init(&uvs);
-            for (int i = 0; i < model->positions.length; i++) {
-                vec_push(&uvs, V2(0, 0));
-            }
-
-            golf_lightmap_init(&editor.gi_state.hole_lightmap, 256, 1, 1, image_data, uvs);
-        }
     }
 }
 
@@ -380,51 +367,42 @@ static void _golf_editor_edit_lightmap_section(golf_lightmap_section_t *lightmap
     }
 }
 
-static void _golf_editor_edit_lightmap(golf_lightmap_t *lightmap) {
-    bool queue_action = false;
-    bool queue_commit = false;
-    bool queue_decommit = false;
+static void _golf_editor_edit_movement(golf_movement_t *movement) {
+    if (igTreeNode_Str("Movement")) {
+        golf_movement_type_t movement_type_before = movement->type;
+        const char *items[] = { "None", "Linear" };
+        igCombo_Str_arr("Type", (int*)&movement->type, items, sizeof(items) / sizeof(items[0]), 0);
+        if (movement_type_before != movement->type) {
+            golf_movement_type_t movement_type_after = movement->type;
+            movement->type = movement_type_before;
+            _golf_editor_start_action_with_data(movement, sizeof(golf_movement_t), "Change movement type");
+            _golf_editor_commit_action();
+            movement->type = movement_type_after;
 
-    if (igTreeNode_Str("Lightmap")) {
-        igInputInt("Resolution", &lightmap->resolution, 0, 0, ImGuiInputTextFlags_None);
-        if (igIsItemActivated()) {
-            queue_action = true;
-        }
-        if (igIsItemDeactivated()) {
-            if (igIsItemDeactivatedAfterEdit()) {
-                queue_commit = true;
-            }
-            else {
-                queue_decommit = true;
+            switch (movement->type) {
+                case GOLF_MOVEMENT_NONE:
+                    break;
+                case GOLF_MOVEMENT_LINEAR:
+                    movement->t = 0;
+                    movement->length = 1;
+                    movement->linear.p0 = V3(0, 0, 0);
+                    movement->linear.p1 = V3(0, 0, 0);
+                    break;
             }
         }
 
-        igText("Image Size <%d, %d>", lightmap->image_width, lightmap->image_height);
-        igImage((ImTextureID)(uintptr_t)lightmap->sg_image.id, 
-                (ImVec2){(float)lightmap->image_width, (float)lightmap->image_height},
-                (ImVec2){0, 0},
-                (ImVec2){1, 1}, 
-                (ImVec4){1, 1, 1, 1},
-                (ImVec4){1, 1, 1, 1});
+        switch (movement->type) {
+            case GOLF_MOVEMENT_NONE:
+                break;
+            case GOLF_MOVEMENT_LINEAR: {
+                _golf_editor_undoable_igInputFloat("Length", (float*)&movement->length, "Modify movement length");
+                _golf_editor_undoable_igInputFloat3("P0", (float*)&movement->linear.p0, "Modify linear movement p0");
+                _golf_editor_undoable_igInputFloat3("P1", (float*)&movement->linear.p1, "Modify linear movement p1");
+                break;
+            }
+        }
 
         igTreePop();
-    }
-
-    if (queue_action) {
-        golf_editor_action_t action;
-        _golf_editor_action_init(&action, "Modify lightmap");
-        _golf_editor_action_push_data(&action, lightmap, sizeof(golf_lightmap_t));
-        _golf_editor_queue_start_action(action);
-    }
-    if (queue_commit) {
-        unsigned char *data = malloc(lightmap->image_width * lightmap->image_height);  
-        memset(data, 0xFF, lightmap->image_width * lightmap->image_height);
-        golf_lightmap_init(lightmap, lightmap->resolution, lightmap->image_width, lightmap->image_height, data, lightmap->uvs);
-        free(data);
-        _golf_editor_queue_commit_action();
-    }
-    if (queue_decommit) {
-        _golf_editor_queue_decommit_action();
     }
 }
 
@@ -921,26 +899,24 @@ void golf_editor_update(float dt) {
                 if (igButton("Create Model Entity", (ImVec2){0, 0})) {
                     golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
 
-                    golf_lightmap_t lightmap;
                     golf_lightmap_section_t lightmap_section;
                     {
                         const char *model_path = "data/models/cube.obj";
                         golf_model_t *model = golf_data_get_model(model_path);
-                        unsigned char image_data[1] = { 0xFF };
-
                         vec_vec2_t uvs;
                         vec_init(&uvs);
                         for (int i = 0; i < model->positions.length; i++) {
                             vec_push(&uvs, V2(0, 0));
                         }
 
-                        golf_lightmap_init(&lightmap, 256, 1, 1, image_data, uvs);
                         golf_lightmap_section_init(&lightmap_section, "main", uvs, 0, uvs.length);
                         vec_deinit(&uvs);
                     }
 
+                    golf_movement_t movement;
+                    movement = golf_movement_none();
 
-                    golf_entity_t entity = golf_entity_model(transform, "data/models/cube.obj", lightmap, lightmap_section);
+                    golf_entity_t entity = golf_entity_model(transform, "data/models/cube.obj", lightmap_section, movement);
                     _golf_editor_vec_push_and_fix_actions(&editor.level->entities, entity);
                     _golf_editor_commit_entity_create_action();
                 }
@@ -1164,14 +1140,14 @@ void golf_editor_update(float dt) {
                 _golf_editor_edit_transform(transform);
             }
 
-            golf_lightmap_t *lightmap = golf_entity_get_lightmap(entity);
-            if (lightmap) {
-                _golf_editor_edit_lightmap(lightmap);
-            }
-
             golf_lightmap_section_t *lightmap_section = golf_entity_get_lightmap_section(entity);
             if (lightmap_section) {
                 _golf_editor_edit_lightmap_section(lightmap_section);
+            }
+
+            golf_movement_t *movement = golf_entity_get_movement(entity);
+            if (movement) {
+                _golf_editor_edit_movement(movement);
             }
 
             if (igButton("Delete Entity", (ImVec2){0, 0})) {
@@ -1212,6 +1188,18 @@ void golf_editor_update(float dt) {
     if (editor.has_queued_action) {
         editor.has_queued_action = false;
         _golf_editor_start_action(editor.queued_action);
+    }
+
+    for (int i = 0; i < editor.level->entities.length; i++) {
+        golf_entity_t *entity = &editor.level->entities.data[i];
+        if (!entity->active) continue;
+        golf_movement_t *movement = golf_entity_get_movement(entity);
+        if (movement) {
+            movement->t += dt;
+            if (movement->t >= movement->length) {
+                movement->t = movement->t - movement->length;
+            }
+        }
     }
 
     {

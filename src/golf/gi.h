@@ -8,6 +8,8 @@
 
 typedef struct golf_gi_lightmap_section {
     int start, count;
+    int gl_position_vbo, gl_lightmap_uv_vbo;
+
     golf_lightmap_section_t *lightmap_section;
 } golf_gi_lightmap_section_t;
 typedef vec_t(golf_gi_lightmap_section_t) vec_golf_gi_lightmap_section_t;

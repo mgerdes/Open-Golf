@@ -50,7 +50,6 @@ typedef struct golf_editor {
 
     struct {
         bool creating_hole;
-        golf_lightmap_t hole_lightmap;
         bool open_popup;
         int num_iterations, 
             num_dilates,

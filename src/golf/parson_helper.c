@@ -95,17 +95,3 @@ void golf_json_object_set_quat(JSON_Object *obj, const char *name, quat q) {
     json_array_append_number(arr, q.w);
     json_object_set_value(obj, name, val);
 }
-
-void golf_json_object_get_transform(JSON_Object *obj, const char *name, golf_transform_t *transform) {
-}
-
-void golf_json_object_set_transform(JSON_Object *obj, const char *name, golf_transform_t *transform) {
-    JSON_Value *transform_val = json_value_init_object();
-    JSON_Object *transform_obj = json_value_get_object(transform_val);
-
-    golf_json_object_set_vec3(transform_obj, "position", transform->position);
-    golf_json_object_set_vec3(transform_obj, "scale", transform->scale);
-    golf_json_object_set_quat(transform_obj, "rotation", transform->rotation);
-
-    json_object_set_value(obj, name, transform_val);
-}
