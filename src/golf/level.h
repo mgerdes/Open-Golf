@@ -24,7 +24,7 @@ typedef struct golf_lightmap_section {
     vec_vec2_t uvs;
     sg_buffer sg_uvs_buf;
 } golf_lightmap_section_t;
-void golf_lightmap_section_init(golf_lightmap_section_t *section, const char *lightmap_name, vec_vec2_t uvs);
+void golf_lightmap_section_init(golf_lightmap_section_t *section, const char *lightmap_name, vec_vec2_t uvs, int start, int count);
 
 typedef struct golf_lightmap {
     int resolution;
@@ -40,6 +40,7 @@ typedef enum golf_material_type {
     GOLF_MATERIAL_TEXTURE,
     GOLF_MATERIAL_COLOR,
     GOLF_MATERIAL_DIFFUSE_COLOR,
+    GOLF_MATERIAL_ENVIRONMENT,
 } golf_material_type_t;
 
 typedef struct golf_material {
@@ -124,6 +125,7 @@ typedef struct golf_level {
 bool golf_level_save(golf_level_t *level, const char *path);
 bool golf_level_load(golf_level_t *level, const char *path, char *data, int data_len);
 bool golf_level_unload(golf_level_t *level);
-bool golf_level_get_material(golf_level_t *level, const char *material_name, golf_material_t *material);
+bool golf_level_get_material(golf_level_t *level, const char *material_name, golf_material_t *out_material);
+bool golf_level_get_lightmap_image(golf_level_t *level, const char *lightmap_name, golf_lightmap_image_t *out_lightmap_image);
 
 #endif

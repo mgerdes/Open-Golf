@@ -15,7 +15,7 @@
 #include "golf/ui.h"
 
 #include "golf/shaders/diffuse_color_material.glsl.h"
-#include "golf/shaders/environment.glsl.h"
+#include "golf/shaders/environment_material.glsl.h"
 #include "golf/shaders/pass_through.glsl.h"
 #include "golf/shaders/solid_color_material.glsl.h"
 #include "golf/shaders/texture_material.glsl.h"
@@ -48,7 +48,7 @@ golf_renderer_t *golf_renderer_get(void) {
 
 void golf_renderer_init(void) {
     golf_data_load("data/shaders/diffuse_color_material.glsl");
-    golf_data_load("data/shaders/environment.glsl");
+    golf_data_load("data/shaders/environment_material.glsl");
     golf_data_load("data/shaders/pass_through.glsl");
     golf_data_load("data/shaders/solid_color_material.glsl");
     golf_data_load("data/shaders/texture_material.glsl");
@@ -75,18 +75,18 @@ void golf_renderer_init(void) {
     }
 
     {
-        golf_shader_t *shader = golf_data_get_shader("data/shaders/environment.glsl");
+        golf_shader_t *shader = golf_data_get_shader("data/shaders/environment_material.glsl");
         sg_pipeline_desc pipeline_desc = {
             .shader = shader->sg_shader,
             .layout = {
                 .attrs = {
-                    [ATTR_environment_vs_position] 
+                    [ATTR_environment_material_vs_position] 
                         = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
-                    [ATTR_environment_vs_texturecoord] 
+                    [ATTR_environment_material_vs_texturecoord] 
                         = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
-                    [ATTR_environment_vs_normal] 
+                    [ATTR_environment_material_vs_normal] 
                         = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 2 },
-                    [ATTR_environment_vs_lightmap_uv] 
+                    [ATTR_environment_material_vs_lightmap_uv] 
                         = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 3 },
                 },
             },
@@ -95,7 +95,7 @@ void golf_renderer_init(void) {
                 .write_enabled = true,
             },
         };
-        renderer.environment_pipeline = sg_make_pipeline(&pipeline_desc);
+        renderer.environment_material_pipeline = sg_make_pipeline(&pipeline_desc);
     }
 
     {
@@ -575,6 +575,27 @@ void golf_renderer_draw(void) {
     _draw_ui();
 }
 
+static void _golf_renderer_draw_environment_material(golf_model_t *model, int start, int count, mat4 model_mat, golf_material_t material, golf_lightmap_image_t *lightmap_image, golf_lightmap_section_t *lightmap_section) {
+    environment_material_vs_params_t vs_params = {
+        .proj_view_mat = mat4_transpose(renderer.proj_view_mat),
+        .model_mat = mat4_transpose(model_mat),
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_environment_material_vs_params,
+            &(sg_range) { &vs_params, sizeof(vs_params) });
+
+    sg_bindings bindings = {
+        .vertex_buffers[0] = model->sg_positions_buf,
+        .vertex_buffers[1] = model->sg_texcoords_buf,
+        .vertex_buffers[2] = model->sg_normals_buf,
+        .vertex_buffers[3] = lightmap_section->sg_uvs_buf,
+        .fs_images[SLOT_environment_material_texture] = material.texture->sg_image,
+        .fs_images[SLOT_environment_material_lightmap_texture] = lightmap_image->sg_image,
+    };
+    sg_apply_bindings(&bindings);
+
+    sg_draw(start, count, 1);
+}
+
 static void _golf_renderer_draw_with_material(golf_model_t *model, int start, int count, mat4 model_mat, golf_material_t material) {
     switch (material.type) {
         case GOLF_MATERIAL_TEXTURE: {
@@ -620,6 +641,9 @@ static void _golf_renderer_draw_with_material(golf_model_t *model, int start, in
         case GOLF_MATERIAL_DIFFUSE_COLOR: {
             break;
         }
+        case GOLF_MATERIAL_ENVIRONMENT: {
+            break;
+        }
     }
 }
 
@@ -639,7 +663,7 @@ static void _golf_renderer_draw_model(golf_model_t *model, mat4 model_mat, golf_
 
         switch (material.type) {
             case GOLF_MATERIAL_TEXTURE: {
-                sg_apply_pipeline(renderer.environment_pipeline);
+                sg_apply_pipeline(renderer.environment_material_pipeline);
 
                 environment_vs_params_t vs_params = {
                     .proj_view_mat = mat4_transpose(renderer.proj_view_mat),
@@ -778,6 +802,23 @@ void golf_renderer_draw_editor(void) {
                         break;
                     }
                     case GOLF_MATERIAL_DIFFUSE_COLOR: {
+                        break;
+                    }
+                    case GOLF_MATERIAL_ENVIRONMENT: {
+                        golf_lightmap_section_t *lightmap_section = golf_entity_get_lightmap_section(entity);
+                        if (!lightmap_section) {
+                            golf_log_warning("Cannot use environment material on entity with no lightmap");
+                            break;
+                        }
+
+                        golf_lightmap_image_t lightmap_image;
+                        if (!golf_level_get_lightmap_image(editor->level, lightmap_section->lightmap_name, &lightmap_image)) {
+                            golf_log_warning("Could not find lightmap %s", lightmap_section->lightmap_name);
+                            break;
+                        }
+
+                        sg_apply_pipeline(renderer.environment_material_pipeline);
+                        _golf_renderer_draw_environment_material(model, group.start_vertex, group.vertex_count, model_mat, material, &lightmap_image, lightmap_section);
                         break;
                     }
                 }

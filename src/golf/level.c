@@ -38,7 +38,7 @@ void golf_lightmap_image_init(golf_lightmap_image_t *lightmap, const char *name,
     free(sg_image_data);
 }
 
-void golf_lightmap_section_init(golf_lightmap_section_t *section, const char *lightmap_name, vec_vec2_t uvs) {
+void golf_lightmap_section_init(golf_lightmap_section_t *section, const char *lightmap_name, vec_vec2_t uvs, int start, int count) {
     snprintf(section->lightmap_name, GOLF_MAX_NAME_LEN, "%s", lightmap_name);
     vec_init(&section->uvs);
     vec_pusharr(&section->uvs, uvs.data, uvs.length);
@@ -200,6 +200,11 @@ bool golf_level_save(golf_level_t *level, const char *path) {
                 golf_json_object_set_vec3(json_material_obj, "color", material->color);
                 break;
             }
+            case GOLF_MATERIAL_ENVIRONMENT: {
+                json_object_set_string(json_material_obj, "type", "environment");
+                json_object_set_string(json_material_obj, "texture", material->texture_path);
+                break;
+            }
         }
 
         json_array_append_value(json_materials_arr, json_material_val);
@@ -344,6 +349,13 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
             material.color = golf_json_object_get_vec3(obj, "color");
             valid_material = true;
         }
+        else if (type && strcmp(type, "environment") == 0) {
+            material.type = GOLF_MATERIAL_ENVIRONMENT;
+            const char *texture_path = json_object_get_string(obj, "texture");
+            snprintf(material.texture_path, GOLF_FILE_MAX_PATH, "%s", texture_path);
+            material.texture = golf_data_get_texture(material.texture_path);
+            valid_material = true;
+        }
 
         if (valid_material) {
             vec_push(&level->materials, material);
@@ -407,7 +419,7 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
                     vec_push(&uvs, V2(x, y));
                 }
 
-                golf_lightmap_section_init(&lightmap_section, lightmap_name, uvs);
+                golf_lightmap_section_init(&lightmap_section, lightmap_name, uvs, 0, uvs.length);
                 vec_deinit(&uvs);
             }
             //_golf_json_object_get_lightmap_section(obj, "lightmap_section", &lightmap_section);
@@ -457,13 +469,24 @@ mat4 golf_transform_get_model_mat(golf_transform_t transform) {
             mat4_scale(transform.scale));
 }
 
-bool golf_level_get_material(golf_level_t *level, const char *material_name, golf_material_t *material) {
+bool golf_level_get_material(golf_level_t *level, const char *material_name, golf_material_t *out_material) {
     for (int i = 0; i < level->materials.length; i++) {
-        if (!level->materials.data[i].active) {
-            continue;
+        golf_material_t *material = &level->materials.data[i];
+        if (!material->active) continue;
+        if (strcmp(material->name, material_name) == 0) {
+            *out_material = *material;
+            return true;
         }
-        if (strcmp(level->materials.data[i].name, material_name) == 0) {
-            *material = level->materials.data[i];
+    }
+    return false;
+}
+
+bool golf_level_get_lightmap_image(golf_level_t *level, const char *lightmap_name, golf_lightmap_image_t *out_lightmap_image) {
+    for (int i = 0; i < level->lightmap_images.length; i++) {
+        golf_lightmap_image_t *lightmap_image = &level->lightmap_images.data[i];
+        if (!lightmap_image->active) continue;
+        if (strcmp(lightmap_image->name, lightmap_name) == 0) {
+            *out_lightmap_image = *lightmap_image;
             return true;
         }
     }

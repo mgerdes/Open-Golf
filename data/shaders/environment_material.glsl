@@ -3,8 +3,8 @@
 @ctype vec3 vec3
 @ctype vec2 vec2
 
-@vs environment_vs
-uniform environment_vs_params {
+@vs environment_material_vs
+uniform environment_material_vs_params {
     mat4 model_mat;
     mat4 proj_view_mat;
 };
@@ -28,9 +28,9 @@ void main() {
 }
 @end
 
-@fs environment_fs
-uniform sampler2D kd_texture;
-uniform sampler2D lightmap_texture;
+@fs environment_material_fs
+uniform sampler2D environment_material_texture;
+uniform sampler2D environment_material_lightmap_texture;
 
 in vec3 frag_position;
 in vec2 frag_texturecoord;
@@ -40,8 +40,8 @@ in vec2 frag_lightmap_uv;
 out vec4 g_frag_color;
 
 void main() {
-    float gi = texture(lightmap_texture, frag_lightmap_uv).x; 
-    vec3 color = texture(kd_texture, frag_texturecoord).xyz; 
+    float gi = texture(environment_material_lightmap_texture, frag_lightmap_uv).x; 
+    vec3 color = texture(environment_material_texture, frag_texturecoord).xyz; 
     color = color + 0.001 * (frag_normal.xyz + frag_position.xyz);
     g_frag_color = vec4(gi * color, 1.0);
     //g_frag_color *= 0.001;
@@ -49,4 +49,4 @@ void main() {
 }
 @end
 
-@program environment environment_vs environment_fs
+@program environment_material environment_material_vs environment_material_fs

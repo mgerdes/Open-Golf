@@ -9536,7 +9536,7 @@ extern "C" bool xatlas_wrapper_generate_lightmap_uvs(int resolution, vec2 *light
         return false;
     }
     xatlas::PackOptions packOptions;
-    packOptions.padding = 8;
+    packOptions.padding = 4;
     packOptions.bruteForce = false;
     packOptions.resolution = resolution;
     xatlas::Generate(atlas, xatlas::ChartOptions(), nullptr, packOptions);

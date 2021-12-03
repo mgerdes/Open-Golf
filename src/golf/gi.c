@@ -314,7 +314,7 @@ void golf_gi_start(golf_gi_t *gi) {
     gi->thread = thread_create0(_gi_run, gi, "gi", THREAD_STACK_SIZE_DEFAULT);
 }
 
-void golf_gi_start_lightmap(golf_gi_t *gi, int resolution, int image_width, int image_height) {
+void golf_gi_start_lightmap(golf_gi_t *gi, golf_lightmap_image_t *lightmap_image) {
     if (gi->has_cur_entity) {
         return;
     }
@@ -323,10 +323,12 @@ void golf_gi_start_lightmap(golf_gi_t *gi, int resolution, int image_width, int 
     vec_init(&entity.positions);
     vec_init(&entity.normals);
     vec_init(&entity.lightmap_uvs);
+    vec_init(&entity.gi_lightmap_sections);
 
-    entity.resolution = resolution;
-    entity.image_width = image_width;
-    entity.image_height = image_height;
+    entity.resolution = lightmap_image->resolution;
+    entity.image_width = lightmap_image->width;
+    entity.image_height = lightmap_image->height;
+    entity.lightmap_image = lightmap_image;
 
     gi->has_cur_entity = true;
     gi->cur_entity = entity;
@@ -341,10 +343,16 @@ void golf_gi_end_lightmap(golf_gi_t *gi) {
     gi->has_cur_entity = false;
 }
 
-void golf_gi_add_lightmap_section(golf_gi_t *gi, golf_model_t *model, mat4 model_mat) {
+void golf_gi_add_lightmap_section(golf_gi_t *gi, golf_lightmap_section_t *lightmap_section, golf_model_t *model, mat4 model_mat) {
     if (!gi->has_cur_entity) {
         return;
     }
+
+    golf_gi_lightmap_section_t gi_lightmap_section;
+    gi_lightmap_section.lightmap_section = lightmap_section;
+    gi_lightmap_section.start = gi->cur_entity.positions.length;
+    gi_lightmap_section.count = model->positions.length;
+    vec_push(&gi->cur_entity.gi_lightmap_sections, gi_lightmap_section);
 
     for (int i = 0; i < model->positions.length; i++) {
         vec3 position = vec3_apply_mat4(model->positions.data[i], 1, model_mat);

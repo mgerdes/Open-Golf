@@ -15,7 +15,7 @@
 #include "golf/string.h"
 
 #include "golf/shaders/diffuse_color_material.glsl.h"
-#include "golf/shaders/environment.glsl.h"
+#include "golf/shaders/environment_material.glsl.h"
 #include "golf/shaders/pass_through.glsl.h"
 #include "golf/shaders/solid_color_material.glsl.h"
 #include "golf/shaders/texture_material.glsl.h"
@@ -229,8 +229,8 @@ static bool _golf_shader_load(const char *path, char *data, int data_len, golf_s
     if (strcmp(path, "data/shaders/diffuse_color_material.glsl") == 0) {
         const_shader_desc = diffuse_color_material_shader_desc(sg_query_backend());
     }
-    else if (strcmp(path, "data/shaders/environment.glsl") == 0) {
-        const_shader_desc = environment_shader_desc(sg_query_backend());
+    else if (strcmp(path, "data/shaders/environment_material.glsl") == 0) {
+        const_shader_desc = environment_material_shader_desc(sg_query_backend());
     }
     else if (strcmp(path, "data/shaders/pass_through.glsl") == 0) {
         const_shader_desc = pass_through_shader_desc(sg_query_backend());

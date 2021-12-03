@@ -15,7 +15,7 @@ typedef struct golf_renderer {
     vec3 cam_pos, cam_dir, cam_up;
 
     sg_pipeline diffuse_color_material_pipeline,
-                environment_pipeline,
+                environment_material_pipeline,
                 solid_color_material_pipeline,
                 texture_material_pipeline,
                 ui_sprites_pipeline,
