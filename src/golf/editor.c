@@ -1312,6 +1312,8 @@ void golf_editor_update(float dt) {
                 for (int i = 0; i < gi_entity->gi_lightmap_sections.length; i++) {
                     golf_gi_lightmap_section_t *gi_lightmap_section = &gi_entity->gi_lightmap_sections.data[i];
                     golf_lightmap_section_t *lightmap_section = gi_lightmap_section->lightmap_section;
+                    _golf_editor_action_push_data(&action, lightmap_section, sizeof(golf_lightmap_section_t));
+
                     char name[GOLF_MAX_NAME_LEN];
                     snprintf(name, GOLF_MAX_NAME_LEN, "%s", lightmap_section->lightmap_name);
                     int start = gi_lightmap_section->start;
