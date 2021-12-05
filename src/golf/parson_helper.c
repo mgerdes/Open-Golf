@@ -22,6 +22,25 @@ void golf_json_object_set_data(JSON_Object *obj, const char *name, unsigned char
     free(enc_data);
 }
 
+void golf_json_array_get_data(JSON_Array *arr, int idx, unsigned char **data, int *data_len) {
+    const char *enc_data = json_array_get_string(arr, idx);
+    int enc_len = (int)strlen(enc_data);
+    *data = golf_base64_decode((const unsigned char*)enc_data, enc_len, data_len);
+    if (!data) {
+        golf_log_warning("Failed to decode data in array");
+    }
+}
+
+void golf_json_array_append_data(JSON_Array *arr, unsigned char *data, int data_len) {
+    int enc_len;
+    unsigned char *enc_data = golf_base64_encode(data, data_len, &enc_len);
+    if (!enc_data) {
+        golf_log_warning("Failed to encode data in array");
+    }
+    json_array_append_string(arr, (char*)enc_data);
+    free(enc_data);
+}
+
 vec2 golf_json_object_get_vec2(JSON_Object *obj, const char *name) {
     JSON_Array *array = json_object_get_array(obj, name);
     vec2 v;

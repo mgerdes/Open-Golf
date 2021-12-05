@@ -8,6 +8,9 @@
 void golf_json_object_get_data(JSON_Object *obj, const char *name, unsigned char **data, int *data_len);
 void golf_json_object_set_data(JSON_Object *obj, const char *name, unsigned char *data, int data_len);
 
+void golf_json_array_get_data(JSON_Array *arr, int idx, unsigned char **data, int *data_len);
+void golf_json_array_append_data(JSON_Array *arr, unsigned char *data, int data_len);
+
 vec2 golf_json_object_get_vec2(JSON_Object *obj, const char *name);
 void golf_json_object_set_vec2(JSON_Object *obj, const char *name, vec2 v);
 

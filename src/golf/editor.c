@@ -813,9 +813,8 @@ void golf_editor_update(float dt) {
                                     golf_movement_t *movement = golf_entity_get_movement(entity);
                                     if (lightmap_section && transform && model && movement &&
                                             strcmp(lightmap_section->lightmap_name, lightmap->name) == 0) {
-                                        mat4 model_mat = golf_transform_get_model_mat(*transform);
 
-                                        golf_gi_add_lightmap_section(gi, lightmap_section, model, model_mat, *movement);
+                                        golf_gi_add_lightmap_section(gi, lightmap_section, model, *transform, *movement);
                                     }
                                 }
                                 golf_gi_end_lightmap(gi);
@@ -1053,13 +1052,28 @@ void golf_editor_update(float dt) {
                             }
                         }
 
+                        igInputInt("Num Samples", &lightmap_image->num_samples, 0, 0, ImGuiInputTextFlags_None);
+                        if (igIsItemActivated()) {
+                            queue_action = true;
+                        }
+                        if (igIsItemDeactivated()) {
+                            if (igIsItemDeactivatedAfterEdit()) {
+                                queue_commit = true;
+                            }
+                            else {
+                                queue_decommit = true;
+                            }
+                        }
+
                         igText("Size <%d, %d>", lightmap_image->width, lightmap_image->height);
-                        igImage((ImTextureID)(uintptr_t)lightmap_image->sg_image.id, 
-                                (ImVec2){(float)lightmap_image->width, (float)lightmap_image->height},
-                                (ImVec2){0, 0},
-                                (ImVec2){1, 1}, 
-                                (ImVec4){1, 1, 1, 1},
-                                (ImVec4){1, 1, 1, 1});
+                        for (int i = 0; i < lightmap_image->num_samples; i++) {
+                            igImage((ImTextureID)(uintptr_t)lightmap_image->sg_image[i].id, 
+                                    (ImVec2){(float)lightmap_image->width, (float)lightmap_image->height},
+                                    (ImVec2){0, 0},
+                                    (ImVec2){1, 1}, 
+                                    (ImVec4){1, 1, 1, 1},
+                                    (ImVec4){1, 1, 1, 1});
+                        }
 
                         if (igButton("Delete", (ImVec2){0, 0})) {
                             _golf_editor_start_action_with_data(&lightmap_image->active, sizeof(lightmap_image->active), "Delete lightmap image");
@@ -1078,12 +1092,16 @@ void golf_editor_update(float dt) {
                         _golf_editor_queue_start_action(action);
                     }
                     if (queue_commit) {
-                        unsigned char *data = malloc(lightmap_image->width * lightmap_image->height);  
-                        memset(data, 0xFF, lightmap_image->width * lightmap_image->height);
+                        int s = lightmap_image->num_samples;
+                        unsigned char **data = malloc(sizeof(unsigned char*) * s);
+                        for (int i = 0; i < s; i++) {
+                            data[i] = malloc(lightmap_image->width * lightmap_image->height);
+                            memset(data[i], 0xFF, lightmap_image->width * lightmap_image->height);
+                        }
 
                         char name[GOLF_MAX_NAME_LEN];
                         snprintf(name, GOLF_MAX_NAME_LEN, "%s", lightmap_image->name);
-                        golf_lightmap_image_init(lightmap_image, name, lightmap_image->resolution, lightmap_image->width, lightmap_image->height, 1, data);
+                        golf_lightmap_image_init(lightmap_image, name, lightmap_image->resolution, lightmap_image->width, lightmap_image->height, s, data);
                         free(data);
                         _golf_editor_queue_commit_action();
                     }
@@ -1095,7 +1113,7 @@ void golf_editor_update(float dt) {
                 if (igButton("Create Lightmap Image", (ImVec2){0, 0})) {
                     unsigned char image_data[1] = { 0xFF };
                     golf_lightmap_image_t new_lightmap_image;
-                    golf_lightmap_image_init(&new_lightmap_image, "new", 256, 1, 1, 1, image_data);
+                    golf_lightmap_image_init(&new_lightmap_image, "new", 256, 1, 1, 1, (unsigned char**)&image_data);
                     _golf_editor_vec_push_and_fix_actions(&editor.level->lightmap_images, new_lightmap_image);
 
                     golf_lightmap_image_t *lightmap_image = &vec_last(&editor.level->lightmap_images);
@@ -1296,19 +1314,23 @@ void golf_editor_update(float dt) {
                 int res = gi_entity->resolution;
                 int w = gi_entity->image_width;
                 int h = gi_entity->image_height;
-                unsigned char *data = malloc(w * h);
-                for (int i = 0; i < w * h; i++) {
-                    float a = gi_entity->image_data[i];
-                    if (a > 1.0f) a = 1.0f;
-                    if (a < 0.0f) a = 0.0f;
-                    data[i] = (unsigned char)(0xFF * a);
+                int num_samples = gi_entity->num_samples;
+                unsigned char **data = malloc(sizeof(unsigned char*) * num_samples);
+                for (int s = 0; s < num_samples; s++) {
+                    data[s] = malloc(w * h);
+                    for (int i = 0; i < w * h; i++) {
+                        float a = gi_entity->image_data[s][i];
+                        if (a > 1.0f) a = 1.0f;
+                        if (a < 0.0f) a = 0.0f;
+                        data[s][i] = (unsigned char)(0xFF * a);
+                    }
                 }
 
                 golf_lightmap_image_t *lightmap_image = gi_entity->lightmap_image;
                 char name[GOLF_MAX_NAME_LEN];
                 snprintf(name, GOLF_MAX_NAME_LEN, "%s", lightmap_image->name);
                 _golf_editor_action_push_data(&action, lightmap_image, sizeof(golf_lightmap_image_t));
-                golf_lightmap_image_init(lightmap_image, name, res, w, h, 1, data);
+                golf_lightmap_image_init(lightmap_image, name, res, w, h, num_samples, data);
                 free(data);
 
                 for (int i = 0; i < gi_entity->gi_lightmap_sections.length; i++) {

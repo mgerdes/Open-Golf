@@ -139,13 +139,9 @@ static int _gi_run(void *user_data) {
     for (int i = 0; i < gi->entities.length; i++) {
         golf_gi_entity_t *entity = &gi->entities.data[i];
 
-        entity->positions.length = 0;
-        entity->normals.length = 0;
-        entity->lightmap_uvs.length = 0;
-
         for (int i = 0; i < entity->gi_lightmap_sections.length; i++) {
             golf_gi_lightmap_section_t *section = &entity->gi_lightmap_sections.data[i];
-            mat4 model_mat = section->model_mat;
+            mat4 model_mat = golf_transform_get_model_mat(section->transform);
             for (int i = 0; i < section->positions.length; i++) {
                 vec3 p = section->positions.data[i];
                 p = vec3_apply_mat4(p, 1, model_mat);
@@ -169,10 +165,13 @@ static int _gi_run(void *user_data) {
             vec3 *vertices = positions->data;
             int num_vertices = positions->length;
             xatlas_wrapper_generate_lightmap_uvs(resolution, lightmap_uv, vertices, num_vertices, image_width, image_height);
+        }
 
-            entity->image_data = malloc(sizeof(float) * entity->image_width * entity->image_height);
+        entity->image_data = malloc(sizeof(float*) * entity->num_samples);
+        for (int s = 0; s < entity->num_samples; s++) {
+            entity->image_data[s] = malloc(sizeof(float) * entity->image_width * entity->image_height);
             for (int i = 0; i < entity->image_width * entity->image_height; i++) {
-                entity->image_data[i] = 1.0f;
+                entity->image_data[s][i] = 1.0f;
             }
         }
 
@@ -196,26 +195,32 @@ static int _gi_run(void *user_data) {
 
         int image_width = entity->image_width;
         int image_height = entity->image_height;
-        float *image_data = entity->image_data;
+        int num_samples = entity->num_samples;
+        float **image_data = entity->image_data;
         if (gi->reset_lightmaps) {
-            for (int i = 0; i < image_width * image_height; i++) {
-                image_data[i] = 0.0f;
+            for (int s = 0; s < num_samples; s++) {
+                for (int i = 0; i < image_width * image_height; i++) {
+                    image_data[s][i] = 0.0f;
+                }
             }
         }
 
-        GLuint tex;
-        glGenTextures(1, &tex);
-        glBindTexture(GL_TEXTURE_2D, tex);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, image_width, image_height, 0, GL_RED, GL_FLOAT, image_data);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glBindTexture(GL_TEXTURE_2D, 0);
+        entity->gl_tex = malloc(sizeof(int*) * num_samples);
+        for (int s = 0; s < num_samples; s++) {
+            GLuint tex;
+            glGenTextures(1, &tex);
+            glBindTexture(GL_TEXTURE_2D, tex);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, image_width, image_height, 0, GL_RED, GL_FLOAT, image_data[s]);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glBindTexture(GL_TEXTURE_2D, 0);
+            entity->gl_tex[s] = tex;
+        }
 
         entity->gl_position_vbo = positions_vbo;
         entity->gl_lightmap_uv_vbo = lightmap_uvs_vbo;
-        entity->gl_tex = tex;
     }
 
     lm_context *ctx = lmCreate(gi->hemisphere_size,
@@ -233,58 +238,93 @@ static int _gi_run(void *user_data) {
                 continue;
             }
 
-            float *image_data = entity->image_data;
+            float **image_data = entity->image_data;
+            int num_samples = entity->num_samples;
             int image_width = entity->image_width;
             int image_height = entity->image_height;
 
-            for (int i = 0; i < image_width * image_height; i++) {
-                image_data[i] = 0.0f;
-            }
-            lmSetTargetLightmap(ctx, image_data, image_width, image_height, 1);
-            lmSetGeometry(ctx, mat4_transpose(mat4_identity()).m,
-                    LM_FLOAT, entity->positions.data, sizeof(vec3),
-                    LM_FLOAT, entity->normals.data, sizeof(vec3),
-                    LM_FLOAT, entity->lightmap_uvs.data, sizeof(vec2),
-                    entity->positions.length, LM_NONE, 0);
-
-            int vp[4];
-            mat4 view, proj;
-            while (lmBegin(ctx, vp, view.m, proj.m)) {
-                glUseProgram(program);
-                glEnable(GL_DEPTH_TEST);
-                glDepthFunc(GL_LEQUAL);
-
-                view = mat4_transpose(view);
-                proj = mat4_transpose(proj);
-                mat4 proj_view_mat = mat4_multiply_n(2, proj, view);
-                glViewport(vp[0], vp[1], vp[2], vp[3]);
-
+            for (int s = 0; s < num_samples; s++) {
                 for (int i = 0; i < gi->entities.length; i++) {
                     golf_gi_entity_t *entity = &gi->entities.data[i];
-                    if (entity->positions.length == 0) {
-                        continue;
+
+                    entity->positions.length = 0;
+                    entity->normals.length = 0;
+
+                    for (int i = 0; i < entity->gi_lightmap_sections.length; i++) {
+                        golf_gi_lightmap_section_t *section = &entity->gi_lightmap_sections.data[i];
+                        golf_transform_t transform = section->transform;
+                        golf_movement_t movement = section->movement;
+                        float a = 0;
+                        if (entity->num_samples > 1) {
+                            a = ((float) s) / (entity->num_samples - 1);
+                        }
+                        movement.t = 0.5f * a * movement.length;
+                        transform = golf_transform_apply_movement(transform, movement);
+                        mat4 model_mat = golf_transform_get_model_mat(transform);
+                        for (int i = 0; i < section->positions.length; i++) {
+                            vec3 p = section->positions.data[i];
+                            p = vec3_apply_mat4(p, 1, model_mat);
+                            vec3 n = section->normals.data[i];
+                            n = vec3_normalize(vec3_apply_mat4(n, 0, mat4_transpose(mat4_inverse(model_mat))));
+                            vec_push(&entity->positions, p);
+                            vec_push(&entity->normals, n);
+                        }
                     }
 
-                    glUniformMatrix4fv(mvp_mat_id, 1, GL_TRUE, proj_view_mat.m);
-                    glUniform1i(ao_map_id, 0);
-
-                    glActiveTexture(GL_TEXTURE0);
-                    glBindTexture(GL_TEXTURE_2D, entity->gl_tex);
-
                     glBindBuffer(GL_ARRAY_BUFFER, entity->gl_position_vbo);
-                    glVertexAttribPointer(position_id, 3, GL_FLOAT, GL_FALSE, 0, NULL);
-                    glEnableVertexAttribArray(position_id);
-
-                    glBindBuffer(GL_ARRAY_BUFFER, entity->gl_lightmap_uv_vbo);
-                    glVertexAttribPointer(texture_coord_id, 2, GL_FLOAT, GL_FALSE, 0, NULL);
-                    glEnableVertexAttribArray(texture_coord_id);
-
-                    glBindVertexArray(dummy_vao);
-
-                    glDrawArrays(GL_TRIANGLES, 0, entity->positions.length);
+                    glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * entity->positions.length, entity->positions.data, GL_STATIC_DRAW);
                 }
 
-                lmEnd(ctx);
+                for (int i = 0; i < image_width * image_height; i++) {
+                    image_data[s][i] = 0.0f;
+                }
+
+                lmSetTargetLightmap(ctx, image_data[s], image_width, image_height, 1);
+                lmSetGeometry(ctx, mat4_transpose(mat4_identity()).m,
+                        LM_FLOAT, entity->positions.data, sizeof(vec3),
+                        LM_FLOAT, entity->normals.data, sizeof(vec3),
+                        LM_FLOAT, entity->lightmap_uvs.data, sizeof(vec2),
+                        entity->positions.length, LM_NONE, 0);
+
+                int vp[4];
+                mat4 view, proj;
+                while (lmBegin(ctx, vp, view.m, proj.m)) {
+                    glUseProgram(program);
+                    glEnable(GL_DEPTH_TEST);
+                    glDepthFunc(GL_LEQUAL);
+
+                    view = mat4_transpose(view);
+                    proj = mat4_transpose(proj);
+                    mat4 proj_view_mat = mat4_multiply_n(2, proj, view);
+                    glViewport(vp[0], vp[1], vp[2], vp[3]);
+
+                    for (int i = 0; i < gi->entities.length; i++) {
+                        golf_gi_entity_t *entity = &gi->entities.data[i];
+                        if (entity->positions.length == 0) {
+                            continue;
+                        }
+
+                        glUniformMatrix4fv(mvp_mat_id, 1, GL_TRUE, proj_view_mat.m);
+                        glUniform1i(ao_map_id, 0);
+
+                        glActiveTexture(GL_TEXTURE0);
+                        glBindTexture(GL_TEXTURE_2D, entity->gl_tex[s]);
+
+                        glBindBuffer(GL_ARRAY_BUFFER, entity->gl_position_vbo);
+                        glVertexAttribPointer(position_id, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+                        glEnableVertexAttribArray(position_id);
+
+                        glBindBuffer(GL_ARRAY_BUFFER, entity->gl_lightmap_uv_vbo);
+                        glVertexAttribPointer(texture_coord_id, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+                        glEnableVertexAttribArray(texture_coord_id);
+
+                        glBindVertexArray(dummy_vao);
+
+                        glDrawArrays(GL_TRIANGLES, 0, entity->positions.length);
+                    }
+
+                    lmEnd(ctx);
+                }
             }
         }
 
@@ -292,10 +332,13 @@ static int _gi_run(void *user_data) {
             golf_gi_entity_t *entity = &gi->entities.data[i];
             int image_width = entity->image_width;
             int image_height = entity->image_height;
-            float *image_data = entity->image_data;
-            glBindTexture(GL_TEXTURE_2D, entity->gl_tex);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_FLOAT, image_width, image_height, 0, GL_RED, GL_FLOAT, image_data);
-            glBindTexture(GL_TEXTURE_2D, 0);
+            int num_samples = entity->num_samples;
+            float **image_data = entity->image_data;
+            for (int s = 0; s < num_samples; s++) {
+                glBindTexture(GL_TEXTURE_2D, entity->gl_tex[s]);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_FLOAT, image_width, image_height, 0, GL_RED, GL_FLOAT, image_data[s]);
+                glBindTexture(GL_TEXTURE_2D, 0);
+            }
         }
     }
 
@@ -303,17 +346,20 @@ static int _gi_run(void *user_data) {
         golf_gi_entity_t *entity = &gi->entities.data[i];
         int image_width = entity->image_width;
         int image_height = entity->image_height;
-        float *image_data = entity->image_data;
+        int num_samples = entity->num_samples;
+        float **image_data = entity->image_data;
         float *temp = malloc(sizeof(float) * image_width * image_height);
-        for (int i = 0; i < gi->num_dilates; i++) {
-            lmImageDilate(image_data, temp, image_width, image_height, 1);
-            lmImageDilate(temp, image_data, image_width, image_height, 1);
+        for (int s = 0;  s < num_samples; s++) {
+            for (int i = 0; i < gi->num_dilates; i++) {
+                lmImageDilate(image_data[s], temp, image_width, image_height, 1);
+                lmImageDilate(temp, image_data[s], image_width, image_height, 1);
+            }
+            for (int i = 0; i < gi->num_smooths; i++) {
+                lmImageSmooth(image_data[s], temp, image_width, image_height, 1);
+                lmImageSmooth(temp, image_data[s], image_width, image_height, 1);
+            }
+            lmImagePower(image_data[s], image_width, image_height, 1, gi->gamma, LM_ALL_CHANNELS);
         }
-        for (int i = 0; i < gi->num_smooths; i++) {
-            lmImageSmooth(image_data, temp, image_width, image_height, 1);
-            lmImageSmooth(temp, image_data, image_width, image_height, 1);
-        }
-        lmImagePower(image_data, image_width, image_height, 1, gi->gamma, LM_ALL_CHANNELS);
         free(temp);
     }
 
@@ -352,6 +398,7 @@ void golf_gi_start_lightmap(golf_gi_t *gi, golf_lightmap_image_t *lightmap_image
     vec_init(&entity.lightmap_uvs);
     vec_init(&entity.gi_lightmap_sections);
 
+    entity.num_samples = lightmap_image->num_samples;
     entity.resolution = lightmap_image->resolution;
     entity.image_width = lightmap_image->width;
     entity.image_height = lightmap_image->height;
@@ -370,7 +417,7 @@ void golf_gi_end_lightmap(golf_gi_t *gi) {
     gi->has_cur_entity = false;
 }
 
-void golf_gi_add_lightmap_section(golf_gi_t *gi, golf_lightmap_section_t *lightmap_section, golf_model_t *model, mat4 model_mat, golf_movement_t movement) {
+void golf_gi_add_lightmap_section(golf_gi_t *gi, golf_lightmap_section_t *lightmap_section, golf_model_t *model, golf_transform_t transform, golf_movement_t movement) {
     if (!gi->has_cur_entity) {
         return;
     }
@@ -384,7 +431,7 @@ void golf_gi_add_lightmap_section(golf_gi_t *gi, golf_lightmap_section_t *lightm
     for (int i = 0; i < model->positions.length; i++) {
         vec_push(&section.lightmap_uvs, V2(0, 0));
     }
-    section.model_mat = model_mat;
+    section.transform = transform;
     section.movement = movement;
     section.lightmap_section = lightmap_section;
     vec_push(&gi->cur_entity.gi_lightmap_sections, section);

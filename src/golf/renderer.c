@@ -589,7 +589,7 @@ static void _golf_renderer_draw_environment_material(golf_model_t *model, int st
         .vertex_buffers[2] = model->sg_normals_buf,
         .vertex_buffers[3] = lightmap_section->sg_uvs_buf,
         .fs_images[SLOT_environment_material_texture] = material.texture->sg_image,
-        .fs_images[SLOT_environment_material_lightmap_texture] = lightmap_image->sg_image,
+        .fs_images[SLOT_environment_material_lightmap_texture] = lightmap_image->sg_image[0],
     };
     sg_apply_bindings(&bindings);
 
