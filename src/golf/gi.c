@@ -139,6 +139,25 @@ static int _gi_run(void *user_data) {
     for (int i = 0; i < gi->entities.length; i++) {
         golf_gi_entity_t *entity = &gi->entities.data[i];
 
+        entity->positions.length = 0;
+        entity->normals.length = 0;
+        entity->lightmap_uvs.length = 0;
+
+        for (int i = 0; i < entity->gi_lightmap_sections.length; i++) {
+            golf_gi_lightmap_section_t *section = &entity->gi_lightmap_sections.data[i];
+            mat4 model_mat = section->model_mat;
+            for (int i = 0; i < section->positions.length; i++) {
+                vec3 p = section->positions.data[i];
+                p = vec3_apply_mat4(p, 1, model_mat);
+                vec3 n = section->normals.data[i];
+                n = vec3_normalize(vec3_apply_mat4(n, 0, mat4_transpose(mat4_inverse(model_mat))));
+                vec2 uv = section->lightmap_uvs.data[i];
+                vec_push(&entity->positions, p);
+                vec_push(&entity->normals, n);
+                vec_push(&entity->lightmap_uvs, uv);
+            }
+        }
+
         vec_vec3_t *positions = &entity->positions;
         vec_vec2_t *lightmap_uvs = &entity->lightmap_uvs;
         _gi_inc_uv_gen_progress(gi);
@@ -154,6 +173,14 @@ static int _gi_run(void *user_data) {
             entity->image_data = malloc(sizeof(float) * entity->image_width * entity->image_height);
             for (int i = 0; i < entity->image_width * entity->image_height; i++) {
                 entity->image_data[i] = 1.0f;
+            }
+        }
+
+        int uv_idx = 0;
+        for (int i = 0; i < entity->gi_lightmap_sections.length; i++) {
+            golf_gi_lightmap_section_t *section = &entity->gi_lightmap_sections.data[i];
+            for (int i = 0; i < section->positions.length; i++) {
+                section->lightmap_uvs.data[i] = entity->lightmap_uvs.data[uv_idx++];
             }
         }
 
@@ -343,28 +370,41 @@ void golf_gi_end_lightmap(golf_gi_t *gi) {
     gi->has_cur_entity = false;
 }
 
-void golf_gi_add_lightmap_section(golf_gi_t *gi, golf_lightmap_section_t *lightmap_section, golf_model_t *model, mat4 model_mat) {
+void golf_gi_add_lightmap_section(golf_gi_t *gi, golf_lightmap_section_t *lightmap_section, golf_model_t *model, mat4 model_mat, golf_movement_t movement) {
     if (!gi->has_cur_entity) {
         return;
     }
 
     golf_gi_lightmap_section_t section;
-    section.start = gi->cur_entity.positions.length;
-    section.count = model->positions.length;
+    vec_init(&section.positions);
+    vec_init(&section.normals);
+    vec_init(&section.lightmap_uvs);
+    vec_pusharr(&section.positions, model->positions.data, model->positions.length);
+    vec_pusharr(&section.normals, model->normals.data, model->normals.length);
+    for (int i = 0; i < model->positions.length; i++) {
+        vec_push(&section.lightmap_uvs, V2(0, 0));
+    }
+    section.model_mat = model_mat;
+    section.movement = movement;
     section.lightmap_section = lightmap_section;
     vec_push(&gi->cur_entity.gi_lightmap_sections, section);
-
-    for (int i = 0; i < model->positions.length; i++) {
-        vec3 position = vec3_apply_mat4(model->positions.data[i], 1, model_mat);
-        vec3 normal = model->normals.data[i];
-        vec2 uv = V2(0, 0);
-        vec_push(&gi->cur_entity.positions, position);
-        vec_push(&gi->cur_entity.normals, normal);
-        vec_push(&gi->cur_entity.lightmap_uvs, uv);
-    }
 }
 
 void golf_gi_deinit(golf_gi_t *gi) {
+    for (int i = 0; i < gi->entities.length; i++) {
+        golf_gi_entity_t *entity = &gi->entities.data[i];
+        for (int i = 0; i < entity->gi_lightmap_sections.length; i++) {
+            golf_gi_lightmap_section_t *section = &entity->gi_lightmap_sections.data[i];
+            vec_deinit(&section->positions);
+            vec_deinit(&section->normals);
+            vec_deinit(&section->lightmap_uvs);
+        }
+        vec_deinit(&entity->gi_lightmap_sections);
+        vec_deinit(&entity->positions);
+        vec_deinit(&entity->normals);
+        vec_deinit(&entity->lightmap_uvs);
+    }
+    vec_deinit(&gi->entities);
     thread_join(gi->thread);
     thread_destroy(gi->thread);
 }

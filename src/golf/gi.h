@@ -7,8 +7,10 @@
 #include "golf/maths.h"
 
 typedef struct golf_gi_lightmap_section {
-    int start, count;
-    int gl_position_vbo, gl_lightmap_uv_vbo;
+    mat4 model_mat;
+    golf_movement_t movement;
+    vec_vec3_t positions, normals;
+    vec_vec2_t lightmap_uvs;
 
     golf_lightmap_section_t *lightmap_section;
 } golf_gi_lightmap_section_t;
@@ -51,7 +53,7 @@ void golf_gi_init(golf_gi_t *generator,
 void golf_gi_deinit(golf_gi_t *generator);
 void golf_gi_start_lightmap(golf_gi_t *gi, golf_lightmap_image_t *lightmap_image);
 void golf_gi_end_lightmap(golf_gi_t *gi);
-void golf_gi_add_lightmap_section(golf_gi_t *gi, golf_lightmap_section_t *lightmap_section, golf_model_t *model, mat4 model_mat);
+void golf_gi_add_lightmap_section(golf_gi_t *gi, golf_lightmap_section_t *lightmap_section, golf_model_t *model, mat4 model_mat, golf_movement_t movement);
 int golf_gi_get_lm_gen_progress(golf_gi_t *generator);
 int golf_gi_get_uv_gen_progress(golf_gi_t *generator);
 bool golf_gi_is_running(golf_gi_t *generator);

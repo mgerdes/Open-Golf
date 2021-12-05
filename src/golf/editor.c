@@ -810,10 +810,12 @@ void golf_editor_update(float dt) {
                                     golf_lightmap_section_t *lightmap_section = golf_entity_get_lightmap_section(entity);
                                     golf_transform_t *transform = golf_entity_get_transform(entity);
                                     golf_model_t *model = golf_entity_get_model(entity);
-                                    if (lightmap_section && transform && model &&
+                                    golf_movement_t *movement = golf_entity_get_movement(entity);
+                                    if (lightmap_section && transform && model && movement &&
                                             strcmp(lightmap_section->lightmap_name, lightmap->name) == 0) {
                                         mat4 model_mat = golf_transform_get_model_mat(*transform);
-                                        golf_gi_add_lightmap_section(gi, lightmap_section, model, model_mat);
+
+                                        golf_gi_add_lightmap_section(gi, lightmap_section, model, model_mat, *movement);
                                     }
                                 }
                                 golf_gi_end_lightmap(gi);
@@ -1081,7 +1083,7 @@ void golf_editor_update(float dt) {
 
                         char name[GOLF_MAX_NAME_LEN];
                         snprintf(name, GOLF_MAX_NAME_LEN, "%s", lightmap_image->name);
-                        golf_lightmap_image_init(lightmap_image, name, lightmap_image->resolution, lightmap_image->width, lightmap_image->height, data);
+                        golf_lightmap_image_init(lightmap_image, name, lightmap_image->resolution, lightmap_image->width, lightmap_image->height, 1, data);
                         free(data);
                         _golf_editor_queue_commit_action();
                     }
@@ -1093,7 +1095,7 @@ void golf_editor_update(float dt) {
                 if (igButton("Create Lightmap Image", (ImVec2){0, 0})) {
                     unsigned char image_data[1] = { 0xFF };
                     golf_lightmap_image_t new_lightmap_image;
-                    golf_lightmap_image_init(&new_lightmap_image, "new", 256, 1, 1, image_data);
+                    golf_lightmap_image_init(&new_lightmap_image, "new", 256, 1, 1, 1, image_data);
                     _golf_editor_vec_push_and_fix_actions(&editor.level->lightmap_images, new_lightmap_image);
 
                     golf_lightmap_image_t *lightmap_image = &vec_last(&editor.level->lightmap_images);
@@ -1306,7 +1308,7 @@ void golf_editor_update(float dt) {
                 char name[GOLF_MAX_NAME_LEN];
                 snprintf(name, GOLF_MAX_NAME_LEN, "%s", lightmap_image->name);
                 _golf_editor_action_push_data(&action, lightmap_image, sizeof(golf_lightmap_image_t));
-                golf_lightmap_image_init(lightmap_image, name, res, w, h, data);
+                golf_lightmap_image_init(lightmap_image, name, res, w, h, 1, data);
                 free(data);
 
                 for (int i = 0; i < gi_entity->gi_lightmap_sections.length; i++) {
@@ -1316,9 +1318,7 @@ void golf_editor_update(float dt) {
 
                     char name[GOLF_MAX_NAME_LEN];
                     snprintf(name, GOLF_MAX_NAME_LEN, "%s", lightmap_section->lightmap_name);
-                    int start = gi_lightmap_section->start;
-                    int count = gi_lightmap_section->count;
-                    golf_lightmap_section_init(lightmap_section, name, gi_entity->lightmap_uvs, start, count);
+                    golf_lightmap_section_init(lightmap_section, name, gi_lightmap_section->lightmap_uvs, 0, gi_lightmap_section->lightmap_uvs.length);
                 }
             }
             _golf_editor_start_action(action);

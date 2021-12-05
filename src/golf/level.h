@@ -28,14 +28,14 @@ golf_movement_t golf_movement_linear(vec3 p0, vec3 p1, float length);
 typedef struct golf_lightmap_image {
     bool active;
     char name[GOLF_MAX_NAME_LEN];
-    int num_samples;
     int resolution;
-    unsigned char *data;
     int width, height;
+    int num_samples;
+    unsigned char *data;
     sg_image sg_image;
 } golf_lightmap_image_t;
 typedef vec_t(golf_lightmap_image_t) vec_golf_lightmap_image_t;
-void golf_lightmap_image_init(golf_lightmap_image_t *lightmap, const char *name, int resolution, int width, int height, unsigned char *data);
+void golf_lightmap_image_init(golf_lightmap_image_t *lightmap, const char *name, int resolution, int width, int height, int num_samples, unsigned char *data);
 
 typedef struct golf_lightmap_section {
     char lightmap_name[GOLF_MAX_NAME_LEN];

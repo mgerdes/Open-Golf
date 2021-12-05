@@ -113,12 +113,13 @@ golf_movement_t golf_movement_linear(vec3 p0, vec3 p1, float length) {
     return movement;
 }
 
-void golf_lightmap_image_init(golf_lightmap_image_t *lightmap, const char *name, int resolution, int width, int height, unsigned char *data) {
+void golf_lightmap_image_init(golf_lightmap_image_t *lightmap, const char *name, int resolution, int width, int height, int num_samples, unsigned char *data) {
     lightmap->active = true;
     snprintf(lightmap->name, GOLF_MAX_NAME_LEN, "%s", name);
     lightmap->resolution = resolution;
     lightmap->width = width;
     lightmap->height = height;
+    lightmap->num_samples = num_samples;
     lightmap->data = malloc(width * height);
     memcpy(lightmap->data, data, width * height);
 
@@ -265,13 +266,13 @@ bool golf_level_save(golf_level_t *level, const char *path) {
                 break;
             }
             case BALL_START_ENTITY: {
-                golf_ball_start_entity_t *ball_start = &entity->ball_start;
+                //golf_ball_start_entity_t *ball_start = &entity->ball_start;
                 json_object_set_string(json_entity_obj, "type", "ball_start");
                 json_object_set_string(json_entity_obj, "name", "testing");
                 break;
             }
             case HOLE_ENTITY: {
-                golf_hole_entity_t *hole = &entity->hole;
+                //golf_hole_entity_t *hole = &entity->hole;
                 json_object_set_string(json_entity_obj, "type", "hole");
                 json_object_set_string(json_entity_obj, "name", "testing");
                 break;
@@ -374,7 +375,7 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
         unsigned char *image_data = stbi_load_from_memory(data, data_len, &width, &height, &c, 1);
 
         golf_lightmap_image_t lightmap_image;
-        golf_lightmap_image_init(&lightmap_image, name, resolution, width, height, image_data);
+        golf_lightmap_image_init(&lightmap_image, name, resolution, width, height, 1, image_data);
         vec_push(&level->lightmap_images, lightmap_image);
 
         free(data);
