@@ -11,10 +11,12 @@
 typedef enum golf_movement_type {
     GOLF_MOVEMENT_NONE,
     GOLF_MOVEMENT_LINEAR,
+    GOLF_MOVEMENT_SPINNER,
 } golf_movement_type_t;
 
 typedef struct golf_movement {
     golf_movement_type_t type;  
+    bool repeats;
     float t, length;
     union {
         struct {
@@ -24,6 +26,7 @@ typedef struct golf_movement {
 } golf_movement_t;
 golf_movement_t golf_movement_none(void);
 golf_movement_t golf_movement_linear(vec3 p0, vec3 p1, float length);
+golf_movement_t golf_movement_spinner(float length);
 
 typedef struct golf_lightmap_image {
     bool active;

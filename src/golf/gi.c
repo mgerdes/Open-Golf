@@ -258,7 +258,10 @@ static int _gi_run(void *user_data) {
                         if (entity->num_samples > 1) {
                             a = ((float) s) / (entity->num_samples - 1);
                         }
-                        movement.t = 0.5f * a * entity->time_length;
+                        movement.t = a * entity->time_length;
+                        if (movement.repeats) {
+                            movement.t = 0.5f * movement.t;
+                        }
                         transform = golf_transform_apply_movement(transform, movement);
                         mat4 model_mat = golf_transform_get_model_mat(transform);
                         for (int i = 0; i < section->positions.length; i++) {

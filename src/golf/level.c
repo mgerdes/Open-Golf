@@ -21,6 +21,11 @@ static void _golf_json_object_set_movement(JSON_Object *obj, const char *name, g
             golf_json_object_set_vec3(movement_obj, "p1", movement->linear.p1);
             break;
         }
+        case GOLF_MOVEMENT_SPINNER: {
+            json_object_set_string(movement_obj, "type", "spinner");
+            json_object_set_number(movement_obj, "length", movement->length);
+            break;
+        }
     }
 
     json_object_set_value(obj, name, movement_val);
@@ -38,6 +43,10 @@ static void _golf_json_object_get_movement(JSON_Object *obj, const char *name, g
         vec3 p0 = golf_json_object_get_vec3(movement_obj, "p0");
         vec3 p1 = golf_json_object_get_vec3(movement_obj, "p1");
         *movement = golf_movement_linear(p0, p1, length);
+    }
+    else if (type && strcmp(type, "spinner") == 0) {
+        float length = (float)json_object_get_number(movement_obj, "length");
+        *movement = golf_movement_spinner(length);
     }
     else {
         golf_log_warning("Invalid type for movement");
@@ -100,6 +109,7 @@ static void _golf_json_object_get_lightmap_section(JSON_Object *obj, const char 
 golf_movement_t golf_movement_none(void) {
     golf_movement_t movement;
     movement.type = GOLF_MOVEMENT_NONE;
+    movement.repeats = false;
     movement.t = 0;
     movement.length = 0;
     return movement;
@@ -108,10 +118,20 @@ golf_movement_t golf_movement_none(void) {
 golf_movement_t golf_movement_linear(vec3 p0, vec3 p1, float length) {
     golf_movement_t movement;
     movement.type = GOLF_MOVEMENT_LINEAR;
+    movement.repeats = true;
     movement.t = 0;
     movement.length = length;
     movement.linear.p0 = p0;
     movement.linear.p1 = p1;
+    return movement;
+}
+
+golf_movement_t golf_movement_spinner(float length) {
+    golf_movement_t movement;
+    movement.type = GOLF_MOVEMENT_SPINNER;
+    movement.repeats = false;
+    movement.t = 0;
+    movement.length = length;
     return movement;
 }
 
@@ -472,13 +492,13 @@ mat4 golf_transform_get_model_mat(golf_transform_t transform) {
 }
 
 golf_transform_t golf_transform_apply_movement(golf_transform_t transform, golf_movement_t movement) {
+    float t = movement.t;
+    float l = movement.length;
     golf_transform_t new_transform = transform;
     switch (movement.type) {
         case GOLF_MOVEMENT_NONE:
             break;
         case GOLF_MOVEMENT_LINEAR: {
-            float t = movement.t;
-            float l = movement.length;
             vec3 p0 = movement.linear.p0;
             vec3 p1 = movement.linear.p1;
             vec3 p = transform.position;
@@ -489,6 +509,12 @@ golf_transform_t golf_transform_apply_movement(golf_transform_t transform, golf_
                 p = vec3_add(p, vec3_interpolate(p0, p1, (l - t) / (0.5f * l)));
             }
             new_transform.position = p;
+            break;
+        }
+        case GOLF_MOVEMENT_SPINNER: {
+            float a = 2 * MF_PI * (t / l);
+            quat r = quat_create_from_axis_angle(V3(0, 1, 0), a);
+            new_transform.rotation = quat_multiply(r, transform.rotation);
             break;
         }
     }

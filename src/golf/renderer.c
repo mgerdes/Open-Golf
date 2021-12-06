@@ -575,7 +575,7 @@ void golf_renderer_draw(void) {
     _draw_ui();
 }
 
-static void _golf_renderer_draw_environment_material(golf_model_t *model, int start, int count, mat4 model_mat, golf_material_t material, golf_lightmap_image_t *lightmap_image, golf_lightmap_section_t *lightmap_section) {
+static void _golf_renderer_draw_environment_material(golf_model_t *model, int start, int count, mat4 model_mat, golf_material_t material, golf_lightmap_image_t *lightmap_image, golf_lightmap_section_t *lightmap_section, bool movement_repeats) {
     environment_material_vs_params_t vs_params = {
         .proj_view_mat = mat4_transpose(renderer.proj_view_mat),
         .model_mat = mat4_transpose(model_mat),
@@ -589,9 +589,11 @@ static void _golf_renderer_draw_environment_material(golf_model_t *model, int st
     float lightmap_t = 0;
     if (lightmap_image->time_length > 0) {
         float t = lightmap_image->cur_time / lightmap_image->time_length;
-        t = 2 * t;
-        if (t > 1) {
-            t = 2 - t;
+        if (movement_repeats) {
+            t = 2 * t;
+            if (t > 1) {
+                t = 2 - t;
+            }
         }
 
         for (int i = 1; i < num_samples; i++) {
@@ -859,7 +861,12 @@ void golf_renderer_draw_editor(void) {
                         }
 
                         sg_apply_pipeline(renderer.environment_material_pipeline);
-                        _golf_renderer_draw_environment_material(model, group.start_vertex, group.vertex_count, model_mat, material, &lightmap_image, lightmap_section);
+
+                        bool movement_repeats = false;
+                        if (movement) {
+                            movement_repeats = movement->repeats;
+                        }
+                        _golf_renderer_draw_environment_material(model, group.start_vertex, group.vertex_count, model_mat, material, &lightmap_image, lightmap_section, movement_repeats);
                         break;
                     }
                 }

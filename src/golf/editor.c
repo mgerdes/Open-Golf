@@ -370,7 +370,7 @@ static void _golf_editor_edit_lightmap_section(golf_lightmap_section_t *lightmap
 static void _golf_editor_edit_movement(golf_movement_t *movement) {
     if (igTreeNode_Str("Movement")) {
         golf_movement_type_t movement_type_before = movement->type;
-        const char *items[] = { "None", "Linear" };
+        const char *items[] = { "None", "Linear", "Spinner" };
         igCombo_Str_arr("Type", (int*)&movement->type, items, sizeof(items) / sizeof(items[0]), 0);
         if (movement_type_before != movement->type) {
             golf_movement_type_t movement_type_after = movement->type;
@@ -379,14 +379,16 @@ static void _golf_editor_edit_movement(golf_movement_t *movement) {
             _golf_editor_commit_action();
             movement->type = movement_type_after;
 
+            movement->t = 0;
+            movement->length = 1;
             switch (movement->type) {
                 case GOLF_MOVEMENT_NONE:
                     break;
                 case GOLF_MOVEMENT_LINEAR:
-                    movement->t = 0;
-                    movement->length = 1;
                     movement->linear.p0 = V3(0, 0, 0);
                     movement->linear.p1 = V3(0, 0, 0);
+                    break;
+                case GOLF_MOVEMENT_SPINNER:
                     break;
             }
         }
@@ -398,6 +400,10 @@ static void _golf_editor_edit_movement(golf_movement_t *movement) {
                 _golf_editor_undoable_igInputFloat("Length", (float*)&movement->length, "Modify movement length");
                 _golf_editor_undoable_igInputFloat3("P0", (float*)&movement->linear.p0, "Modify linear movement p0");
                 _golf_editor_undoable_igInputFloat3("P1", (float*)&movement->linear.p1, "Modify linear movement p1");
+                break;
+            }
+            case GOLF_MOVEMENT_SPINNER: {
+                _golf_editor_undoable_igInputFloat("Length", (float*)&movement->length, "Modify movement length");
                 break;
             }
         }
