@@ -15,6 +15,9 @@
 #define DEGREES_PER_RADIAN 0.01745329251f
 #define EPSILON 0.00001f
 
+int golf_clampi(int v, int min, int max);
+float golf_clampf(float v, float min, float max);
+
 typedef struct vec2 {
     float x, y;
 } vec2;

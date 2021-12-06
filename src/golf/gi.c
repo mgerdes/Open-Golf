@@ -258,7 +258,7 @@ static int _gi_run(void *user_data) {
                         if (entity->num_samples > 1) {
                             a = ((float) s) / (entity->num_samples - 1);
                         }
-                        movement.t = 0.5f * a * movement.length;
+                        movement.t = 0.5f * a * entity->time_length;
                         transform = golf_transform_apply_movement(transform, movement);
                         mat4 model_mat = golf_transform_get_model_mat(transform);
                         for (int i = 0; i < section->positions.length; i++) {
@@ -398,6 +398,7 @@ void golf_gi_start_lightmap(golf_gi_t *gi, golf_lightmap_image_t *lightmap_image
     vec_init(&entity.lightmap_uvs);
     vec_init(&entity.gi_lightmap_sections);
 
+    entity.time_length = lightmap_image->time_length;
     entity.num_samples = lightmap_image->num_samples;
     entity.resolution = lightmap_image->resolution;
     entity.image_width = lightmap_image->width;

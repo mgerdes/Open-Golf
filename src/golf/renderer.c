@@ -583,13 +583,45 @@ static void _golf_renderer_draw_environment_material(golf_model_t *model, int st
     sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_environment_material_vs_params,
             &(sg_range) { &vs_params, sizeof(vs_params) });
 
+    int num_samples = lightmap_image->num_samples;
+    int sample0 = 0;
+    int sample1 = 0;
+    float lightmap_t = 0;
+    if (lightmap_image->time_length > 0) {
+        float t = lightmap_image->cur_time / lightmap_image->time_length;
+        t = 2 * t;
+        if (t > 1) {
+            t = 2 - t;
+        }
+
+        for (int i = 1; i < num_samples; i++) {
+            if (t < i / ((float) (num_samples - 1))) {
+                sample0 = i - 1;
+                sample1 = i;
+                break;
+            }
+
+            float lightmap_t0 = sample0 / ((float) num_samples - 1);
+            float lightmap_t1 = sample1 / ((float) num_samples - 1);
+            lightmap_t = (t - lightmap_t0) / (lightmap_t1 - lightmap_t0);
+            lightmap_t = golf_clampf(lightmap_t, 0, 1);
+        }
+    }
+
+    environment_material_fs_params_t fs_params = {
+        .lightmap_texture_a = lightmap_t,
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_solid_color_material_fs_params,
+            &(sg_range) { &fs_params, sizeof(fs_params) });
+
     sg_bindings bindings = {
         .vertex_buffers[0] = model->sg_positions_buf,
         .vertex_buffers[1] = model->sg_texcoords_buf,
         .vertex_buffers[2] = model->sg_normals_buf,
         .vertex_buffers[3] = lightmap_section->sg_uvs_buf,
         .fs_images[SLOT_environment_material_texture] = material.texture->sg_image,
-        .fs_images[SLOT_environment_material_lightmap_texture] = lightmap_image->sg_image[0],
+        .fs_images[SLOT_environment_material_lightmap_texture0] = lightmap_image->sg_image[sample0],
+        .fs_images[SLOT_environment_material_lightmap_texture1] = lightmap_image->sg_image[sample1],
     };
     sg_apply_bindings(&bindings);
 

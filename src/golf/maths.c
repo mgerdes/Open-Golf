@@ -2,6 +2,26 @@
 
 #include <float.h>
 
+int golf_clampi(int v, int min, int max) {
+    if (v < min) {
+        v = min;
+    }
+    if (v > max) {
+        v = max;
+    }
+    return v;
+}
+
+float golf_clampf(float v, float min, float max) {
+    if (v < min) {
+        v = min;
+    }
+    if (v > max) {
+        v = max;
+    }
+    return v;
+}
+
 struct ray ray_create(vec3 orig, vec3 dir) {
     struct ray ray;
     ray.orig = orig;

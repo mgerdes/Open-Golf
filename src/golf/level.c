@@ -115,12 +115,15 @@ golf_movement_t golf_movement_linear(vec3 p0, vec3 p1, float length) {
     return movement;
 }
 
-void golf_lightmap_image_init(golf_lightmap_image_t *lightmap, const char *name, int resolution, int width, int height, int num_samples, unsigned char **data) {
+void golf_lightmap_image_init(golf_lightmap_image_t *lightmap, const char *name, int resolution, int width, int height, float time_length, int num_samples, unsigned char **data) {
     lightmap->active = true;
     snprintf(lightmap->name, GOLF_MAX_NAME_LEN, "%s", name);
     lightmap->resolution = resolution;
     lightmap->width = width;
     lightmap->height = height;
+    lightmap->cur_time = 0;
+    lightmap->time_length = time_length;
+    lightmap->edited_num_samples = num_samples;
     lightmap->num_samples = num_samples;
     lightmap->data = malloc(sizeof(unsigned char*) * num_samples);
     for (int i = 0; i < num_samples; i++) {
@@ -246,6 +249,7 @@ bool golf_level_save(golf_level_t *level, const char *path) {
         JSON_Object *json_lightmap_image_obj = json_value_get_object(json_lightmap_image_val);
         json_object_set_string(json_lightmap_image_obj, "name", lightmap_image->name);
         json_object_set_number(json_lightmap_image_obj, "resolution", lightmap_image->resolution);
+        json_object_set_number(json_lightmap_image_obj, "time_length", lightmap_image->time_length);
         json_object_set_number(json_lightmap_image_obj, "num_samples", lightmap_image->num_samples);
 
         JSON_Value *datas_val = json_value_init_array();
@@ -381,6 +385,7 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
         JSON_Object *obj = json_array_get_object(json_lightmap_images_arr, i);
         const char *name = json_object_get_string(obj, "name");
         int resolution = (int)json_object_get_number(obj, "resolution");
+        float time_length = (float)json_object_get_number(obj, "time_length");
 
         int width, height, c;
         JSON_Array *datas_arr = json_object_get_array(obj, "datas");
@@ -396,7 +401,7 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
         }
 
         golf_lightmap_image_t lightmap_image;
-        golf_lightmap_image_init(&lightmap_image, name, resolution, width, height, num_samples, image_datas);
+        golf_lightmap_image_init(&lightmap_image, name, resolution, width, height, time_length, num_samples, image_datas);
         vec_push(&level->lightmap_images, lightmap_image);
 
         for (int i = 0; i < num_samples; i++) {

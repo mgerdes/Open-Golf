@@ -29,8 +29,13 @@ void main() {
 @end
 
 @fs environment_material_fs
+uniform environment_material_fs_params {
+    float lightmap_texture_a;
+};
+
 uniform sampler2D environment_material_texture;
-uniform sampler2D environment_material_lightmap_texture;
+uniform sampler2D environment_material_lightmap_texture0;
+uniform sampler2D environment_material_lightmap_texture1;
 
 in vec3 frag_position;
 in vec2 frag_texturecoord;
@@ -40,10 +45,11 @@ in vec2 frag_lightmap_uv;
 out vec4 g_frag_color;
 
 void main() {
-    float gi = texture(environment_material_lightmap_texture, frag_lightmap_uv).x; 
+    float gi0 = (1 - lightmap_texture_a) * texture(environment_material_lightmap_texture0, frag_lightmap_uv).x; 
+    float gi1 = lightmap_texture_a * texture(environment_material_lightmap_texture1, frag_lightmap_uv).x; 
     vec3 color = texture(environment_material_texture, frag_texturecoord).xyz; 
     color = color + 0.001 * (frag_normal.xyz + frag_position.xyz);
-    g_frag_color = vec4(gi * color, 1.0);
+    g_frag_color = vec4((gi0 + gi1) * color, 1.0);
     //g_frag_color *= 0.001;
     //g_frag_color += vec4(frag_lightmap_uv, 0.0, 1.0);
 }
