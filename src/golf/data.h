@@ -118,8 +118,7 @@ typedef enum golf_data_type {
 typedef struct golf_data {
     int load_count;
     golf_file_t file;
-    golf_file_t file_to_load;
-    golf_filetime_t last_load_time;
+    uint64_t last_load_time; 
 
     golf_data_type_t type; 
     union {

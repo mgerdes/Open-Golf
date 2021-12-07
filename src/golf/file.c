@@ -22,9 +22,44 @@
 
 #endif
 
-int golf_filetime_cmp(golf_filetime_t time0, golf_filetime_t time1) {
-    return (int)time0.unix_time - (int)time1.unix_time;
+#if defined(_WIN32)
+
+uint64_t _get_file_time(const char *path) {
+    WIN32_FILE_ATTRIBUTE_DATA data;
+    if (GetFileAttributesExA(path, GetFileExInfoStandard, &data)) {
+        // https://www.frenk.com/2009/12/convert-filetime-to-unix-timestamp/
+        FILETIME ft = data.ftLastWriteTime;
+
+        // takes the last modified date
+        LARGE_INTEGER date, adjust;
+        date.HighPart = ft.dwHighDateTime;
+        date.LowPart = ft.dwLowDateTime;
+
+        // 100-nanoseconds = milliseconds * 10000
+        adjust.QuadPart = 11644473600000 * 10000;
+
+        // removes the diff between 1970 and 1601
+        date.QuadPart -= adjust.QuadPart;
+
+        // converts back from 100-nanoseconds to seconds
+        return (uint64_t) (date.QuadPart / 10000000);
+    }
+    else {
+        return 0;
+    }
 }
+
+#else
+
+uint64_t _get_file_time(const char *path) {
+    struct stat info;
+    if (stat(path, &info)) {
+        return 0;
+    }
+    return (uint64_t)info.st_mtime;
+}
+
+#endif
 
 golf_file_t golf_file(const char *path) {
     golf_file_t file;
@@ -57,17 +92,11 @@ golf_file_t golf_file(const char *path) {
     strncpy(file.dirname, file.path, GOLF_FILE_MAX_PATH);
     file.dirname[path_len - name_len] = 0;
 
-    file.data_len = 0;
-    file.data = NULL;
-
-    file.data_copy_len = 0;
-    file.data_copy_pos = NULL;
-
     return file;
 }
 
 golf_file_t golf_file_new_ext(golf_file_t *file, const char *ext) {
-    golf_file_t new_file = *file;
+    golf_file_t new_file = golf_file(file->path);
 
     int ext_len = (int) strlen(new_file.ext);
 
@@ -81,12 +110,6 @@ golf_file_t golf_file_new_ext(golf_file_t *file, const char *ext) {
 
     strncpy(new_file.ext, ext, GOLF_FILE_MAX_EXT);
     new_file.ext[GOLF_FILE_MAX_EXT - 1] = 0;
-
-    new_file.data_len = 0;
-    new_file.data = NULL;
-
-    new_file.data_copy_len = 0;
-    new_file.data_copy_pos = NULL;
 
     return new_file;
 }
@@ -110,8 +133,12 @@ golf_file_t golf_file_append_extension(const char *path, const char *ext) {
     return file;
 }
 
-bool golf_file_load_data(golf_file_t *file) {
-    FILE *f = fopen(file->path, "rb");
+uint64_t golf_file_get_time(const char *path) {
+    return _get_file_time(path);
+}
+
+bool golf_file_load_data(const char *path, char **data, int *data_len) {
+    FILE *f = fopen(path, "rb");
     if (!f) {
         return false;
     }
@@ -129,152 +156,10 @@ bool golf_file_load_data(golf_file_t *file) {
     }
     fclose(f);
 
-    file->data_len = num_bytes;
-    file->data = bytes;
-    file->data_copy_len = num_bytes;
-    file->data_copy_pos = bytes;
-    return true;
-}
-
-void golf_file_free_data(golf_file_t *file) {
-    free(file->data);
-    file->data_len = 0;
-    file->data = NULL;
-    file->data_copy_len = 0;
-    file->data_copy_pos = NULL;
-}
-
-bool golf_file_set_data(golf_file_t *file, char *data, int data_len) {
-    if (file->data) {
-        golf_file_free_data(file);
-    }
-
-    FILE *f = fopen(file->path, "wb");
-    if (f) {
-        fwrite(data, sizeof(char), data_len, f);
-        fclose(f);
-
-        file->data_len = data_len;
-        file->data = data;
-        file->data_copy_len = data_len;
-        file->data_copy_pos = data;
-        return true;
-    }
-    else {
-        return false;
-    }
-}
-
-bool golf_file_copy_data(golf_file_t *file, void *buffer, int num_bytes) {
-    if (file->data_copy_len < num_bytes) {
-        return false;
-    }
-
-    memcpy(buffer, file->data_copy_pos, num_bytes);
-    file->data_copy_len -= num_bytes;
-    file->data_copy_pos += num_bytes;
-    return true;
-}
-
-static void grow_buffer(char **buffer, int *buffer_len) {
-    int new_buffer_len = 2 * (*buffer_len + 1);
-    char *new_buffer = malloc(new_buffer_len);
-    memcpy(new_buffer, *buffer, *buffer_len);
-
-    if (*buffer) {
-        free(*buffer);
-    }
-    *buffer_len = new_buffer_len;
-    *buffer = new_buffer;
-}
-
-bool golf_file_copy_line(golf_file_t *file, char **line_buffer, int *line_buffer_len) {
-    if (file->data_copy_len == 0) {
-        return false;
-    }
-
-    int i = 0;
-    while (file->data_copy_pos[i] != '\n' && i < file->data_copy_len) {
-        if (i == *line_buffer_len) {
-            grow_buffer(line_buffer, line_buffer_len);
-        }
-        (*line_buffer)[i] = file->data_copy_pos[i];
-        i++;
-    }
-    if (i > 0 && (*line_buffer)[i - 1] == '\r') {
-        (*line_buffer)[i - 1] = 0;
-    }
-
-    file->data_copy_pos += i;
-    file->data_copy_len -= i;
-
-    // Skip over the new line if not at the end of the file.
-    if (i < file->data_copy_len) {
-        file->data_copy_pos += 1;
-        file->data_copy_len -= 1;
-    }
-
-    // Allocate room for the null character if needed.
-    if (i == *line_buffer_len) {
-        grow_buffer(line_buffer, line_buffer_len);
-    }
-
-    (*line_buffer)[i] = 0;
+    *data = bytes;
+    *data_len = num_bytes;
 
     return true;
-}
-
-#if defined(_WIN32)
-
-// https://www.frenk.com/2009/12/convert-filetime-to-unix-timestamp/
-uint64_t _FILETIME_to_unix_time(FILETIME ft)
-{
-	// takes the last modified date
-	LARGE_INTEGER date, adjust;
-	date.HighPart = ft.dwHighDateTime;
-	date.LowPart = ft.dwLowDateTime;
-
-	// 100-nanoseconds = milliseconds * 10000
-	adjust.QuadPart = 11644473600000 * 10000;
-
-	// removes the diff between 1970 and 1601
-	date.QuadPart -= adjust.QuadPart;
-
-	// converts back from 100-nanoseconds to seconds
-	return (uint64_t) (date.QuadPart / 10000000);
-}
-
-bool golf_file_get_time(golf_file_t *file, golf_filetime_t *time) {
-    WIN32_FILE_ATTRIBUTE_DATA data;
-    if (GetFileAttributesExA(file->path, GetFileExInfoStandard, &data)) {
-        time->unix_time = _FILETIME_to_unix_time(data.ftLastWriteTime);
-		return true;
-    }
-    else {
-        time->unix_time = 0;
-		return false;
-    }
-}
-
-#else
-
-bool golf_file_get_time(golf_file_t *file, golf_filetime_t *time) {
-    struct stat info;
-    if (stat(file->path, &info)) {
-        time->unix_time = 0;
-        return false;
-    }
-    time->unix_time = (uint64_t)info.st_mtime;
-    return true;
-}
-
-#endif
-
-int golf_file_cmp_time(golf_file_t *f0, golf_file_t *f1) {
-    golf_filetime_t f0_time, f1_time;
-    golf_file_get_time(f0, &f0_time);
-    golf_file_get_time(f1, &f1_time);
-    return golf_filetime_cmp(f0_time, f1_time);
 }
 
 static void _directory_add_file(const char *file_path, void *data) {
@@ -380,32 +265,32 @@ static void _create_file_path(char *file_path, const char *dir_name, const char 
 }
 
 static void _directory_recurse(const char *dir_name, void (*fn)(const char *file_path, void*), void *data, bool recurse) {
-	DIR *dir_ptr = opendir(dir_name);
-	if (dir_ptr == NULL) {
-		return;
-	}
+    DIR *dir_ptr = opendir(dir_name);
+    if (dir_ptr == NULL) {
+        return;
+    }
 
-	struct dirent *entry = NULL;
-	while ((entry = readdir(dir_ptr))) {
-		char file_path[GOLF_FILE_MAX_PATH];
-		_create_file_path(file_path, dir_name, entry->d_name);
+    struct dirent *entry = NULL;
+    while ((entry = readdir(dir_ptr))) {
+        char file_path[GOLF_FILE_MAX_PATH];
+        _create_file_path(file_path, dir_name, entry->d_name);
 
-		struct stat info;
-		stat(file_path, &info);
-		if (S_ISDIR(info.st_mode)) {
-			if ((strcmp(entry->d_name, ".") != 0) &&
-					(strcmp(entry->d_name, "..") != 0)) {
-				if (recurse) {
-					_directory_recurse(file_path, fn, data, true);
-				}
-			}
-		}
-		else if (S_ISREG(info.st_mode)) {
-			fn(file_path, data);
-		}
-	}
+        struct stat info;
+        stat(file_path, &info);
+        if (S_ISDIR(info.st_mode)) {
+            if ((strcmp(entry->d_name, ".") != 0) &&
+                    (strcmp(entry->d_name, "..") != 0)) {
+                if (recurse) {
+                    _directory_recurse(file_path, fn, data, true);
+                }
+            }
+        }
+        else if (S_ISREG(info.st_mode)) {
+            fn(file_path, data);
+        }
+    }
 
-	closedir(dir_ptr);
+    closedir(dir_ptr);
 }
 
 #endif

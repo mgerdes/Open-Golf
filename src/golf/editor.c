@@ -32,9 +32,11 @@ void golf_editor_init(void) {
     {
         editor.level = malloc(sizeof(golf_level_t));
         golf_file_t file = golf_file("data/levels/level-1/level-1.level");
-        if (golf_file_load_data(&file)) {
-            golf_level_load(editor.level, file.path, file.data, file.data_len);
-            golf_file_free_data(&file);
+        char *data;
+        int data_len;
+        if (golf_file_load_data(file.path, &data, &data_len)) {
+            golf_level_load(editor.level, file.path, data, data_len);
+            free(data);
         }
         else {
             golf_log_error("unable to load level file");

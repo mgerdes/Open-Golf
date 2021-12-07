@@ -29,20 +29,6 @@
             "texture": "data\/textures\/wood.jpg"
         },
         {
-            "name": "bake",
-            "friction": 0,
-            "restitution": 0,
-            "type": "environment",
-            "texture": "data\/textures\/fallback.png"
-        },
-        {
-            "name": "default",
-            "friction": 0,
-            "restitution": 0,
-            "type": "environment",
-            "texture": "data\/textures\/fallback.png"
-        },
-        {
             "name": "hole",
             "friction": 0,
             "restitution": 0,
@@ -129,7 +115,7 @@
             "type": "hole",
             "name": "testing",
             "transform": {
-                "position": [2, 3, 12],
+                "position": [2, 3, 12.016],
                 "scale": [0.4, 0.4, 0.4],
                 "rotation": [0, 0, 0, 1]
             }
