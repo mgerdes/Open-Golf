@@ -228,7 +228,7 @@ void golf_renderer_init(void) {
     renderer.cam_azimuth_angle = 0.5f*MF_PI;
     renderer.cam_inclination_angle = 0;
     renderer.cam_pos = V3(5, 5, 5);
-    renderer.cam_dir = vec3_normalize(V3(-5, -5, -5));
+    renderer.cam_dir = vec3_normalize(V3(5, 5, 5));
 
     {
         float x = renderer.cam_dir.x;

@@ -106,6 +106,12 @@ vec4 golf_config_get_vec4(golf_config_t *cfg, const char *name);
 #define CFG_VEC3(cfg, name) golf_config_get_vec3(cfg, name)
 #define CFG_VEC4(cfg, name) golf_config_get_vec4(cfg, name)
 
+typedef struct golf_level golf_level_t;
+
+typedef struct golf_static_data {
+    vec_str_t data_paths;
+} golf_static_data_t;
+
 typedef enum golf_data_type {
     GOLF_DATA_TEXTURE,
     GOLF_DATA_FONT,
@@ -113,6 +119,8 @@ typedef enum golf_data_type {
     GOLF_DATA_SHADER,
     GOLF_DATA_PIXEL_PACK,
     GOLF_DATA_CONFIG,
+    GOLF_DATA_LEVEL,
+    GOLF_DATA_STATIC_DATA,
 } golf_data_type_t;
 
 typedef struct golf_data {
@@ -128,6 +136,8 @@ typedef struct golf_data {
         golf_shader_t *shader;
         golf_pixel_pack_t *pixel_pack;
         golf_config_t *config;
+        golf_level_t *level;
+        golf_static_data_t *static_data;
     };
 } golf_data_t;
 
@@ -147,6 +157,7 @@ golf_model_t *golf_data_get_model(const char *path);
 golf_shader_t *golf_data_get_shader(const char *path);
 golf_font_t *golf_data_get_font(const char *path);
 golf_config_t *golf_data_get_config(const char *path);
+golf_level_t *golf_data_get_level(const char *path);
 
 #endif
 

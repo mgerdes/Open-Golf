@@ -1,0 +1,20 @@
+[
+	"data/shaders/diffuse_color_material.glsl",
+	"data/shaders/environment_material.glsl",
+	"data/shaders/pass_through.glsl",
+	"data/shaders/solid_color_material.glsl",
+	"data/shaders/texture_material.glsl",
+	"data/shaders/ui_sprite.glsl",
+	"data/models/cube.obj",
+	"data/models/hole.obj",
+	"data/models/hole-cover.obj",
+	"data/models/sphere.obj",
+	"data/models/teapot.obj",
+	"data/models/ui_sprite_square.obj",
+	"data/textures/fallback.png",
+	"data/textures/ground.png",
+	"data/textures/hole_lightmap.png",
+	"data/textures/wood.jpg",
+	"data/levels/level-1/level-1.obj",
+	"data/levels/level-1/level-1.level"
+]
