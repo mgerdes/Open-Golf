@@ -112,8 +112,8 @@
     ],
     "entities": [
         {
+            "name": "hole",
             "type": "hole",
-            "name": "testing",
             "transform": {
                 "position": [2, 3, 12.016],
                 "scale": [0.4, 0.4, 0.4],
@@ -121,8 +121,8 @@
             }
         },
         {
+            "name": "main-model",
             "type": "model",
-            "name": "testing",
             "model": "data\/levels\/level-1\/level-1.obj",
             "transform": {
                 "position": [0, 3, 0],
@@ -138,8 +138,8 @@
             }
         },
         {
+            "name": "spinny-cube",
             "type": "model",
-            "name": "testing",
             "model": "data\/models\/cube.obj",
             "transform": {
                 "position": [2, 3.05, 6],
@@ -156,8 +156,8 @@
             }
         },
         {
+            "name": "moving-cube-1",
             "type": "model",
-            "name": "testing",
             "model": "data\/models\/cube.obj",
             "transform": {
                 "position": [2, 3.3, 4],
@@ -176,8 +176,8 @@
             }
         },
         {
+            "name": "moving-cube-2",
             "type": "model",
-            "name": "testing",
             "model": "data\/models\/cube.obj",
             "transform": {
                 "position": [2, 3.3, 8],

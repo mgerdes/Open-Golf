@@ -320,6 +320,33 @@ static void _golf_editor_undoable_igInputFloat4(const char *label, float *f4, co
     }
 }
 
+static bool _golf_editor_is_entity_selected(int idx) {
+    int found_idx = -1;
+    vec_find(&editor.selected_idxs, idx, found_idx);
+    return found_idx != -1;
+}
+
+static void _golf_editor_select_entity(int idx) {
+    bool shift_down = inputs->button_down[SAPP_KEYCODE_LEFT_SHIFT];
+    bool selected = _golf_editor_is_entity_selected(idx);
+
+    if (selected) {
+        if (shift_down) {
+            vec_remove(&editor.selected_idxs, idx);
+        }
+        else {
+            editor.selected_idxs.length = 0;
+            vec_push(&editor.selected_idxs, idx);
+        }
+    }
+    else {
+        if (!shift_down) {
+            editor.selected_idxs.length = 0;
+        }
+        vec_push(&editor.selected_idxs, idx);
+    }
+}
+
 static void _golf_editor_duplicate_selected_entities(void) {
     for (int i = 0; i < editor.selected_idxs.length; i++) {
         int idx = editor.selected_idxs.data[i];
@@ -355,6 +382,28 @@ static void _golf_editor_edit_transform(golf_transform_t *transform) {
 static void _golf_editor_edit_lightmap_section(golf_lightmap_section_t *lightmap_section) {
     if (igTreeNode_Str("Lightmap Section")) {
         _golf_editor_undoable_igInputText("Lightmap Name", lightmap_section->lightmap_name, GOLF_MAX_NAME_LEN, NULL, NULL, 0, "Modify lightmap section's lightmap name");
+
+        if (editor.selected_idxs.length > 1) {
+            if (igButton("Mass Apply Lightmap Name", (ImVec2){0, 0})) {
+                golf_editor_action_t action;
+                _golf_editor_action_init(&action, "Mass apply lightmap name");
+
+                const char *name = lightmap_section->lightmap_name;
+                for (int i = 1; i < editor.selected_idxs.length; i++) {
+                    int idx = editor.selected_idxs.data[i];
+                    golf_entity_t *entity = &editor.level->entities.data[idx];
+                    golf_lightmap_section_t *other_lightmap_section = golf_entity_get_lightmap_section(entity);
+                    if (other_lightmap_section) {
+                        char *other_name = other_lightmap_section->lightmap_name;
+                        _golf_editor_action_push_data(&action, other_name, GOLF_MAX_NAME_LEN);
+                        snprintf(other_name, GOLF_MAX_NAME_LEN, "%s", name);
+                    }
+                }
+
+                _golf_editor_start_action(action);
+                _golf_editor_commit_action();
+            }
+        }
         igTreePop();
     }
 }
@@ -876,23 +925,29 @@ void golf_editor_update(float dt) {
                 for (int i = 0; i < editor.level->entities.length; i++) {
                     golf_entity_t *entity = &editor.level->entities.data[i];
                     if (!entity->active) continue;
+                    bool selected = _golf_editor_is_entity_selected(i);
+                    igPushID_Int(i);
                     switch (entity->type) {
                         case MODEL_ENTITY: {
-                            igSelectable_Bool("Model Entity", false, ImGuiSelectableFlags_None, (ImVec2){0, 0});
+                            if (igSelectable_Bool(entity->name, selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
+                                _golf_editor_select_entity(i);
+                            }
                             break;
                         }
                         case BALL_START_ENTITY: {
-                            igSelectable_Bool("Ball Start Entity", false, ImGuiSelectableFlags_None, (ImVec2){0, 0});
+                            if (igSelectable_Bool(entity->name, selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
+                                _golf_editor_select_entity(i);
+                            }
                             break;
                         }
                         case HOLE_ENTITY: {
-                            if (igSelectable_Bool("Hole Entity", false, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
-                                editor.selected_idxs.length = 0;
-                                vec_push(&editor.selected_idxs, i);
+                            if (igSelectable_Bool(entity->name, selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
+                                _golf_editor_select_entity(i);
                             }
                             break;
                         }
                     }
+                    igPopID();
                 }
 
                 if (igButton("Create Model Entity", (ImVec2){0, 0})) {
@@ -915,7 +970,7 @@ void golf_editor_update(float dt) {
                     golf_movement_t movement;
                     movement = golf_movement_none();
 
-                    golf_entity_t entity = golf_entity_model(transform, "data/models/cube.obj", lightmap_section, movement);
+                    golf_entity_t entity = golf_entity_model("Model", transform, "data/models/cube.obj", lightmap_section, movement);
                     _golf_editor_vec_push_and_fix_actions(&editor.level->entities, entity);
                     _golf_editor_commit_entity_create_action();
                 }
@@ -1115,9 +1170,12 @@ void golf_editor_update(float dt) {
                 }
 
                 if (igButton("Create Lightmap Image", (ImVec2){0, 0})) {
-                    unsigned char image_data[1] = { 0xFF };
+                    unsigned char **image_data = malloc(sizeof(unsigned char*) * 1);
+                    image_data[0] = malloc(sizeof(unsigned char) * 1);
+                    image_data[0][0] = 0xFF;
                     golf_lightmap_image_t new_lightmap_image;
-                    golf_lightmap_image_init(&new_lightmap_image, "new", 256, 1, 1, 1, 1, (unsigned char**)&image_data);
+                    golf_lightmap_image_init(&new_lightmap_image, "new", 256, 1, 1, 1, 1, image_data);
+                    free(image_data);
                     _golf_editor_vec_push_and_fix_actions(&editor.level->lightmap_images, new_lightmap_image);
 
                     golf_lightmap_image_t *lightmap_image = &vec_last(&editor.level->lightmap_images);
@@ -1136,7 +1194,7 @@ void golf_editor_update(float dt) {
 
     {
         igBegin("RightBottom", NULL, ImGuiWindowFlags_NoTitleBar);
-        if (editor.selected_idxs.length == 1) {
+        if (editor.selected_idxs.length > 0) {
             int idx = editor.selected_idxs.data[0];
             golf_entity_t *entity = &editor.level->entities.data[idx];
             switch (entity->type) {
@@ -1159,6 +1217,9 @@ void golf_editor_update(float dt) {
                 }
             }
 
+            bool edit_done = false;
+            _golf_editor_undoable_igInputText("Name", entity->name, GOLF_MAX_NAME_LEN, &edit_done, NULL, 0, "Modify entity name");
+
             golf_transform_t *transform = golf_entity_get_transform(entity);
             if (transform) {
                 _golf_editor_edit_transform(transform);
@@ -1179,8 +1240,6 @@ void golf_editor_update(float dt) {
                 entity->active = false;
                 _golf_editor_commit_action();
             }
-        }
-        else {
         }
         igEnd();
     }
@@ -1289,7 +1348,7 @@ void golf_editor_update(float dt) {
             editor.hovered_idx = entity_idxs.data[idx];
         }
 
-        if (!IO->WantCaptureMouse && inputs->mouse_clicked[SAPP_MOUSEBUTTON_LEFT]) {
+        if (!IO->WantCaptureMouse && !editor.mouse_down_in_imgui && inputs->mouse_clicked[SAPP_MOUSEBUTTON_LEFT]) {
             if (!inputs->button_down[SAPP_KEYCODE_LEFT_SHIFT]) {
                 editor.selected_idxs.length = 0;
             }
@@ -1364,6 +1423,14 @@ void golf_editor_update(float dt) {
             golf_gi_deinit(gi);
             editor.gi_running = false;
         }
+    }
+
+    if (!editor.mouse_down && inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
+        editor.mouse_down_in_imgui = IO->WantCaptureMouse;
+        editor.mouse_down = true;
+    }
+    if (editor.mouse_down && !inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
+        editor.mouse_down = false;
     }
 
     if (!IO->WantCaptureMouse) {

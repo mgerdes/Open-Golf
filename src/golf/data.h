@@ -129,16 +129,7 @@ typedef struct golf_data {
     uint64_t last_load_time; 
 
     golf_data_type_t type; 
-    union {
-        golf_texture_t *texture;
-        golf_font_t *font;
-        golf_model_t *model;
-        golf_shader_t *shader;
-        golf_pixel_pack_t *pixel_pack;
-        golf_config_t *config;
-        golf_level_t *level;
-        golf_static_data_t *static_data;
-    };
+    void *ptr;
 } golf_data_t;
 
 typedef map_t(golf_data_t) map_golf_data_t;

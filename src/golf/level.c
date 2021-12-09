@@ -295,24 +295,22 @@ bool golf_level_save(golf_level_t *level, const char *path) {
         JSON_Value *json_entity_val = json_value_init_object();
         JSON_Object *json_entity_obj = json_value_get_object(json_entity_val);
 
+        json_object_set_string(json_entity_obj, "name", entity->name);
         switch (entity->type) {
             case MODEL_ENTITY: {
                 golf_model_entity_t *model = &entity->model;
                 json_object_set_string(json_entity_obj, "type", "model");
-                json_object_set_string(json_entity_obj, "name", "testing");
                 json_object_set_string(json_entity_obj, "model", model->model_path);
                 break;
             }
             case BALL_START_ENTITY: {
                 //golf_ball_start_entity_t *ball_start = &entity->ball_start;
                 json_object_set_string(json_entity_obj, "type", "ball_start");
-                json_object_set_string(json_entity_obj, "name", "testing");
                 break;
             }
             case HOLE_ENTITY: {
                 //golf_hole_entity_t *hole = &entity->hole;
                 json_object_set_string(json_entity_obj, "type", "hole");
-                json_object_set_string(json_entity_obj, "name", "testing");
                 break;
             }
         }
@@ -450,21 +448,21 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
             golf_movement_t movement;
             _golf_json_object_get_movement(obj, "movement", &movement);
 
-            entity = golf_entity_model(transform, model_path, lightmap_section, movement);
+            entity = golf_entity_model(name, transform, model_path, lightmap_section, movement);
             valid_entity = true;
         }
         else if (type && strcmp(type, "ball_start") == 0) {
             golf_transform_t transform;
             _golf_json_object_get_transform(obj, "transform", &transform);
 
-            entity = golf_entity_ball_start(transform);
+            entity = golf_entity_ball_start(name, transform);
             valid_entity = true;
         }
         else if (type && strcmp(type, "hole") == 0) {
             golf_transform_t transform;
             _golf_json_object_get_transform(obj, "transform", &transform);
 
-            entity = golf_entity_hole(transform);
+            entity = golf_entity_hole(name, transform);
             valid_entity = true;
         }
 
@@ -545,10 +543,11 @@ bool golf_level_get_lightmap_image(golf_level_t *level, const char *lightmap_nam
     return false;
 }
 
-golf_entity_t golf_entity_model(golf_transform_t transform, const char *model_path, golf_lightmap_section_t lightmap_section, golf_movement_t movement) {
+golf_entity_t golf_entity_model(const char *name, golf_transform_t transform, const char *model_path, golf_lightmap_section_t lightmap_section, golf_movement_t movement) {
     golf_entity_t entity;
     entity.active = true;
     entity.type = MODEL_ENTITY;
+    snprintf(entity.name, GOLF_MAX_NAME_LEN, "%s", name);
     entity.model.transform = transform;
     snprintf(entity.model.model_path, GOLF_FILE_MAX_PATH, "%s", model_path);
     entity.model.model = golf_data_get_model(model_path);
@@ -557,18 +556,20 @@ golf_entity_t golf_entity_model(golf_transform_t transform, const char *model_pa
     return entity;
 }
 
-golf_entity_t golf_entity_hole(golf_transform_t transform) {
+golf_entity_t golf_entity_hole(const char *name, golf_transform_t transform) {
     golf_entity_t entity;
     entity.active = true;
     entity.type = HOLE_ENTITY;
+    snprintf(entity.name, GOLF_MAX_NAME_LEN, "%s", name);
     entity.hole.transform = transform;
     return entity;
 }
 
-golf_entity_t golf_entity_ball_start(golf_transform_t transform) {
+golf_entity_t golf_entity_ball_start(const char *name, golf_transform_t transform) {
     golf_entity_t entity;
     entity.active = true;
     entity.type = BALL_START_ENTITY;
+    snprintf(entity.name, GOLF_MAX_NAME_LEN, "%s", name);
     entity.ball_start.transform = transform;
     return entity;
 }

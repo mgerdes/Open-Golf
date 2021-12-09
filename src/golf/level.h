@@ -109,6 +109,7 @@ typedef enum golf_entity_type {
 typedef struct golf_entity {
     bool active;
     golf_entity_type_t type;
+    char name[GOLF_MAX_NAME_LEN];
     union {
         golf_model_entity_t model;
         golf_ball_start_entity_t ball_start;
@@ -116,9 +117,9 @@ typedef struct golf_entity {
     };
 } golf_entity_t;
 typedef vec_t(golf_entity_t) vec_golf_entity_t;
-golf_entity_t golf_entity_model(golf_transform_t transform, const char *model_path, golf_lightmap_section_t lightmap_section, golf_movement_t movement);
-golf_entity_t golf_entity_hole(golf_transform_t transform);
-golf_entity_t golf_entity_ball_start(golf_transform_t transform);
+golf_entity_t golf_entity_model(const char *name, golf_transform_t transform, const char *model_path, golf_lightmap_section_t lightmap_section, golf_movement_t movement);
+golf_entity_t golf_entity_hole(const char *name, golf_transform_t transform);
+golf_entity_t golf_entity_ball_start(const char *name, golf_transform_t transform);
 golf_entity_t golf_entity_make_copy(golf_entity_t *entity);
 golf_movement_t *golf_entity_get_movement(golf_entity_t *entity);
 golf_transform_t *golf_entity_get_transform(golf_entity_t *entity);

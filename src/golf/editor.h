@@ -30,6 +30,8 @@ typedef struct golf_editor {
     golf_editor_action_t cur_action, queued_action;
     vec_golf_editor_action_t undo_actions, redo_actions;
 
+    bool mouse_down, mouse_down_in_imgui;
+
     int hovered_idx;
     vec_int_t selected_idxs;
 

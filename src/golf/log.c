@@ -17,12 +17,6 @@ typedef struct _golf_log_state {
 
 _golf_log_state_t _state;
 
-typedef enum _golf_log_level {
-    _golf_log_level_note,
-    _golf_log_level_warning,
-    _golf_log_level_error,
-} _golf_log_level_t;
-
 void golf_log_init(void) {
     _state.entry_count = 0;
 }
@@ -41,46 +35,53 @@ static void _print_callstack(void) {
     }
 }
 
-static void _log(enum _golf_log_level level, const char *fmt, va_list arg) {
-    if (level == _golf_log_level_warning) {
+static void _log(golf_log_level_t level, const char *fmt, va_list arg) {
+    if (level == GOLF_LOG_LEVEL_WARNING) {
         printf("WARNING: ");
     }
-    else if (level == _golf_log_level_error) {
+    else if (level == GOLF_LOG_LEVEL_ERROR) {
         printf("ERROR: ");
     }
     vprintf(fmt, arg);
     printf("\n");
-    if (level == _golf_log_level_warning) {
-        _print_callstack();
+    if (level == GOLF_LOG_LEVEL_WARNING) {
+        //_print_callstack();
         //if (_state.entry_count < 32) {
             //_golf_log_entry_t *entry = &_state.entries[_state.entry_count++];
             //vsnprintf(entry->msg, 1024, fmt, arg);
         //}
     }
-    else if (level == _golf_log_level_error) {
+    else if (level == GOLF_LOG_LEVEL_ERROR) {
         _print_callstack();
         assert(false);
     }
 }
 
+void golf_log(golf_log_level_t level, const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    _log(level, fmt, ap);
+    va_end(ap);
+}
+
 void golf_log_note(const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    _log(_golf_log_level_note, fmt, ap);
+    _log(GOLF_LOG_LEVEL_NOTE, fmt, ap);
     va_end(ap);
 }
 
 void golf_log_warning(const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    _log(_golf_log_level_warning, fmt, ap);
+    _log(GOLF_LOG_LEVEL_WARNING, fmt, ap);
     va_end(ap);
 }
 
 void golf_log_error(const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    _log(_golf_log_level_error, fmt, ap);
+    _log(GOLF_LOG_LEVEL_ERROR, fmt, ap);
     va_end(ap);
 }
 
