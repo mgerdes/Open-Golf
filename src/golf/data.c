@@ -926,6 +926,7 @@ static bool _golf_static_data_load(void *ptr, const char *path, char *data, int 
 }
 
 static bool _golf_static_data_unload(void *ptr) {
+    /*
     golf_static_data_t *static_data = (golf_static_data_t*) ptr;
     for (int i = 0; i < static_data->data_paths.length; i++) {
         char *data_path = static_data->data_paths.data[i];
@@ -933,6 +934,7 @@ static bool _golf_static_data_unload(void *ptr) {
         free(data_path);
     }
     vec_deinit(&static_data->data_paths);
+    */
     return true;
 }
 
@@ -1105,8 +1107,8 @@ void golf_data_update(float dt) {
 
                 _golf_data_loader_t *loader = _golf_data_get_loader(file.ext);
                 if (loader) {
-                    loader->unload_fn(golf_data);
-                    loader->load_fn(golf_data, file.path, data, data_len);
+                    loader->unload_fn(golf_data->ptr);
+                    loader->load_fn(golf_data->ptr, file.path, data, data_len);
                 }
                 else {
                     golf_log_warning("Unable to load file %s", key);
@@ -1176,7 +1178,7 @@ void golf_data_unload(const char *path) {
             return;
         }
 
-        loader->unload_fn(golf_data);
+        loader->unload_fn(golf_data->ptr);
         free(golf_data->ptr);
         map_remove(&_loaded_data, path);
     }
