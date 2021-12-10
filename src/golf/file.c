@@ -24,7 +24,7 @@
 
 #if defined(_WIN32)
 
-uint64_t _get_file_time(const char *path) {
+static uint64_t _get_file_time(const char *path) {
     WIN32_FILE_ATTRIBUTE_DATA data;
     if (GetFileAttributesExA(path, GetFileExInfoStandard, &data)) {
         // https://www.frenk.com/2009/12/convert-filetime-to-unix-timestamp/
@@ -51,7 +51,7 @@ uint64_t _get_file_time(const char *path) {
 
 #else
 
-uint64_t _get_file_time(const char *path) {
+static uint64_t _get_file_time(const char *path) {
     struct stat info;
     if (stat(path, &info)) {
         return 0;
