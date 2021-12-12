@@ -25,7 +25,7 @@
             "name": "cube",
             "friction": 0,
             "restitution": 0,
-            "type": "environment",
+            "type": "texture",
             "texture": "data\/textures\/wood.jpg"
         },
         {
@@ -115,7 +115,7 @@
             "name": "hole",
             "type": "hole",
             "transform": {
-                "position": [2, 3, 12.016],
+                "position": [2, 0, 12.016],
                 "scale": [0.4, 0.4, 0.4],
                 "rotation": [0, 0, 0, 1]
             }
@@ -125,7 +125,7 @@
             "type": "model",
             "model": "data\/levels\/level-1\/level-1.obj",
             "transform": {
-                "position": [0, 3, 0],
+                "position": [0, 0, 0],
                 "scale": [1, 1, 1],
                 "rotation": [0, 0, 0, 1]
             },
@@ -142,7 +142,7 @@
             "type": "model",
             "model": "data\/models\/cube.obj",
             "transform": {
-                "position": [2, 3.05, 6],
+                "position": [2, 0.05, 6],
                 "scale": [0.05, 0.2, 1],
                 "rotation": [0, 0, 0, 1]
             },
@@ -160,7 +160,7 @@
             "type": "model",
             "model": "data\/models\/cube.obj",
             "transform": {
-                "position": [2, 3.3, 4],
+                "position": [2, 0.3, 4],
                 "scale": [1, 0.3, 0.05],
                 "rotation": [0, 0, 0, 1]
             },
@@ -180,7 +180,7 @@
             "type": "model",
             "model": "data\/models\/cube.obj",
             "transform": {
-                "position": [2, 3.3, 8],
+                "position": [2, 0.3, 8],
                 "scale": [1, 0.3, 0.05],
                 "rotation": [0, 0, 0, 1]
             },
@@ -193,6 +193,41 @@
                 "length": 2,
                 "p0": [-1, 0, 0],
                 "p1": [1, 0, 0]
+            }
+        },
+        {
+            "name": "main-geo",
+            "type": "geo",
+            "geo": {
+                "p": [0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1],
+                "faces": [
+                    {
+                        "idxs": [0, 1, 2, 3]
+                    },
+                    {
+                        "idxs": [7, 6, 5, 4]
+                    },
+                    {
+                        "idxs": [7, 4, 0, 3]
+                    },
+                    {
+                        "idxs": [5, 6, 2, 1]
+                    },
+                    {
+                        "idxs": [4, 5, 1, 0]
+                    },
+                    {
+                        "idxs": [6, 7, 3, 2]
+                    }
+                ]
+            },
+            "transform": {
+                "position": [0, 0, 0],
+                "scale": [1, 1, 1],
+                "rotation": [0, 0, 0, 1]
+            },
+            "movement": {
+                "type": "none"
             }
         }
     ]

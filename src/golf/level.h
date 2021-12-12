@@ -13,15 +13,15 @@ typedef vec_t(golf_geo_face_t) vec_golf_geo_face_t;
 
 typedef struct golf_geo {
     vec_vec3_t p;
-    vec_vec2_t tc;
     vec_golf_geo_face_t faces;
     golf_model_t model;
 } golf_geo_t;
 void golf_geo_init(golf_geo_t *geo);
-void golf_geo_init_square(golf_geo_t *geo);
+void golf_geo_init_cube(golf_geo_t *geo);
 void golf_geo_update_model(golf_geo_t *geo);
-void golf_geo_add_point(golf_geo_t *geo, vec3 p, vec2 tc);
+void golf_geo_add_point(golf_geo_t *geo, vec3 p);
 void golf_geo_add_face(golf_geo_t *geo, int num_points, ...);
+void golf_geo_add_face_arr(golf_geo_t *geo, int num_points, int *idxs);
 
 typedef enum golf_movement_type {
     GOLF_MOVEMENT_NONE,
@@ -149,6 +149,7 @@ golf_movement_t *golf_entity_get_movement(golf_entity_t *entity);
 golf_transform_t *golf_entity_get_transform(golf_entity_t *entity);
 golf_lightmap_section_t *golf_entity_get_lightmap_section(golf_entity_t *entity);
 golf_model_t *golf_entity_get_model(golf_entity_t *entity);
+golf_geo_t *golf_entity_get_geo(golf_entity_t *entity);
 
 typedef struct golf_level {
     vec_golf_lightmap_image_t lightmap_images;

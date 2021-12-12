@@ -7,23 +7,29 @@
 
 void golf_geo_init(golf_geo_t *geo) {
     vec_init(&geo->p);
-    vec_init(&geo->tc);
     vec_init(&geo->faces);
     golf_model_init(&geo->model, 64);
 }
 
-void golf_geo_init_square(golf_geo_t *geo) {
+void golf_geo_init_cube(golf_geo_t *geo) {
     golf_geo_init(geo);
-    golf_geo_add_point(geo, V3(0, 0, 0), V2(0, 0));
-    golf_geo_add_point(geo, V3(1, 0, 0), V2(0, 0));
-    golf_geo_add_point(geo, V3(1, 0, 1), V2(0, 0));
-    golf_geo_add_point(geo, V3(0, 0, 1), V2(0, 0));
-    golf_geo_add_point(geo, V3(0, 1, 0), V2(0, 0));
-    golf_geo_add_point(geo, V3(1, 1, 0), V2(0, 0));
-    golf_geo_add_point(geo, V3(1, 1, 1), V2(0, 0));
-    golf_geo_add_point(geo, V3(0, 1, 1), V2(0, 0));
+
+    golf_geo_add_point(geo, V3(0, 0, 0));
+    golf_geo_add_point(geo, V3(1, 0, 0));
+    golf_geo_add_point(geo, V3(1, 0, 1));
+    golf_geo_add_point(geo, V3(0, 0, 1));
+
+    golf_geo_add_point(geo, V3(0, 1, 0));
+    golf_geo_add_point(geo, V3(1, 1, 0));
+    golf_geo_add_point(geo, V3(1, 1, 1));
+    golf_geo_add_point(geo, V3(0, 1, 1));
+
     golf_geo_add_face(geo, 4, 0, 1, 2, 3);
     golf_geo_add_face(geo, 4, 7, 6, 5, 4);
+    golf_geo_add_face(geo, 4, 7, 4, 0, 3);
+    golf_geo_add_face(geo, 4, 5, 6, 2, 1);
+    golf_geo_add_face(geo, 4, 4, 5, 1, 0);
+    golf_geo_add_face(geo, 4, 6, 7, 3, 2);
 }
 
 void golf_geo_update_model(golf_geo_t *geo) {
@@ -43,9 +49,9 @@ void golf_geo_update_model(golf_geo_t *geo) {
             vec3 p0 = geo->p.data[idx0];
             vec3 p1 = geo->p.data[idx1];
             vec3 p2 = geo->p.data[idx2];
-            vec2 tc0 = geo->tc.data[idx0];
-            vec2 tc1 = geo->tc.data[idx1];
-            vec2 tc2 = geo->tc.data[idx2];
+            vec2 tc0 = V2(0, 0);
+            vec2 tc1 = V2(0, 0);
+            vec2 tc2 = V2(0, 0);
             vec3 n = vec3_normalize(vec3_cross(vec3_sub(p1, p0), vec3_sub(p2, p0)));
 
             vec_push(&geo->model.positions, p0);
@@ -60,15 +66,13 @@ void golf_geo_update_model(golf_geo_t *geo) {
         }
     }
 
-    golf_model_group_t group = golf_model_group("mat", 0, geo->model.positions.length);
+    golf_model_group_t group = golf_model_group("cube", 0, geo->model.positions.length);
     vec_push(&geo->model.groups, group);
     golf_model_update_buf(&geo->model);
 }
 
-void golf_geo_add_point(golf_geo_t *geo, vec3 p, vec2 tc) {
+void golf_geo_add_point(golf_geo_t *geo, vec3 p) {
     vec_push(&geo->p, p);
-    vec_push(&geo->tc, tc);
-    golf_geo_update_model(geo);
 }
 
 void golf_geo_add_face(golf_geo_t *geo, int num_points, ...) {
@@ -86,7 +90,20 @@ void golf_geo_add_face(golf_geo_t *geo, int num_points, ...) {
     }
     va_end(ap);
     vec_push(&geo->faces, face);
-    golf_geo_update_model(geo);
+}
+
+void golf_geo_add_face_arr(golf_geo_t *geo, int num_points, int *idxs) {
+    if (num_points < 3) {
+        golf_log_warning("Cannot add face with less than 3 points to a geo");
+        return;
+    }
+
+    golf_geo_face_t face;
+    vec_init(&face.idx);
+    for (int i = 0; i < num_points; i++) {
+        vec_push(&face.idx, idxs[i]);
+    }
+    vec_push(&geo->faces, face);
 }
 
 static void _golf_json_object_set_movement(JSON_Object *obj, const char *name, golf_movement_t *movement) {
@@ -136,6 +153,68 @@ static void _golf_json_object_get_movement(JSON_Object *obj, const char *name, g
         golf_log_warning("Invalid type for movement");
         *movement = golf_movement_none();
     }
+}
+
+static void _golf_json_object_set_geo(JSON_Object *obj, const char *name, golf_geo_t *geo) {
+    JSON_Value *geo_val = json_value_init_object();
+    JSON_Object *geo_obj = json_value_get_object(geo_val);
+
+    JSON_Value *p_val = json_value_init_array();
+    JSON_Array *p_arr = json_value_get_array(p_val);
+    for (int i = 0; i < geo->p.length; i++) {
+        json_array_append_number(p_arr, geo->p.data[i].x);
+        json_array_append_number(p_arr, geo->p.data[i].y);
+        json_array_append_number(p_arr, geo->p.data[i].z);
+    }
+    json_object_set_value(geo_obj, "p", p_val);
+
+    JSON_Value *faces_val = json_value_init_array();
+    JSON_Array *faces_arr = json_value_get_array(faces_val);
+    for (int i = 0; i < geo->faces.length; i++) {
+        JSON_Value *idxs_val = json_value_init_array();
+        JSON_Array *idxs_arr = json_value_get_array(idxs_val);
+        for (int j = 0; j < geo->faces.data[i].idx.length; j++) {
+            int idx = geo->faces.data[i].idx.data[j];
+            json_array_append_number(idxs_arr, (double)idx);
+        }
+
+        JSON_Value *face_val = json_value_init_object();
+        JSON_Object *face_obj = json_value_get_object(face_val);
+        json_object_set_value(face_obj, "idxs", idxs_val);
+        json_array_append_value(faces_arr, face_val);
+    }
+    json_object_set_value(geo_obj, "faces", faces_val);
+
+    json_object_set_value(obj, name, geo_val);
+}
+
+static void _golf_json_object_get_geo(JSON_Object *obj, const char *name, golf_geo_t *geo) {
+    golf_geo_init(geo);
+    JSON_Object *geo_obj = json_object_get_object(obj, name);
+
+    JSON_Array *p_arr = json_object_get_array(geo_obj, "p");
+    for (int i = 0; i < (int)json_array_get_count(p_arr); i += 3) {
+        vec3 p;
+        p.x = json_array_get_number(p_arr, i);
+        p.y = json_array_get_number(p_arr, i + 1);
+        p.z = json_array_get_number(p_arr, i + 2);
+        golf_geo_add_point(geo, p);
+    }
+
+    JSON_Array *faces_arr = json_object_get_array(geo_obj, "faces");
+    for (int i = 0; i < (int)json_array_get_count(faces_arr); i++) {
+        JSON_Object *face = json_array_get_object(faces_arr, i);
+        JSON_Array *idxs_arr = json_object_get_array(face, "idxs");
+        int idxs_count = (int)json_array_get_count(idxs_arr);
+        int *idxs = malloc(sizeof(int) * idxs_count);
+        for (int i = 0; i < idxs_count; i++) {
+            idxs[i] = (int)json_array_get_number(idxs_arr, i);
+        }
+        golf_geo_add_face_arr(geo, idxs_count, idxs);
+        free(idxs);
+    }
+
+    golf_geo_update_model(geo);
 }
 
 static void _golf_json_object_set_transform(JSON_Object *obj, const char *name, golf_transform_t *transform) {
@@ -388,18 +467,22 @@ bool golf_level_save(golf_level_t *level, const char *path) {
                 break;
             }
             case BALL_START_ENTITY: {
-                //golf_ball_start_entity_t *ball_start = &entity->ball_start;
                 json_object_set_string(json_entity_obj, "type", "ball_start");
                 break;
             }
             case HOLE_ENTITY: {
-                //golf_hole_entity_t *hole = &entity->hole;
                 json_object_set_string(json_entity_obj, "type", "hole");
                 break;
             }
             case GEO_ENTITY: {
+                json_object_set_string(json_entity_obj, "type", "geo");
                 break;
             }
+        }
+
+        golf_geo_t *geo = golf_entity_get_geo(entity);
+        if (geo) {
+            _golf_json_object_set_geo(json_entity_obj, "geo", geo);
         }
 
         golf_transform_t *transform = golf_entity_get_transform(entity);
@@ -550,6 +633,19 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
             _golf_json_object_get_transform(obj, "transform", &transform);
 
             entity = golf_entity_hole(name, transform);
+            valid_entity = true;
+        }
+        else if (type && strcmp(type, "geo") == 0) {
+            golf_transform_t transform;
+            _golf_json_object_get_transform(obj, "transform", &transform);
+
+            golf_movement_t movement;
+            _golf_json_object_get_movement(obj, "movement", &movement);
+
+            golf_geo_t geo;
+            _golf_json_object_get_geo(obj, "geo", &geo);
+
+            entity = golf_entity_geo(name, transform, movement, geo);
             valid_entity = true;
         }
 
@@ -748,7 +844,21 @@ golf_model_t *golf_entity_get_model(golf_entity_t *entity) {
             return golf_data_get_model("data/models/sphere.obj");
         }
         case GEO_ENTITY: {
+            return &entity->geo.geo.model;
+        }
+    }
+    return NULL;
+}
+
+golf_geo_t *golf_entity_get_geo(golf_entity_t *entity) {
+    switch (entity->type) {
+        case MODEL_ENTITY: 
+        case HOLE_ENTITY: 
+        case BALL_START_ENTITY: {
             return NULL;
+        }
+        case GEO_ENTITY: {
+            return &entity->geo.geo;
         }
     }
     return NULL;

@@ -38,6 +38,9 @@ typedef struct golf_editor {
     bool gi_running;
     golf_gi_t gi;
 
+    bool in_geo_edit_mode;
+    golf_geo_t *edit_mode_geo;
+
     struct {
         bool is_using;
         bool bounds_mode_on;
