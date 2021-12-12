@@ -5,6 +5,90 @@
 #include "golf/log.h"
 #include "golf/parson_helper.h"
 
+void golf_geo_init(golf_geo_t *geo) {
+    vec_init(&geo->p);
+    vec_init(&geo->tc);
+    vec_init(&geo->faces);
+    golf_model_init(&geo->model, 64);
+}
+
+void golf_geo_init_square(golf_geo_t *geo) {
+    golf_geo_init(geo);
+    golf_geo_add_point(geo, V3(0, 0, 0), V2(0, 0));
+    golf_geo_add_point(geo, V3(1, 0, 0), V2(0, 0));
+    golf_geo_add_point(geo, V3(1, 0, 1), V2(0, 0));
+    golf_geo_add_point(geo, V3(0, 0, 1), V2(0, 0));
+    golf_geo_add_point(geo, V3(0, 1, 0), V2(0, 0));
+    golf_geo_add_point(geo, V3(1, 1, 0), V2(0, 0));
+    golf_geo_add_point(geo, V3(1, 1, 1), V2(0, 0));
+    golf_geo_add_point(geo, V3(0, 1, 1), V2(0, 0));
+    golf_geo_add_face(geo, 4, 0, 1, 2, 3);
+    golf_geo_add_face(geo, 4, 7, 6, 5, 4);
+}
+
+void golf_geo_update_model(golf_geo_t *geo) {
+    geo->model.groups.length = 0;
+    geo->model.positions.length = 0;
+    geo->model.normals.length = 0;
+    geo->model.texcoords.length = 0;
+
+    for (int i = 0; i < geo->faces.length; i++) {
+        golf_geo_face_t face = geo->faces.data[i];
+
+        int idx0 = face.idx.data[0];
+        for (int i = 1; i < face.idx.length - 1; i++) {
+            int idx1 = face.idx.data[i];
+            int idx2 = face.idx.data[i + 1];
+
+            vec3 p0 = geo->p.data[idx0];
+            vec3 p1 = geo->p.data[idx1];
+            vec3 p2 = geo->p.data[idx2];
+            vec2 tc0 = geo->tc.data[idx0];
+            vec2 tc1 = geo->tc.data[idx1];
+            vec2 tc2 = geo->tc.data[idx2];
+            vec3 n = vec3_normalize(vec3_cross(vec3_sub(p1, p0), vec3_sub(p2, p0)));
+
+            vec_push(&geo->model.positions, p0);
+            vec_push(&geo->model.positions, p1);
+            vec_push(&geo->model.positions, p2);
+            vec_push(&geo->model.normals, n);
+            vec_push(&geo->model.normals, n);
+            vec_push(&geo->model.normals, n);
+            vec_push(&geo->model.texcoords, tc0);
+            vec_push(&geo->model.texcoords, tc1);
+            vec_push(&geo->model.texcoords, tc2);
+        }
+    }
+
+    golf_model_group_t group = golf_model_group("mat", 0, geo->model.positions.length);
+    vec_push(&geo->model.groups, group);
+    golf_model_update_buf(&geo->model);
+}
+
+void golf_geo_add_point(golf_geo_t *geo, vec3 p, vec2 tc) {
+    vec_push(&geo->p, p);
+    vec_push(&geo->tc, tc);
+    golf_geo_update_model(geo);
+}
+
+void golf_geo_add_face(golf_geo_t *geo, int num_points, ...) {
+    if (num_points < 3) {
+        golf_log_warning("Cannot add face with less than 3 points to a geo");
+        return;
+    }
+
+    golf_geo_face_t face;
+    vec_init(&face.idx);
+    va_list ap;
+    va_start(ap, num_points);
+    for (int i = 0; i < num_points; i++) {
+        vec_push(&face.idx, va_arg(ap, int));
+    }
+    va_end(ap);
+    vec_push(&geo->faces, face);
+    golf_geo_update_model(geo);
+}
+
 static void _golf_json_object_set_movement(JSON_Object *obj, const char *name, golf_movement_t *movement) {
     JSON_Value *movement_val = json_value_init_object();
     JSON_Object *movement_obj = json_value_get_object(movement_val);
@@ -313,6 +397,9 @@ bool golf_level_save(golf_level_t *level, const char *path) {
                 json_object_set_string(json_entity_obj, "type", "hole");
                 break;
             }
+            case GEO_ENTITY: {
+                break;
+            }
         }
 
         golf_transform_t *transform = golf_entity_get_transform(entity);
@@ -574,6 +661,17 @@ golf_entity_t golf_entity_ball_start(const char *name, golf_transform_t transfor
     return entity;
 }
 
+golf_entity_t golf_entity_geo(const char *name, golf_transform_t transform, golf_movement_t movement, golf_geo_t geo) {
+    golf_entity_t entity;
+    entity.active = true;
+    entity.type = GEO_ENTITY;
+    snprintf(entity.name, GOLF_MAX_NAME_LEN, "%s", name);
+    entity.geo.transform = transform;
+    entity.geo.movement = movement;
+    entity.geo.geo = geo;
+    return entity;
+}
+
 golf_entity_t golf_entity_make_copy(golf_entity_t *entity) {
     golf_entity_t entity_copy = *entity;
 
@@ -595,6 +693,9 @@ golf_movement_t *golf_entity_get_movement(golf_entity_t *entity) {
         case MODEL_ENTITY: {
             return &entity->model.movement;
         }
+        case GEO_ENTITY: {
+            return &entity->geo.movement;
+        }
         case BALL_START_ENTITY: 
         case HOLE_ENTITY: {
             return NULL;
@@ -614,6 +715,9 @@ golf_transform_t *golf_entity_get_transform(golf_entity_t *entity) {
         case HOLE_ENTITY: {
             return &entity->hole.transform;
         }
+        case GEO_ENTITY: {
+            return &entity->geo.transform;
+        }
     }
     return NULL;
 }
@@ -623,6 +727,7 @@ golf_lightmap_section_t *golf_entity_get_lightmap_section(golf_entity_t *entity)
         case MODEL_ENTITY: {
             return &entity->model.lightmap_section;
         }
+        case GEO_ENTITY:
         case HOLE_ENTITY:
         case BALL_START_ENTITY: {
             return NULL;
@@ -641,6 +746,9 @@ golf_model_t *golf_entity_get_model(golf_entity_t *entity) {
         }
         case BALL_START_ENTITY: {
             return golf_data_get_model("data/models/sphere.obj");
+        }
+        case GEO_ENTITY: {
+            return NULL;
         }
     }
     return NULL;

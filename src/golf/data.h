@@ -8,6 +8,8 @@
 #include "golf/maths.h"
 #include "golf/string.h"
 
+#define GOLF_MAX_NAME_LEN 64
+
 typedef struct golf_texture {
     int width, height;
     sg_image sg_image;
@@ -30,21 +32,25 @@ typedef struct golf_font {
     vec_golf_font_atlas_t atlases;
 } golf_font_t;
 
-#define GOLF_MODEL_MATERIAL_NAME_MAX_LEN 64
 typedef struct golf_model_group {
-    char material_name[GOLF_MODEL_MATERIAL_NAME_MAX_LEN];
+    char material_name[GOLF_MAX_NAME_LEN];
     int start_vertex;
     int vertex_count;
 } golf_model_group_t;
 typedef vec_t(golf_model_group_t) vec_golf_group_t;
+golf_model_group_t golf_model_group(const char *material_name, int start_vertex, int vertex_count);
 
 typedef struct golf_model {
     vec_golf_group_t groups;
     vec_vec3_t positions;
     vec_vec3_t normals;
     vec_vec2_t texcoords;
+
+    int sg_size;
     sg_buffer sg_positions_buf, sg_normals_buf, sg_texcoords_buf;
 } golf_model_t;
+void golf_model_init(golf_model_t *model, int size);
+void golf_model_update_buf(golf_model_t *model);
 
 typedef struct golf_shader {
     sg_shader sg_shader;

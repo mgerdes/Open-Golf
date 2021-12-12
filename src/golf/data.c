@@ -595,6 +595,66 @@ static bool _golf_model_import(const char *path, char *data, int data_len) {
     return true;
 }
 
+golf_model_group_t golf_model_group(const char *material_name, int start_vertex, int vertex_count) {
+    golf_model_group_t group;
+    snprintf(group.material_name, GOLF_MAX_NAME_LEN, "%s", material_name);
+    group.start_vertex = start_vertex;
+    group.vertex_count = vertex_count;
+    return group;
+}
+
+void golf_model_init(golf_model_t *model, int size) {
+    vec_init(&model->groups);
+    vec_init(&model->positions);
+    vec_init(&model->normals);
+    vec_init(&model->texcoords);
+    model->sg_size = size;
+
+    sg_buffer_desc desc = {
+        .type = SG_BUFFERTYPE_VERTEXBUFFER,
+        .usage = SG_USAGE_DYNAMIC,
+    };
+
+    desc.size = sizeof(vec3) * size;
+    model->sg_positions_buf = sg_make_buffer(&desc);
+
+    desc.size = sizeof(vec3) * size;
+    model->sg_normals_buf = sg_make_buffer(&desc);
+
+    desc.size = sizeof(vec2) * size;
+    model->sg_texcoords_buf = sg_make_buffer(&desc);
+}
+
+void golf_model_update_buf(golf_model_t *model) {
+    if (model->positions.length > model->sg_size) {
+        model->sg_size = 2 * model->positions.length;
+
+        sg_buffer_desc desc = {
+            .type = SG_BUFFERTYPE_VERTEXBUFFER,
+            .usage = SG_USAGE_DYNAMIC,
+        };
+
+        desc.size = sizeof(vec3) * model->sg_size;
+        sg_destroy_buffer(model->sg_positions_buf);
+        model->sg_positions_buf = sg_make_buffer(&desc);
+
+        desc.size = sizeof(vec3) * model->sg_size;
+        sg_destroy_buffer(model->sg_normals_buf);
+        model->sg_normals_buf = sg_make_buffer(&desc);
+
+        desc.size = sizeof(vec2) * model->sg_size;
+        sg_destroy_buffer(model->sg_texcoords_buf);
+        model->sg_texcoords_buf = sg_make_buffer(&desc);
+    }
+
+    sg_update_buffer(model->sg_positions_buf, 
+            &(sg_range) { model->positions.data, sizeof(vec3) * model->positions.length });
+    sg_update_buffer(model->sg_normals_buf, 
+            &(sg_range) { model->normals.data, sizeof(vec3) * model->normals.length });
+    sg_update_buffer(model->sg_texcoords_buf, 
+            &(sg_range) { model->texcoords.data, sizeof(vec2) * model->texcoords.length });
+}
+
 static bool _golf_model_load(void *ptr, const char *path, char *data, int data_len) {
     golf_model_t *model = (golf_model_t*) ptr;
     JSON_Value *val = json_parse_string(data);
@@ -604,19 +664,23 @@ static bool _golf_model_load(void *ptr, const char *path, char *data, int data_l
         return false;
     }
 
-    vec_init(&model->groups);
-    vec_init(&model->positions);
-    vec_init(&model->normals);
-    vec_init(&model->texcoords);
-
     JSON_Array *json_groups_arr = json_object_get_array(obj, "groups");
+
+    int sg_buf_size = 0;
+    for (int i = 0; i < (int)json_array_get_count(json_groups_arr); i++) {
+        JSON_Object *json_group_obj = json_array_get_object(json_groups_arr, i);
+        JSON_Array *json_vertices_arr = json_object_get_array(json_group_obj, "vertices");
+        sg_buf_size += (int)json_array_get_count(json_vertices_arr) / 8;
+    }
+    golf_model_init(model, sg_buf_size);
+
     for (int i = 0; i < (int)json_array_get_count(json_groups_arr); i++) {
         JSON_Object *json_group_obj = json_array_get_object(json_groups_arr, i);
         const char *material_name = json_object_get_string(json_group_obj, "material_name");
         JSON_Array *json_vertices_arr = json_object_get_array(json_group_obj, "vertices");
 
         golf_model_group_t model_group;
-        snprintf(model_group.material_name, GOLF_MODEL_MATERIAL_NAME_MAX_LEN, "%s", material_name);
+        snprintf(model_group.material_name, GOLF_MAX_NAME_LEN, "%s", material_name);
         model_group.start_vertex = model->positions.length;
         model_group.vertex_count = (int)json_array_get_count(json_vertices_arr) / 8;
         for (int j = 0; j < (int)json_array_get_count(json_vertices_arr); j += 8) {
@@ -640,23 +704,7 @@ static bool _golf_model_load(void *ptr, const char *path, char *data, int data_l
         vec_push(&model->groups, model_group);
     }
 
-    {
-        sg_buffer_desc desc = {
-            .type = SG_BUFFERTYPE_VERTEXBUFFER,
-        };
-
-        desc.data.size = sizeof(vec3) * model->positions.length;
-        desc.data.ptr = model->positions.data;
-        model->sg_positions_buf = sg_make_buffer(&desc);
-
-        desc.data.size = sizeof(vec3) * model->normals.length;
-        desc.data.ptr = model->normals.data;
-        model->sg_normals_buf = sg_make_buffer(&desc);
-
-        desc.data.size = sizeof(vec2) * model->texcoords.length;
-        desc.data.ptr = model->texcoords.data;
-        model->sg_texcoords_buf = sg_make_buffer(&desc);
-    }
+    golf_model_update_buf(model);
 
     json_value_free(val);
 

@@ -928,18 +928,9 @@ void golf_editor_update(float dt) {
                     bool selected = _golf_editor_is_entity_selected(i);
                     igPushID_Int(i);
                     switch (entity->type) {
-                        case MODEL_ENTITY: {
-                            if (igSelectable_Bool(entity->name, selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
-                                _golf_editor_select_entity(i);
-                            }
-                            break;
-                        }
-                        case BALL_START_ENTITY: {
-                            if (igSelectable_Bool(entity->name, selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
-                                _golf_editor_select_entity(i);
-                            }
-                            break;
-                        }
+                        case BALL_START_ENTITY:
+                        case MODEL_ENTITY: 
+                        case GEO_ENTITY:
                         case HOLE_ENTITY: {
                             if (igSelectable_Bool(entity->name, selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
                                 _golf_editor_select_entity(i);
@@ -971,6 +962,17 @@ void golf_editor_update(float dt) {
                     movement = golf_movement_none();
 
                     golf_entity_t entity = golf_entity_model("Model", transform, "data/models/cube.obj", lightmap_section, movement);
+                    _golf_editor_vec_push_and_fix_actions(&editor.level->entities, entity);
+                    _golf_editor_commit_entity_create_action();
+                }
+
+                if (igButton("Create Geo Entity", (ImVec2){0, 0})) {
+                    golf_geo_t geo;
+                    golf_geo_init_square(&geo);
+                    golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
+                    golf_movement_t movement = golf_movement_none();
+
+                    golf_entity_t entity = golf_entity_geo("geo", transform, movement, geo);
                     _golf_editor_vec_push_and_fix_actions(&editor.level->entities, entity);
                     _golf_editor_commit_entity_create_action();
                 }
@@ -1215,6 +1217,10 @@ void golf_editor_update(float dt) {
                     igText("TYPE: Hole");
                     break;
                 }
+                case GEO_ENTITY: {
+                    igText("TYPE: Geo");
+                    break;
+                }
             }
 
             bool edit_done = false;
@@ -1337,6 +1343,10 @@ void golf_editor_update(float dt) {
                             vec_push(&entity_idxs, i);
                         }
                     }
+                    break;
+                }
+                case GEO_ENTITY: {
+                    break;
                 }
             }
         }

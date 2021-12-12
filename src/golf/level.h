@@ -6,7 +6,22 @@
 #include "golf/file.h"
 #include "golf/maths.h"
 
-#define GOLF_MAX_NAME_LEN 64
+typedef struct golf_geo_face {
+    vec_int_t idx;
+} golf_geo_face_t;
+typedef vec_t(golf_geo_face_t) vec_golf_geo_face_t;
+
+typedef struct golf_geo {
+    vec_vec3_t p;
+    vec_vec2_t tc;
+    vec_golf_geo_face_t faces;
+    golf_model_t model;
+} golf_geo_t;
+void golf_geo_init(golf_geo_t *geo);
+void golf_geo_init_square(golf_geo_t *geo);
+void golf_geo_update_model(golf_geo_t *geo);
+void golf_geo_add_point(golf_geo_t *geo, vec3 p, vec2 tc);
+void golf_geo_add_face(golf_geo_t *geo, int num_points, ...);
 
 typedef enum golf_movement_type {
     GOLF_MOVEMENT_NONE,
@@ -100,10 +115,17 @@ typedef struct golf_hole_entity {
     golf_transform_t transform;
 } golf_hole_entity_t;
 
+typedef struct golf_geo_entity {
+    golf_transform_t transform;
+    golf_movement_t movement;
+    golf_geo_t geo;
+} golf_geo_entity_t;
+
 typedef enum golf_entity_type {
     MODEL_ENTITY,
     BALL_START_ENTITY,
     HOLE_ENTITY,
+    GEO_ENTITY,
 } golf_entity_type_t;
 
 typedef struct golf_entity {
@@ -114,12 +136,14 @@ typedef struct golf_entity {
         golf_model_entity_t model;
         golf_ball_start_entity_t ball_start;
         golf_hole_entity_t hole;
+        golf_geo_entity_t geo;
     };
 } golf_entity_t;
 typedef vec_t(golf_entity_t) vec_golf_entity_t;
 golf_entity_t golf_entity_model(const char *name, golf_transform_t transform, const char *model_path, golf_lightmap_section_t lightmap_section, golf_movement_t movement);
 golf_entity_t golf_entity_hole(const char *name, golf_transform_t transform);
 golf_entity_t golf_entity_ball_start(const char *name, golf_transform_t transform);
+golf_entity_t golf_entity_geo(const char *name, golf_transform_t transform, golf_movement_t movement, golf_geo_t geo);
 golf_entity_t golf_entity_make_copy(golf_entity_t *entity);
 golf_movement_t *golf_entity_get_movement(golf_entity_t *entity);
 golf_transform_t *golf_entity_get_transform(golf_entity_t *entity);
