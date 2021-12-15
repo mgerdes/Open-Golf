@@ -10,6 +10,18 @@
 #include "golf/level.h"
 #include "golf/maths.h"
 
+typedef enum golf_edit_mode_entity_type {
+    GOLF_EDIT_MODE_ENTITY_FACE,
+    GOLF_EDIT_MODE_ENTITY_LINE,
+    GOLF_EDIT_MODE_ENTITY_POINT,
+} golf_edit_mode_entity_type_t;
+
+typedef struct golf_edit_mode_entity {
+    golf_edit_mode_entity_type_t type; 
+    int idx;
+} golf_edit_mode_entity_t;
+typedef vec_t(golf_edit_mode_entity_t) vec_golf_edit_mode_entity_t;
+
 typedef struct golf_editor_action_data {
     int size;
     char *ptr;
@@ -39,7 +51,14 @@ typedef struct golf_editor {
     golf_gi_t gi;
 
     bool in_geo_edit_mode;
-    golf_geo_t *edit_mode_geo;
+    struct {
+        mat4 model_mat;
+        golf_geo_t *geo;
+
+        bool is_entity_hovered;
+        golf_edit_mode_entity_t hovered_entity;
+        vec_golf_edit_mode_entity_t selected_entities;
+    } edit_mode;
 
     struct {
         bool is_using;
@@ -72,5 +91,7 @@ typedef struct golf_editor {
 golf_editor_t *golf_editor_get(void);
 void golf_editor_init(void);
 void golf_editor_update(float dt);
+bool golf_editor_is_edit_entity_hovered(golf_edit_mode_entity_type_t type, int idx);
+bool golf_editor_is_edit_entity_selected(golf_edit_mode_entity_type_t type, int idx);
 
 #endif

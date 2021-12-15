@@ -893,22 +893,32 @@ void golf_renderer_draw_editor(void) {
     }
 
     if (editor->in_geo_edit_mode) {
-        golf_geo_t *geo = editor->edit_mode_geo;
+        golf_geo_t *geo = editor->edit_mode.geo;
 
         sg_apply_pipeline(renderer.solid_color_material_pipeline);
         for (int i = 0; i < geo->p.length; i++) {
             vec3 p = geo->p.data[i];
             float sz = vec3_distance(p, renderer.cam_pos) / CFG_NUM(editor_cfg, "edit_mode_sphere_size");
-            mat4 model_mat = mat4_multiply_n(2, 
+            mat4 model_mat = mat4_multiply_n(3, 
+                    editor->edit_mode.model_mat,
                     mat4_translation(p), 
                     mat4_scale(V3(sz, sz, sz)));
             golf_model_t *model = golf_data_get_model("data/models/sphere.obj");
             int start = 0;
             int count = model->positions.length;
-            golf_material_t material = golf_material_color(CFG_VEC3(editor_cfg, "edit_mode_sphere_color"));
+            vec3 color = CFG_VEC3(editor_cfg, "edit_mode_selectable_color");
+            if (golf_editor_is_edit_entity_hovered(GOLF_EDIT_MODE_ENTITY_POINT, i)) {
+                color = CFG_VEC3(editor_cfg, "edit_mode_hovered_color");
+            }
+            else if (golf_editor_is_edit_entity_selected(GOLF_EDIT_MODE_ENTITY_POINT, i)) {  
+                color = CFG_VEC3(editor_cfg, "edit_mode_selected_color");
+            }
+            golf_material_t material = golf_material_color(color);
             _golf_renderer_draw_solid_color_material(model, start, count, model_mat, material);
         }
 
+        int line_idx = 0;
+        int start_vertex = 0;
         for (int i = 0; i < geo->faces.length; i++) {
             golf_geo_face_t face = geo->faces.data[i];
             int n = face.idx.length;
@@ -917,15 +927,44 @@ void golf_renderer_draw_editor(void) {
                 int idx1 = face.idx.data[(i + 1) % n];
                 vec3 p0 = geo->p.data[idx0];
                 vec3 p1 = geo->p.data[idx1];
+                vec3 p_avg = vec3_scale(vec3_add(p0, p1), 0.5f);
 
-                float sz = vec3_distance(p0, renderer.cam_pos) / CFG_NUM(editor_cfg, "edit_mode_line_size");
-                mat4 model_mat = mat4_box_to_line_transform(p0, p1, sz);
+                float sz = vec3_distance(p_avg, renderer.cam_pos) / CFG_NUM(editor_cfg, "edit_mode_line_size");
+                vec3 color = CFG_VEC3(editor_cfg, "edit_mode_selectable_color");
+                if (golf_editor_is_edit_entity_hovered(GOLF_EDIT_MODE_ENTITY_LINE, line_idx)) {
+                    color = CFG_VEC3(editor_cfg, "edit_mode_hovered_color");
+                    sz += 0.001f;
+                }
+                else if (golf_editor_is_edit_entity_selected(GOLF_EDIT_MODE_ENTITY_LINE, line_idx)) {
+                    color = CFG_VEC3(editor_cfg, "edit_mode_selected_color");
+                    sz += 0.001f;
+                }
+                mat4 model_mat = mat4_multiply_n(2, 
+                        editor->edit_mode.model_mat, 
+                        mat4_box_to_line_transform(p0, p1, sz));
                 golf_model_t *model = golf_data_get_model("data/models/cube.obj");
                 int start = 0;
                 int count = model->positions.length;
-                golf_material_t material = golf_material_color(CFG_VEC3(editor_cfg, "edit_mode_line_color"));
+                golf_material_t material = golf_material_color(color);
                 _golf_renderer_draw_solid_color_material(model, start, count, model_mat, material);
+                line_idx++;
             }
+
+            if (golf_editor_is_edit_entity_hovered(GOLF_EDIT_MODE_ENTITY_FACE, i)) {
+                golf_model_t *model = &geo->model;
+                mat4 model_mat = editor->edit_mode.model_mat;
+                vec3 color = CFG_VEC3(editor_cfg, "edit_mode_hovered_color");
+                golf_material_t material = golf_material_color(color);
+                _golf_renderer_draw_solid_color_material(model, start_vertex, 3 * (n - 2), model_mat, material);
+            }
+            else if (golf_editor_is_edit_entity_selected(GOLF_EDIT_MODE_ENTITY_FACE, i)) {
+                golf_model_t *model = &geo->model;
+                mat4 model_mat = editor->edit_mode.model_mat;
+                vec3 color = CFG_VEC3(editor_cfg, "edit_mode_selected_color");
+                golf_material_t material = golf_material_color(color);
+                _golf_renderer_draw_solid_color_material(model, start_vertex, 3 * (n - 2), model_mat, material);
+            }
+            start_vertex += 3 * (n - 2);
         }
     }
 

@@ -1156,14 +1156,14 @@ bool ray_intersect_spheres(vec3 ro, vec3 rd, vec3 *center, float *radius, int nu
     return min_t < FLT_MAX;
 }
 
-bool ray_intersect_segments(vec3 ro, vec3 rd, vec3 *p0, vec3 *p1, float radius, int num_segments, float *t, int *idx) {
+bool ray_intersect_segments(vec3 ro, vec3 rd, vec3 *p0, vec3 *p1, float *radius, int num_segments, float *t, int *idx) {
     float min_t = FLT_MAX;
 
     for (int i = 0; i < num_segments; i++) {
         float s0, t0;
         vec3 c0, c1;
         float dist = closest_point_ray_segment(ro, vec3_add(ro, rd), p0[i], p1[i], &s0, &t0, &c0, &c1);
-        if (dist < radius * radius) {
+        if (dist < radius[i] * radius[i]) {
             if (s0 < min_t) {
                 min_t = s0;
                 *idx = i;

@@ -219,7 +219,7 @@ bool point_inside_box(vec3 p, vec3 box_center, vec3 box_half_lengths);
 void ray_intersect_triangles_all(vec3 ro, vec3 rd, vec3 *points, int num_points, mat4 transform, float *t);
 bool ray_intersect_triangles(vec3 ro, vec3 rd, vec3 *points, int num_points, float *t, int *idx);
 bool ray_intersect_spheres(vec3 ro, vec3 rd, vec3 *center, float *radius, int num_spheres, float *t, int *idx);
-bool ray_intersect_segments(vec3 ro, vec3 rd, vec3 *p0, vec3 *p1, float radius, int num_segments, float *t, int *idx);
+bool ray_intersect_segments(vec3 ro, vec3 rd, vec3 *p0, vec3 *p1, float *radius, int num_segments, float *t, int *idx);
 bool ray_intersect_planes(vec3 ro, vec3 rd, vec3 *p, vec3 *n, int num_planes, float *t, int *idx);
 bool ray_intersect_box(vec3 ro, vec3 rd, vec3 box_center, vec3 box_half_lengths, float *t);
 void triangles_inside_box(vec3 *triangle_points, int num_triangles, vec3 box_center, vec3 box_half_lengths,
