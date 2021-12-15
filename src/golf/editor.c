@@ -44,8 +44,10 @@ void golf_editor_init(void) {
     }
 
     {
-        editor.in_geo_edit_mode = false;
+        editor.in_edit_mode = false;
         vec_init(&editor.edit_mode.selected_entities);
+        vec_init(&editor.edit_mode.starting_positions);
+        vec_init(&editor.edit_mode.point_idxs);
     }
 
     {
@@ -75,12 +77,12 @@ void golf_editor_init(void) {
 }
 
 static void _golf_editor_start_editing_geo(golf_geo_t *geo, mat4 model_mat) {
-    if (editor.in_geo_edit_mode) {
+    if (editor.in_edit_mode) {
         golf_log_warning("Already in geo editing mode");
         return;
     }
 
-    editor.in_geo_edit_mode = true;
+    editor.in_edit_mode = true;
     editor.edit_mode.geo = geo;
     editor.edit_mode.model_mat = model_mat;
 }
@@ -197,7 +199,7 @@ static void _golf_editor_fix_actions(char *new_ptr, char *old_ptr_start, char *o
     }
 }
 
-#define _golf_editor_vec_push_and_fix_actions(v, val)\
+#define _vec_push_and_fix_actions(v, val)\
     do {\
         char *old_ptr = (char*)(v)->data;\
         vec_push(v, val); \
@@ -371,7 +373,7 @@ static void _golf_editor_duplicate_selected_entities(void) {
         int idx = editor.selected_idxs.data[i];
         golf_entity_t *selected_entity = &editor.level->entities.data[idx];
         golf_entity_t entity_copy = golf_entity_make_copy(selected_entity);
-        _golf_editor_vec_push_and_fix_actions(&editor.level->entities, entity_copy);
+        _vec_push_and_fix_actions(&editor.level->entities, entity_copy);
     }
 
     golf_editor_action_t action;
@@ -398,7 +400,120 @@ static void _golf_editor_push_unique_idx(vec_int_t *idxs, int idx) {
     vec_push(idxs, idx);
 }
 
-static void _golf_editor_update_imguizmo(void) {
+static void _golf_geo_delete_face(golf_geo_t *geo, int idx, golf_editor_action_t *action) {
+    golf_geo_face_t *face = &geo->faces.data[idx];
+    if (!face->active) {
+        golf_log_warning("Double deleting face");
+        return;
+    }
+
+    _golf_editor_action_push_data(action, &face->active, sizeof(face->active));
+    face->active = false;
+}
+
+static void _golf_geo_delete_point(golf_geo_t *geo, int idx, golf_editor_action_t *action) {
+    golf_geo_point_t *point = &geo->points.data[idx];
+    if (!point->active) {
+        golf_log_warning("Double deleting point");
+        return;
+    }
+
+    _golf_editor_action_push_data(action, &point->active, sizeof(point->active));
+    point->active = false;
+
+    for (int i = 0; i < geo->faces.length; i++) {
+        golf_geo_face_t *face = &geo->faces.data[i];
+        if (!face->active) continue;
+
+        for (int j = 0; j < face->idx.length; j++) {
+            if (face->idx.data[j] == idx) {
+                _golf_geo_delete_face(geo, i, action);
+                break;
+            }
+        }
+    }
+}
+
+static void _golf_editor_recalculate_guizmo_model_mat(void);
+
+static void _golf_editor_edit_mode_select_entity(golf_edit_mode_entity_t entity) {
+    bool shift_down = inputs->button_down[SAPP_KEYCODE_LEFT_SHIFT];
+    bool selected = golf_editor_is_edit_entity_selected(entity);
+
+    if (selected) {
+        if (shift_down) {
+            for (int i = 0; i < editor.edit_mode.selected_entities.length; i++) {
+                golf_edit_mode_entity_t entity2 = editor.edit_mode.selected_entities.data[i];
+                if (golf_editor_edit_entities_compare(entity, entity2)) {
+                    vec_splice(&editor.edit_mode.selected_entities, i, 1);
+                    break;
+                }
+            }
+        }
+        else {
+            editor.edit_mode.selected_entities.length = 0;
+            vec_push(&editor.edit_mode.selected_entities, entity);
+        }
+    }
+    else {
+        if (!shift_down) {
+            editor.edit_mode.selected_entities.length = 0;
+        }
+        vec_push(&editor.edit_mode.selected_entities, entity);
+    }
+    _golf_editor_recalculate_guizmo_model_mat();
+}
+
+static void _golf_editor_recalculate_guizmo_model_mat(void) {
+    if (editor.in_edit_mode) {
+        mat4 model_mat = editor.edit_mode.model_mat;
+        golf_geo_t *geo = editor.edit_mode.geo;
+
+        vec3 pos = V3(0, 0, 0);
+        for (int i = 0; i < editor.edit_mode.selected_entities.length; i++) {
+            golf_edit_mode_entity_t entity = editor.edit_mode.selected_entities.data[i];
+            switch (entity.type) {
+                case GOLF_EDIT_MODE_ENTITY_FACE: {
+                    vec3 face_pos = V3(0, 0, 0);
+                    golf_geo_face_t face = geo->faces.data[entity.idx];
+                    for (int i = 0; i < face.idx.length; i++) {
+                        int idx = face.idx.data[i];
+
+                        golf_geo_point_t p = geo->points.data[idx];
+                        vec3 pos = vec3_apply_mat4(p.position, 1, model_mat);
+                        face_pos = vec3_add(face_pos, pos);
+                    }
+                    face_pos = vec3_scale(face_pos, 1.0f / face.idx.length);
+                    pos = vec3_add(pos, face_pos);
+                    break;
+                }
+                case GOLF_EDIT_MODE_ENTITY_LINE: {
+                    golf_geo_point_t p0 = geo->points.data[entity.idx];
+                    golf_geo_point_t p1 = geo->points.data[entity.idx2];
+
+                    vec3 pos0 = vec3_apply_mat4(p0.position, 1, model_mat);
+                    vec3 pos1 = vec3_apply_mat4(p1.position, 1, model_mat);
+                    vec3 line_pos = vec3_scale(vec3_add(pos0, pos1), 0.5f);
+                    pos = vec3_add(pos, line_pos);
+                    break;
+                }
+                case GOLF_EDIT_MODE_ENTITY_POINT: {
+                    golf_geo_point_t p = geo->points.data[entity.idx];
+                    vec3 point_pos = vec3_apply_mat4(p.position, 1, model_mat);
+                    pos = vec3_add(pos, point_pos);
+                    break;
+                }
+            }
+        }
+        pos = vec3_scale(pos, 1.0f / editor.edit_mode.selected_entities.length);
+
+        editor.gizmo.model_mat = mat4_translation(pos);
+    }
+    else {
+    }
+}
+
+static void _golf_editor_update_guizmo(void) {
     ImGuizmo_SetRect(renderer->viewport_pos.x, renderer->viewport_pos.y, renderer->viewport_size.x, renderer->viewport_size.y);
     mat4 view_mat_t = mat4_transpose(renderer->view_mat);
     mat4 proj_mat_t = mat4_transpose(renderer->proj_mat);
@@ -421,84 +536,72 @@ static void _golf_editor_update_imguizmo(void) {
         snap = snap_values;
     }
 
-    if (editor.in_geo_edit_mode && editor.edit_mode.selected_entities.length > 0) {
-        mat4 model_mat = editor.edit_mode.model_mat;
+    if (editor.in_edit_mode && editor.edit_mode.selected_entities.length > 0) {
+        //mat4 model_mat = editor.edit_mode.model_mat;
         golf_geo_t *geo = editor.edit_mode.geo;
 
-        vec_int_t point_idxs;
-        vec_init(&point_idxs);
-        vec3 pos = V3(0, 0, 0);
-        for (int i = 0; i < editor.edit_mode.selected_entities.length; i++) {
-            golf_edit_mode_entity_t entity = editor.edit_mode.selected_entities.data[i];
-            switch (entity.type) {
-                case GOLF_EDIT_MODE_ENTITY_FACE: {
-                    vec3 face_pos = V3(0, 0, 0);
-                    golf_geo_face_t face = geo->faces.data[entity.idx];
-                    for (int i = 0; i < face.idx.length; i++) {
-                        int idx = face.idx.data[i];
-                        _golf_editor_push_unique_idx(&point_idxs, idx);
+        mat4 mat = mat4_transpose(editor.gizmo.model_mat); 
+        ImGuizmo_Manipulate(view_mat_t.m, proj_mat_t.m, editor.gizmo.operation, 
+                editor.gizmo.mode, mat.m, NULL, snap, NULL, NULL);
+        editor.gizmo.model_mat = mat4_transpose(mat);
 
-                        vec3 p = vec3_apply_mat4(geo->p.data[idx], 1, model_mat);
-                        face_pos = vec3_add(face_pos, p);
-                    }
-                    face_pos = vec3_scale(face_pos, 1.0f / face.idx.length);
-                    pos = vec3_add(pos, face_pos);
-                    break;
-                }
-                case GOLF_EDIT_MODE_ENTITY_LINE: {
-                    vec3 line_pos = V3(0, 0, 0);
-                    int line_idx = 0;
-                    for (int i = 0; i < geo->faces.length; i++) {
-                        golf_geo_face_t face = geo->faces.data[i];
+        bool is_using = ImGuizmo_IsUsing();
+        if (!editor.gizmo.is_using && is_using) {
+            editor.edit_mode.point_idxs.length = 0;
+            for (int i = 0; i < editor.edit_mode.selected_entities.length; i++) {
+                golf_edit_mode_entity_t entity = editor.edit_mode.selected_entities.data[i];
+                switch (entity.type) {
+                    case GOLF_EDIT_MODE_ENTITY_FACE: {
+                        golf_geo_face_t face = geo->faces.data[entity.idx];
                         for (int i = 0; i < face.idx.length; i++) {
-                            if (line_idx == entity.idx) {
-                                int idx0 = face.idx.data[i];
-                                int idx1 = face.idx.data[(i + 1) % face.idx.length];
-                                _golf_editor_push_unique_idx(&point_idxs, idx0);
-                                _golf_editor_push_unique_idx(&point_idxs, idx1);
-
-                                vec3 p0 = vec3_apply_mat4(geo->p.data[idx0], 1, model_mat);
-                                line_pos = vec3_add(line_pos, p0);
-                                vec3 p1 = vec3_apply_mat4(geo->p.data[idx1], 1, model_mat);
-                                line_pos = vec3_add(line_pos, p1);
-                            }
-                            line_idx++;
+                            int idx = face.idx.data[i];
+                            _golf_editor_push_unique_idx(&editor.edit_mode.point_idxs, idx);
                         }
+                        break;
                     }
-                    line_pos = vec3_scale(line_pos, 0.5f);
-                    pos = vec3_add(pos, line_pos);
-                    break;
-                }
-                case GOLF_EDIT_MODE_ENTITY_POINT: {
-                    _golf_editor_push_unique_idx(&point_idxs, entity.idx);
-                    pos = vec3_add(pos, geo->p.data[entity.idx]);
-                    break;
+                    case GOLF_EDIT_MODE_ENTITY_LINE: {
+                        _golf_editor_push_unique_idx(&editor.edit_mode.point_idxs, entity.idx);
+                        _golf_editor_push_unique_idx(&editor.edit_mode.point_idxs, entity.idx2);
+                        break;
+                    }
+                    case GOLF_EDIT_MODE_ENTITY_POINT: {
+                        _golf_editor_push_unique_idx(&editor.edit_mode.point_idxs, entity.idx);
+                        break;
+                    }
                 }
             }
+
+            golf_editor_action_t action;
+            _golf_editor_action_init(&action, "Modify edit-mode-entity position");
+            editor.edit_mode.starting_positions.length = 0;
+            for (int i = 0; i < editor.edit_mode.point_idxs.length; i++) {
+                int idx = editor.edit_mode.point_idxs.data[i];
+                golf_geo_point_t *p = &geo->points.data[idx];
+                _golf_editor_action_push_data(&action, &p->position, sizeof(p->position));
+                vec_push(&editor.edit_mode.starting_positions, p->position);
+            }
+            _golf_editor_start_action(action);
+            editor.edit_mode.starting_model_mat = editor.gizmo.model_mat;
         }
-        pos = vec3_scale(pos, 1.0f / editor.edit_mode.selected_entities.length);
-
-        mat4 mat = mat4_transpose(mat4_translation(pos)); 
-        mat4 delta_matrix;
-        ImGuizmo_Manipulate(view_mat_t.m, proj_mat_t.m, editor.gizmo.operation, 
-                editor.gizmo.mode, mat.m, delta_matrix.m, snap, NULL, NULL);
-
-        float delta_translation_arr[3];
-        float delta_rotation_arr[3];
-        float delta_scale_arr[3];
-        ImGuizmo_DecomposeMatrixToComponents(delta_matrix.m, delta_translation_arr, delta_rotation_arr, delta_scale_arr);
-        vec3 delta_translation = vec3_create_from_array(delta_translation_arr);
-
-        for (int i = 0; i < point_idxs.length; i++) {
-            int idx = point_idxs.data[i];
-            vec3 p = geo->p.data[idx];
-            p = vec3_add(p, delta_translation);
-            geo->p.data[idx] = p;
+        if (editor.gizmo.is_using && !is_using) {
+            _golf_editor_commit_action();
         }
+        editor.gizmo.is_using = is_using;
 
-        vec_deinit(&point_idxs);
+        if (editor.gizmo.is_using) {
+            for (int i = 0; i < editor.edit_mode.point_idxs.length; i++) {
+                int idx = editor.edit_mode.point_idxs.data[i];
+                golf_geo_point_t *p = &geo->points.data[idx];
+                vec3 starting_position = editor.edit_mode.starting_positions.data[i];
+
+                mat4 model_mat = mat4_multiply_n(2, 
+                        mat4_inverse(editor.edit_mode.starting_model_mat),
+                        editor.gizmo.model_mat);
+                p->position = vec3_apply_mat4(starting_position, 1, model_mat);
+            }
+        }
     }
-    else if (!editor.in_geo_edit_mode && editor.selected_idxs.length > 0) {
+    else if (!editor.in_edit_mode && editor.selected_idxs.length > 0) {
         mat4 model_mat = mat4_transpose(editor.gizmo.model_mat);
         mat4 delta_matrix;
         ImGuizmo_Manipulate(view_mat_t.m, proj_mat_t.m, editor.gizmo.operation, 
@@ -734,7 +837,7 @@ void golf_editor_update(float dt) {
         }
     }
 
-    _golf_editor_update_imguizmo();
+    _golf_editor_update_guizmo();
 
     {
         igBegin("Top", NULL, ImGuiWindowFlags_NoTitleBar);
@@ -1037,7 +1140,100 @@ void golf_editor_update(float dt) {
         igEnd();
     }
 
-    {
+    if (editor.in_edit_mode) {
+        golf_geo_t *geo = editor.edit_mode.geo;
+        golf_geo_update_model(geo);
+
+        igBegin("RightTop", NULL, ImGuiWindowFlags_NoTitleBar);
+        for (int i = 0; i < geo->faces.length; i++) {
+            golf_geo_face_t *face = &geo->faces.data[i];
+            if (!face->active) continue;
+
+            bool selected = golf_editor_is_edit_entity_selected(golf_edit_mode_entity_face(i));
+            igPushID_Int(i);
+            if (igSelectable_Bool("Face", selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
+                _golf_editor_edit_mode_select_entity(golf_edit_mode_entity_face(i));
+            }
+            igPopID();
+        }
+        for (int i = 0; i < geo->points.length; i++) {
+            golf_geo_point_t *point = &geo->points.data[i];
+            if (!point->active) continue;
+
+            bool selected = golf_editor_is_edit_entity_selected(golf_edit_mode_entity_point(i));
+            igPushID_Int(i);
+            if (igSelectable_Bool("Point", selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
+                _golf_editor_edit_mode_select_entity(golf_edit_mode_entity_point(i));
+            }
+            igPopID();
+        }
+        igEnd();
+
+        igBegin("RightBottom", NULL, ImGuiWindowFlags_NoTitleBar);
+        for (int i = 0; i < editor.edit_mode.selected_entities.length; i++) {
+            golf_edit_mode_entity_t entity = editor.edit_mode.selected_entities.data[i];
+            igPushID_Int(i);
+            switch (entity.type) {
+                case GOLF_EDIT_MODE_ENTITY_FACE: {
+                    if (igTreeNode_Str("Face")) {
+                        golf_geo_face_t *face = &geo->faces.data[entity.idx];
+                        igText("Num points: %d", face->idx.length);
+                        for (int i = 0; i < face->idx.length; i++) {
+                            golf_geo_point_t *p = &geo->points.data[face->idx.data[i]];
+                            igPushID_Int(i);
+                            _golf_editor_undoable_igInputFloat3("Position", (float*)&p->position, "Modify point position");
+                            igPopID();
+                        }
+                        if (igButton("Delete", (ImVec2){0, 0})) {
+                            golf_editor_action_t action;
+                            _golf_editor_action_init(&action, "Delete geo face");
+                            _golf_geo_delete_face(geo, entity.idx, &action);
+                            _golf_editor_start_action(action);
+                            _golf_editor_commit_action();
+                        }
+                        igTreePop();
+                    }
+                    break;
+                }
+                case GOLF_EDIT_MODE_ENTITY_LINE: {
+                    if (igTreeNode_Str("Line")) {
+                        golf_geo_point_t *p0 = &geo->points.data[entity.idx];
+                        golf_geo_point_t *p1 = &geo->points.data[entity.idx2];
+                        _golf_editor_undoable_igInputFloat3("P0", (float*)&p0->position, "Modify point position");
+                        _golf_editor_undoable_igInputFloat3("P1", (float*)&p1->position, "Modify point position");
+                        if (igButton("Delete", (ImVec2){0, 0})) {
+                            golf_editor_action_t action;
+                            _golf_editor_action_init(&action, "Delete geo line");
+                            _golf_geo_delete_point(geo, entity.idx, &action);
+                            _golf_geo_delete_point(geo, entity.idx2, &action);
+                            _golf_editor_start_action(action);
+                            _golf_editor_commit_action();
+                        }
+                        igTreePop();
+                    }
+                    break;
+                }
+                case GOLF_EDIT_MODE_ENTITY_POINT: {
+                    if (igTreeNode_Str("Point")) {
+                        golf_geo_point_t *p = &geo->points.data[entity.idx];
+                        _golf_editor_undoable_igInputFloat3("Position", (float*)&p->position, "Modify point position");
+                        if (igButton("Delete", (ImVec2){0, 0})) {
+                            golf_editor_action_t action;
+                            _golf_editor_action_init(&action, "Delete geo point");
+                            _golf_geo_delete_point(geo, entity.idx, &action);
+                            _golf_editor_start_action(action);
+                            _golf_editor_commit_action();
+                        }
+                        igTreePop();
+                    }
+                    break;
+                }
+            }
+            igPopID();
+        }
+        igEnd();
+    }
+    else {
         igBegin("RightTop", NULL, ImGuiWindowFlags_NoTitleBar);
         if (igBeginTabBar("", ImGuiTabBarFlags_None)) {
             if (igBeginTabItem("Entities", NULL, ImGuiTabItemFlags_None)) {
@@ -1081,7 +1277,7 @@ void golf_editor_update(float dt) {
                     movement = golf_movement_none();
 
                     golf_entity_t entity = golf_entity_model("Model", transform, "data/models/cube.obj", lightmap_section, movement);
-                    _golf_editor_vec_push_and_fix_actions(&editor.level->entities, entity);
+                    _vec_push_and_fix_actions(&editor.level->entities, entity);
                     _golf_editor_commit_entity_create_action();
                 }
 
@@ -1093,7 +1289,7 @@ void golf_editor_update(float dt) {
                     golf_movement_t movement = golf_movement_none();
 
                     golf_entity_t entity = golf_entity_geo("geo", transform, movement, geo);
-                    _golf_editor_vec_push_and_fix_actions(&editor.level->entities, entity);
+                    _vec_push_and_fix_actions(&editor.level->entities, entity);
                     _golf_editor_commit_entity_create_action();
                 }
 
@@ -1191,7 +1387,7 @@ void golf_editor_update(float dt) {
                     snprintf(new_material.name, GOLF_MAX_NAME_LEN, "%s", "new");
                     new_material.type = GOLF_MATERIAL_COLOR;
                     new_material.color = V3(1, 0, 0);
-                    _golf_editor_vec_push_and_fix_actions(&editor.level->materials, new_material);
+                    _vec_push_and_fix_actions(&editor.level->materials, new_material);
 
                     golf_material_t *material = &vec_last(&editor.level->materials);
                     material->active = false;
@@ -1298,7 +1494,7 @@ void golf_editor_update(float dt) {
                     golf_lightmap_image_t new_lightmap_image;
                     golf_lightmap_image_init(&new_lightmap_image, "new", 256, 1, 1, 1, 1, image_data);
                     free(image_data);
-                    _golf_editor_vec_push_and_fix_actions(&editor.level->lightmap_images, new_lightmap_image);
+                    _vec_push_and_fix_actions(&editor.level->lightmap_images, new_lightmap_image);
 
                     golf_lightmap_image_t *lightmap_image = &vec_last(&editor.level->lightmap_images);
                     lightmap_image->active = false;
@@ -1312,9 +1508,7 @@ void golf_editor_update(float dt) {
             igEndTabBar();
         }
         igEnd();
-    }
 
-    {
         igBegin("RightBottom", NULL, ImGuiWindowFlags_NoTitleBar);
         if (editor.selected_idxs.length > 0) {
             int idx = editor.selected_idxs.data[0];
@@ -1430,7 +1624,7 @@ void golf_editor_update(float dt) {
         }
     }
 
-    if (editor.in_geo_edit_mode) {
+    if (editor.in_edit_mode) {
         golf_geo_t *geo = editor.edit_mode.geo;
         mat4 model_mat = editor.edit_mode.model_mat;
 
@@ -1439,24 +1633,35 @@ void golf_editor_update(float dt) {
         vec_vec3_t line_segments_p0;
         vec_vec3_t line_segments_p1;
         vec_float_t line_segments_radius;
+        vec_int_t line_p0_idx;
+        vec_int_t line_p1_idx;
         vec_init(&triangles);
         vec_init(&face_idxs);
         vec_init(&line_segments_p0);
         vec_init(&line_segments_p1);
         vec_init(&line_segments_radius);
+        vec_init(&line_p0_idx);
+        vec_init(&line_p1_idx);
         for (int i = 0; i < geo->faces.length; i++) {
             golf_geo_face_t face = geo->faces.data[i];
+            if (!face.active) continue;
 
             int idx0 = face.idx.data[0];
             for (int j = 1; j < face.idx.length - 1; j++) {
                 int idx1 = face.idx.data[j];
                 int idx2 = face.idx.data[j + 1];
-                vec3 p0 = vec3_apply_mat4(geo->p.data[idx0], 1, model_mat);
-                vec3 p1 = vec3_apply_mat4(geo->p.data[idx1], 1, model_mat);
-                vec3 p2 = vec3_apply_mat4(geo->p.data[idx2], 1, model_mat);
-                vec_push(&triangles, p0);
-                vec_push(&triangles, p1);
-                vec_push(&triangles, p2);
+
+                golf_geo_point_t p0 = geo->points.data[idx0];
+                golf_geo_point_t p1 = geo->points.data[idx1];
+                golf_geo_point_t p2 = geo->points.data[idx2];
+
+                vec3 pos0 = vec3_apply_mat4(p0.position, 1, model_mat);
+                vec3 pos1 = vec3_apply_mat4(p1.position, 1, model_mat);
+                vec3 pos2 = vec3_apply_mat4(p2.position, 1, model_mat);
+
+                vec_push(&triangles, pos0);
+                vec_push(&triangles, pos1);
+                vec_push(&triangles, pos2);
                 vec_push(&face_idxs, i);
             }
 
@@ -1464,26 +1669,38 @@ void golf_editor_update(float dt) {
                 int idx0 = face.idx.data[j];
                 int idx1 = face.idx.data[(j + 1) % face.idx.length];
 
-                vec3 p0 = geo->p.data[idx0];
-                vec3 p1 = geo->p.data[idx1];
-                vec_push(&line_segments_p0, p0);
-                vec_push(&line_segments_p1, p1);
+                golf_geo_point_t p0 = geo->points.data[idx0];
+                golf_geo_point_t p1 = geo->points.data[idx1];
 
-                vec3 p_avg = vec3_scale(vec3_add(p0, p1), 0.5f);
-                float radius = vec3_distance(p_avg, renderer->cam_pos) / CFG_NUM(editor_cfg, "edit_mode_line_size");
+                vec3 pos0 = vec3_apply_mat4(p0.position, 1, model_mat);
+                vec3 pos1 = vec3_apply_mat4(p1.position, 1, model_mat);
+
+                vec3 pos_avg = vec3_scale(vec3_add(pos0, pos1), 0.5f);
+                float radius = vec3_distance(pos_avg, renderer->cam_pos) / CFG_NUM(editor_cfg, "edit_mode_line_size");
+
+                vec_push(&line_segments_p0, pos0);
+                vec_push(&line_segments_p1, pos1);
                 vec_push(&line_segments_radius, radius);
+                vec_push(&line_p0_idx, idx0);
+                vec_push(&line_p1_idx, idx1);
             }
         }
 
         vec_vec3_t sphere_centers;
         vec_float_t sphere_radiuses;
+        vec_int_t point_idxs;
         vec_init(&sphere_centers);
         vec_init(&sphere_radiuses);
-        for (int i = 0; i < geo->p.length; i++) {
-            vec3 p = vec3_apply_mat4(geo->p.data[i], 1, model_mat);
-            float radius = vec3_distance(p, renderer->cam_pos) / CFG_NUM(editor_cfg, "edit_mode_sphere_size");
-            vec_push(&sphere_centers, p);
+        vec_init(&point_idxs);
+        for (int i = 0; i < geo->points.length; i++) {
+            golf_geo_point_t p = geo->points.data[i];
+            if (!p.active) continue;
+
+            vec3 pos = vec3_apply_mat4(p.position, 1, model_mat);
+            float radius = vec3_distance(pos, renderer->cam_pos) / CFG_NUM(editor_cfg, "edit_mode_sphere_size");
+            vec_push(&sphere_centers, pos);
             vec_push(&sphere_radiuses, radius);
+            vec_push(&point_idxs, i);
         }
 
         vec3 ro = inputs->mouse_ray_orig;
@@ -1503,34 +1720,26 @@ void golf_editor_update(float dt) {
 
         if (sphere_t < line_t && sphere_t < triangle_t) {
             editor.edit_mode.is_entity_hovered = true;
-            editor.edit_mode.hovered_entity.type = GOLF_EDIT_MODE_ENTITY_POINT;
-            editor.edit_mode.hovered_entity.idx = sphere_idx;
+            int idx = point_idxs.data[sphere_idx];
+            editor.edit_mode.hovered_entity = golf_edit_mode_entity_point(idx);
         }
         else if (line_t < sphere_t && line_t < triangle_t) {
             editor.edit_mode.is_entity_hovered = true;
-            editor.edit_mode.hovered_entity.type = GOLF_EDIT_MODE_ENTITY_LINE;
-            editor.edit_mode.hovered_entity.idx = line_idx;
+            int idx0 = line_p0_idx.data[line_idx];
+            int idx1 = line_p1_idx.data[line_idx];
+            editor.edit_mode.hovered_entity = golf_edit_mode_entity_line(idx0, idx1);
         }
         else if (triangle_t < sphere_t && triangle_t < line_t) {
             editor.edit_mode.is_entity_hovered = true;
-            editor.edit_mode.hovered_entity.type = GOLF_EDIT_MODE_ENTITY_FACE;
-            editor.edit_mode.hovered_entity.idx = face_idxs.data[triangle_idx];
+            int idx = face_idxs.data[triangle_idx];
+            editor.edit_mode.hovered_entity = golf_edit_mode_entity_face(idx);
         }
         else {
             editor.edit_mode.is_entity_hovered = false;
         }
 
         if (!IO->WantCaptureMouse && !editor.mouse_down_in_imgui && inputs->mouse_clicked[SAPP_MOUSEBUTTON_LEFT]) {
-            if (!inputs->button_down[SAPP_KEYCODE_LEFT_SHIFT]) {
-                editor.edit_mode.selected_entities.length = 0;
-            }
-
-            if (editor.edit_mode.is_entity_hovered) {
-                golf_edit_mode_entity_t entity = editor.edit_mode.hovered_entity;
-                if (!golf_editor_is_edit_entity_selected(entity.type, entity.idx)) {
-                    vec_push(&editor.edit_mode.selected_entities, entity);
-                }
-            }
+            _golf_editor_edit_mode_select_entity(editor.edit_mode.hovered_entity);
         }
 
         vec_deinit(&triangles);
@@ -1538,8 +1747,11 @@ void golf_editor_update(float dt) {
         vec_deinit(&line_segments_p0);
         vec_deinit(&line_segments_p1);
         vec_deinit(&line_segments_radius);
+        vec_deinit(&line_p0_idx);
+        vec_deinit(&line_p1_idx);
         vec_deinit(&sphere_centers);
         vec_deinit(&sphere_radiuses);
+        vec_deinit(&point_idxs);
     }
     else {
         vec_vec3_t triangles;
@@ -1703,17 +1915,58 @@ void golf_editor_update(float dt) {
     }
 }
 
-bool golf_editor_is_edit_entity_hovered(golf_edit_mode_entity_type_t type, int idx) {
-    bool in_geo_edit_mode = editor.in_geo_edit_mode;
-    bool is_entity_hovered = editor.edit_mode.is_entity_hovered;
-    golf_edit_mode_entity_t hovered_entity = editor.edit_mode.hovered_entity;
-    return in_geo_edit_mode && is_entity_hovered && hovered_entity.type == type && hovered_entity.idx == idx;
+golf_edit_mode_entity_t golf_edit_mode_entity_face(int face_idx) {
+    golf_edit_mode_entity_t entity;
+    entity.type = GOLF_EDIT_MODE_ENTITY_FACE;
+    entity.idx = face_idx;
+    entity.idx2 = -1;
+    return entity;
 }
 
-bool golf_editor_is_edit_entity_selected(golf_edit_mode_entity_type_t type, int idx) {
+golf_edit_mode_entity_t golf_edit_mode_entity_line(int point0_idx, int point1_idx) {
+    golf_edit_mode_entity_t entity;
+    entity.type = GOLF_EDIT_MODE_ENTITY_LINE;
+    entity.idx = point0_idx;
+    entity.idx2 = point1_idx;
+    return entity;
+}
+
+golf_edit_mode_entity_t golf_edit_mode_entity_point(int point_idx) {
+    golf_edit_mode_entity_t entity;
+    entity.type = GOLF_EDIT_MODE_ENTITY_POINT;
+    entity.idx = point_idx;
+    entity.idx2 = -1;
+    return entity;
+}
+
+bool golf_editor_edit_entities_compare(golf_edit_mode_entity_t entity0, golf_edit_mode_entity_t entity1) {
+    if (entity0.type != entity1.type) {
+        return false;
+    }
+    switch (entity0.type) {
+        case GOLF_EDIT_MODE_ENTITY_FACE:
+        case GOLF_EDIT_MODE_ENTITY_POINT:
+            return entity0.idx == entity1.idx;
+            break;
+        case GOLF_EDIT_MODE_ENTITY_LINE:
+            return (entity0.idx == entity1.idx && entity0.idx2 == entity1.idx2) ||
+                (entity0.idx == entity1.idx2 && entity0.idx2 == entity1.idx);
+            break;
+    }
+    return false;
+}
+
+bool golf_editor_is_edit_entity_hovered(golf_edit_mode_entity_t entity) {
+    bool in_edit_mode = editor.in_edit_mode;
+    bool is_entity_hovered = editor.edit_mode.is_entity_hovered;
+    golf_edit_mode_entity_t hovered_entity = editor.edit_mode.hovered_entity;
+    return in_edit_mode && is_entity_hovered && golf_editor_edit_entities_compare(hovered_entity, entity);
+}
+
+bool golf_editor_is_edit_entity_selected(golf_edit_mode_entity_t entity) {
     for (int i = 0; i < editor.edit_mode.selected_entities.length; i++) {
-        golf_edit_mode_entity_t entity = editor.edit_mode.selected_entities.data[i];
-        if (entity.type == type && entity.idx == idx) {
+        golf_edit_mode_entity_t entity2 = editor.edit_mode.selected_entities.data[i];
+        if (golf_editor_edit_entities_compare(entity, entity2)) {
             return true;
         }
     }

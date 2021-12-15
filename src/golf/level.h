@@ -7,21 +7,27 @@
 #include "golf/maths.h"
 
 typedef struct golf_geo_face {
+    bool active;
     vec_int_t idx;
 } golf_geo_face_t;
 typedef vec_t(golf_geo_face_t) vec_golf_geo_face_t;
+golf_geo_face_t golf_geo_face(int n, int *idx);
+
+typedef struct golf_geo_point {
+    bool active;
+    vec3 position;
+} golf_geo_point_t;
+typedef vec_t(golf_geo_point_t) vec_golf_geo_point_t;
+golf_geo_point_t golf_geo_point(vec3 position);
 
 typedef struct golf_geo {
-    vec_vec3_t p;
+    vec_golf_geo_point_t points;
     vec_golf_geo_face_t faces;
     golf_model_t model;
 } golf_geo_t;
 void golf_geo_init(golf_geo_t *geo);
 void golf_geo_init_cube(golf_geo_t *geo);
 void golf_geo_update_model(golf_geo_t *geo);
-void golf_geo_add_point(golf_geo_t *geo, vec3 p);
-void golf_geo_add_face(golf_geo_t *geo, int num_points, ...);
-void golf_geo_add_face_arr(golf_geo_t *geo, int num_points, int *idxs);
 
 typedef enum golf_movement_type {
     GOLF_MOVEMENT_NONE,

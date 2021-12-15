@@ -18,9 +18,12 @@ typedef enum golf_edit_mode_entity_type {
 
 typedef struct golf_edit_mode_entity {
     golf_edit_mode_entity_type_t type; 
-    int idx;
+    int idx, idx2;
 } golf_edit_mode_entity_t;
 typedef vec_t(golf_edit_mode_entity_t) vec_golf_edit_mode_entity_t;
+golf_edit_mode_entity_t golf_edit_mode_entity_face(int face_idx);
+golf_edit_mode_entity_t golf_edit_mode_entity_line(int point0_idx, int point1_idx);
+golf_edit_mode_entity_t golf_edit_mode_entity_point(int point_idx);
 
 typedef struct golf_editor_action_data {
     int size;
@@ -50,7 +53,7 @@ typedef struct golf_editor {
     bool gi_running;
     golf_gi_t gi;
 
-    bool in_geo_edit_mode;
+    bool in_edit_mode;
     struct {
         mat4 model_mat;
         golf_geo_t *geo;
@@ -58,6 +61,10 @@ typedef struct golf_editor {
         bool is_entity_hovered;
         golf_edit_mode_entity_t hovered_entity;
         vec_golf_edit_mode_entity_t selected_entities;
+
+        vec_vec3_t starting_positions;
+        mat4 starting_model_mat;
+        vec_int_t point_idxs;
     } edit_mode;
 
     struct {
@@ -91,7 +98,8 @@ typedef struct golf_editor {
 golf_editor_t *golf_editor_get(void);
 void golf_editor_init(void);
 void golf_editor_update(float dt);
-bool golf_editor_is_edit_entity_hovered(golf_edit_mode_entity_type_t type, int idx);
-bool golf_editor_is_edit_entity_selected(golf_edit_mode_entity_type_t type, int idx);
+bool golf_editor_edit_entities_compare(golf_edit_mode_entity_t entity0, golf_edit_mode_entity_t entity1);
+bool golf_editor_is_edit_entity_hovered(golf_edit_mode_entity_t entity);
+bool golf_editor_is_edit_entity_selected(golf_edit_mode_entity_t entity);
 
 #endif

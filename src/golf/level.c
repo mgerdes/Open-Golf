@@ -5,8 +5,25 @@
 #include "golf/log.h"
 #include "golf/parson_helper.h"
 
+golf_geo_face_t golf_geo_face(int n, int *idx) {
+    golf_geo_face_t face;
+    face.active = true;
+    vec_init(&face.idx);
+    for (int i = 0; i < n; i++) {
+        vec_push(&face.idx, idx[i]);
+    }
+    return face;
+}
+
+golf_geo_point_t golf_geo_point(vec3 position) {
+    golf_geo_point_t point;
+    point.active = true;
+    point.position = position;
+    return point;
+}
+
 void golf_geo_init(golf_geo_t *geo) {
-    vec_init(&geo->p);
+    vec_init(&geo->points);
     vec_init(&geo->faces);
     golf_model_init(&geo->model, 64);
 }
@@ -14,22 +31,22 @@ void golf_geo_init(golf_geo_t *geo) {
 void golf_geo_init_cube(golf_geo_t *geo) {
     golf_geo_init(geo);
 
-    golf_geo_add_point(geo, V3(0, 0, 0));
-    golf_geo_add_point(geo, V3(1, 0, 0));
-    golf_geo_add_point(geo, V3(1, 0, 1));
-    golf_geo_add_point(geo, V3(0, 0, 1));
+    vec_push(&geo->points, golf_geo_point(V3(0, 0, 0)));
+    vec_push(&geo->points, golf_geo_point(V3(1, 0, 0)));
+    vec_push(&geo->points, golf_geo_point(V3(1, 0, 1)));
+    vec_push(&geo->points, golf_geo_point(V3(0, 0, 1)));
 
-    golf_geo_add_point(geo, V3(0, 1, 0));
-    golf_geo_add_point(geo, V3(1, 1, 0));
-    golf_geo_add_point(geo, V3(1, 1, 1));
-    golf_geo_add_point(geo, V3(0, 1, 1));
+    vec_push(&geo->points, golf_geo_point(V3(0, 1, 0)));
+    vec_push(&geo->points, golf_geo_point(V3(1, 1, 0)));
+    vec_push(&geo->points, golf_geo_point(V3(1, 1, 1)));
+    vec_push(&geo->points, golf_geo_point(V3(0, 1, 1)));
 
-    golf_geo_add_face(geo, 4, 0, 1, 2, 3);
-    golf_geo_add_face(geo, 4, 7, 6, 5, 4);
-    golf_geo_add_face(geo, 4, 7, 4, 0, 3);
-    golf_geo_add_face(geo, 4, 5, 6, 2, 1);
-    golf_geo_add_face(geo, 4, 4, 5, 1, 0);
-    golf_geo_add_face(geo, 4, 6, 7, 3, 2);
+    vec_push(&geo->faces, golf_geo_face(4, (int[]){0, 1, 2, 3}));
+    vec_push(&geo->faces, golf_geo_face(4, (int[]){7, 6, 5, 4}));
+    vec_push(&geo->faces, golf_geo_face(4, (int[]){7, 4, 0, 3}));
+    vec_push(&geo->faces, golf_geo_face(4, (int[]){5, 6, 2, 1}));
+    vec_push(&geo->faces, golf_geo_face(4, (int[]){4, 5, 1, 0}));
+    vec_push(&geo->faces, golf_geo_face(4, (int[]){6, 7, 3, 2}));
 }
 
 void golf_geo_update_model(golf_geo_t *geo) {
@@ -40,23 +57,26 @@ void golf_geo_update_model(golf_geo_t *geo) {
 
     for (int i = 0; i < geo->faces.length; i++) {
         golf_geo_face_t face = geo->faces.data[i];
+        if (!face.active) continue;
 
         int idx0 = face.idx.data[0];
         for (int i = 1; i < face.idx.length - 1; i++) {
             int idx1 = face.idx.data[i];
             int idx2 = face.idx.data[i + 1];
 
-            vec3 p0 = geo->p.data[idx0];
-            vec3 p1 = geo->p.data[idx1];
-            vec3 p2 = geo->p.data[idx2];
+            golf_geo_point_t p0 = geo->points.data[idx0];
+            golf_geo_point_t p1 = geo->points.data[idx1];
+            golf_geo_point_t p2 = geo->points.data[idx2];
             vec2 tc0 = V2(0, 0);
             vec2 tc1 = V2(0, 0);
             vec2 tc2 = V2(0, 0);
-            vec3 n = vec3_normalize(vec3_cross(vec3_sub(p1, p0), vec3_sub(p2, p0)));
+            vec3 n = vec3_normalize(vec3_cross(
+                        vec3_sub(p1.position, p0.position), 
+                        vec3_sub(p2.position, p0.position)));
 
-            vec_push(&geo->model.positions, p0);
-            vec_push(&geo->model.positions, p1);
-            vec_push(&geo->model.positions, p2);
+            vec_push(&geo->model.positions, p0.position);
+            vec_push(&geo->model.positions, p1.position);
+            vec_push(&geo->model.positions, p2.position);
             vec_push(&geo->model.normals, n);
             vec_push(&geo->model.normals, n);
             vec_push(&geo->model.normals, n);
@@ -69,41 +89,6 @@ void golf_geo_update_model(golf_geo_t *geo) {
     golf_model_group_t group = golf_model_group("cube", 0, geo->model.positions.length);
     vec_push(&geo->model.groups, group);
     golf_model_update_buf(&geo->model);
-}
-
-void golf_geo_add_point(golf_geo_t *geo, vec3 p) {
-    vec_push(&geo->p, p);
-}
-
-void golf_geo_add_face(golf_geo_t *geo, int num_points, ...) {
-    if (num_points < 3) {
-        golf_log_warning("Cannot add face with less than 3 points to a geo");
-        return;
-    }
-
-    golf_geo_face_t face;
-    vec_init(&face.idx);
-    va_list ap;
-    va_start(ap, num_points);
-    for (int i = 0; i < num_points; i++) {
-        vec_push(&face.idx, va_arg(ap, int));
-    }
-    va_end(ap);
-    vec_push(&geo->faces, face);
-}
-
-void golf_geo_add_face_arr(golf_geo_t *geo, int num_points, int *idxs) {
-    if (num_points < 3) {
-        golf_log_warning("Cannot add face with less than 3 points to a geo");
-        return;
-    }
-
-    golf_geo_face_t face;
-    vec_init(&face.idx);
-    for (int i = 0; i < num_points; i++) {
-        vec_push(&face.idx, idxs[i]);
-    }
-    vec_push(&geo->faces, face);
 }
 
 static void _golf_json_object_set_movement(JSON_Object *obj, const char *name, golf_movement_t *movement) {
@@ -161,10 +146,11 @@ static void _golf_json_object_set_geo(JSON_Object *obj, const char *name, golf_g
 
     JSON_Value *p_val = json_value_init_array();
     JSON_Array *p_arr = json_value_get_array(p_val);
-    for (int i = 0; i < geo->p.length; i++) {
-        json_array_append_number(p_arr, geo->p.data[i].x);
-        json_array_append_number(p_arr, geo->p.data[i].y);
-        json_array_append_number(p_arr, geo->p.data[i].z);
+    for (int i = 0; i < geo->points.length; i++) {
+        vec3 pos = geo->points.data[i].position;
+        json_array_append_number(p_arr, pos.x);
+        json_array_append_number(p_arr, pos.y);
+        json_array_append_number(p_arr, pos.z);
     }
     json_object_set_value(geo_obj, "p", p_val);
 
@@ -194,11 +180,10 @@ static void _golf_json_object_get_geo(JSON_Object *obj, const char *name, golf_g
 
     JSON_Array *p_arr = json_object_get_array(geo_obj, "p");
     for (int i = 0; i < (int)json_array_get_count(p_arr); i += 3) {
-        vec3 p;
-        p.x = json_array_get_number(p_arr, i);
-        p.y = json_array_get_number(p_arr, i + 1);
-        p.z = json_array_get_number(p_arr, i + 2);
-        golf_geo_add_point(geo, p);
+        float x = (float)json_array_get_number(p_arr, i);
+        float y = (float)json_array_get_number(p_arr, i + 1);
+        float z = (float)json_array_get_number(p_arr, i + 2);
+        vec_push(&geo->points, golf_geo_point(V3(x, y, z)));
     }
 
     JSON_Array *faces_arr = json_object_get_array(geo_obj, "faces");
@@ -210,7 +195,7 @@ static void _golf_json_object_get_geo(JSON_Object *obj, const char *name, golf_g
         for (int i = 0; i < idxs_count; i++) {
             idxs[i] = (int)json_array_get_number(idxs_arr, i);
         }
-        golf_geo_add_face_arr(geo, idxs_count, idxs);
+        vec_push(&geo->faces, golf_geo_face(idxs_count, idxs));
         free(idxs);
     }
 
