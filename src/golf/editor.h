@@ -63,6 +63,9 @@ typedef struct golf_editor {
         vec_golf_edit_mode_entity_t selected_entities;
 
         vec_vec3_t starting_positions;
+        mat4 local_model_mat;
+        mat4 world_model_mat;
+
         mat4 starting_model_mat;
         vec_int_t point_idxs;
     } edit_mode;

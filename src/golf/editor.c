@@ -469,7 +469,7 @@ static void _golf_editor_recalculate_guizmo_model_mat(void) {
         mat4 model_mat = editor.edit_mode.model_mat;
         golf_geo_t *geo = editor.edit_mode.geo;
 
-        vec3 pos = V3(0, 0, 0);
+        vec3 local_pos = V3(0, 0, 0);
         for (int i = 0; i < editor.edit_mode.selected_entities.length; i++) {
             golf_edit_mode_entity_t entity = editor.edit_mode.selected_entities.data[i];
             switch (entity.type) {
@@ -480,34 +480,32 @@ static void _golf_editor_recalculate_guizmo_model_mat(void) {
                         int idx = face.idx.data[i];
 
                         golf_geo_point_t p = geo->points.data[idx];
-                        vec3 pos = vec3_apply_mat4(p.position, 1, model_mat);
-                        face_pos = vec3_add(face_pos, pos);
+                        face_pos = vec3_add(p.position, face_pos);
                     }
                     face_pos = vec3_scale(face_pos, 1.0f / face.idx.length);
-                    pos = vec3_add(pos, face_pos);
+                    local_pos = vec3_add(local_pos, face_pos);
                     break;
                 }
                 case GOLF_EDIT_MODE_ENTITY_LINE: {
                     golf_geo_point_t p0 = geo->points.data[entity.idx];
                     golf_geo_point_t p1 = geo->points.data[entity.idx2];
 
-                    vec3 pos0 = vec3_apply_mat4(p0.position, 1, model_mat);
-                    vec3 pos1 = vec3_apply_mat4(p1.position, 1, model_mat);
-                    vec3 line_pos = vec3_scale(vec3_add(pos0, pos1), 0.5f);
-                    pos = vec3_add(pos, line_pos);
+                    vec3 line_pos = vec3_scale(vec3_add(p0.position, p1.position), 0.5f);
+                    local_pos = vec3_add(local_pos, line_pos);
                     break;
                 }
                 case GOLF_EDIT_MODE_ENTITY_POINT: {
                     golf_geo_point_t p = geo->points.data[entity.idx];
-                    vec3 point_pos = vec3_apply_mat4(p.position, 1, model_mat);
-                    pos = vec3_add(pos, point_pos);
+                    local_pos = vec3_add(local_pos, p.position);
                     break;
                 }
             }
         }
-        pos = vec3_scale(pos, 1.0f / editor.edit_mode.selected_entities.length);
+        local_pos = vec3_scale(local_pos, 1.0f / editor.edit_mode.selected_entities.length);
 
-        editor.gizmo.model_mat = mat4_translation(pos);
+        editor.edit_mode.local_model_mat = mat4_translation(local_pos);
+        editor.edit_mode.world_model_mat = mat4_multiply(model_mat, editor.edit_mode.local_model_mat);
+        editor.gizmo.model_mat = editor.edit_mode.world_model_mat;
     }
     else {
     }
@@ -578,7 +576,8 @@ static void _golf_editor_update_guizmo(void) {
                 int idx = editor.edit_mode.point_idxs.data[i];
                 golf_geo_point_t *p = &geo->points.data[idx];
                 _golf_editor_action_push_data(&action, &p->position, sizeof(p->position));
-                vec_push(&editor.edit_mode.starting_positions, p->position);
+                vec3 pos = vec3_apply_mat4(p->position, 1, mat4_inverse(editor.edit_mode.local_model_mat));
+                vec_push(&editor.edit_mode.starting_positions, pos);
             }
             _golf_editor_start_action(action);
             editor.edit_mode.starting_model_mat = editor.gizmo.model_mat;
@@ -594,7 +593,8 @@ static void _golf_editor_update_guizmo(void) {
                 golf_geo_point_t *p = &geo->points.data[idx];
                 vec3 starting_position = editor.edit_mode.starting_positions.data[i];
 
-                mat4 model_mat = mat4_multiply_n(2, 
+                mat4 model_mat = mat4_multiply_n(3, 
+                        editor.edit_mode.local_model_mat,
                         mat4_inverse(editor.edit_mode.starting_model_mat),
                         editor.gizmo.model_mat);
                 p->position = vec3_apply_mat4(starting_position, 1, model_mat);
