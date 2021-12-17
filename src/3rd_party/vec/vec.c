@@ -12,7 +12,7 @@ int vec_expand_(char **data, int *length, int *capacity, int memsz) {
   if (*length + 1 > *capacity) {
     void *ptr;
     int n = (*capacity == 0) ? 1 : *capacity << 1;
-    ptr = realloc(*data, n * memsz);
+    ptr = golf_realloc(*data, n * memsz);
     if (ptr == NULL) return -1;
     *data = ptr;
     *capacity = n;
@@ -24,7 +24,7 @@ int vec_expand_(char **data, int *length, int *capacity, int memsz) {
 int vec_reserve_(char **data, int *length, int *capacity, int memsz, int n) {
   (void) length;
   if (n > *capacity) {
-    void *ptr = realloc(*data, n * memsz);
+    void *ptr = golf_realloc(*data, n * memsz);
     if (ptr == NULL) return -1;
     *data = ptr;
     *capacity = n;
@@ -52,7 +52,7 @@ int vec_compact_(char **data, int *length, int *capacity, int memsz) {
   } else {
     void *ptr;
     int n = *length;
-    ptr = realloc(*data, n * memsz);
+    ptr = golf_realloc(*data, n * memsz);
     if (ptr == NULL) return -1;
     *capacity = n;
     *data = ptr;

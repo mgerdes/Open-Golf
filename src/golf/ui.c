@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include "parson/parson.h"
+#include "golf/alloc.h"
 #include "golf/config.h"
 #include "golf/data.h"
 #include "golf/inputs.h"
@@ -70,7 +71,7 @@ static void _golf_ui_text(const char *font, vec2 pos, float size, int horiz_alig
     int len = vsnprintf(NULL, 0, format, args);
     va_end(args);
 
-    text.string = malloc(len + 1);
+    text.string = golf_alloc(len + 1);
     vsnprintf(text.string, len + 1, format, args);
 
     golf_ui_entity_t entity;
@@ -198,7 +199,7 @@ void golf_ui_update(float dt) {
             case GOLF_UI_SCROLL_LIST_END:
                 break;
             case GOLF_UI_TEXT:
-                free(entity.text.string);
+                golf_free(entity.text.string);
                 break;
         }
     }

@@ -1,5 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 
+#include "golf/alloc.h"
 #include "golf/string.h"
 
 #include <stdlib.h>
@@ -11,11 +12,11 @@ static void _golf_string_grow(golf_string_t *str, int new_len) {
     if (str->cap < new_len) {
         char *old_cstr = str->cstr;  
         str->cap = 2 * (new_len + 1);
-        str->cstr =  malloc(sizeof(char)*(str->cap + 1));
+        str->cstr =  golf_alloc(sizeof(char)*(str->cap + 1));
         if (old_cstr) {
             strcpy(str->cstr, old_cstr);
         }
-        free(old_cstr);
+        golf_free(old_cstr);
     }
 }
 
@@ -23,7 +24,7 @@ void golf_string_init(golf_string_t *str, const char *cstr) {
     int len = (int)strlen(cstr);
     str->cap = len;
     str->len = len;
-    str->cstr = malloc(sizeof(char)*(str->cap + 1));
+    str->cstr = golf_alloc(sizeof(char)*(str->cap + 1));
     strcpy(str->cstr, cstr);
 }
 
@@ -35,7 +36,7 @@ void golf_string_initf(golf_string_t *str, const char *format, ...) {
 
     str->cap = len;
     str->len = len;
-    str->cstr = malloc(sizeof(char)*(str->cap + 1));
+    str->cstr = golf_alloc(sizeof(char)*(str->cap + 1));
 
     va_start(args, format); 
     vsprintf(str->cstr, format, args);
@@ -43,7 +44,7 @@ void golf_string_initf(golf_string_t *str, const char *format, ...) {
 }
 
 void golf_string_deinit(golf_string_t *str) {
-    free(str->cstr);
+    golf_free(str->cstr);
 }
 
 void golf_string_set_cstr(golf_string_t *str, const char *cstr) {

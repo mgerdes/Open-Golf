@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#include "golf/alloc.h"
 #include "golf/base64.h"
 
 /*
@@ -45,7 +46,7 @@ unsigned char * golf_base64_encode(const unsigned char *src, int len,
     olen++; /* nul termination */
     if (olen < len)
         return NULL; /* integer overflow */
-    out = malloc(olen);
+    out = golf_alloc(olen);
     if (out == NULL)
         return NULL;
 
@@ -122,7 +123,7 @@ unsigned char * golf_base64_decode(const unsigned char *src, int len,
         return NULL;
 
     olen = count / 4 * 3;
-    pos = out = malloc(olen);
+    pos = out = golf_alloc(olen);
     if (out == NULL)
         return NULL;
 
@@ -148,7 +149,7 @@ unsigned char * golf_base64_decode(const unsigned char *src, int len,
                     pos -= 2;
                 else {
                     /* Invalid padding */
-                    free(out);
+                    golf_free(out);
                     return NULL;
                 }
                 break;

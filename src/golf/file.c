@@ -146,12 +146,12 @@ bool golf_file_load_data(const char *path, char **data, int *data_len) {
     fseek(f, 0, SEEK_END);
     int num_bytes = ftell(f);
     fseek(f, 0, SEEK_SET);
-    char *bytes = (char *)malloc(num_bytes + 1);
+    char *bytes = (char *)golf_alloc(num_bytes + 1);
     bytes[num_bytes] = 0;
     int ret = (int) fread(bytes, sizeof(char), num_bytes, f);
     if (ret == -1) {
         fclose(f);
-        free(bytes);
+        golf_free(bytes);
         return false;
     }
     fclose(f);
@@ -300,12 +300,12 @@ void golf_dir_init(golf_dir_t *dir, const char *dir_name, bool recurse) {
     vec_init(&files);
 
     _directory_recurse(dir_name, _directory_add_file, &files, recurse);
-    dir->files = malloc(sizeof(golf_file_t) * files.length);
+    dir->files = golf_alloc(sizeof(golf_file_t) * files.length);
     dir->num_files = files.length;
     memcpy(dir->files, files.data, sizeof(golf_file_t) * files.length);
     vec_deinit(&files);
 }
 
 void golf_dir_deinit(golf_dir_t *dir) {
-    free(dir->files);
+    golf_free(dir->files);
 }

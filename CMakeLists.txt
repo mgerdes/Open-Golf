@@ -35,6 +35,7 @@ set(GOLF_BASE_LIBRARIES
     xatlas)
 
 add_library(golf_lib STATIC
+    src/golf/alloc.c
     src/golf/base64.c
     src/golf/config.c
     src/golf/data.c
@@ -44,13 +45,15 @@ add_library(golf_lib STATIC
     src/golf/game.c
     src/golf/gi.c
     src/golf/inputs.c
+	src/golf/json.c
     src/golf/level.c
     src/golf/log.c
+    src/golf/map.c
     src/golf/maths.c
-    src/golf/parson_helper.c
     src/golf/renderer.c
     src/golf/string.c
-    src/golf/ui.c)
+    src/golf/ui.c
+    src/golf/vec.c)
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
     target_link_libraries(golf_lib PUBLIC
         ${GOLF_BASE_LIBRARIES})

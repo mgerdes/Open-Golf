@@ -1,5 +1,10 @@
 #include "sokol/sokol_app.h"
 
+#include "golf/alloc.h"
+#define SOKOL_MALLOC golf_alloc
+#define SOKOL_CALLOC golf_calloc
+#define SOKOL_FREE golf_free 
+
 #define SOKOL_WIN32_NO_GL_LOADER
 #define SOKOL_IMPL
 #include "sokol/sokol_audio.h"

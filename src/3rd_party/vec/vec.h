@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "golf/alloc.h"
+
 #define VEC_VERSION "0.2.1"
 
 
@@ -28,7 +30,7 @@
 
 
 #define vec_deinit(v)\
-  ( free((v)->data),\
+  ( golf_free((v)->data),\
     vec_init(v) ) 
 
 

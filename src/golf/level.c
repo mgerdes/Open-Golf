@@ -2,8 +2,9 @@
 
 #include "stb/stb_image.h"
 #include "stb/stb_image_write.h"
+#include "golf/alloc.h"
+#include "golf/json.h"
 #include "golf/log.h"
-#include "golf/parson_helper.h"
 
 golf_geo_face_t golf_geo_face(int n, int *idx) {
     golf_geo_face_t face;
@@ -191,12 +192,12 @@ static void _golf_json_object_get_geo(JSON_Object *obj, const char *name, golf_g
         JSON_Object *face = json_array_get_object(faces_arr, i);
         JSON_Array *idxs_arr = json_object_get_array(face, "idxs");
         int idxs_count = (int)json_array_get_count(idxs_arr);
-        int *idxs = malloc(sizeof(int) * idxs_count);
+        int *idxs = golf_alloc(sizeof(int) * idxs_count);
         for (int i = 0; i < idxs_count; i++) {
             idxs[i] = (int)json_array_get_number(idxs_arr, i);
         }
         vec_push(&geo->faces, golf_geo_face(idxs_count, idxs));
-        free(idxs);
+        golf_free(idxs);
     }
 
     golf_geo_update_model(geo);
@@ -293,15 +294,15 @@ void golf_lightmap_image_init(golf_lightmap_image_t *lightmap, const char *name,
     lightmap->time_length = time_length;
     lightmap->edited_num_samples = num_samples;
     lightmap->num_samples = num_samples;
-    lightmap->data = malloc(sizeof(unsigned char*) * num_samples);
+    lightmap->data = golf_alloc(sizeof(unsigned char*) * num_samples);
     for (int i = 0; i < num_samples; i++) {
-        lightmap->data[i] = malloc(width * height);
+        lightmap->data[i] = golf_alloc(width * height);
         memcpy(lightmap->data[i], data[i], width * height);
     }
 
-    lightmap->sg_image = malloc(sizeof(sg_image*) * num_samples);
+    lightmap->sg_image = golf_alloc(sizeof(sg_image*) * num_samples);
     for (int s = 0; s < num_samples; s++) {
-        char *sg_image_data = malloc(4 * width * height);
+        char *sg_image_data = golf_alloc(4 * width * height);
         for (int i = 0; i < 4 * width * height; i += 4) {
             sg_image_data[i + 0] = data[s][i / 4];
             sg_image_data[i + 1] = data[s][i / 4];
@@ -322,7 +323,7 @@ void golf_lightmap_image_init(golf_lightmap_image_t *lightmap, const char *name,
             },
         };
         lightmap->sg_image[s] = sg_make_image(&img_desc);
-        free(sg_image_data);
+        golf_free(sg_image_data);
     }
 }
 
@@ -563,14 +564,14 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
         int width, height, c;
         JSON_Array *datas_arr = json_object_get_array(obj, "datas");
         int num_samples = json_array_get_count(datas_arr);
-        unsigned char **image_datas = malloc(sizeof(unsigned char*) * num_samples);
+        unsigned char **image_datas = golf_alloc(sizeof(unsigned char*) * num_samples);
         for (int i = 0; i < num_samples; i++) {
             unsigned char *data;
             int data_len;
             golf_json_array_get_data(datas_arr, i, &data, &data_len);
             unsigned char *image_data = stbi_load_from_memory(data, data_len, &width, &height, &c, 1);
             image_datas[i] = image_data;
-            free(data);
+            golf_free(data);
         }
 
         golf_lightmap_image_t lightmap_image;
@@ -580,7 +581,7 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
         for (int i = 0; i < num_samples; i++) {
             free(image_datas[i]);
         }
-        free(image_datas);
+        golf_free(image_datas);
     }
 
     JSON_Array *json_entities_arr = json_object_get_array(json_obj, "entities");

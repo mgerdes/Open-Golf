@@ -12,10 +12,10 @@
 #include "stb/stb_truetype.h"
 #include "golf/base64.h"
 #include "golf/file.h"
+#include "golf/json.h"
 #include "golf/level.h"
 #include "golf/log.h"
 #include "golf/maths.h"
-#include "golf/parson_helper.h"
 #include "golf/string.h"
 
 #include "golf/shaders/diffuse_color_material.glsl.h"
@@ -35,7 +35,7 @@ static assetsys_error_t _golf_assetsys_file_load(const char *path, char **data, 
     assetsys_file_t asset_file;
     assetsys_file(_assetsys, assetsys_path, &asset_file);
     int size = assetsys_file_size(_assetsys, asset_file);
-    *data = (char*) malloc(size + 1);
+    *data = (char*) golf_alloc(size + 1);
     *data_len = 0;
     assetsys_error_t error = assetsys_file_load(_assetsys, asset_file, data_len, *data, size);
     (*data)[size] = 0;
@@ -132,7 +132,7 @@ static bool _golf_texture_load(void *ptr, const char *path, char *data, int data
         width = x;
         height = y;
         image = sg_make_image(&img_desc);
-        free(img_data);
+        golf_free(img_data);
         free(stbi_data);
     }
 
@@ -168,7 +168,7 @@ static JSON_Value *_golf_shader_import_bare(const char *base_name, const char *n
             golf_log_error("Failed to read file %s", fs_bare_name.cstr);
         }
         json_object_set_string(obj, "fs", data);
-        free(data);
+        golf_free(data);
 
         golf_string_deinit(&fs_bare_name);
     }
@@ -183,7 +183,7 @@ static JSON_Value *_golf_shader_import_bare(const char *base_name, const char *n
             golf_log_error("Failed to read file %s", vs_bare_name.cstr);
         }
         json_object_set_string(obj, "vs", data);
-        free(data);
+        golf_free(data);
 
         golf_string_deinit(&vs_bare_name);
     }
@@ -275,6 +275,7 @@ static bool _golf_shader_load(void *ptr, const char *path, char *data, int data_
         return false;
     }
 
+
     JSON_Value *val = json_parse_string(data);
     JSON_Object *obj = json_value_get_object(val);
     const char *fs = NULL, *vs = NULL;
@@ -293,7 +294,6 @@ static bool _golf_shader_load(void *ptr, const char *path, char *data, int data_
     shader->sg_shader = sg_make_shader(&shader_desc);
 
     json_value_free(val);
-
     return true;
 }
 
@@ -313,7 +313,7 @@ static void _stbi_write_func(void *context, void *data, int size) {
 }
 
 static JSON_Value *_golf_font_atlas_import(const char *file_data, int font_size, int img_size) {
-    unsigned char *bitmap = malloc(img_size * img_size);
+    unsigned char *bitmap = golf_alloc(img_size * img_size);
     stbtt_bakedchar cdata[96];
     memset(cdata, 0, sizeof(cdata));
     stbtt_BakeFontBitmap((const unsigned char*)file_data, 0, (float)-font_size, bitmap, img_size, img_size, 32, 95, cdata);
@@ -354,7 +354,7 @@ static JSON_Value *_golf_font_atlas_import(const char *file_data, int font_size,
         vec_deinit(&img);
     }
 
-    free(bitmap);
+    golf_free(bitmap);
     return val;
 }
 
@@ -433,7 +433,7 @@ static void _golf_font_load_atlas(JSON_Object *atlas_obj, golf_font_atlas_t *atl
     };
     atlas->sg_image = sg_make_image(&img_desc); 
 
-    free(img_data);
+    golf_free(img_data);
     free(stb_data);
 }
 
@@ -829,7 +829,7 @@ static bool _golf_config_load(void *ptr, const char *path, char *data, int data_
         else if (type == JSONString) {
             const char *prop_string = json_value_get_string(prop_val);
             data_property.type = GOLF_CONFIG_PROPERTY_STRING;
-            data_property.string_val = malloc(strlen(prop_string) + 1);
+            data_property.string_val = golf_alloc(strlen(prop_string) + 1);
             strcpy(data_property.string_val, prop_string);
             valid_property = true;
         }
@@ -878,7 +878,7 @@ static bool _golf_config_unload(void *ptr) {
             case GOLF_CONFIG_PROPERTY_VEC4:
                 break;
             case GOLF_CONFIG_PROPERTY_STRING:
-                free(prop->string_val);
+                golf_free(prop->string_val);
                 break;
         }
     }
@@ -961,7 +961,7 @@ static bool _golf_static_data_load(void *ptr, const char *path, char *data, int 
     for (int i = 0; i < (int)json_array_get_count(arr); i++) {
         const char *data_path = json_array_get_string(arr, i);
         if (data_path) {
-            char *data_path_copy = malloc(strlen(data_path) + 1);
+            char *data_path_copy = golf_alloc(strlen(data_path) + 1);
             strcpy(data_path_copy, data_path);
             vec_push(&static_data->data_paths, data_path_copy);
             golf_data_load(data_path_copy);
@@ -979,7 +979,7 @@ static bool _golf_static_data_unload(void *ptr) {
     for (int i = 0; i < static_data->data_paths.length; i++) {
         char *data_path = static_data->data_paths.data[i];
         golf_data_unload(data_path);
-        free(data_path);
+        golf_free(data_path);
     }
     vec_deinit(&static_data->data_paths);
     */
@@ -1127,7 +1127,7 @@ void golf_data_run_import(bool force_import) {
                 continue;
             }
             loader->import_fn(file.path, data, data_len); 
-            free(data);
+            golf_free(data);
         }
     }
 
@@ -1165,7 +1165,7 @@ void golf_data_update(float dt) {
             else {
                 golf_log_warning("Unable to load file %s", key);
             }
-            free(data);
+            golf_free(data);
         }
     }
 }
@@ -1200,12 +1200,12 @@ void golf_data_load(const char *path) {
         golf_data.file = file_to_load;
         golf_data.last_load_time = golf_file_get_time(file_to_load.path);
         golf_data.type = loader->data_type;
-        golf_data.ptr = malloc(loader->data_size);
+        golf_data.ptr = golf_alloc(loader->data_size);
 
         loader->load_fn(golf_data.ptr, path, data, data_len);
         map_set(&_loaded_data, file.path, golf_data);
     }
-    free(data);
+    golf_free(data);
 }
 
 void golf_data_unload(const char *path) {
@@ -1227,7 +1227,7 @@ void golf_data_unload(const char *path) {
         }
 
         loader->unload_fn(golf_data->ptr);
-        free(golf_data->ptr);
+        golf_free(golf_data->ptr);
         map_remove(&_loaded_data, path);
     }
 }
