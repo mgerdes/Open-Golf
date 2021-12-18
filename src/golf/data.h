@@ -2,9 +2,9 @@
 #define _GOLF_DATA_H
 
 #include <stdbool.h>
-#include "map/map.h"
 #include "sokol/sokol_gfx.h"
 #include "golf/file.h"
+#include "golf/map.h"
 #include "golf/maths.h"
 #include "golf/string.h"
 

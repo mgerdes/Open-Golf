@@ -2,6 +2,7 @@
 #define _GOLF_ALLOC_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #define golf_alloc(size) golf_alloc_tracked((size), (const char*)__FILE__)
 #define golf_calloc(n, size) golf_alloc_tracked(((n)*(size)), (const char*)__FILE__)

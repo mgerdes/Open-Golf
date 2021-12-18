@@ -4,11 +4,11 @@
 #include "golf/base64.h"
 #include "golf/log.h"
 
-void *_parson_malloc(size_t size) {
+static void *_parson_malloc(size_t size) {
     return golf_alloc_tracked(size, "parson");
 }
 
-void _parson_free(void *mem) {
+static void _parson_free(void *mem) {
     golf_free(mem);
 }
 

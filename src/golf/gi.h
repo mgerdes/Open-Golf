@@ -2,9 +2,9 @@
 #define _GOLF_LIGHTMAP_H
 
 #include "mattiasgustavsson_libs/thread.h"
-#include "vec/vec.h"
 #include "golf/level.h"
 #include "golf/maths.h"
+#include "golf/vec.h"
 
 typedef struct golf_gi_lightmap_section {
     golf_transform_t transform;

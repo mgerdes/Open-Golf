@@ -45,7 +45,7 @@ void golf_gi_init(golf_gi_t *gi,
     gi->camera_to_surface_distance_modifier = camera_to_surface_distance_modifier;
 
     gi->has_cur_entity = false;
-    vec_init(&gi->entities);
+    vec_init(&gi->entities, "gi");
 
     thread_mutex_init(&gi->lock);
     gi->is_running = false;
@@ -396,10 +396,10 @@ void golf_gi_start_lightmap(golf_gi_t *gi, golf_lightmap_image_t *lightmap_image
     }
 
     golf_gi_entity_t entity;
-    vec_init(&entity.positions);
-    vec_init(&entity.normals);
-    vec_init(&entity.lightmap_uvs);
-    vec_init(&entity.gi_lightmap_sections);
+    vec_init(&entity.positions, "gi");
+    vec_init(&entity.normals, "gi");
+    vec_init(&entity.lightmap_uvs, "gi");
+    vec_init(&entity.gi_lightmap_sections, "gi");
 
     entity.time_length = lightmap_image->time_length;
     entity.num_samples = lightmap_image->num_samples;
@@ -427,9 +427,9 @@ void golf_gi_add_lightmap_section(golf_gi_t *gi, golf_lightmap_section_t *lightm
     }
 
     golf_gi_lightmap_section_t section;
-    vec_init(&section.positions);
-    vec_init(&section.normals);
-    vec_init(&section.lightmap_uvs);
+    vec_init(&section.positions, "gi");
+    vec_init(&section.normals, "gi");
+    vec_init(&section.lightmap_uvs, "gi");
     vec_pusharr(&section.positions, model->positions.data, model->positions.length);
     vec_pusharr(&section.normals, model->normals.data, model->normals.length);
     for (int i = 0; i < model->positions.length; i++) {

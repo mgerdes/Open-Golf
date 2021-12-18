@@ -8,8 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "map/map.h"
-#include "vec/vec.h"
+#include "golf/map.h"
+#include "golf/vec.h"
 
 #define MF_PI ((float) M_PI)
 #define DEGREES_PER_RADIAN 0.01745329251f

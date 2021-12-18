@@ -24,14 +24,12 @@ set(GOLF_BASE_LIBRARIES
     glad
     glfw
     lightmapper
-    map
     mattiasgustavsson_libs
     miniz
     parson
     sokol
     stb
     tinyobj_loader_c
-    vec
     xatlas)
 
 add_library(golf_lib STATIC
@@ -229,9 +227,6 @@ target_link_libraries(imguizmo PRIVATE
 add_library(lightmapper STATIC
     src/3rd_party/lightmapper/impl.c)
 
-add_library(map STATIC
-    src/3rd_party/map/map.c)
-
 add_library(mattiasgustavsson_libs STATIC
     src/3rd_party/mattiasgustavsson_libs/impl.c)
 
@@ -268,9 +263,6 @@ add_library(stb STATIC
 
 add_library(tinyobj_loader_c STATIC
     src/3rd_party/tinyobj_loader_c/impl.c)
-
-add_library(vec STATIC
-    src/3rd_party/vec/vec.c)
 
 add_library(xatlas STATIC
     src/3rd_party/xatlas/xatlas.cpp)

@@ -9,7 +9,7 @@
 golf_geo_face_t golf_geo_face(int n, int *idx) {
     golf_geo_face_t face;
     face.active = true;
-    vec_init(&face.idx);
+    vec_init(&face.idx, "level");
     for (int i = 0; i < n; i++) {
         vec_push(&face.idx, idx[i]);
     }
@@ -24,8 +24,8 @@ golf_geo_point_t golf_geo_point(vec3 position) {
 }
 
 void golf_geo_init(golf_geo_t *geo) {
-    vec_init(&geo->points);
-    vec_init(&geo->faces);
+    vec_init(&geo->points, "level");
+    vec_init(&geo->faces, "level");
     golf_model_init(&geo->model, 64);
 }
 
@@ -244,7 +244,7 @@ static void _golf_json_object_get_lightmap_section(JSON_Object *obj, const char 
     const char *lightmap_name = json_object_get_string(section_obj, "lightmap_name");
     JSON_Array *uvs_arr = json_object_get_array(section_obj, "uvs");
     vec_vec2_t uvs;
-    vec_init(&uvs);
+    vec_init(&uvs, "level");
     for (int i = 0; i < (int)json_array_get_count(uvs_arr); i += 2) {
         float x = (float)json_array_get_number(uvs_arr, i + 0);
         float y = (float)json_array_get_number(uvs_arr, i + 1);
@@ -329,7 +329,7 @@ void golf_lightmap_image_init(golf_lightmap_image_t *lightmap, const char *name,
 
 void golf_lightmap_section_init(golf_lightmap_section_t *section, const char *lightmap_name, vec_vec2_t uvs, int start, int count) {
     snprintf(section->lightmap_name, GOLF_MAX_NAME_LEN, "%s", lightmap_name);
-    vec_init(&section->uvs);
+    vec_init(&section->uvs, "level");
     vec_pusharr(&section->uvs, uvs.data + start, count);
     sg_buffer_desc desc = {
         .type = SG_BUFFERTYPE_VERTEXBUFFER,
@@ -425,7 +425,7 @@ bool golf_level_save(golf_level_t *level, const char *path) {
         JSON_Array *datas_arr = json_value_get_array(datas_val);
         for (int s = 0; s < lightmap_image->num_samples; s++) {
             vec_char_t png_data;
-            vec_init(&png_data);
+            vec_init(&png_data, "level");
             stbi_write_png_to_func(_stbi_write_func, &png_data, lightmap_image->width, lightmap_image->height, 1, lightmap_image->data[s], lightmap_image->width);
             golf_json_array_append_data(datas_arr, (unsigned char*)png_data.data, sizeof(unsigned char) * png_data.length);
             vec_deinit(&png_data);
@@ -500,9 +500,9 @@ bool golf_level_save(golf_level_t *level, const char *path) {
 }
 
 bool golf_level_load(golf_level_t *level, const char *path, char *data, int data_len) {
-    vec_init(&level->lightmap_images);
-    vec_init(&level->materials);
-    vec_init(&level->entities);
+    vec_init(&level->lightmap_images, "level");
+    vec_init(&level->materials, "level");
+    vec_init(&level->entities, "level");
 
     JSON_Value *json_val = json_parse_string(data);
     JSON_Object *json_obj = json_value_get_object(json_val);

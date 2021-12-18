@@ -8,7 +8,7 @@
 #include "golf/vec.h"
 
 
-int golf_vec_expand_(char **data, int *length, int *capacity, int memsz, const char *alloc_category) {
+int vec_expand_(char **data, int *length, int *capacity, int memsz, const char *alloc_category) {
   if (*length + 1 > *capacity) {
     void *ptr;
     int n = (*capacity == 0) ? 1 : *capacity << 1;
@@ -21,7 +21,7 @@ int golf_vec_expand_(char **data, int *length, int *capacity, int memsz, const c
 }
 
 
-int golf_vec_reserve_(char **data, int *length, int *capacity, int memsz, int n, const char *alloc_category) {
+int vec_reserve_(char **data, int *length, int *capacity, int memsz, int n, const char *alloc_category) {
   (void) length;
   if (n > *capacity) {
     void *ptr = golf_realloc_tracked(*data, n * memsz, alloc_category);
@@ -33,17 +33,17 @@ int golf_vec_reserve_(char **data, int *length, int *capacity, int memsz, int n,
 }
 
 
-int golf_vec_reserve_po2_(
+int vec_reserve_po2_(
   char **data, int *length, int *capacity, int memsz, int n, const char *alloc_category
 ) {
   int n2 = 1;
   if (n == 0) return 0;
   while (n2 < n) n2 <<= 1;
-  return golf_vec_reserve_(data, length, capacity, memsz, n2, alloc_category);
+  return vec_reserve_(data, length, capacity, memsz, n2, alloc_category);
 }
 
 
-int golf_vec_compact_(char **data, int *length, int *capacity, int memsz, const char *alloc_category) {
+int vec_compact_(char **data, int *length, int *capacity, int memsz, const char *alloc_category) {
   if (*length == 0) {
     free(*data);
     *data = NULL;
@@ -61,10 +61,10 @@ int golf_vec_compact_(char **data, int *length, int *capacity, int memsz, const 
 }
 
 
-int golf_vec_insert_(char **data, int *length, int *capacity, int memsz,
+int vec_insert_(char **data, int *length, int *capacity, int memsz,
                  int idx, const char *alloc_category
 ) {
-  int err = golf_vec_expand_(data, length, capacity, memsz, alloc_category);
+  int err = vec_expand_(data, length, capacity, memsz, alloc_category);
   if (err) return err;
   memmove(*data + (idx + 1) * memsz,
           *data + idx * memsz,
@@ -73,7 +73,7 @@ int golf_vec_insert_(char **data, int *length, int *capacity, int memsz,
 }
 
 
-void golf_vec_splice_(char **data, int *length, int *capacity, int memsz,
+void vec_splice_(char **data, int *length, int *capacity, int memsz,
                  int start, int count
 ) {
   (void) capacity;
@@ -83,7 +83,7 @@ void golf_vec_splice_(char **data, int *length, int *capacity, int memsz,
 }
 
 
-void golf_vec_swapsplice_(char **data, int *length, int *capacity, int memsz,
+void vec_swapsplice_(char **data, int *length, int *capacity, int memsz,
                      int start, int count
 ) {
   (void) capacity;
@@ -93,7 +93,7 @@ void golf_vec_swapsplice_(char **data, int *length, int *capacity, int memsz,
 }
 
 
-void golf_vec_swap_(char **data, int *length, int *capacity, int memsz,
+void vec_swap_(char **data, int *length, int *capacity, int memsz,
                int idx1, int idx2 
 ) {
   unsigned char *a, *b, tmp;

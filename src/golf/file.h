@@ -8,7 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "vec/vec.h"
+#include "golf/vec.h"
 
 typedef struct golf_file {
     char path[GOLF_FILE_MAX_PATH];

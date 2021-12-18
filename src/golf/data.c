@@ -4,7 +4,6 @@
 #include <inttypes.h>
 
 #include "fast_obj/fast_obj.h"
-#include "map/map.h"
 #include "mattiasgustavsson_libs/assetsys.h"
 #include "parson/parson.h"
 #include "stb/stb_image.h"
@@ -15,6 +14,7 @@
 #include "golf/json.h"
 #include "golf/level.h"
 #include "golf/log.h"
+#include "golf/map.h"
 #include "golf/maths.h"
 #include "golf/string.h"
 
@@ -348,7 +348,7 @@ static JSON_Value *_golf_font_atlas_import(const char *file_data, int font_size,
     json_object_set_number(obj, "img_size", img_size);
     {
         vec_char_t img;
-        vec_init(&img);
+        vec_init(&img, "data");
         stbi_write_png_to_func(_stbi_write_func, &img, img_size, img_size, 1, bitmap, img_size);
         golf_json_object_set_data(obj, "img_data", (unsigned char*)img.data, img.length);
         vec_deinit(&img);
@@ -447,7 +447,7 @@ static bool _golf_font_load(void *ptr, const char *path, char *data, int data_le
     }
 
     JSON_Array *atlases_array = json_object_get_array(obj, "atlases");
-    vec_init(&font->atlases);
+    vec_init(&font->atlases, "data");
     for (int i = 0; i < (int)json_array_get_count(atlases_array); i++) {
         JSON_Object *atlas_obj = json_array_get_object(atlases_array, i);
         golf_font_atlas_t atlas;
@@ -482,7 +482,7 @@ typedef vec_t(_model_material_data_t) _vec_model_material_data;
 
 static bool _golf_model_import(const char *path, char *data, int data_len) {
     _vec_model_material_data model_materials;
-    vec_init(&model_materials);
+    vec_init(&model_materials, "data");
 
     fastObjMesh *m = fast_obj_read(path);
     for (int i = 0; i < (int)m->group_count; i++) {
@@ -507,7 +507,7 @@ static bool _golf_model_import(const char *path, char *data, int data_len) {
             if (!model_material) {
                 _model_material_data_t mat;
                 mat.name = material_name;
-                vec_init(&mat.vertices);
+                vec_init(&mat.vertices, "data");
                 vec_push(&model_materials, mat);
                 model_material = &vec_last(&model_materials);
             }
@@ -604,10 +604,10 @@ golf_model_group_t golf_model_group(const char *material_name, int start_vertex,
 }
 
 void golf_model_init(golf_model_t *model, int size) {
-    vec_init(&model->groups);
-    vec_init(&model->positions);
-    vec_init(&model->normals);
-    vec_init(&model->texcoords);
+    vec_init(&model->groups, "data");
+    vec_init(&model->positions, "data");
+    vec_init(&model->normals, "data");
+    vec_init(&model->texcoords, "data");
     model->sg_size = size;
 
     sg_buffer_desc desc = {
@@ -743,8 +743,8 @@ static bool _golf_pixel_pack_load(void *ptr, const char *path, char *data, int d
     pixel_pack->texture = golf_data_get_texture(json_object_get_string(obj, "texture"));
     pixel_pack->tile_size = (float)json_object_get_number(obj, "tile_size");
     pixel_pack->tile_padding = (float)json_object_get_number(obj, "tile_padding");
-    map_init(&pixel_pack->icons);
-    map_init(&pixel_pack->squares);
+    map_init(&pixel_pack->icons, "data");
+    map_init(&pixel_pack->squares, "data");
 
     golf_texture_t *tex = pixel_pack->texture;
 
@@ -811,7 +811,7 @@ static bool _golf_config_load(void *ptr, const char *path, char *data, int data_
         return false;
     }
 
-    map_init(&config->properties);
+    map_init(&config->properties, "data");
 
     for (int i = 0; i < (int)json_object_get_count(obj); i++) {
         const char *name = json_object_get_name(obj, i);
@@ -957,7 +957,7 @@ static bool _golf_static_data_load(void *ptr, const char *path, char *data, int 
     JSON_Value *val = json_parse_string(data);
     JSON_Array *arr = json_value_get_array(val);
 
-    vec_init(&static_data->data_paths);
+    vec_init(&static_data->data_paths, "data");
     for (int i = 0; i < (int)json_array_get_count(arr); i++) {
         const char *data_path = json_array_get_string(arr, i);
         if (data_path) {
@@ -996,7 +996,7 @@ void golf_data_init(void) {
     if (error != ASSETSYS_SUCCESS) {
         golf_log_error("Unable to mount data");
     }
-    map_init(&_loaded_data);
+    map_init(&_loaded_data, "data");
 
     golf_data_run_import(false);
     golf_data_load("data/static_data.static_data");

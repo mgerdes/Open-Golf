@@ -297,7 +297,7 @@ static void _directory_recurse(const char *dir_name, void (*fn)(const char *file
 
 void golf_dir_init(golf_dir_t *dir, const char *dir_name, bool recurse) {
     vec_golf_file_t files;
-    vec_init(&files);
+    vec_init(&files, "file");
 
     _directory_recurse(dir_name, _directory_add_file, &files, recurse);
     dir->files = golf_alloc(sizeof(golf_file_t) * files.length);

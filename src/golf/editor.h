@@ -4,11 +4,11 @@
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "cimgui/cimgui.h"
 #include "cimguizmo/cimguizmo.h"
-#include "vec/vec.h"
 #include "golf/file.h"
 #include "golf/gi.h"
 #include "golf/level.h"
 #include "golf/maths.h"
+#include "golf/vec.h"
 
 typedef enum golf_edit_mode_entity_type {
     GOLF_EDIT_MODE_ENTITY_FACE,

@@ -1,10 +1,10 @@
 #ifndef _GOLF_LEVEL_H
 #define _GOLF_LEVEL_H
 
-#include "vec/vec.h"
 #include "golf/data.h"
 #include "golf/file.h"
 #include "golf/maths.h"
+#include "golf/vec.h"
 
 typedef struct golf_geo_face {
     bool active;

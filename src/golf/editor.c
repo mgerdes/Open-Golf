@@ -36,19 +36,19 @@ void golf_editor_init(void) {
     {
         editor.level = golf_data_get_level("data/levels/level-1/level-1.level");
 
-        vec_init(&editor.undo_actions);
-        vec_init(&editor.redo_actions);
+        vec_init(&editor.undo_actions, "editor");
+        vec_init(&editor.redo_actions, "editor");
         editor.started_action = false;
 
         editor.hovered_idx = -1;
-        vec_init(&editor.selected_idxs);
+        vec_init(&editor.selected_idxs, "editor");
     }
 
     {
         editor.in_edit_mode = false;
-        vec_init(&editor.edit_mode.selected_entities);
-        vec_init(&editor.edit_mode.starting_positions);
-        vec_init(&editor.edit_mode.point_idxs);
+        vec_init(&editor.edit_mode.selected_entities, "editor");
+        vec_init(&editor.edit_mode.starting_positions, "editor");
+        vec_init(&editor.edit_mode.point_idxs, "editor");
     }
 
     {
@@ -118,7 +118,7 @@ static void _golf_editor_queue_decommit_action(void) {
 
 static void _golf_editor_action_init(golf_editor_action_t *action, const char *name) {
     action->name = name;
-    vec_init(&action->datas);
+    vec_init(&action->datas, "editor");
 }
 
 static void _golf_editor_action_deinit(golf_editor_action_t *action) {
@@ -1265,7 +1265,7 @@ void golf_editor_update(float dt) {
                         const char *model_path = "data/models/cube.obj";
                         golf_model_t *model = golf_data_get_model(model_path);
                         vec_vec2_t uvs;
-                        vec_init(&uvs);
+                        vec_init(&uvs, "editor");
                         for (int i = 0; i < model->positions.length; i++) {
                             vec_push(&uvs, V2(0, 0));
                         }
@@ -1636,13 +1636,13 @@ void golf_editor_update(float dt) {
         vec_float_t line_segments_radius;
         vec_int_t line_p0_idx;
         vec_int_t line_p1_idx;
-        vec_init(&triangles);
-        vec_init(&face_idxs);
-        vec_init(&line_segments_p0);
-        vec_init(&line_segments_p1);
-        vec_init(&line_segments_radius);
-        vec_init(&line_p0_idx);
-        vec_init(&line_p1_idx);
+        vec_init(&triangles, "editor");
+        vec_init(&face_idxs, "editor");
+        vec_init(&line_segments_p0, "editor");
+        vec_init(&line_segments_p1, "editor");
+        vec_init(&line_segments_radius, "editor");
+        vec_init(&line_p0_idx, "editor");
+        vec_init(&line_p1_idx, "editor");
         for (int i = 0; i < geo->faces.length; i++) {
             golf_geo_face_t face = geo->faces.data[i];
             if (!face.active) continue;
@@ -1690,9 +1690,9 @@ void golf_editor_update(float dt) {
         vec_vec3_t sphere_centers;
         vec_float_t sphere_radiuses;
         vec_int_t point_idxs;
-        vec_init(&sphere_centers);
-        vec_init(&sphere_radiuses);
-        vec_init(&point_idxs);
+        vec_init(&sphere_centers, "editor");
+        vec_init(&sphere_radiuses, "editor");
+        vec_init(&point_idxs, "editor");
         for (int i = 0; i < geo->points.length; i++) {
             golf_geo_point_t p = geo->points.data[i];
             if (!p.active) continue;
@@ -1756,10 +1756,10 @@ void golf_editor_update(float dt) {
     }
     else {
         vec_vec3_t triangles;
-        vec_init(&triangles);
+        vec_init(&triangles, "editor");
 
         vec_int_t entity_idxs;
-        vec_init(&entity_idxs);
+        vec_init(&entity_idxs, "editor");
 
         for (int i = 0; i < editor.level->entities.length; i++) {
             golf_entity_t *entity = &editor.level->entities.data[i];

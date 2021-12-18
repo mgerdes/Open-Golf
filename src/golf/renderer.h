@@ -1,12 +1,8 @@
 #ifndef _GOLF_RENDERER_H
 #define _GOLF_RENDERER_H
 
-#include "map/map.h"
 #include "sokol/sokol_gfx.h"
-#include "vec/vec.h"
 #include "golf/maths.h"
-
-typedef map_t(sg_pipeline) map_sg_pipeline_t;
 
 typedef struct golf_renderer {
     vec2 viewport_pos, viewport_size;

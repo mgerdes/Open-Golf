@@ -183,7 +183,7 @@ golf_ui_t *golf_ui_get(void) {
 }
 
 void golf_ui_init(void) {
-    vec_init(&ui.entities);
+    vec_init(&ui.entities, "ui");
     memset(&ui, 0, sizeof(ui));
     ui.state = GOLF_UI_MAIN_MENU;
     inputs = golf_inputs_get();
