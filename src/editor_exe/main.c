@@ -134,10 +134,6 @@ static void frame(void) {
             time_since_import = 0.0f;
             golf_data_run_import(false);
             golf_data_update(dt);
-
-            size_t total_size;
-            golf_alloc_get_debug_info(&total_size);
-            printf("%d\n", (int)total_size);
         }
     }
 

@@ -26,7 +26,7 @@
             "friction": 0,
             "restitution": 0,
             "type": "texture",
-            "texture": "data\/textures\/wood.jpg"
+            "texture": "data\/textures\/ground.png"
         },
         {
             "name": "hole",
@@ -115,7 +115,7 @@
             "name": "hole",
             "type": "hole",
             "transform": {
-                "position": [2, 0, 12.016],
+                "position": [2, 0, 2],
                 "scale": [0.4, 0.4, 0.4],
                 "rotation": [0, 0, 0, 1]
             }
@@ -124,10 +124,11 @@
             "name": "main-geo",
             "type": "geo",
             "geo": {
-                "p": [0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1],
+                "p": [0, 0.5, -3, 4, 0.5, -3, 4, 0.5, 4, 0, 0.5, 4, 0, 0, 4, 4, 0, 4, 4, 0, -3, 0, 0, -3],
                 "faces": [
                     {
-                        "idxs": [3, 2, 1, 0]
+                        "idxs": [4, 5, 6, 7],
+                        "uvs": [0, 3.5, 2, 3.5, 2, 0, 0, 0]
                     }
                 ]
             },

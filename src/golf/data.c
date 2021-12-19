@@ -647,12 +647,14 @@ void golf_model_update_buf(golf_model_t *model) {
         model->sg_texcoords_buf = sg_make_buffer(&desc);
     }
 
-    sg_update_buffer(model->sg_positions_buf, 
-            &(sg_range) { model->positions.data, sizeof(vec3) * model->positions.length });
-    sg_update_buffer(model->sg_normals_buf, 
-            &(sg_range) { model->normals.data, sizeof(vec3) * model->normals.length });
-    sg_update_buffer(model->sg_texcoords_buf, 
-            &(sg_range) { model->texcoords.data, sizeof(vec2) * model->texcoords.length });
+    if (model->positions.length > 0) {
+        sg_update_buffer(model->sg_positions_buf, 
+                &(sg_range) { model->positions.data, sizeof(vec3) * model->positions.length });
+        sg_update_buffer(model->sg_normals_buf, 
+                &(sg_range) { model->normals.data, sizeof(vec3) * model->normals.length });
+        sg_update_buffer(model->sg_texcoords_buf, 
+                &(sg_range) { model->texcoords.data, sizeof(vec2) * model->texcoords.length });
+    }
 }
 
 static bool _golf_model_load(void *ptr, const char *path, char *data, int data_len) {

@@ -17,13 +17,13 @@ void main() {
 
 @fs solid_color_material_fs
 uniform solid_color_material_fs_params {
-    vec3 color;
+    vec4 color;
 };
 
 out vec4 g_frag_color;
 
 void main() {
-    g_frag_color = vec4(color, 1.0);
+    g_frag_color = vec4(color);
 }
 @end
 

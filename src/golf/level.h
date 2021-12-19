@@ -9,9 +9,10 @@
 typedef struct golf_geo_face {
     bool active;
     vec_int_t idx;
+    vec_vec2_t uvs;
 } golf_geo_face_t;
 typedef vec_t(golf_geo_face_t) vec_golf_geo_face_t;
-golf_geo_face_t golf_geo_face(int n, int *idx);
+golf_geo_face_t golf_geo_face(int n, int *idx, vec2 *uvs);
 
 typedef struct golf_geo_point {
     bool active;
@@ -23,6 +24,7 @@ golf_geo_point_t golf_geo_point(vec3 position);
 typedef struct golf_geo {
     vec_golf_geo_point_t points;
     vec_golf_geo_face_t faces;
+    bool model_updated_this_frame;
     golf_model_t model;
 } golf_geo_t;
 void golf_geo_init(golf_geo_t *geo);
@@ -88,11 +90,11 @@ typedef struct golf_material {
             char texture_path[GOLF_FILE_MAX_PATH];
             golf_texture_t *texture;
         };
-        vec3 color;
+        vec4 color;
     };
 } golf_material_t;
 typedef vec_t(golf_material_t) vec_golf_material_t;
-golf_material_t golf_material_color(vec3 color);
+golf_material_t golf_material_color(vec4 color);
 golf_material_t golf_material_texture(const char *texture_path);
 
 typedef struct golf_transform {
