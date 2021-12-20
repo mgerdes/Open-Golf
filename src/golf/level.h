@@ -8,11 +8,12 @@
 
 typedef struct golf_geo_face {
     bool active;
+    char material_name[GOLF_MAX_NAME_LEN];
     vec_int_t idx;
     vec_vec2_t uvs;
 } golf_geo_face_t;
 typedef vec_t(golf_geo_face_t) vec_golf_geo_face_t;
-golf_geo_face_t golf_geo_face(int n, int *idx, vec2 *uvs);
+golf_geo_face_t golf_geo_face(const char *material_name, int n, int *idx, vec2 *uvs);
 
 typedef struct golf_geo_point {
     bool active;
