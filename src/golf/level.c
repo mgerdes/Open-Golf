@@ -1,21 +1,36 @@
 #include "golf/level.h"
 
+#include <assert.h>
+
 #include "stb/stb_image.h"
 #include "stb/stb_image_write.h"
 #include "golf/alloc.h"
 #include "golf/json.h"
 #include "golf/log.h"
 
-golf_geo_face_t golf_geo_face(const char *material_name, int n, int *idx, vec2 *uvs) {
+static const char *_golf_geo_face_uv_gen_type_strings[] = {
+    [GOLF_GEO_FACE_UV_GEN_MANUAL] = "manual", 
+    [GOLF_GEO_FACE_UV_GEN_GROUND] = "ground", 
+    [GOLF_GEO_FACE_UV_GEN_WALL_SIDE] = "wall-side", 
+};
+static_assert((sizeof(_golf_geo_face_uv_gen_type_strings) / sizeof(_golf_geo_face_uv_gen_type_strings[0])) == GOLF_GEO_FACE_UV_GEN_COUNT, "Invalid number of uv gen type strings");
+
+const char **golf_geo_uv_gen_type_strings(void) {
+    return _golf_geo_face_uv_gen_type_strings;
+}
+
+golf_geo_face_t golf_geo_face(const char *material_name, int n, int *idx, golf_geo_face_uv_gen_type_t uv_gen_type, vec2 *uvs) {
     golf_geo_face_t face;
     face.active = true;
     snprintf(face.material_name, GOLF_MAX_NAME_LEN, "%s", material_name);
     vec_init(&face.idx, "geo");
     vec_init(&face.uvs, "geo");
+    face.uv_gen_type = uv_gen_type;
     for (int i = 0; i < n; i++) {
         vec_push(&face.idx, idx[i]);
         vec_push(&face.uvs, uvs[i]);
     }
+    face.start_vertex_in_model = 0;
     return face;
 }
 
@@ -46,15 +61,17 @@ void golf_geo_init_cube(golf_geo_t *geo) {
     vec_push(&geo->points, golf_geo_point(V3(1, 1, 1)));
     vec_push(&geo->points, golf_geo_point(V3(0, 1, 1)));
 
-    vec_push(&geo->faces, golf_geo_face("default", 4, (int[]){0, 1, 2, 3}, (vec2[]){{0, 0}, {0, 0}, {0, 0}, {0, 0}}));
-    vec_push(&geo->faces, golf_geo_face("default", 4, (int[]){7, 6, 5, 4}, (vec2[]){{0, 0}, {0, 0}, {0, 0}, {0, 0}}));
-    vec_push(&geo->faces, golf_geo_face("default", 4, (int[]){7, 4, 0, 3}, (vec2[]){{0, 0}, {0, 0}, {0, 0}, {0, 0}}));
-    vec_push(&geo->faces, golf_geo_face("default", 4, (int[]){5, 6, 2, 1}, (vec2[]){{0, 0}, {0, 0}, {0, 0}, {0, 0}}));
-    vec_push(&geo->faces, golf_geo_face("default", 4, (int[]){4, 5, 1, 0}, (vec2[]){{0, 0}, {0, 0}, {0, 0}, {0, 0}}));
-    vec_push(&geo->faces, golf_geo_face("default", 4, (int[]){6, 7, 3, 2}, (vec2[]){{0, 0}, {0, 0}, {0, 0}, {0, 0}}));
+    vec2 uvs[] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}};
+    golf_geo_face_uv_gen_type_t uv_gen_type = GOLF_GEO_FACE_UV_GEN_MANUAL;
+    vec_push(&geo->faces, golf_geo_face("default", 4, (int[]){0, 1, 2, 3}, uv_gen_type, uvs));
+    vec_push(&geo->faces, golf_geo_face("default", 4, (int[]){7, 6, 5, 4}, uv_gen_type, uvs));
+    vec_push(&geo->faces, golf_geo_face("default", 4, (int[]){7, 4, 0, 3}, uv_gen_type, uvs));
+    vec_push(&geo->faces, golf_geo_face("default", 4, (int[]){5, 6, 2, 1}, uv_gen_type, uvs));
+    vec_push(&geo->faces, golf_geo_face("default", 4, (int[]){4, 5, 1, 0}, uv_gen_type, uvs));
+    vec_push(&geo->faces, golf_geo_face("default", 4, (int[]){6, 7, 3, 2}, uv_gen_type, uvs));
 }
 
-typedef map_t(vec_golf_geo_face_t) _map_vec_golf_geo_face_t;
+typedef map_t(vec_golf_geo_face_ptr_t) _map_vec_golf_geo_face_ptr_t;
 
 void golf_geo_update_model(golf_geo_t *geo) {
     if (geo->model_updated_this_frame) {
@@ -67,22 +84,22 @@ void golf_geo_update_model(golf_geo_t *geo) {
     geo->model.normals.length = 0;
     geo->model.texcoords.length = 0;
 
-    _map_vec_golf_geo_face_t material_faces;
+    _map_vec_golf_geo_face_ptr_t material_faces;
     map_init(&material_faces, "geo");
 
     for (int i = 0; i < geo->faces.length; i++) {
-        golf_geo_face_t face = geo->faces.data[i];
-        if (!face.active) continue;
+        golf_geo_face_t *face = &geo->faces.data[i];
+        if (!face->active) continue;
 
-        vec_golf_geo_face_t *faces = map_get(&material_faces, face.material_name);
+        vec_golf_geo_face_ptr_t *faces = map_get(&material_faces, face->material_name);
         if (faces) {
             vec_push(faces, face);
         }
         else {
-            vec_golf_geo_face_t new_faces;
+            vec_golf_geo_face_ptr_t new_faces;
             vec_init(&new_faces, "geo");
             vec_push(&new_faces, face);
-            map_set(&material_faces, face.material_name, new_faces);
+            map_set(&material_faces, face->material_name, new_faces);
         }
     }
 
@@ -91,21 +108,97 @@ void golf_geo_update_model(golf_geo_t *geo) {
     while ((key = map_next(&material_faces, &iter))) {
         int group_start = geo->model.positions.length;
         int group_count = 0;
-        vec_golf_geo_face_t *faces = map_get(&material_faces, key);
+        vec_golf_geo_face_ptr_t *faces = map_get(&material_faces, key);
         for (int i = 0; i < faces->length; i++) {
-            golf_geo_face_t face = faces->data[i];
+            golf_geo_face_t *face = faces->data[i];
+            face->start_vertex_in_model = geo->model.positions.length;
 
-            int idx0 = face.idx.data[0];
-            for (int i = 1; i < face.idx.length - 1; i++) {
-                int idx1 = face.idx.data[i];
-                int idx2 = face.idx.data[i + 1];
+            int idx0 = face->idx.data[0];
+            for (int i = 1; i < face->idx.length - 1; i++) {
+                int idx1 = face->idx.data[i];
+                int idx2 = face->idx.data[i + 1];
 
                 golf_geo_point_t p0 = geo->points.data[idx0];
                 golf_geo_point_t p1 = geo->points.data[idx1];
                 golf_geo_point_t p2 = geo->points.data[idx2];
-                vec2 tc0 = face.uvs.data[0];
-                vec2 tc1 = face.uvs.data[i];
-                vec2 tc2 = face.uvs.data[i + 1];
+                vec2 tc0 = face->uvs.data[0];
+                vec2 tc1 = face->uvs.data[i];
+                vec2 tc2 = face->uvs.data[i + 1];
+                switch (face->uv_gen_type) {
+                    case GOLF_GEO_FACE_UV_GEN_COUNT:
+                    case GOLF_GEO_FACE_UV_GEN_MANUAL: {
+                        break;
+                    }
+                    case GOLF_GEO_FACE_UV_GEN_GROUND: {
+                        tc0 = V2(0.5f * p0.position.x, 0.5f * p0.position.z);
+                        tc1 = V2(0.5f * p1.position.x, 0.5f * p1.position.z);
+                        tc2 = V2(0.5f * p2.position.x, 0.5f * p2.position.z);
+                        break;
+                    }
+                    case GOLF_GEO_FACE_UV_GEN_WALL_SIDE: {
+                        // Try to guess what direction this wall is going
+                        vec3 dir, p_start;
+                        {
+                            vec3 dir0 = vec3_sub(p1.position, p0.position);
+                            float dir0_l = vec3_length(dir0);
+                            dir0 = vec3_scale(dir0, 1.0f / dir0_l);
+
+                            vec3 dir1 = vec3_sub(p2.position, p0.position);
+                            float dir1_l = vec3_length(dir1);
+                            dir1 = vec3_scale(dir1, 1.0f / dir1_l);
+
+                            vec3 dir2 = vec3_sub(p2.position, p1.position);
+                            float dir2_l = vec3_length(dir2);
+                            dir2 = vec3_scale(dir2, 1.0f / dir2_l);
+
+                            if (fabsf(dir0.y) <= fabsf(dir1.y) && fabsf(dir0.y) <= fabsf(dir2.y)) {
+                                dir = dir0;
+                                p_start = p0.position;
+                            }
+                            else if (fabsf(dir1.y) <= fabsf(dir0.y) && fabsf(dir1.y) <= fabsf(dir2.y)) {
+                                dir = dir1;
+                                p_start = p0.position;
+                            }
+                            else if (fabsf(dir2.y) <= fabsf(dir0.y) && fabsf(dir2.y) <= fabsf(dir1.y)) {
+                                dir = dir2;
+                                p_start = p1.position;
+                            }
+                            else {
+                                golf_log_warning("Couldn't find a direction?????");
+                                dir = dir0;
+                            }
+
+                            float dot;
+                            float dot0 = vec3_dot(dir, V3(1, 0, 0));
+                            float dot1 = vec3_dot(dir, V3(0, 0, 1));
+                            if (fabsf(dot0) > fabsf(dot1)) {
+                                dot = dot0;
+                            }
+                            else {
+                                dot = dot1;
+                            }
+                            if (dot < 0) {
+                                dir = vec3_scale(dir, -1);
+                            }
+                        }
+
+                        float tc0x = vec3_length(vec3_perpindicular_component(p0.position, dir));
+                        float tc1x = vec3_length(vec3_perpindicular_component(p1.position, dir));
+                        float tc2x = vec3_length(vec3_perpindicular_component(p2.position, dir));
+                        float min_tc = fminf(tc0x, fminf(tc1x, tc2x));
+
+                        tc0.x = tc0x - min_tc;
+                        tc0.y = vec3_dot(p0.position, dir);
+                        tc1.x = tc1x - min_tc;
+                        tc1.y = vec3_dot(p1.position, dir);
+                        tc2.x = tc2x - min_tc;
+                        tc2.y = vec3_dot(p2.position, dir);
+                        tc0 = vec2_scale(tc0, 0.5f);
+                        tc1 = vec2_scale(tc1, 0.5f);
+                        tc2 = vec2_scale(tc2, 0.5f);
+                        break;
+                    }
+                }
                 vec3 n = vec3_normalize(vec3_cross(
                             vec3_sub(p1.position, p0.position), 
                             vec3_sub(p2.position, p0.position)));
@@ -233,6 +326,8 @@ static void _golf_json_object_set_geo(JSON_Object *obj, const char *name, golf_g
         json_object_set_string(face_obj, "material_name", face.material_name);
         json_object_set_value(face_obj, "idxs", idxs_val);
         json_object_set_value(face_obj, "uvs", uvs_val);
+        const char *uv_gen_type_str = golf_geo_uv_gen_type_strings()[face.uv_gen_type];
+        json_object_set_string(face_obj, "uv_gen_type", uv_gen_type_str);
         json_array_append_value(faces_arr, face_val);
     }
     json_object_set_value(geo_obj, "faces", faces_val);
@@ -268,7 +363,14 @@ static void _golf_json_object_get_geo(JSON_Object *obj, const char *name, golf_g
             uvs[i].x = (float)json_array_get_number(uvs_arr, 2*i);
             uvs[i].y = (float)json_array_get_number(uvs_arr, 2*i + 1);
         }
-        vec_push(&geo->faces, golf_geo_face(material_name, idxs_count, idxs, uvs));
+        const char *uv_gen_type_str = json_object_get_string(face, "uv_gen_type");
+        golf_geo_face_uv_gen_type_t uv_gen_type = GOLF_GEO_FACE_UV_GEN_MANUAL;
+        for (int i = 0; i < GOLF_GEO_FACE_UV_GEN_COUNT; i++) {
+            if (uv_gen_type_str && strcmp(uv_gen_type_str, golf_geo_uv_gen_type_strings()[i]) == 0) {
+                uv_gen_type = i;
+            }
+        }
+        vec_push(&geo->faces, golf_geo_face(material_name, idxs_count, idxs, uv_gen_type, uvs));
         golf_free(idxs);
         golf_free(uvs);
     }

@@ -927,7 +927,6 @@ void golf_renderer_draw_editor(void) {
             _golf_renderer_draw_solid_color_material(model, start, count, model_mat, material);
         }
 
-        int start_vertex = 0;
         for (int i = 0; i < geo->faces.length; i++) {
             golf_geo_face_t face = geo->faces.data[i];
             if (!face.active) continue;
@@ -963,21 +962,24 @@ void golf_renderer_draw_editor(void) {
             golf_edit_mode_entity_t entity = golf_edit_mode_entity_face(i);
             if (golf_editor_is_edit_entity_hovered(entity)) {
                 golf_model_t *model = &geo->model;
+                int start_vertex = face.start_vertex_in_model;
+                int count = 3 * (n - 2);
                 mat4 model_mat = editor->edit_mode.model_mat;
                 vec3 color = CFG_VEC3(editor_cfg, "edit_mode_hovered_color");
                 float alpha = CFG_NUM(editor_cfg, "edit_mode_hovered_face_alpha");
                 golf_material_t material = golf_material_color(V4(color.x, color.y, color.z, alpha));
-                _golf_renderer_draw_solid_color_material(model, start_vertex, 3 * (n - 2), model_mat, material);
+                _golf_renderer_draw_solid_color_material(model, start_vertex, count, model_mat, material);
             }
             else if (golf_editor_is_edit_entity_selected(entity)) {
                 golf_model_t *model = &geo->model;
+                int start_vertex = face.start_vertex_in_model;
+                int count = 3 * (n - 2);
                 mat4 model_mat = editor->edit_mode.model_mat;
                 vec3 color = CFG_VEC3(editor_cfg, "edit_mode_selected_color");
                 float alpha = CFG_NUM(editor_cfg, "edit_mode_selected_face_alpha");
                 golf_material_t material = golf_material_color(V4(color.x, color.y, color.z, alpha));
-                _golf_renderer_draw_solid_color_material(model, start_vertex, 3 * (n - 2), model_mat, material);
+                _golf_renderer_draw_solid_color_material(model, start_vertex, count, model_mat, material);
             }
-            start_vertex += 3 * (n - 2);
         }
     }
 

@@ -414,7 +414,7 @@ static void _golf_editor_duplicate_selected_entities(void) {
             switch (entity->type) {
                 case GOLF_EDIT_MODE_ENTITY_FACE: {
                     golf_geo_face_t face = geo->faces.data[entity->idx];
-                    golf_geo_face_t new_face = golf_geo_face(face.material_name, face.idx.length, face.idx.data, face.uvs.data);
+                    golf_geo_face_t new_face = golf_geo_face(face.material_name, face.idx.length, face.idx.data, face.uv_gen_type, face.uvs.data);
                     for (int i = 0; i < face.idx.length; i++) {
                         int idx = face.idx.data[i];
 
@@ -1352,7 +1352,8 @@ void golf_editor_update(float dt) {
                             j++;
                         }
                     }
-                    golf_geo_face_t face = golf_geo_face("default", n, idxs, uvs);
+                    golf_geo_face_uv_gen_type_t uv_gen_type = GOLF_GEO_FACE_UV_GEN_MANUAL;
+                    golf_geo_face_t face = golf_geo_face("default", n, idxs, uv_gen_type, uvs);
                     _vec_push_and_fix_actions(&geo->faces, face);
                     golf_free(idxs);
                     golf_free(uvs);
@@ -1376,6 +1377,10 @@ void golf_editor_update(float dt) {
 
         igBegin("RightBottom", NULL, ImGuiWindowFlags_NoTitleBar);
         for (int i = 0; i < editor.edit_mode.selected_entities.length; i++) {
+            if (i == 0) {
+                igSetNextItemOpen(true, ImGuiCond_Once);
+            }
+
             golf_edit_mode_entity_t entity = editor.edit_mode.selected_entities.data[i];
             igPushID_Int(i);
             switch (entity.type) {
@@ -1389,6 +1394,19 @@ void golf_editor_update(float dt) {
                             igPushID_Int(i);
                             _golf_editor_undoable_igInputFloat3("Position", (float*)&p->position, "Modify point position");
                             igPopID();
+                        }
+                        {
+                            golf_geo_face_uv_gen_type_t type_before = face->uv_gen_type;
+                            const char **items = golf_geo_uv_gen_type_strings();
+                            int count = GOLF_GEO_FACE_UV_GEN_COUNT;
+                            igCombo_Str_arr("UV Gen Type", (int*)&face->uv_gen_type, items, count, 0);
+                            if (type_before != face->uv_gen_type) {
+                                golf_geo_face_uv_gen_type_t type_after = face->uv_gen_type;
+                                face->uv_gen_type = type_before;
+                                _golf_editor_start_action_with_data(&face->uv_gen_type, sizeof(face->uv_gen_type), "Change face uv gen type");
+                                _golf_editor_commit_action();
+                                face->uv_gen_type = type_after;
+                            }
                         }
                         for (int i = 0; i < face->uvs.length; i++) {
                             vec2 *uv = &face->uvs.data[i];

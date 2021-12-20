@@ -25,9 +25,32 @@
 #include "golf/renderer.h"
 #include "golf/ui.h"
 
-#include "mattiasgustavsson_libs/thread.h"
+#include "umka/umka_api.h"
 
 static void init(void) {
+	char *source = 
+	"fn fib(n: int): int {\n"
+	"	if n == 0 {\n"
+	"		return 0\n"
+	"	} else if n == 1 {\n"
+	"		return 1\n"
+	"	}\n"
+	"	return fib(n - 1) + fib(n - 2)\n"
+	"}\n"
+	"fn main() {}\n"
+	;
+	void *umka = umkaAlloc();
+	bool umka_ok = umkaInit(umka, "testing.um", source, 0, 1024 * 1024, NULL, 0, NULL);
+	if (umka_ok) {
+		umka_ok = umkaCompile(umka);
+	}
+	if (!umka_ok) {
+        UmkaError error;
+        umkaGetError(umka, &error);
+        printf("Umka error %s (%d, %d): %s\n", error.fileName, error.line, error.pos, error.msg);
+	}
+	printf("%d\n", umka_ok);
+
     int load_gl = gladLoadGL();
     if (!load_gl) {
         golf_log_error("Unable to load GL");
@@ -178,8 +201,8 @@ sapp_desc sokol_main(int argc, char *argv[]) {
             .frame_cb = frame,
             .cleanup_cb = cleanup,
             .event_cb = event,
-            .width = 1280,
-            .height = 720,
+            .width = 1280/2,
+            .height = 720/2,
             .window_title = "Minigolf",
             .enable_clipboard = true,
             .clipboard_size = 1024,

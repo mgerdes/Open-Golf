@@ -6,14 +6,25 @@
 #include "golf/maths.h"
 #include "golf/vec.h"
 
+typedef enum golf_geo_face_uv_gen_type {
+    GOLF_GEO_FACE_UV_GEN_MANUAL,
+    GOLF_GEO_FACE_UV_GEN_GROUND,
+    GOLF_GEO_FACE_UV_GEN_WALL_SIDE,
+    GOLF_GEO_FACE_UV_GEN_COUNT,
+} golf_geo_face_uv_gen_type_t;
+const char **golf_geo_uv_gen_type_strings(void);
+
 typedef struct golf_geo_face {
     bool active;
     char material_name[GOLF_MAX_NAME_LEN];
     vec_int_t idx;
+    golf_geo_face_uv_gen_type_t uv_gen_type;
     vec_vec2_t uvs;
+    int start_vertex_in_model;
 } golf_geo_face_t;
 typedef vec_t(golf_geo_face_t) vec_golf_geo_face_t;
-golf_geo_face_t golf_geo_face(const char *material_name, int n, int *idx, vec2 *uvs);
+typedef vec_t(golf_geo_face_t*) vec_golf_geo_face_ptr_t;
+golf_geo_face_t golf_geo_face(const char *material_name, int n, int *idx, golf_geo_face_uv_gen_type_t uv_gen_type, vec2 *uvs);
 
 typedef struct golf_geo_point {
     bool active;
