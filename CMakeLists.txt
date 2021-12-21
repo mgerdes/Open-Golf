@@ -27,6 +27,7 @@ set(GOLF_BASE_LIBRARIES
     mattiasgustavsson_libs
     miniz
     parson
+    s7
     sokol
     stb
     tinyobj_loader_c
@@ -49,6 +50,7 @@ add_library(golf_lib STATIC
     src/golf/map.c
     src/golf/maths.c
     src/golf/renderer.c
+    src/golf/scripting.c
     src/golf/string.c
     src/golf/ui.c
     src/golf/vec.c)
@@ -235,6 +237,9 @@ add_library(miniz STATIC
 
 add_library(parson STATIC
     src/3rd_party/parson/parson.c)
+
+add_library(s7 STATIC
+    src/3rd_party/s7/s7.c)
 
 add_library(sokol STATIC
     src/3rd_party/sokol/impl.c)

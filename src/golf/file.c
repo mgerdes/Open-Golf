@@ -162,6 +162,44 @@ bool golf_file_load_data(const char *path, char **data, int *data_len) {
     return true;
 }
 
+static void _grow_buffer(char **buffer, int *buffer_len) {
+    int new_buffer_len = 2 * (*buffer_len + 1);
+    char *new_buffer = malloc(new_buffer_len);
+    memcpy(new_buffer, *buffer, *buffer_len);
+
+    if (*buffer) {
+        free(*buffer);
+    }
+    *buffer_len = new_buffer_len;
+    *buffer = new_buffer;
+}
+
+const char *golf_file_copy_line(const char *string, char **line_buffer, int *line_buffer_len) {
+    if (!string || !string[0]) {
+        return NULL;
+    }
+
+    int i = 0;
+    while (string[i] != '\n' && string[i]) {
+        if (i == *line_buffer_len) {
+            _grow_buffer(line_buffer, line_buffer_len);
+        }
+        (*line_buffer)[i] = string[i];
+        i++;
+    }
+    if (i > 0 && (*line_buffer)[i - 1] == '\r') {
+        (*line_buffer)[i - 1] = 0;
+    }
+
+    // Allocate room for the null character if needed.
+    if (i == *line_buffer_len) {
+        _grow_buffer(line_buffer, line_buffer_len);
+    }
+    (*line_buffer)[i] = 0;
+
+    return string + i;
+}
+
 static void _directory_add_file(const char *file_path, void *data) {
     golf_file_t file = golf_file(file_path);
     vec_golf_file_t *vec = (vec_golf_file_t*) data;

@@ -22,35 +22,11 @@
 #include "golf/game.h"
 #include "golf/inputs.h"
 #include "golf/log.h"
+#include "golf/scripting.h"
 #include "golf/renderer.h"
 #include "golf/ui.h"
 
-#include "umka/umka_api.h"
-
 static void init(void) {
-	char *source = 
-	"fn fib(n: int): int {\n"
-	"	if n == 0 {\n"
-	"		return 0\n"
-	"	} else if n == 1 {\n"
-	"		return 1\n"
-	"	}\n"
-	"	return fib(n - 1) + fib(n - 2)\n"
-	"}\n"
-	"fn main() {}\n"
-	;
-	void *umka = umkaAlloc();
-	bool umka_ok = umkaInit(umka, "testing.um", source, 0, 1024 * 1024, NULL, 0, NULL);
-	if (umka_ok) {
-		umka_ok = umkaCompile(umka);
-	}
-	if (!umka_ok) {
-        UmkaError error;
-        umkaGetError(umka, &error);
-        printf("Umka error %s (%d, %d): %s\n", error.fileName, error.line, error.pos, error.msg);
-	}
-	printf("%d\n", umka_ok);
-
     int load_gl = gladLoadGL();
     if (!load_gl) {
         golf_log_error("Unable to load GL");
@@ -129,6 +105,7 @@ static void frame(void) {
     if (!inited) {
         golf_data_init();
         golf_inputs_init();
+        golf_scripting_init();
         golf_game_init();
         golf_ui_init();
         golf_renderer_init();

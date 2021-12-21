@@ -24,6 +24,7 @@ golf_file_t golf_file_new_ext(golf_file_t *file, const char *ext);
 golf_file_t golf_file_append_extension(const char *path, const char *ext);
 uint64_t golf_file_get_time(const char *path);
 bool golf_file_load_data(const char *path, char **data, int *data_len); 
+const char *golf_file_copy_line(const char *string, char **line_buffer, int *line_buffer_len);
 
 typedef struct golf_dir {
     int num_files;
