@@ -2,50 +2,72 @@
 
 #include <stdio.h>
 
-#include "s7/s7.h"
+#include "picoc/picoc.h"
 #include "golf/file.h"
-
-static char sc_error[1024];
-static s7_scheme *sc;
-
-/*
-static s7_pointer sc_error_handler(s7_scheme *sc, s7_pointer args) {
-    snprintf(sc_error, 1024, "error: %s", s7_string(s7_car(args)));
-    printf("error %s\n", s7_string(s7_car(args)));
-    return s7_f(sc);
-}
-*/
+#include "golf/string.h"
 
 void golf_scripting_init(void) {
-    sc = s7_init();
-    /*
-    s7_define_function(sc, "error-handler", sc_error_handler, 1, 0, false, "our error handler");
-    s7_eval_c_string(sc, "(set! (hook-functions *error-hook*)   \n\
-        (list (lambda (hook)                                    \n\
-               (error-handler                                   \n\
-                (apply format #f (hook 'data)))                 \n\
-               (set! (hook 'result) 'our-error))))");
-               */
+    Picoc pc;
+    PicocInitialise(&pc, 1024*1024);
 
-    s7_gc_on(sc, false);
+    if (PicocPlatformSetExitPoint(&pc)) {
+        PicocCleanup(&pc);
+        printf("EXIT\n");
+        return;
+    }
 
     char *data;
     int data_len;
-    if (golf_file_load_data("data/scripts/editor.scm", &data, &data_len)) {
-        s7_pointer port = s7_open_input_string(sc, data);
-        s7_pointer code = s7_read(sc, port);
-        while (!s7_is_eq(s7_eof_object(sc), code)) {
-            s7_pointer result = s7_eval(sc, code, s7_nil(sc));
-            code = s7_read(sc, port);
-        }
-        s7_close_input_port(sc, port);
+    if (golf_file_load_data("data/scripts/math.c", &data, &data_len)) {
+        PicocParse(&pc, "nofile", data, data_len, true, true, false, false);
         golf_free(data);
-    } 
-
-    s7_pointer fib_fn = s7_name_to_value(sc, "fib");
-    if (s7_is_procedure(fib_fn)) {
-        printf("%s\n", s7_object_to_c_string(sc, s7_closure_args(sc, fib_fn)));
+    }
+    if (golf_file_load_data("data/scripts/test.c", &data, &data_len)) {
+        PicocParse(&pc, "nofile", data, data_len, true, true, false, false);
+        golf_free(data);
     }
 
-    s7_gc_on(sc, true);
+    if (VariableDefined(&pc, TableStrRegister(&pc, "generate"))) {
+        struct Value *val = NULL;
+        VariableGet(&pc, NULL, TableStrRegister(&pc, "generate"), &val);
+
+        golf_string_t call;
+        golf_string_initf(&call, "generate(");
+        if (val->Typ->Base == TypeFunction) {
+            struct FuncDef *def = &val->Val->FuncDef;
+            for (int i = 0; i < def->NumParams; i++) {
+                enum BaseType type = def->ParamType[i]->Base;
+                switch (type) {
+                    case TypeInt: {
+                        golf_string_appendf(&call, "%d", i);
+                        break;
+                    }
+                    case TypeFP: {
+                        golf_string_appendf(&call, "%f", (float)i);
+                        break;
+                    }
+                    case TypeStruct: {
+                        if (strcmp(def->ParamType[i]->Identifier, "vec2") == 0) {
+                            golf_string_appendf(&call, "V2(%f, %f)", (float)i, (float)i);
+                        }
+                        else if (strcmp(def->ParamType[i]->Identifier, "vec3") == 0) {
+                            golf_string_appendf(&call, "V3(%f, %f, %f)", (float)i, (float)i, (float)i);
+                        }
+                        else {
+                        }
+                        break;
+                    }
+                    default: {
+                        break;
+                    }
+                }
+                if (i + 1 < def->NumParams) {
+                    golf_string_appendf(&call, ", ");
+                }
+            }
+        }
+        golf_string_appendf(&call, ");");
+        printf("%s\n", call.cstr);
+        PicocParse(&pc, "nofile", call.cstr, data_len, true, true, false, false);
+    }
 }
