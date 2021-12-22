@@ -23,6 +23,7 @@
 #include "golf/inputs.h"
 #include "golf/log.h"
 #include "golf/renderer.h"
+#include "golf/script.h"
 #include "golf/ui.h"
 
 static void init(void) {
@@ -103,6 +104,7 @@ static void frame(void) {
     float dt = (float) stm_sec(stm_laptime(&last_time));
     if (!inited) {
         golf_data_init();
+        golf_script_init();
         golf_inputs_init();
         golf_game_init();
         golf_ui_init();
