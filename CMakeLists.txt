@@ -27,7 +27,6 @@ set(GOLF_BASE_LIBRARIES
     mattiasgustavsson_libs
     miniz
     parson
-    picoc
     sokol
     stb
     tinyobj_loader_c
@@ -50,7 +49,7 @@ add_library(golf_lib STATIC
     src/golf/map.c
     src/golf/maths.c
     src/golf/renderer.c
-    src/golf/scripting.c
+    src/golf/script.c
     src/golf/string.c
     src/golf/ui.c
     src/golf/vec.c)
@@ -237,30 +236,6 @@ add_library(miniz STATIC
 
 add_library(parson STATIC
     src/3rd_party/parson/parson.c)
-
-add_library(picoc STATIC 
-    src/3rd_party/picoc/picoc.c 
-    src/3rd_party/picoc/table.c 
-    src/3rd_party/picoc/lex.c 
-    src/3rd_party/picoc/parse.c
-    src/3rd_party/picoc/expression.c
-    src/3rd_party/picoc/heap.c
-    src/3rd_party/picoc/type.c 
-    src/3rd_party/picoc/variable.c
-    src/3rd_party/picoc/clibrary.c
-    src/3rd_party/picoc/platform.c
-    src/3rd_party/picoc/include.c
-    src/3rd_party/picoc/debug.c 
-    src/3rd_party/picoc/platform/platform_unix.c
-    src/3rd_party/picoc/platform/library_unix.c 
-    src/3rd_party/picoc/cstdlib/stdio.c
-    src/3rd_party/picoc/cstdlib/math.c
-    src/3rd_party/picoc/cstdlib/string.c
-    src/3rd_party/picoc/cstdlib/stdlib.c 
-    src/3rd_party/picoc/cstdlib/time.c
-    src/3rd_party/picoc/cstdlib/errno.c
-    src/3rd_party/picoc/cstdlib/ctype.c
-    src/3rd_party/picoc/cstdlib/stdbool.c)
 
 add_library(sokol STATIC
     src/3rd_party/sokol/impl.c)

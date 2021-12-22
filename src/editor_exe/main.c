@@ -22,7 +22,6 @@
 #include "golf/game.h"
 #include "golf/inputs.h"
 #include "golf/log.h"
-#include "golf/scripting.h"
 #include "golf/renderer.h"
 #include "golf/ui.h"
 
@@ -105,7 +104,6 @@ static void frame(void) {
     if (!inited) {
         golf_data_init();
         golf_inputs_init();
-        golf_scripting_init();
         golf_game_init();
         golf_ui_init();
         golf_renderer_init();
