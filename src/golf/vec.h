@@ -15,8 +15,8 @@
   struct { T *data; int length, capacity; const char *alloc_category; }
 
 
-#define vec_init(v, alloc_category)\
-  memset((v), 0, sizeof(*(v)))
+#define vec_init(v, in_alloc_category)\
+  ( memset((v), 0, sizeof(*(v))), (v)->alloc_category = (in_alloc_category) )
 
 
 #define vec_deinit(v)\

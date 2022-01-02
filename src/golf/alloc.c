@@ -1,10 +1,12 @@
 #include "golf/alloc.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "mattiasgustavsson_libs/thread.h"
 #include "golf/log.h"
+#include "golf/map.h"
 
 typedef struct _golf_alloc_info {
     const char *category;
@@ -86,12 +88,40 @@ void golf_alloc_get_debug_info(size_t *total_size) {
 }
 
 void golf_debug_print_allocations(void) {
-    thread_mutex_lock(&_alloc_lock);
     golf_log_note("=====Memory Allocations=====");
     _golf_alloc_info_t *info = head;
+    map_int_t category_size;
+    map_init(&category_size, "alloc");
     while (info->next != head) {
         info = info->next;
-        golf_log_note("%d - %s", (int)info->size, info->category);
+        int *size;
+        if (info->category) {
+            size = map_get(&category_size, info->category);
+        }
+        else {
+            size = map_get(&category_size, "null");
+        }
+        if (size) {
+            *size += (int)info->size;
+        }
+        else {
+            if (info->category) {
+                map_set(&category_size, info->category, info->size);
+            }
+            else {
+                map_set(&category_size, "null", info->size);
+            }
+        }
     }
-    thread_mutex_unlock(&_alloc_lock);
+
+    {
+        const char *key;
+        map_iter_t iter = map_iter(&category_size);
+
+        while ((key = map_next(&category_size, &iter))) {
+            printf("%s -> %d\n", key, *map_get(&category_size, key));
+        }
+    }
+
+    map_deinit(&category_size);
 }
