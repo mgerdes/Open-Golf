@@ -9,12 +9,13 @@
 #include "golf/log.h"
 #include "golf/maths.h"
 #include "golf/map.h"
+#include "golf/string.h"
 #include "golf/vec.h"
 
 typedef struct gs_expr gs_expr_t;
 typedef struct gs_stmt gs_stmt_t;
 typedef struct gs_parser gs_parser_t;
-typedef struct gs_interp gs_interp_t;
+typedef struct gs_eval gs_eval_t;
 
 typedef enum gs_val_type {
     GS_VAL_VOID,
@@ -24,6 +25,7 @@ typedef enum gs_val_type {
     GS_VAL_VEC2,
     GS_VAL_VEC3,
     GS_VAL_LIST,
+    GS_VAL_STRING,
     GS_VAL_FN,
     GS_VAL_C_FN,
     GS_VAL_ERROR,
@@ -46,8 +48,9 @@ typedef struct gs_val {
         vec2 vec2_val;
         vec3 vec3_val;
         vec_gs_val_t *list_val;
+        golf_string_t *string_val;
         gs_stmt_t *fn_stmt;
-        gs_val_t (*c_fn)(gs_interp_t *interp, gs_val_t *vals, int num_vals);
+        gs_val_t (*c_fn)(gs_eval_t *eval, gs_val_t *vals, int num_vals);
         const char *error_val;
     };
 } gs_val_t;
@@ -61,8 +64,9 @@ static gs_val_t gs_val_float(float v);
 static gs_val_t gs_val_vec2(vec2 v);
 static gs_val_t gs_val_vec3(vec3 v);
 static gs_val_t gs_val_list(vec_gs_val_t *list);
+static gs_val_t gs_val_string(golf_string_t *string);
 static gs_val_t gs_val_fn(gs_stmt_t *stmt);
-static gs_val_t gs_val_c_fn(gs_val_t (*c_fn)(gs_interp_t *interp, gs_val_t *vals, int num_vals));
+static gs_val_t gs_val_c_fn(gs_val_t (*c_fn)(gs_eval_t *eval, gs_val_t *vals, int num_vals));
 static gs_val_t gs_val_error(const char *v);
 static int gs_val_to_int(gs_val_t val);
 static float gs_val_to_float(gs_val_t val);
@@ -73,6 +77,7 @@ typedef enum gs_token_type {
     GS_TOKEN_FLOAT,
     GS_TOKEN_SYMBOL,
     GS_TOKEN_CHAR,
+    GS_TOKEN_STRING,
     GS_TOKEN_EOF,
 } gs_token_type;
 
@@ -83,6 +88,7 @@ typedef struct gs_token {
         int int_val;
         float float_val;
         const char *symbol;
+        const char *string;
         char c;
     };
 } gs_token_t;
@@ -94,6 +100,7 @@ static bool gs_is_char_part_of_symbol(char c);
 static gs_token_t gs_token_eof(int line, int col);
 static gs_token_t gs_token_char(char c, int line, int col);
 static gs_token_t gs_token_symbol(const char *text, int *len, int line, int col);
+static gs_token_t gs_token_string(const char *text, int *len, int line, int col);
 static gs_token_t gs_token_number(const char *text, int *len, int line, int col);
 static void gs_tokenize(gs_parser_t *parser, const char *src);
 static void gs_debug_print_token(gs_token_t token);
@@ -118,6 +125,7 @@ typedef enum gs_expr_type {
     GS_EXPR_INT,
     GS_EXPR_FLOAT,
     GS_EXPR_SYMBOL,
+    GS_EXPR_STRING,
     GS_EXPR_CALL,
     GS_EXPR_MEMBER_ACCESS,
     GS_EXPR_ARRAY_ACCESS,
@@ -132,6 +140,7 @@ typedef struct gs_expr {
         int int_val;
         float float_val;
         const char *symbol;
+        const char *string;
 
         struct {
             gs_binary_op_type type;
@@ -173,6 +182,7 @@ typedef vec_t(gs_expr_t*) vec_gs_expr_t;
 static gs_expr_t *gs_expr_int_new(gs_parser_t *parser, gs_token_t token);
 static gs_expr_t *gs_expr_float_new(gs_parser_t *parser, gs_token_t token);
 static gs_expr_t *gs_expr_symbol_new(gs_parser_t *parser, gs_token_t token);
+static gs_expr_t *gs_expr_string_new(gs_parser_t *parser, gs_token_t token);
 static gs_expr_t *gs_expr_binary_op_new(gs_parser_t *parser, gs_token_t token, gs_binary_op_type type, gs_expr_t *left, gs_expr_t *right);
 static gs_expr_t *gs_expr_assignment_new(gs_parser_t *parser, gs_token_t token, gs_expr_t *left, gs_expr_t *right);
 static gs_expr_t *gs_expr_call_new(gs_parser_t *parser, gs_token_t token, gs_expr_t *fn, vec_gs_expr_t args);
@@ -299,43 +309,44 @@ typedef struct gs_env {
 } gs_env_t;
 typedef vec_t(gs_env_t*) vec_gs_env_t;
 
-typedef struct gs_interp {
+typedef struct gs_eval {
     vec_gs_env_t env;
-} gs_interp_t; 
+} gs_eval_t; 
 
-static gs_val_t gs_interp_stmt(gs_interp_t *interp, gs_stmt_t *stmt);
-static gs_val_t gs_interp_stmt_if(gs_interp_t *interp, gs_stmt_t *stmt);
-static gs_val_t gs_interp_stmt_for(gs_interp_t *interp, gs_stmt_t *stmt);
-static gs_val_t gs_interp_stmt_return(gs_interp_t *interp, gs_stmt_t *stmt);
-static gs_val_t gs_interp_stmt_block(gs_interp_t *interp, gs_stmt_t *stmt);
-static gs_val_t gs_interp_stmt_expr(gs_interp_t *interp, gs_stmt_t *stmt);
-static gs_val_t gs_interp_stmt_var_decl(gs_interp_t *interp, gs_stmt_t *stmt);
-static gs_val_t gs_interp_stmt_fn_decl(gs_interp_t *interp, gs_stmt_t *stmt);
+static gs_val_t gs_eval_stmt(gs_eval_t *eval, gs_stmt_t *stmt);
+static gs_val_t gs_eval_stmt_if(gs_eval_t *eval, gs_stmt_t *stmt);
+static gs_val_t gs_eval_stmt_for(gs_eval_t *eval, gs_stmt_t *stmt);
+static gs_val_t gs_eval_stmt_return(gs_eval_t *eval, gs_stmt_t *stmt);
+static gs_val_t gs_eval_stmt_block(gs_eval_t *eval, gs_stmt_t *stmt);
+static gs_val_t gs_eval_stmt_expr(gs_eval_t *eval, gs_stmt_t *stmt);
+static gs_val_t gs_eval_stmt_var_decl(gs_eval_t *eval, gs_stmt_t *stmt);
+static gs_val_t gs_eval_stmt_fn_decl(gs_eval_t *eval, gs_stmt_t *stmt);
 
-static gs_val_t gs_interp_expr(gs_interp_t *interp, gs_expr_t *expr);
-static gs_val_t gs_interp_expr_binary_op(gs_interp_t *interp, gs_expr_t *expr);
-static gs_val_t gs_interp_expr_assignment(gs_interp_t *interp, gs_expr_t *expr);
-static gs_val_t gs_interp_expr_int(gs_interp_t *interp, gs_expr_t *expr);
-static gs_val_t gs_interp_expr_float(gs_interp_t *interp, gs_expr_t *expr);
-static gs_val_t gs_interp_expr_symbol(gs_interp_t *interp, gs_expr_t *expr) ;
-static gs_val_t gs_interp_expr_call(gs_interp_t *interp, gs_expr_t *expr);
-static gs_val_t gs_interp_expr_member_access(gs_interp_t *interp, gs_expr_t *expr);
-static gs_val_t gs_interp_expr_array_access(gs_interp_t *interp, gs_expr_t *expr);
-static gs_val_t gs_interp_expr_array_decl(gs_interp_t *interp, gs_expr_t *expr);
-static gs_val_t gs_interp_expr_cast(gs_interp_t *interp, gs_expr_t *expr);
+static gs_val_t gs_eval_expr(gs_eval_t *eval, gs_expr_t *expr);
+static gs_val_t gs_eval_expr_binary_op(gs_eval_t *eval, gs_expr_t *expr);
+static gs_val_t gs_eval_expr_assignment(gs_eval_t *eval, gs_expr_t *expr);
+static gs_val_t gs_eval_expr_int(gs_eval_t *eval, gs_expr_t *expr);
+static gs_val_t gs_eval_expr_float(gs_eval_t *eval, gs_expr_t *expr);
+static gs_val_t gs_eval_expr_symbol(gs_eval_t *eval, gs_expr_t *expr) ;
+static gs_val_t gs_eval_expr_string(gs_eval_t *eval, gs_expr_t *expr) ;
+static gs_val_t gs_eval_expr_call(gs_eval_t *eval, gs_expr_t *expr);
+static gs_val_t gs_eval_expr_member_access(gs_eval_t *eval, gs_expr_t *expr);
+static gs_val_t gs_eval_expr_array_access(gs_eval_t *eval, gs_expr_t *expr);
+static gs_val_t gs_eval_expr_array_decl(gs_eval_t *eval, gs_expr_t *expr);
+static gs_val_t gs_eval_expr_cast(gs_eval_t *eval, gs_expr_t *expr);
 
-static gs_val_t gs_interp_cast(gs_interp_t *interp, gs_val_t val, gs_val_type type);
-static gs_val_t gs_interp_binary_op_add(gs_interp_t *interp, gs_val_t left, gs_val_t right);
-static gs_val_t gs_interp_binary_op_sub(gs_interp_t *interp, gs_val_t left, gs_val_t right);
-static gs_val_t gs_interp_binary_op_mul(gs_interp_t *interp, gs_val_t left, gs_val_t right);
-static gs_val_t gs_interp_binary_op_div(gs_interp_t *interp, gs_val_t left, gs_val_t right);
-static gs_val_t gs_interp_binary_op_lt(gs_interp_t *interp, gs_val_t left, gs_val_t right);
-static gs_val_t gs_interp_binary_op_gt(gs_interp_t *interp, gs_val_t left, gs_val_t right);
-static gs_val_t gs_interp_binary_op_lte(gs_interp_t *interp, gs_val_t left, gs_val_t right);
-static gs_val_t gs_interp_binary_op_gte(gs_interp_t *interp, gs_val_t left, gs_val_t right);
-static gs_val_t gs_interp_binary_op_eq(gs_interp_t *interp, gs_val_t left, gs_val_t right);
+static gs_val_t gs_eval_cast(gs_eval_t *eval, gs_val_t val, gs_val_type type);
+static gs_val_t gs_eval_binary_op_add(gs_eval_t *eval, gs_val_t left, gs_val_t right);
+static gs_val_t gs_eval_binary_op_sub(gs_eval_t *eval, gs_val_t left, gs_val_t right);
+static gs_val_t gs_eval_binary_op_mul(gs_eval_t *eval, gs_val_t left, gs_val_t right);
+static gs_val_t gs_eval_binary_op_div(gs_eval_t *eval, gs_val_t left, gs_val_t right);
+static gs_val_t gs_eval_binary_op_lt(gs_eval_t *eval, gs_val_t left, gs_val_t right);
+static gs_val_t gs_eval_binary_op_gt(gs_eval_t *eval, gs_val_t left, gs_val_t right);
+static gs_val_t gs_eval_binary_op_lte(gs_eval_t *eval, gs_val_t left, gs_val_t right);
+static gs_val_t gs_eval_binary_op_gte(gs_eval_t *eval, gs_val_t left, gs_val_t right);
+static gs_val_t gs_eval_binary_op_eq(gs_eval_t *eval, gs_val_t left, gs_val_t right);
 
-static gs_val_t gs_interp_lval(gs_interp_t *interp, gs_expr_t *expr, gs_val_t **lval);
+static gs_val_t gs_eval_lval(gs_eval_t *eval, gs_expr_t *expr, gs_val_t **lval);
 
 static void gs_run(const char *src);
 
@@ -361,6 +372,9 @@ static void gs_debug_print_type(gs_val_type type) {
             break;
         case GS_VAL_LIST:
             printf("list");
+            break;
+        case GS_VAL_STRING:
+            printf("string");
             break;
         case GS_VAL_FN:
             printf("[FN]");
@@ -425,6 +439,30 @@ static gs_token_t gs_token_symbol(const char *text, int *len, int line, int col)
     gs_token_t token;
     token.type = GS_TOKEN_SYMBOL;
     token.symbol = symbol;
+    token.line = line;
+    token.col = col;
+    return token;
+}
+
+static gs_token_t gs_token_string(const char *text, int *len, int line, int col) {
+    *len = 1;
+    while (text[*len] && text[*len] != '"') {
+        (*len)++;
+    }
+
+    char *string = malloc((*len) + 1);
+    for (int i = 1; i < *len; i++) {
+        string[i - 1] = text[i];
+    }
+    string[(*len) - 1] = 0;
+
+    if (text[*len] == '"') {
+        (*len)++;
+    }
+
+    gs_token_t token;
+    token.type = GS_TOKEN_STRING;
+    token.string = string;
     token.line = line;
     token.col = col;
     return token;
@@ -516,6 +554,12 @@ static void gs_tokenize(gs_parser_t *parser, const char *src) {
             i += len;
             col += len;
         }
+        else if (src[i] == '"') {
+            int len;
+            vec_push(&parser->tokens, gs_token_string(src + i, &len, line, col));
+            i += len;
+            col += len;
+        }
         else if (src[i] == '+' || src[i] == '-' || src[i] == '*' || src[i] == '/' ||
                 src[i] == '(' || src[i] == ')' || src[i] == '{' || src[i] == '}' ||
                 src[i] == ';' || src[i] == '=' || src[i] == '>' || src[i] == '<' ||
@@ -545,6 +589,9 @@ static void gs_debug_print_token(gs_token_t token) {
             break;
         case GS_TOKEN_CHAR:
             printf("[CHAR %c (%d, %d)]", token.c, token.line, token.col);
+            break;
+        case GS_TOKEN_STRING:
+            printf("[STRING %s (%d, %d)]", token.string, token.line, token.col);
             break;
         case GS_TOKEN_EOF:
             printf("[EOF (%d, %d)]", token.line, token.col);
@@ -580,6 +627,14 @@ static gs_expr_t *gs_expr_symbol_new(gs_parser_t *parser, gs_token_t token) {
     expr->type = GS_EXPR_SYMBOL;
     expr->token = token;
     expr->symbol = token.symbol;
+    return expr;
+}
+
+static gs_expr_t *gs_expr_string_new(gs_parser_t *parser, gs_token_t token) {
+    gs_expr_t *expr = malloc(sizeof(gs_expr_t));
+    expr->type = GS_EXPR_STRING;
+    expr->token = token;
+    expr->string = token.string;
     return expr;
 }
 
@@ -705,6 +760,9 @@ static void gs_debug_print_expr(gs_expr_t *expr) {
             break;
         case GS_EXPR_SYMBOL:
             printf("%s", expr->symbol);
+            break;
+        case GS_EXPR_STRING:
+            printf("%s", expr->string);
             break;
         case GS_EXPR_CALL:
             gs_debug_print_expr(expr->call.fn);
@@ -921,49 +979,49 @@ static void gs_debug_print_stmt(gs_stmt_t *stmt, int tabs) {
     }
 }
 
-static gs_val_t gs_interp_stmt(gs_interp_t *interp, gs_stmt_t *stmt) {
+static gs_val_t gs_eval_stmt(gs_eval_t *eval, gs_stmt_t *stmt) {
     gs_val_t val;
     switch (stmt->type) {
         case GS_STMT_IF:
-            val = gs_interp_stmt_if(interp, stmt);
+            val = gs_eval_stmt_if(eval, stmt);
             break;
         case GS_STMT_FOR:
-            val = gs_interp_stmt_for(interp, stmt);
+            val = gs_eval_stmt_for(eval, stmt);
             break;
         case GS_STMT_RETURN:
-            val = gs_interp_stmt_return(interp, stmt);
+            val = gs_eval_stmt_return(eval, stmt);
             break;
         case GS_STMT_BLOCK:
-            val = gs_interp_stmt_block(interp, stmt);
+            val = gs_eval_stmt_block(eval, stmt);
             break;
         case GS_STMT_EXPR:
-            val = gs_interp_stmt_expr(interp, stmt);
+            val = gs_eval_stmt_expr(eval, stmt);
             break;
         case GS_STMT_VAR_DECL:
-            val = gs_interp_stmt_var_decl(interp, stmt);
+            val = gs_eval_stmt_var_decl(eval, stmt);
             break;
         case GS_STMT_FN_DECL:
-            val = gs_interp_stmt_fn_decl(interp, stmt);
+            val = gs_eval_stmt_fn_decl(eval, stmt);
             break;
     } 
     return val;
 }
 
-static gs_val_t gs_interp_stmt_if(gs_interp_t *interp, gs_stmt_t *stmt) {
+static gs_val_t gs_eval_stmt_if(gs_eval_t *eval, gs_stmt_t *stmt) {
     gs_val_t val;
 
     bool found_true_cond = false;
     for (int i = 0; i < stmt->if_stmt.num_conds; i++) {
-        val = gs_interp_expr(interp, stmt->if_stmt.conds[i]);
+        val = gs_eval_expr(eval, stmt->if_stmt.conds[i]);
         if (val.is_return) goto cleanup;
 
-        val = gs_interp_cast(interp, val, GS_VAL_BOOL);
+        val = gs_eval_cast(eval, val, GS_VAL_BOOL);
         if (val.is_return) goto cleanup;
 
         if (val.type == GS_VAL_BOOL) {
             if (val.bool_val) {
                 found_true_cond = true;
-                val = gs_interp_stmt(interp, stmt->if_stmt.stmts[i]);
+                val = gs_eval_stmt(eval, stmt->if_stmt.stmts[i]);
                 if (val.is_return) goto cleanup;
                 break;
             }
@@ -975,7 +1033,7 @@ static gs_val_t gs_interp_stmt_if(gs_interp_t *interp, gs_stmt_t *stmt) {
     }
 
     if (!found_true_cond && stmt->if_stmt.else_stmt) {
-        val = gs_interp_stmt(interp, stmt->if_stmt.else_stmt);
+        val = gs_eval_stmt(eval, stmt->if_stmt.else_stmt);
         if (val.is_return) goto cleanup;
     }
 
@@ -983,19 +1041,19 @@ cleanup:
     return val;
 }
 
-static gs_val_t gs_interp_stmt_for(gs_interp_t *interp, gs_stmt_t *stmt) {
+static gs_val_t gs_eval_stmt_for(gs_eval_t *eval, gs_stmt_t *stmt) {
     gs_val_t val = gs_val_int(0);
 
     gs_env_t *env = malloc(sizeof(gs_env_t));
-    map_init(&env->val_map, "script/interp");
-    vec_push(&interp->env, env);
+    map_init(&env->val_map, "script/eval");
+    vec_push(&eval->env, env);
 
-    gs_val_t init_val = gs_interp_expr(interp, stmt->for_stmt.init);
+    gs_val_t init_val = gs_eval_expr(eval, stmt->for_stmt.init);
     if (init_val.is_return) {
         val = init_val;
         goto cleanup;
     }
-    init_val = gs_interp_cast(interp, init_val, stmt->for_stmt.decl_type);
+    init_val = gs_eval_cast(eval, init_val, stmt->for_stmt.decl_type);
     if (init_val.is_return) {
         val = init_val;
         goto cleanup;
@@ -1005,13 +1063,13 @@ static gs_val_t gs_interp_stmt_for(gs_interp_t *interp, gs_stmt_t *stmt) {
     map_set(&env->val_map, sym, init_val);
 
     while (true) {
-        gs_val_t cond_val = gs_interp_expr(interp, stmt->for_stmt.cond);
+        gs_val_t cond_val = gs_eval_expr(eval, stmt->for_stmt.cond);
         if (cond_val.is_return) {
             val = cond_val;
             goto cleanup;
         }
 
-        cond_val = gs_interp_cast(interp, cond_val, GS_VAL_BOOL);
+        cond_val = gs_eval_cast(eval, cond_val, GS_VAL_BOOL);
         if (cond_val.is_return) {
             val = cond_val;
             goto cleanup;
@@ -1019,13 +1077,13 @@ static gs_val_t gs_interp_stmt_for(gs_interp_t *interp, gs_stmt_t *stmt) {
 
         if (!cond_val.bool_val) break;
 
-        gs_val_t body_val = gs_interp_stmt(interp, stmt->for_stmt.body);
+        gs_val_t body_val = gs_eval_stmt(eval, stmt->for_stmt.body);
         if (body_val.is_return) {
             val = body_val;
             goto cleanup;
         }
 
-        gs_val_t inc_val = gs_interp_expr(interp, stmt->for_stmt.inc);
+        gs_val_t inc_val = gs_eval_expr(eval, stmt->for_stmt.inc);
         if (inc_val.is_return) {
             val = inc_val;
             goto cleanup;
@@ -1035,55 +1093,55 @@ static gs_val_t gs_interp_stmt_for(gs_interp_t *interp, gs_stmt_t *stmt) {
 cleanup:
     map_deinit(&env->val_map);
     free(env);
-    (void)vec_pop(&interp->env);
+    (void)vec_pop(&eval->env);
     return val;
 }
 
-static gs_val_t gs_interp_stmt_return(gs_interp_t *interp, gs_stmt_t *stmt) {
-    gs_val_t val = gs_interp_expr(interp, stmt->return_stmt.expr);
+static gs_val_t gs_eval_stmt_return(gs_eval_t *eval, gs_stmt_t *stmt) {
+    gs_val_t val = gs_eval_expr(eval, stmt->return_stmt.expr);
     val.is_return = true;
     return val;
 }
 
-static gs_val_t gs_interp_stmt_block(gs_interp_t *interp, gs_stmt_t *stmt) {
+static gs_val_t gs_eval_stmt_block(gs_eval_t *eval, gs_stmt_t *stmt) {
     gs_val_t val;
     gs_env_t *env = malloc(sizeof(gs_env_t));
-    map_init(&env->val_map, "script/interp");
-    vec_push(&interp->env, env);
+    map_init(&env->val_map, "script/eval");
+    vec_push(&eval->env, env);
 
     for (int i = 0; i < stmt->block_stmt.num_stmts; i++) {
-        val = gs_interp_stmt(interp, stmt->block_stmt.stmts[i]);
+        val = gs_eval_stmt(eval, stmt->block_stmt.stmts[i]);
         if (val.is_return) goto cleanup;
     }
 
 cleanup:
     map_deinit(&env->val_map);
     free(env);
-    (void)vec_pop(&interp->env);
+    (void)vec_pop(&eval->env);
     return val;
 }
 
-static gs_val_t gs_interp_stmt_expr(gs_interp_t *interp, gs_stmt_t *stmt) {
-    gs_val_t val = gs_interp_expr(interp, stmt->expr);
+static gs_val_t gs_eval_stmt_expr(gs_eval_t *eval, gs_stmt_t *stmt) {
+    gs_val_t val = gs_eval_expr(eval, stmt->expr);
     return val;
 }
 
-static gs_val_t gs_interp_stmt_var_decl(gs_interp_t *interp, gs_stmt_t *stmt) {
+static gs_val_t gs_eval_stmt_var_decl(gs_eval_t *eval, gs_stmt_t *stmt) {
     gs_val_t val = gs_val_default(stmt->var_decl.type);
     if (val.is_return) goto cleanup;
 
     if (stmt->var_decl.init) {
-        val = gs_interp_expr(interp, stmt->var_decl.init);
+        val = gs_eval_expr(eval, stmt->var_decl.init);
         if (val.is_return) goto cleanup;
 
-        val = gs_interp_cast(interp, val, stmt->var_decl.type);
+        val = gs_eval_cast(eval, val, stmt->var_decl.type);
         if (val.is_return) goto cleanup;
     }
 
     assert(stmt->var_decl.num_ids == 1);
 
     gs_token_t token = stmt->var_decl.tokens[0];
-    gs_env_t *env = vec_last(&interp->env);
+    gs_env_t *env = vec_last(&eval->env);
     if (map_get(&env->val_map, token.symbol)) {
         val = gs_val_error("Variable is already declared");
         goto cleanup;
@@ -1094,12 +1152,12 @@ cleanup:
     return val;
 }
 
-static gs_val_t gs_interp_stmt_fn_decl(gs_interp_t *interp, gs_stmt_t *stmt) {
+static gs_val_t gs_eval_stmt_fn_decl(gs_eval_t *eval, gs_stmt_t *stmt) {
     gs_val_t val = gs_val_fn(stmt);
     if (val.is_return) goto cleanup;
 
     gs_token_t token = stmt->fn_decl.symbol;
-    gs_env_t *env = vec_last(&interp->env);
+    gs_env_t *env = vec_last(&eval->env);
     if (map_get(&env->val_map, token.symbol)) {
         val = gs_val_error("Variable is already declared");
         goto cleanup;
@@ -1111,53 +1169,56 @@ cleanup:
     return val;
 }
 
-static gs_val_t gs_interp_expr(gs_interp_t *interp, gs_expr_t *expr) {
+static gs_val_t gs_eval_expr(gs_eval_t *eval, gs_expr_t *expr) {
     gs_val_t val;
     switch (expr->type) {
         case GS_EXPR_BINARY_OP:
-            val = gs_interp_expr_binary_op(interp, expr);
+            val = gs_eval_expr_binary_op(eval, expr);
             break;
         case GS_EXPR_ASSIGNMENT:
-            val = gs_interp_expr_assignment(interp, expr);
+            val = gs_eval_expr_assignment(eval, expr);
             break;
         case GS_EXPR_INT:
-            val = gs_interp_expr_int(interp, expr);
+            val = gs_eval_expr_int(eval, expr);
             break;
         case GS_EXPR_FLOAT:
-            val = gs_interp_expr_float(interp, expr);
+            val = gs_eval_expr_float(eval, expr);
             break;
         case GS_EXPR_SYMBOL:
-            val = gs_interp_expr_symbol(interp, expr);
+            val = gs_eval_expr_symbol(eval, expr);
+            break;
+        case GS_EXPR_STRING:
+            val = gs_eval_expr_string(eval, expr);
             break;
         case GS_EXPR_CALL:
-            val = gs_interp_expr_call(interp, expr);
+            val = gs_eval_expr_call(eval, expr);
             break;
         case GS_EXPR_MEMBER_ACCESS:
-            val = gs_interp_expr_member_access(interp, expr);
+            val = gs_eval_expr_member_access(eval, expr);
             break;
         case GS_EXPR_ARRAY_ACCESS:
-            val = gs_interp_expr_array_access(interp, expr);
+            val = gs_eval_expr_array_access(eval, expr);
             break;
         case GS_EXPR_ARRAY_DECL:
-            val = gs_interp_expr_array_decl(interp, expr);
+            val = gs_eval_expr_array_decl(eval, expr);
             break;
         case GS_EXPR_CAST:
-            val = gs_interp_expr_cast(interp, expr);
+            val = gs_eval_expr_cast(eval, expr);
             break;
     }
     return val;
 }
 
-static gs_val_t gs_interp_expr_binary_op(gs_interp_t *interp, gs_expr_t *expr) {
+static gs_val_t gs_eval_expr_binary_op(gs_eval_t *eval, gs_expr_t *expr) {
     gs_val_t val;
 
-    gs_val_t left_val = gs_interp_expr(interp, expr->binary_op.left);
+    gs_val_t left_val = gs_eval_expr(eval, expr->binary_op.left);
     if (left_val.is_return) {
         val = left_val;
         goto cleanup;
     }
 
-    gs_val_t right_val = gs_interp_expr(interp, expr->binary_op.right);
+    gs_val_t right_val = gs_eval_expr(eval, expr->binary_op.right);
     if (right_val.is_return) {
         val = right_val;
         goto cleanup;
@@ -1165,31 +1226,31 @@ static gs_val_t gs_interp_expr_binary_op(gs_interp_t *interp, gs_expr_t *expr) {
 
     switch (expr->binary_op.type) {
         case GS_BINARY_OP_ADD: 
-            val = gs_interp_binary_op_add(interp, left_val, right_val);
+            val = gs_eval_binary_op_add(eval, left_val, right_val);
             break;
         case GS_BINARY_OP_SUB: 
-            val = gs_interp_binary_op_sub(interp, left_val, right_val);
+            val = gs_eval_binary_op_sub(eval, left_val, right_val);
             break;
         case GS_BINARY_OP_MUL:
-            val = gs_interp_binary_op_mul(interp, left_val, right_val);
+            val = gs_eval_binary_op_mul(eval, left_val, right_val);
             break;
         case GS_BINARY_OP_DIV:
-            val = gs_interp_binary_op_div(interp, left_val, right_val);
+            val = gs_eval_binary_op_div(eval, left_val, right_val);
             break;
         case GS_BINARY_OP_LT:
-            val = gs_interp_binary_op_lt(interp, left_val, right_val);
+            val = gs_eval_binary_op_lt(eval, left_val, right_val);
             break;
         case GS_BINARY_OP_GT:
-            val = gs_interp_binary_op_gt(interp, left_val, right_val);
+            val = gs_eval_binary_op_gt(eval, left_val, right_val);
             break;
         case GS_BINARY_OP_LTE:
-            val = gs_interp_binary_op_lte(interp, left_val, right_val);
+            val = gs_eval_binary_op_lte(eval, left_val, right_val);
             break;
         case GS_BINARY_OP_GTE:
-            val = gs_interp_binary_op_gte(interp, left_val, right_val);
+            val = gs_eval_binary_op_gte(eval, left_val, right_val);
             break;
         case GS_BINARY_OP_EQ:
-            val = gs_interp_binary_op_eq(interp, left_val, right_val);
+            val = gs_eval_binary_op_eq(eval, left_val, right_val);
             break;
         case GS_NUM_BINARY_OPS:
             assert(false);
@@ -1200,23 +1261,23 @@ cleanup:
     return val;
 }
 
-static gs_val_t gs_interp_expr_assignment(gs_interp_t *interp, gs_expr_t *expr) {
+static gs_val_t gs_eval_expr_assignment(gs_eval_t *eval, gs_expr_t *expr) {
     gs_val_t val;
 
-    gs_val_t right_val = gs_interp_expr(interp, expr->assignment.right);
+    gs_val_t right_val = gs_eval_expr(eval, expr->assignment.right);
     if (right_val.is_return) {
         val = right_val;
         goto cleanup;
     }
 
     gs_val_t *lval;
-    val = gs_interp_lval(interp, expr->assignment.left, &lval);
+    val = gs_eval_lval(eval, expr->assignment.left, &lval);
     if (val.is_return) goto cleanup;
     assert(lval);
 
     if (expr->assignment.left->type == GS_EXPR_MEMBER_ACCESS) {
         const char *sym = expr->assignment.left->member_access.member.symbol;
-        right_val = gs_interp_cast(interp, right_val, GS_VAL_FLOAT);
+        right_val = gs_eval_cast(eval, right_val, GS_VAL_FLOAT);
         if (right_val.is_return) {
             val = right_val;
             goto cleanup;
@@ -1253,7 +1314,7 @@ static gs_val_t gs_interp_expr_assignment(gs_interp_t *interp, gs_expr_t *expr) 
     else {
         // Any type can be put in a list
         if (expr->assignment.left->type != GS_EXPR_ARRAY_ACCESS) {
-            right_val = gs_interp_cast(interp, right_val, lval->type);
+            right_val = gs_eval_cast(eval, right_val, lval->type);
             if (right_val.is_return) {
                 val = right_val;
                 goto cleanup;
@@ -1269,20 +1330,20 @@ cleanup:
     return val;
 }
 
-static gs_val_t gs_interp_expr_int(gs_interp_t *interp, gs_expr_t *expr) {
+static gs_val_t gs_eval_expr_int(gs_eval_t *eval, gs_expr_t *expr) {
     return gs_val_int(expr->int_val);
 }
 
-static gs_val_t gs_interp_expr_float(gs_interp_t *interp, gs_expr_t *expr) {
+static gs_val_t gs_eval_expr_float(gs_eval_t *eval, gs_expr_t *expr) {
     return gs_val_float(expr->float_val);
 }
 
-static gs_val_t gs_interp_expr_symbol(gs_interp_t *interp, gs_expr_t *expr)  {
+static gs_val_t gs_eval_expr_symbol(gs_eval_t *eval, gs_expr_t *expr)  {
     bool found_val = false;
     gs_val_t val;
 
-    for (int i = interp->env.length - 1; i >= 0; i--) {
-        gs_env_t *env = interp->env.data[i];
+    for (int i = eval->env.length - 1; i >= 0; i--) {
+        gs_env_t *env = eval->env.data[i];
         gs_val_t *val0 = map_get(&env->val_map, expr->symbol);
         if (val0) {
             found_val = true;
@@ -1300,14 +1361,20 @@ cleanup:
     return val;
 }
 
-static gs_val_t gs_interp_expr_call(gs_interp_t *interp, gs_expr_t *expr) {
+static gs_val_t gs_eval_expr_string(gs_eval_t *eval, gs_expr_t *expr) {
+    golf_string_t *string = malloc(sizeof(golf_string_t));
+    golf_string_init(string, expr->string);
+    return gs_val_string(string);
+}
+
+static gs_val_t gs_eval_expr_call(gs_eval_t *eval, gs_expr_t *expr) {
     gs_env_t *env = malloc(sizeof(gs_env_t));;
-    map_init(&env->val_map, "script/interp");
+    map_init(&env->val_map, "script/eval");
 
     vec_gs_val_t vals;
-    vec_init(&vals, "script/interp");
+    vec_init(&vals, "script/eval");
 
-    gs_val_t val = gs_interp_expr(interp, expr->call.fn);
+    gs_val_t val = gs_eval_expr(eval, expr->call.fn);
     if (val.is_return) goto cleanup;
 
     if (val.type == GS_VAL_FN) {
@@ -1320,13 +1387,13 @@ static gs_val_t gs_interp_expr_call(gs_interp_t *interp, gs_expr_t *expr) {
         for (int i = 0; i < fn_stmt->fn_decl.num_args; i++) {
             const char *symbol = fn_stmt->fn_decl.arg_symbols[i].symbol;
             gs_val_type decl_type = fn_stmt->fn_decl.arg_types[i];
-            gs_val_t arg_val = gs_interp_expr(interp, expr->call.args[i]);
+            gs_val_t arg_val = gs_eval_expr(eval, expr->call.args[i]);
             if (arg_val.is_return) {
                 val = arg_val;
                 goto cleanup;
             }
 
-            arg_val = gs_interp_cast(interp, arg_val, decl_type);
+            arg_val = gs_eval_cast(eval, arg_val, decl_type);
             if (arg_val.is_return) {
                 val = arg_val;
                 goto cleanup;
@@ -1335,14 +1402,14 @@ static gs_val_t gs_interp_expr_call(gs_interp_t *interp, gs_expr_t *expr) {
             map_set(&env->val_map, symbol, arg_val);
         }
 
-        vec_push(&interp->env, env);
-        val = gs_interp_stmt(interp, fn_stmt->fn_decl.body);
+        vec_push(&eval->env, env);
+        val = gs_eval_stmt(eval, fn_stmt->fn_decl.body);
         if (val.type != GS_VAL_ERROR) val.is_return = false;
-        (void)vec_pop(&interp->env);
+        (void)vec_pop(&eval->env);
     }
     else if (val.type == GS_VAL_C_FN) {
         for (int i = 0; i < expr->call.num_args; i++) {
-            gs_val_t arg_val = gs_interp_expr(interp, expr->call.args[i]);
+            gs_val_t arg_val = gs_eval_expr(eval, expr->call.args[i]);
             if (arg_val.is_return) {
                 val = arg_val;
                 goto cleanup;
@@ -1350,7 +1417,7 @@ static gs_val_t gs_interp_expr_call(gs_interp_t *interp, gs_expr_t *expr) {
             vec_push(&vals, arg_val);
         }
 
-        val = val.c_fn(interp, vals.data, vals.length);
+        val = val.c_fn(eval, vals.data, vals.length);
         if (val.type != GS_VAL_ERROR) val.is_return = false;
     }
     else {
@@ -1365,8 +1432,8 @@ cleanup:
     return val;
 }
 
-static gs_val_t gs_interp_expr_member_access(gs_interp_t *interp, gs_expr_t *expr) {
-    gs_val_t val = gs_interp_expr(interp, expr->member_access.val);
+static gs_val_t gs_eval_expr_member_access(gs_eval_t *eval, gs_expr_t *expr) {
+    gs_val_t val = gs_eval_expr(eval, expr->member_access.val);
     if (val.is_return) goto cleanup;
 
     const char *sym = expr->member_access.member.symbol;
@@ -1411,22 +1478,22 @@ cleanup:
     return val;
 }
 
-static gs_val_t gs_interp_expr_array_access(gs_interp_t *interp, gs_expr_t *expr) {
+static gs_val_t gs_eval_expr_array_access(gs_eval_t *eval, gs_expr_t *expr) {
     gs_val_t val;
 
-    gs_val_t list_val = gs_interp_expr(interp, expr->array_access.val);
+    gs_val_t list_val = gs_eval_expr(eval, expr->array_access.val);
     if (list_val.is_return) {
         val = list_val;
         goto cleanup;
     }
 
-    gs_val_t arg_val = gs_interp_expr(interp, expr->array_access.arg);
+    gs_val_t arg_val = gs_eval_expr(eval, expr->array_access.arg);
     if (arg_val.is_return) {
         val = list_val;
         goto cleanup;
     }
 
-    arg_val = gs_interp_cast(interp, arg_val, GS_VAL_INT);
+    arg_val = gs_eval_cast(eval, arg_val, GS_VAL_INT);
     if (arg_val.is_return) {
         val = list_val;
         goto cleanup;
@@ -1448,14 +1515,14 @@ cleanup:
     return val;
 }
 
-static gs_val_t gs_interp_expr_array_decl(gs_interp_t *interp, gs_expr_t *expr) {
+static gs_val_t gs_eval_expr_array_decl(gs_eval_t *eval, gs_expr_t *expr) {
     gs_val_t val;
     vec_gs_val_t *vals = malloc(sizeof(vec_gs_val_t*));
-    vec_init(vals, "script/interp");
+    vec_init(vals, "script/eval");
 
     for (int i = 0; i < expr->array_decl.num_args; i++) {
         gs_expr_t *arg_expr = expr->array_decl.args[i];
-        gs_val_t arg_val = gs_interp_expr(interp, arg_expr);
+        gs_val_t arg_val = gs_eval_expr(eval, arg_expr);
         if (arg_val.is_return) {
             val = arg_val;
             goto error;
@@ -1471,13 +1538,18 @@ error:
     return val;
 }
 
-static gs_val_t gs_interp_expr_cast(gs_interp_t *interp, gs_expr_t *expr) {
-    gs_val_t val;
-    memset(&val, 0, sizeof(val));
+static gs_val_t gs_eval_expr_cast(gs_eval_t *eval, gs_expr_t *expr) {
+    gs_val_t val = gs_eval_expr(eval, expr->cast.arg);
+    if (val.is_return) goto cleanup;
+
+    val = gs_eval_cast(eval, val, expr->cast.type);
+    if (val.is_return) goto cleanup;
+
+cleanup:
     return val;
 }
 
-static gs_val_t gs_interp_cast(gs_interp_t *interp, gs_val_t val, gs_val_type type) {
+static gs_val_t gs_eval_cast(gs_eval_t *eval, gs_val_t val, gs_val_type type) {
     if (val.type == type) {
         return val;
     }
@@ -1503,6 +1575,7 @@ static int gs_val_to_int(gs_val_t val) {
         case GS_VAL_VEC2:
         case GS_VAL_VEC3:
         case GS_VAL_LIST:
+        case GS_VAL_STRING:
         case GS_VAL_FN:
         case GS_VAL_C_FN:
         case GS_VAL_ERROR:
@@ -1523,6 +1596,7 @@ static float gs_val_to_float(gs_val_t val) {
         case GS_VAL_VEC2:
         case GS_VAL_VEC3:
         case GS_VAL_LIST:
+        case GS_VAL_STRING:
         case GS_VAL_FN:
         case GS_VAL_C_FN:
         case GS_VAL_ERROR:
@@ -1562,6 +1636,9 @@ static void gs_debug_print_val(gs_val_t val) {
             }
             printf("]");
             break;
+        case GS_VAL_STRING:
+            printf("[STRING %s]", val.string_val->cstr);
+            break;
         case GS_VAL_FN:
             printf("[FN]");
             break;
@@ -1576,7 +1653,7 @@ static void gs_debug_print_val(gs_val_t val) {
     }
 }
 
-static gs_val_t gs_interp_binary_op_add(gs_interp_t *interp, gs_val_t left, gs_val_t right) {
+static gs_val_t gs_eval_binary_op_add(gs_eval_t *eval, gs_val_t left, gs_val_t right) {
     if (left.type == GS_VAL_INT && right.type == GS_VAL_INT) {
         return gs_val_int(gs_val_to_int(left) + gs_val_to_int(right));
     }
@@ -1595,7 +1672,7 @@ static gs_val_t gs_interp_binary_op_add(gs_interp_t *interp, gs_val_t left, gs_v
     return gs_val_error("Unable to add these types");
 }
 
-static gs_val_t gs_interp_binary_op_sub(gs_interp_t *interp, gs_val_t left, gs_val_t right) {
+static gs_val_t gs_eval_binary_op_sub(gs_eval_t *eval, gs_val_t left, gs_val_t right) {
     if (left.type == GS_VAL_INT && right.type == GS_VAL_INT) {
         return gs_val_int(gs_val_to_int(left) - gs_val_to_int(right));
     }
@@ -1614,7 +1691,7 @@ static gs_val_t gs_interp_binary_op_sub(gs_interp_t *interp, gs_val_t left, gs_v
     return gs_val_error("Unable to subtract these types");
 }
 
-static gs_val_t gs_interp_binary_op_mul(gs_interp_t *interp, gs_val_t left, gs_val_t right) {
+static gs_val_t gs_eval_binary_op_mul(gs_eval_t *eval, gs_val_t left, gs_val_t right) {
     if (left.type == GS_VAL_INT && right.type == GS_VAL_INT) {
         return gs_val_int(gs_val_to_int(left) * gs_val_to_int(right));
     }
@@ -1639,7 +1716,7 @@ static gs_val_t gs_interp_binary_op_mul(gs_interp_t *interp, gs_val_t left, gs_v
     return gs_val_error("Unable to multiply these types");
 }
 
-static gs_val_t gs_interp_binary_op_div(gs_interp_t *interp, gs_val_t left, gs_val_t right) {
+static gs_val_t gs_eval_binary_op_div(gs_eval_t *eval, gs_val_t left, gs_val_t right) {
     if (left.type == GS_VAL_INT && right.type == GS_VAL_INT) {
         return gs_val_int(gs_val_to_int(left) / gs_val_to_int(right));
     }
@@ -1658,7 +1735,7 @@ static gs_val_t gs_interp_binary_op_div(gs_interp_t *interp, gs_val_t left, gs_v
     return gs_val_error("Unable to divide these types");
 }
 
-static gs_val_t gs_interp_binary_op_lt(gs_interp_t *interp, gs_val_t left, gs_val_t right) {
+static gs_val_t gs_eval_binary_op_lt(gs_eval_t *eval, gs_val_t left, gs_val_t right) {
     if (left.type == GS_VAL_INT && right.type == GS_VAL_INT) {
         return gs_val_bool(gs_val_to_int(left) < gs_val_to_int(right));
     }
@@ -1671,7 +1748,7 @@ static gs_val_t gs_interp_binary_op_lt(gs_interp_t *interp, gs_val_t left, gs_va
     return gs_val_error("Unable to less than these types");
 }
 
-static gs_val_t gs_interp_binary_op_gt(gs_interp_t *interp, gs_val_t left, gs_val_t right) {
+static gs_val_t gs_eval_binary_op_gt(gs_eval_t *eval, gs_val_t left, gs_val_t right) {
     if (left.type == GS_VAL_INT && right.type == GS_VAL_INT) {
         return gs_val_bool(gs_val_to_int(left) > gs_val_to_int(right));
     }
@@ -1684,7 +1761,7 @@ static gs_val_t gs_interp_binary_op_gt(gs_interp_t *interp, gs_val_t left, gs_va
     return gs_val_error("Unable to greater than these types");
 }
 
-static gs_val_t gs_interp_binary_op_lte(gs_interp_t *interp, gs_val_t left, gs_val_t right) {
+static gs_val_t gs_eval_binary_op_lte(gs_eval_t *eval, gs_val_t left, gs_val_t right) {
     if (left.type == GS_VAL_INT && right.type == GS_VAL_INT) {
         return gs_val_bool(gs_val_to_int(left) <= gs_val_to_int(right));
     }
@@ -1697,7 +1774,7 @@ static gs_val_t gs_interp_binary_op_lte(gs_interp_t *interp, gs_val_t left, gs_v
     return gs_val_error("Unable to less than equal add these types");
 }
 
-static gs_val_t gs_interp_binary_op_gte(gs_interp_t *interp, gs_val_t left, gs_val_t right) {
+static gs_val_t gs_eval_binary_op_gte(gs_eval_t *eval, gs_val_t left, gs_val_t right) {
     if (left.type == GS_VAL_INT && right.type == GS_VAL_INT) {
         return gs_val_bool(gs_val_to_int(left) >= gs_val_to_int(right));
     }
@@ -1710,7 +1787,7 @@ static gs_val_t gs_interp_binary_op_gte(gs_interp_t *interp, gs_val_t left, gs_v
     return gs_val_error("Unable to greater than equal these types");
 }
 
-static gs_val_t gs_interp_binary_op_eq(gs_interp_t *interp, gs_val_t left, gs_val_t right) {
+static gs_val_t gs_eval_binary_op_eq(gs_eval_t *eval, gs_val_t left, gs_val_t right) {
     if (left.type == GS_VAL_INT && right.type == GS_VAL_INT) {
         return gs_val_bool(gs_val_to_int(left) == gs_val_to_int(right));
     }
@@ -1726,10 +1803,10 @@ static gs_val_t gs_interp_binary_op_eq(gs_interp_t *interp, gs_val_t left, gs_va
     return gs_val_error("Unable to equal these types");
 }
 
-static gs_val_t gs_interp_lval(gs_interp_t *interp, gs_expr_t *expr, gs_val_t **lval) {
+static gs_val_t gs_eval_lval(gs_eval_t *eval, gs_expr_t *expr, gs_val_t **lval) {
     if (expr->type == GS_EXPR_SYMBOL) {
-        for (int i = interp->env.length - 1; i >= 0; i--) {
-            gs_env_t *env = interp->env.data[i];
+        for (int i = eval->env.length - 1; i >= 0; i--) {
+            gs_env_t *env = eval->env.data[i];
             gs_val_t *val = map_get(&env->val_map, expr->symbol);
             if (val) {
                 *lval = val;
@@ -1740,18 +1817,18 @@ static gs_val_t gs_interp_lval(gs_interp_t *interp, gs_expr_t *expr, gs_val_t **
         return gs_val_error("Unable to find symbol");
     }
     else if (expr->type == GS_EXPR_MEMBER_ACCESS) {
-        return gs_interp_lval(interp, expr->member_access.val, lval);   
+        return gs_eval_lval(eval, expr->member_access.val, lval);   
     }
     else if (expr->type == GS_EXPR_ARRAY_ACCESS) {
-        gs_val_t val = gs_interp_expr(interp, expr->array_access.val);   
+        gs_val_t val = gs_eval_expr(eval, expr->array_access.val);   
         if (val.is_return) return val;
         if (val.type != GS_VAL_LIST) {
             return gs_val_error("Expecing type list");
         }
 
-        gs_val_t arg = gs_interp_expr(interp, expr->array_access.arg);
+        gs_val_t arg = gs_eval_expr(eval, expr->array_access.arg);
         if (arg.is_return) return val;
-        arg = gs_interp_cast(interp, arg, GS_VAL_INT);
+        arg = gs_eval_cast(eval, arg, GS_VAL_INT);
         if (arg.is_return) return val;
 
         int idx = arg.int_val;
@@ -1774,33 +1851,94 @@ static gs_val_t gs_interp_lval(gs_interp_t *interp, gs_expr_t *expr, gs_val_t **
     return gs_val_error("Expected lval");
 }
 
-static gs_val_t gs_c_fn_print(gs_interp_t *interp, gs_val_t *vals, int num_vals) {
-    for (int i = 0; i < num_vals; i++) {
-        gs_debug_print_val(vals[i]);
-        printf("\n");
+static void gs_c_fn_print_val(gs_val_t val) {
+    switch (val.type) {
+        case GS_VAL_VOID:
+            printf("<void>");
+            break;
+        case GS_VAL_BOOL:
+            if (val.bool_val) {
+                printf("true");
+            }
+            else {
+                printf("false");
+            }
+            break;
+        case GS_VAL_INT:
+            printf("%d", val.int_val);
+            break;
+        case GS_VAL_FLOAT:
+            printf("%f", val.float_val);
+            break;
+        case GS_VAL_VEC2:
+            printf("<%f, %f", val.vec2_val.x, val.vec2_val.y);
+            break;
+        case GS_VAL_VEC3:
+            printf("<%f, %f, %f>", val.vec3_val.x, val.vec3_val.y, val.vec3_val.z);
+            break;
+        case GS_VAL_LIST:
+            printf("[");
+            for (int i = 0; i < val.list_val->length; i++) {
+                gs_c_fn_print_val(val.list_val->data[i]);
+                if (i != val.list_val->length - 1) {
+                    printf(", ");
+                }
+            }
+            printf("]");
+            break;
+        case GS_VAL_STRING:
+            printf("%s", val.string_val->cstr);
+            break;
+        case GS_VAL_FN:
+            printf("<fn>");
+            break;
+        case GS_VAL_C_FN:
+            printf("<c_fn>");
+            break;
+        case GS_VAL_ERROR:
+            printf("<error: %s>", val.error_val);
+            break;
+        case GS_VAL_NUM_TYPES:
+            assert(false);
+            break;
     }
+}
+
+static gs_val_t gs_c_fn_print(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
+    for (int i = 0; i < num_vals; i++) {
+        gs_c_fn_print_val(vals[i]);
+    }
+    printf("\n");
     return gs_val_void();
 }
 
-static gs_val_t gs_c_fn_signature(gs_interp_t *interp, gs_val_t *vals, int num_vals, gs_val_type *types, int num_types) {
+static gs_val_t gs_c_fn_signature(gs_eval_t *eval, gs_val_t *vals, int num_vals, gs_val_type *types, int num_types) {
     if (num_types != num_vals) {
         return gs_val_error("Expected 3 args to V3");
     }
 
     for (int i = 0; i < num_types; i++) {
-        vals[i] = gs_interp_cast(interp, vals[i], types[i]);
+        vals[i] = gs_eval_cast(eval, vals[i], types[i]);
         if (vals[i].is_return) return vals[i];
     }
 
     return gs_val_int(0);
 }
 
-static gs_val_t gs_c_fn_V3(gs_interp_t *interp, gs_val_t *vals, int num_vals) {
+static gs_val_t gs_c_fn_V3(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
     gs_val_type signature_arg_types[] = { GS_VAL_FLOAT, GS_VAL_FLOAT, GS_VAL_FLOAT };
     int signature_arg_count = sizeof(signature_arg_types) / sizeof(signature_arg_types[0]);;
-    gs_c_fn_signature(interp, vals, num_vals, signature_arg_types, signature_arg_count);
+    gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
 
     return gs_val_vec3(V3(vals[0].float_val, vals[1].float_val, vals[2].float_val));
+}
+
+static gs_val_t gs_c_fn_V2(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
+    gs_val_type signature_arg_types[] = { GS_VAL_FLOAT, GS_VAL_FLOAT };
+    int signature_arg_count = sizeof(signature_arg_types) / sizeof(signature_arg_types[0]);;
+    gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
+
+    return gs_val_vec2(V2(vals[0].float_val, vals[1].float_val));
 }
 
 static void gs_run(const char *src) {
@@ -1822,15 +1960,16 @@ static void gs_run(const char *src) {
     }
 
     gs_env_t *global_env = malloc(sizeof(gs_env_t));;
-    map_init(&global_env->val_map, "script/interp");
+    map_init(&global_env->val_map, "script/eval");
     map_set(&global_env->val_map, "true", gs_val_bool(true));
     map_set(&global_env->val_map, "false", gs_val_bool(false));
     map_set(&global_env->val_map, "print", gs_val_c_fn(gs_c_fn_print));
     map_set(&global_env->val_map, "V3", gs_val_c_fn(gs_c_fn_V3));
+    map_set(&global_env->val_map, "V2", gs_val_c_fn(gs_c_fn_V2));
 
-    gs_interp_t interp;
-    vec_init(&interp.env, "script/interp");
-    vec_push(&interp.env, global_env);
+    gs_eval_t eval;
+    vec_init(&eval.env, "script/eval");
+    vec_push(&eval.env, global_env);
 
     while (!gs_peek_eof(&parser)) {
         gs_stmt_t *stmt = gs_parse_stmt(&parser);
@@ -1841,7 +1980,7 @@ static void gs_run(const char *src) {
             return;
         }
 
-        gs_val_t val = gs_interp_stmt(&interp, stmt);
+        gs_val_t val = gs_eval_stmt(&eval, stmt);
         if (false) {
             gs_debug_print_stmt(stmt, 0);
             gs_debug_print_val(val);
@@ -1928,6 +2067,10 @@ static bool gs_peek_val_type_n(gs_parser_t *parser, gs_val_type *type, int n) {
         }
         else if (strcmp(token.symbol, "list") == 0) {
             if (type) *type = GS_VAL_LIST;
+            return true;
+        }
+        else if (strcmp(token.symbol, "string") == 0) {
+            if (type) *type = GS_VAL_STRING;
             return true;
         }
     }
@@ -2560,6 +2703,10 @@ static gs_expr_t *gs_parse_expr_primary(gs_parser_t *parser) {
         expr = gs_expr_symbol_new(parser, token);
         gs_eat(parser);
     }
+    else if (token.type == GS_TOKEN_STRING) {
+        expr = gs_expr_string_new(parser, token);
+        gs_eat(parser);
+    }
     else if (gs_eat_char(parser, '[')) {
         expr = gs_parse_expr_array_decl(parser);
     }
@@ -2633,6 +2780,8 @@ static gs_val_t gs_val_default(gs_val_type type) {
             return gs_val_vec3(V3(0, 0, 0));
         case GS_VAL_LIST:
             return gs_val_list(NULL);
+        case GS_VAL_STRING:
+            return gs_val_string(NULL);
         case GS_VAL_FN:
             assert(false);
             break;
@@ -2704,6 +2853,14 @@ static gs_val_t gs_val_list(vec_gs_val_t *list) {
     return val;
 }
 
+static gs_val_t gs_val_string(golf_string_t *string) {
+    gs_val_t val;
+    val.type = GS_VAL_STRING;
+    val.is_return = false;
+    val.string_val = string;
+    return val;
+}
+
 static gs_val_t gs_val_fn(gs_stmt_t *stmt) {
     gs_val_t val;
     val.type = GS_VAL_FN;
@@ -2712,7 +2869,7 @@ static gs_val_t gs_val_fn(gs_stmt_t *stmt) {
     return val;
 }
 
-static gs_val_t gs_val_c_fn(gs_val_t (*c_fn)(gs_interp_t *interp, gs_val_t *vals, int num_vals)) {
+static gs_val_t gs_val_c_fn(gs_val_t (*c_fn)(gs_eval_t *eval, gs_val_t *vals, int num_vals)) {
     gs_val_t val;
     val.type = GS_VAL_C_FN;
     val.is_return = false;
