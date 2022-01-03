@@ -48,7 +48,7 @@ static assetsys_error_t _golf_assetsys_file_load(const char *path, char **data, 
 
 static bool _golf_texture_import(const char *path, char *data, int data_len) {
     golf_string_t import_texture_file_path;
-    golf_string_initf(&import_texture_file_path, "%s.golf_data", path);
+    golf_string_initf(&import_texture_file_path, "data", "%s.golf_data", path);
 
     JSON_Value *existing_val = json_parse_file(import_texture_file_path.cstr);
     JSON_Object *existing_obj = json_value_get_object(existing_val);
@@ -175,7 +175,7 @@ static JSON_Value *_golf_shader_import_bare(const char *base_name, const char *n
 
     {
         golf_string_t vs_bare_name;
-        golf_string_initf(&vs_bare_name, "%s_%s_vs.glsl", base_name, name);
+        golf_string_initf(&vs_bare_name, "data", "%s_%s_vs.glsl", base_name, name);
 
         char *data;
         int data_len;
@@ -199,7 +199,7 @@ static bool _golf_shader_import(const char *path, char *data, int data_len) {
 
     {
         golf_string_t cmd;
-        golf_string_init(&cmd, "");
+        golf_string_init(&cmd, "data", "");
 #if GOLF_PLATFORM_LINUX
         golf_string_appendf(&cmd, "tools/sokol-tools/linux/sokol-shdc --input %s --output src/golf/shaders/%s.h --slang %s", file.path, file.name, slangs);
 #elif GOLF_PLATFORM_WINDOWS
@@ -212,7 +212,7 @@ static bool _golf_shader_import(const char *path, char *data, int data_len) {
 
     {
         golf_string_t cmd;
-        golf_string_init(&cmd, "");
+        golf_string_init(&cmd, "data", "");
 #if GOLF_PLATFORM_LINUX
         golf_string_appendf(&cmd, "tools/sokol-tools/linux/sokol-shdc --input %s --output out/temp/bare --slang %s --format bare", file.path, slangs);
 #elif GOLF_PLATFORM_WINDOWS
@@ -222,7 +222,7 @@ static bool _golf_shader_import(const char *path, char *data, int data_len) {
         int ret = system(cmd.cstr);
         if (ret == 0) {
             golf_string_t base_bare_name;
-            golf_string_initf(&base_bare_name, "out/temp/bare_%s", file.name);
+            golf_string_initf(&base_bare_name, "data", "out/temp/bare_%s", file.name);
             golf_string_pop(&base_bare_name, 5);
 
             {
@@ -241,7 +241,7 @@ static bool _golf_shader_import(const char *path, char *data, int data_len) {
     }
 
     golf_string_t import_shader_file_path;
-    golf_string_initf(&import_shader_file_path, "%s.golf_data", file.path);
+    golf_string_initf(&import_shader_file_path, "data", "%s.golf_data", file.path);
     json_serialize_to_file_pretty(val, import_shader_file_path.cstr);
     golf_string_deinit(&import_shader_file_path);
 
@@ -376,7 +376,7 @@ static bool _golf_font_import(const char *path, char *data, int data_len) {
     json_object_set_value(obj, "atlases", atlases_val);
 
     golf_string_t import_font_file_path;
-    golf_string_initf(&import_font_file_path, "%s.golf_data", path);
+    golf_string_initf(&import_font_file_path, "data", "%s.golf_data", path);
     json_serialize_to_file(val, import_font_file_path.cstr);
     golf_string_deinit(&import_font_file_path);
 
@@ -582,7 +582,7 @@ static bool _golf_model_import(const char *path, char *data, int data_len) {
     json_object_set_value(json_obj, "groups", json_groups_val);
 
     golf_string_t import_model_file_path;
-    golf_string_initf(&import_model_file_path, "%s.golf_data", path);
+    golf_string_initf(&import_model_file_path, "data", "%s.golf_data", path);
     json_serialize_to_file(json_val, import_model_file_path.cstr);
 
     golf_string_deinit(&import_model_file_path);

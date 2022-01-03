@@ -1373,7 +1373,7 @@ cleanup:
 static gs_val_t gs_eval_expr_string(gs_eval_t *eval, gs_expr_t *expr) {
     golf_string_t *string = golf_alloc_tracked(sizeof(golf_string_t), "script/eval");
     vec_push(&eval->allocated_strings, string);
-    golf_string_init(string, expr->string);
+    golf_string_init(string, "script/eval", expr->string);
     return gs_val_string(string);
 }
 

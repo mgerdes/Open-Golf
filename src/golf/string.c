@@ -12,7 +12,7 @@ static void _golf_string_grow(golf_string_t *str, int new_len) {
     if (str->cap < new_len) {
         char *old_cstr = str->cstr;  
         str->cap = 2 * (new_len + 1);
-        str->cstr =  golf_alloc(sizeof(char)*(str->cap + 1));
+        str->cstr =  golf_alloc_tracked(sizeof(char)*(str->cap + 1), str->alloc_category);
         if (old_cstr) {
             strcpy(str->cstr, old_cstr);
         }
@@ -20,15 +20,16 @@ static void _golf_string_grow(golf_string_t *str, int new_len) {
     }
 }
 
-void golf_string_init(golf_string_t *str, const char *cstr) {
+void golf_string_init(golf_string_t *str, const char* alloc_category, const char *cstr) {
     int len = (int)strlen(cstr);
     str->cap = len;
     str->len = len;
-    str->cstr = golf_alloc(sizeof(char)*(str->cap + 1));
+    str->alloc_category = alloc_category;
+    str->cstr = golf_alloc_tracked(sizeof(char)*(str->cap + 1), str->alloc_category);
     strcpy(str->cstr, cstr);
 }
 
-void golf_string_initf(golf_string_t *str, const char *format, ...) {
+void golf_string_initf(golf_string_t *str, const char *alloc_category, const char *format, ...) {
     va_list args; 
     va_start(args, format); 
     int len = vsnprintf(NULL, 0, format, args);
@@ -36,7 +37,8 @@ void golf_string_initf(golf_string_t *str, const char *format, ...) {
 
     str->cap = len;
     str->len = len;
-    str->cstr = golf_alloc(sizeof(char)*(str->cap + 1));
+    str->alloc_category = alloc_category;
+    str->cstr = golf_alloc_tracked(sizeof(char)*(str->cap + 1), str->alloc_category);
 
     va_start(args, format); 
     vsprintf(str->cstr, format, args);
