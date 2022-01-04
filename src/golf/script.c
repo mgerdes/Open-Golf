@@ -17,43 +17,10 @@ typedef struct gs_stmt gs_stmt_t;
 typedef struct gs_parser gs_parser_t;
 typedef struct gs_eval gs_eval_t;
 
-typedef enum gs_val_type {
-    GS_VAL_VOID,
-    GS_VAL_BOOL,
-    GS_VAL_INT,
-    GS_VAL_FLOAT,
-    GS_VAL_VEC2,
-    GS_VAL_VEC3,
-    GS_VAL_LIST,
-    GS_VAL_STRING,
-    GS_VAL_FN,
-    GS_VAL_C_FN,
-    GS_VAL_ERROR,
-    GS_VAL_NUM_TYPES,
-} gs_val_type;
 typedef vec_t(gs_val_type) vec_gs_val_type_t;
 
 static void gs_debug_print_type(gs_val_type type);
 
-typedef struct gs_val gs_val_t;
-typedef vec_t(gs_val_t) vec_gs_val_t;
-typedef struct gs_val {
-    gs_val_type type;
-    bool is_return;
-
-    union {
-        bool bool_val;
-        int int_val;
-        float float_val;
-        vec2 vec2_val;
-        vec3 vec3_val;
-        vec_gs_val_t *list_val;
-        golf_string_t *string_val;
-        gs_stmt_t *fn_stmt;
-        gs_val_t (*c_fn)(gs_eval_t *eval, gs_val_t *vals, int num_vals);
-        const char *error_val;
-    };
-} gs_val_t;
 typedef map_t(gs_val_t) map_gs_val_t;
 
 static gs_val_t gs_val_default(gs_val_type type);
@@ -65,7 +32,7 @@ static gs_val_t gs_val_vec2(vec2 v);
 static gs_val_t gs_val_vec3(vec3 v);
 static gs_val_t gs_val_list(vec_gs_val_t *list);
 static gs_val_t gs_val_string(golf_string_t *string);
-static gs_val_t gs_val_fn(gs_stmt_t *stmt);
+static gs_val_t gs_val_fn(gs_fn_t *fn);
 static gs_val_t gs_val_c_fn(gs_val_t (*c_fn)(gs_eval_t *eval, gs_val_t *vals, int num_vals));
 static gs_val_t gs_val_error(const char *v);
 static int gs_val_to_int(gs_val_t val);
@@ -244,6 +211,8 @@ typedef struct gs_stmt {
             gs_val_type *arg_types;
             gs_token_t *arg_symbols;
             gs_stmt_t *body;
+
+            gs_fn_t fn;
         } fn_decl;
     };
 } gs_stmt_t;
@@ -351,7 +320,10 @@ static gs_val_t gs_eval_binary_op_eq(gs_eval_t *eval, gs_val_t left, gs_val_t ri
 
 static gs_val_t gs_eval_lval(gs_eval_t *eval, gs_expr_t *expr, gs_val_t **lval);
 
-static void gs_run(const char *src);
+typedef struct golf_script {
+    gs_parser_t parser;
+    gs_eval_t eval; 
+} golf_script_t;
 
 static void gs_debug_print_type(gs_val_type type) {
     switch (type) {
@@ -887,6 +859,17 @@ static gs_stmt_t *gs_stmt_fn_decl_new(gs_parser_t *parser, gs_val_type return_ty
     stmt->fn_decl.arg_symbols = gs_parser_alloc(parser, sizeof(gs_token_t) * arg_types.length);
     memcpy(stmt->fn_decl.arg_symbols, arg_symbols.data, sizeof(gs_token_t) * arg_types.length);
     stmt->fn_decl.body = body;
+
+    stmt->fn_decl.fn.return_type = return_type;
+    stmt->fn_decl.fn.name = symbol.symbol;
+    stmt->fn_decl.fn.num_args = stmt->fn_decl.num_args;
+    stmt->fn_decl.fn.arg_types = stmt->fn_decl.arg_types;
+    stmt->fn_decl.fn.arg_names = gs_parser_alloc(parser, sizeof(const char *) * stmt->fn_decl.num_args);
+    for (int i = 0; i < stmt->fn_decl.num_args; i++) {
+        stmt->fn_decl.fn.arg_names[i] = stmt->fn_decl.arg_symbols[i].symbol;
+    }
+    stmt->fn_decl.fn.stmt = stmt;
+
     return stmt;
 }
 
@@ -1162,7 +1145,7 @@ cleanup:
 }
 
 static gs_val_t gs_eval_stmt_fn_decl(gs_eval_t *eval, gs_stmt_t *stmt) {
-    gs_val_t val = gs_val_fn(stmt);
+    gs_val_t val = gs_val_fn(&(stmt->fn_decl.fn));
     if (val.is_return) goto cleanup;
 
     gs_token_t token = stmt->fn_decl.symbol;
@@ -1388,7 +1371,7 @@ static gs_val_t gs_eval_expr_call(gs_eval_t *eval, gs_expr_t *expr) {
     if (val.is_return) goto cleanup;
 
     if (val.type == GS_VAL_FN) {
-        gs_stmt_t *fn_stmt = val.fn_stmt;
+        gs_stmt_t *fn_stmt = (gs_stmt_t*) val.fn_val->stmt;
         if (expr->call.num_args != fn_stmt->fn_decl.num_args) {
             val = gs_val_error("Wrong number of args passed to function call");
             goto cleanup;
@@ -1950,62 +1933,6 @@ static gs_val_t gs_c_fn_V2(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
     gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
 
     return gs_val_vec2(V2(vals[0].float_val, vals[1].float_val));
-}
-
-static void gs_run(const char *src) {
-    gs_parser_t parser;
-    vec_init(&parser.tokens, "script/parser");
-    parser.cur_token = 0;
-    parser.error = false;
-    vec_init(&parser.allocated_memory, "script/parser");
-
-    gs_tokenize(&parser, src);
-    if (parser.error) {
-        printf("TOKENIZE ERROR: %s\n", parser.error_string);
-        gs_debug_print_token(parser.error_token);
-        printf("\n");
-        return;
-    }
-
-    if (false) {
-        gs_debug_print_tokens(&parser.tokens);
-    }
-
-    gs_env_t *global_env = golf_alloc_tracked(sizeof(gs_env_t), "script/eval");
-    map_init(&global_env->val_map, "script/eval");
-    map_set(&global_env->val_map, "true", gs_val_bool(true));
-    map_set(&global_env->val_map, "false", gs_val_bool(false));
-    map_set(&global_env->val_map, "print", gs_val_c_fn(gs_c_fn_print));
-    map_set(&global_env->val_map, "V3", gs_val_c_fn(gs_c_fn_V3));
-    map_set(&global_env->val_map, "V2", gs_val_c_fn(gs_c_fn_V2));
-
-    gs_eval_t eval;
-    vec_init(&eval.env, "script/eval");
-    vec_push(&eval.env, global_env);
-    vec_init(&eval.allocated_strings, "script/eval");
-    vec_init(&eval.allocated_lists, "script/eval");
-
-    while (!gs_peek_eof(&parser)) {
-        gs_stmt_t *stmt = gs_parse_stmt(&parser);
-        if (parser.error) {
-            printf("PARSE ERROR: %s\n", parser.error_string);
-            gs_debug_print_token(parser.error_token);
-            printf("\n");
-            return;
-        }
-
-        gs_val_t val = gs_eval_stmt(&eval, stmt);
-        if (false) {
-            gs_debug_print_stmt(stmt, 0);
-            gs_debug_print_val(val);
-            printf("\n");
-        }
-        if (val.type == GS_VAL_ERROR) {
-            printf("INTERP ERROR: ");
-            gs_debug_print_val(val);
-            printf("\n");
-        }
-    }
 }
 
 static void gs_parser_error(gs_parser_t *parser, gs_token_t token, const char *fmt, ...) {
@@ -2875,11 +2802,11 @@ static gs_val_t gs_val_string(golf_string_t *string) {
     return val;
 }
 
-static gs_val_t gs_val_fn(gs_stmt_t *stmt) {
+static gs_val_t gs_val_fn(gs_fn_t *fn) {
     gs_val_t val;
     val.type = GS_VAL_FN;
     val.is_return = false;
-    val.fn_stmt = stmt;
+    val.fn_val = fn;
     return val;
 }
 
@@ -2899,11 +2826,62 @@ static gs_val_t gs_val_error(const char *v) {
     return val;
 }
 
+golf_script_t *golf_script_new(const char *src) {
+    golf_script_t *script = golf_alloc_tracked(sizeof(golf_script_t), "script");
+    vec_init(&script->parser.tokens, "script/parser");
+    script->parser.cur_token = 0;
+    script->parser.error = false;
+    vec_init(&script->parser.allocated_memory, "script/parser");
+
+    gs_tokenize(&script->parser, src);
+    if (script->parser.error) {
+        return script;
+    }
+
+    if (false) {
+        gs_debug_print_tokens(&script->parser.tokens);
+    }
+
+    gs_env_t *global_env = golf_alloc_tracked(sizeof(gs_env_t), "script/eval");
+    map_init(&global_env->val_map, "script/eval");
+    map_set(&global_env->val_map, "true", gs_val_bool(true));
+    map_set(&global_env->val_map, "false", gs_val_bool(false));
+    map_set(&global_env->val_map, "print", gs_val_c_fn(gs_c_fn_print));
+    map_set(&global_env->val_map, "V3", gs_val_c_fn(gs_c_fn_V3));
+    map_set(&global_env->val_map, "V2", gs_val_c_fn(gs_c_fn_V2));
+
+    vec_init(&script->eval.env, "script/eval");
+    vec_push(&script->eval.env, global_env);
+    vec_init(&script->eval.allocated_strings, "script/eval");
+    vec_init(&script->eval.allocated_lists, "script/eval");
+
+    while (!gs_peek_eof(&script->parser)) {
+        gs_stmt_t *stmt = gs_parse_stmt(&script->parser);
+        if (script->parser.error) {
+            return script;
+        }
+
+        gs_val_t val = gs_eval_stmt(&script->eval, stmt);
+        if (false) {
+            gs_debug_print_stmt(stmt, 0);
+            gs_debug_print_val(val);
+            printf("\n");
+        }
+        if (val.type == GS_VAL_ERROR) {
+            printf("INTERP ERROR: ");
+            gs_debug_print_val(val);
+            printf("\n");
+        }
+    }
+
+    return script;
+}
+
 void golf_script_init(void) {
     char *data;
     int data_len;
     if (golf_file_load_data("data/scripts/teseting.gs", &data, &data_len)) {
-        gs_run(data);
+        golf_script_t *script = golf_script_new(data);
         golf_free(data);
     } 
 

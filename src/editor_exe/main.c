@@ -111,6 +111,8 @@ static void frame(void) {
         golf_renderer_init();
         golf_editor_init();
 
+        sapp_quit();
+
         inited = true;
     }
 
@@ -160,7 +162,6 @@ static void frame(void) {
         sg_end_pass();
         sg_commit();
     }
-
 
     fflush(stdout);
 }
