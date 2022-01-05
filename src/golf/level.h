@@ -4,7 +4,13 @@
 #include "golf/data.h"
 #include "golf/file.h"
 #include "golf/maths.h"
+#include "golf/string.h"
 #include "golf/vec.h"
+
+typedef struct golf_geo_generator_data {
+    golf_script_t *script;
+} golf_geo_generator_data_t;
+void golf_geo_generator_data_init(golf_geo_generator_data_t *generator_data);
 
 typedef enum golf_geo_face_uv_gen_type {
     GOLF_GEO_FACE_UV_GEN_MANUAL,
@@ -34,6 +40,7 @@ typedef vec_t(golf_geo_point_t) vec_golf_geo_point_t;
 golf_geo_point_t golf_geo_point(vec3 position);
 
 typedef struct golf_geo {
+    golf_geo_generator_data_t generator_data;
     vec_golf_geo_point_t points;
     vec_golf_geo_face_t faces;
     bool model_updated_this_frame;

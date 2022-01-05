@@ -19,6 +19,10 @@ const char **golf_geo_uv_gen_type_strings(void) {
     return _golf_geo_face_uv_gen_type_strings;
 }
 
+void golf_geo_generator_data_init(golf_geo_generator_data_t *generator_data) {
+    generator_data->script = NULL;
+}
+
 golf_geo_face_t golf_geo_face(const char *material_name, int n, int *idx, golf_geo_face_uv_gen_type_t uv_gen_type, vec2 *uvs) {
     golf_geo_face_t face;
     face.active = true;
@@ -42,6 +46,7 @@ golf_geo_point_t golf_geo_point(vec3 position) {
 }
 
 void golf_geo_init(golf_geo_t *geo) {
+    golf_geo_generator_data_init(&geo->generator_data);
     vec_init(&geo->points, "level");
     vec_init(&geo->faces, "level");
     geo->model_updated_this_frame = false;

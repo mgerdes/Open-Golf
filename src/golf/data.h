@@ -6,6 +6,7 @@
 #include "golf/file.h"
 #include "golf/map.h"
 #include "golf/maths.h"
+#include "golf/script.h"
 #include "golf/string.h"
 
 #define GOLF_MAX_NAME_LEN 64
@@ -127,6 +128,7 @@ typedef enum golf_data_type {
     GOLF_DATA_CONFIG,
     GOLF_DATA_LEVEL,
     GOLF_DATA_STATIC_DATA,
+    GOLF_DATA_SCRIPT,
 } golf_data_type_t;
 
 typedef struct golf_data {
@@ -155,6 +157,7 @@ golf_shader_t *golf_data_get_shader(const char *path);
 golf_font_t *golf_data_get_font(const char *path);
 golf_config_t *golf_data_get_config(const char *path);
 golf_level_t *golf_data_get_level(const char *path);
+golf_script_t *golf_data_get_script(const char *path);
 
 #endif
 

@@ -13,6 +13,7 @@
 #include "golf/inputs.h"
 #include "golf/log.h"
 #include "golf/renderer.h"
+#include "golf/script.h"
 
 static golf_editor_t editor;
 static golf_inputs_t *inputs;
@@ -1368,6 +1369,26 @@ void golf_editor_update(float dt) {
                     _golf_editor_commit_action();
                 }
             }
+        }
+
+        if (igTreeNode_Str("Generator")) {
+            golf_script_store_t *script_store = golf_script_store_get();
+            golf_script_t *selected_script = geo->generator_data.script;
+            const char *selected_path = "";
+            if (selected_script) {
+                selected_path = selected_script->path;
+            }
+            if (igBeginCombo("Scripts", selected_path, ImGuiComboFlags_None)) {
+                for (int i = 0; i < script_store->scripts.length; i++) {
+                    golf_script_t *script = script_store->scripts.data[i];
+                    bool selected = selected_script && strcmp(selected_script->path, script->path) == 0;
+                    if (igSelectable_Bool(script->path, selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
+                        geo->generator_data.script = script;
+                    }
+                }
+                igEndCombo();
+            }
+            igTreePop();
         }
 
         if (igButton("Exit Editing Geo", (ImVec2){0, 0})) {

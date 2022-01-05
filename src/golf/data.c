@@ -988,6 +988,16 @@ static bool _golf_static_data_unload(void *ptr) {
     return true;
 }
 
+static bool _golf_script_data_load(void *ptr, const char *path, char *data, int data_len) {
+    golf_script_t *script = (golf_script_t*) ptr;
+    return golf_script_load(script, path, data, data_len);
+}
+
+static bool _golf_script_data_unload(void *ptr) {
+    golf_script_t *script = (golf_script_t*) ptr;
+    return golf_script_unload(script);
+}
+
 //
 // DATA
 //
@@ -1076,6 +1086,14 @@ static _golf_data_loader_t _loaders[] = {
         .data_size = sizeof(golf_static_data_t),
         .load_fn = _golf_static_data_load,
         .unload_fn = _golf_static_data_unload,
+        .import_fn = NULL,
+    },
+    {
+        .ext = ".gs",
+        .data_type = GOLF_DATA_SCRIPT,
+        .data_size = sizeof(golf_script_t),
+        .load_fn = _golf_script_data_load,
+        .unload_fn = _golf_script_data_unload,
         .import_fn = NULL,
     },
     {
@@ -1315,6 +1333,14 @@ golf_level_t *golf_data_get_level(const char *path) {
     golf_data_t *data_file = golf_data_get_file(path);
     if (!data_file || data_file->type != GOLF_DATA_LEVEL) {
         golf_log_error("Could not find level file %s", path);
+    }
+    return data_file->ptr;
+}
+
+golf_script_t *golf_data_get_script(const char *path) {
+    golf_data_t *data_file = golf_data_get_file(path);
+    if (!data_file || data_file->type != GOLF_DATA_SCRIPT) {
+        golf_log_error("Could not find script file %s", path);
     }
     return data_file->ptr;
 }

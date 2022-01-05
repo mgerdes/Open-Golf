@@ -104,14 +104,11 @@ static void frame(void) {
     float dt = (float) stm_sec(stm_laptime(&last_time));
     if (!inited) {
         golf_data_init();
-        golf_script_init();
         golf_inputs_init();
         golf_game_init();
         golf_ui_init();
         golf_renderer_init();
         golf_editor_init();
-
-        sapp_quit();
 
         inited = true;
     }
@@ -174,6 +171,7 @@ static void event(const sapp_event *event) {
 sapp_desc sokol_main(int argc, char *argv[]) {
     golf_alloc_init();
     golf_log_init();
+    golf_script_store_init();
     return (sapp_desc){
         .init_cb = init,
             .frame_cb = frame,
@@ -181,7 +179,7 @@ sapp_desc sokol_main(int argc, char *argv[]) {
             .event_cb = event,
             .width = 1280,
             .height = 720,
-            .window_title = "Minigolf",
+            .window_title = "Minigolf Editor",
             .enable_clipboard = true,
             .clipboard_size = 1024,
             .fullscreen = false,

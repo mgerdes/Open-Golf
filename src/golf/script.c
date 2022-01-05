@@ -14,14 +14,8 @@
 
 typedef struct gs_expr gs_expr_t;
 typedef struct gs_stmt gs_stmt_t;
-typedef struct gs_parser gs_parser_t;
-typedef struct gs_eval gs_eval_t;
-
-typedef vec_t(gs_val_type) vec_gs_val_type_t;
 
 static void gs_debug_print_type(gs_val_type type);
-
-typedef map_t(gs_val_t) map_gs_val_t;
 
 static gs_val_t gs_val_default(gs_val_type type);
 static gs_val_t gs_val_void(void);
@@ -32,34 +26,12 @@ static gs_val_t gs_val_vec2(vec2 v);
 static gs_val_t gs_val_vec3(vec3 v);
 static gs_val_t gs_val_list(vec_gs_val_t *list);
 static gs_val_t gs_val_string(golf_string_t *string);
-static gs_val_t gs_val_fn(gs_fn_t *fn);
+static gs_val_t gs_val_fn(gs_stmt_t *fn_stmt);
 static gs_val_t gs_val_c_fn(gs_val_t (*c_fn)(gs_eval_t *eval, gs_val_t *vals, int num_vals));
 static gs_val_t gs_val_error(const char *v);
 static int gs_val_to_int(gs_val_t val);
 static float gs_val_to_float(gs_val_t val);
 static void gs_debug_print_val(gs_val_t val);
-
-typedef enum gs_token_type {
-    GS_TOKEN_INT,
-    GS_TOKEN_FLOAT,
-    GS_TOKEN_SYMBOL,
-    GS_TOKEN_CHAR,
-    GS_TOKEN_STRING,
-    GS_TOKEN_EOF,
-} gs_token_type;
-
-typedef struct gs_token {
-    gs_token_type type;
-    int line, col;
-    union {
-        int int_val;
-        float float_val;
-        const char *symbol;
-        const char *string;
-        char c;
-    };
-} gs_token_t;
-typedef vec_t(gs_token_t) vec_gs_token_t;
 
 static bool gs_is_char_digit(char c);
 static bool gs_is_char_start_of_symbol(char c);
@@ -72,79 +44,6 @@ static gs_token_t gs_token_number(const char *text, int *len, int line, int col)
 static void gs_tokenize(gs_parser_t *parser, const char *src);
 static void gs_debug_print_token(gs_token_t token);
 static void gs_debug_print_tokens(vec_gs_token_t *tokens);
-
-typedef enum gs_binary_op_type {
-    GS_BINARY_OP_ADD,
-    GS_BINARY_OP_SUB,
-    GS_BINARY_OP_MUL,
-    GS_BINARY_OP_DIV,
-    GS_BINARY_OP_LT,
-    GS_BINARY_OP_GT,
-    GS_BINARY_OP_LTE,
-    GS_BINARY_OP_GTE,
-    GS_BINARY_OP_EQ,
-    GS_NUM_BINARY_OPS,
-} gs_binary_op_type;
-
-typedef enum gs_expr_type {
-    GS_EXPR_BINARY_OP,
-    GS_EXPR_ASSIGNMENT,
-    GS_EXPR_INT,
-    GS_EXPR_FLOAT,
-    GS_EXPR_SYMBOL,
-    GS_EXPR_STRING,
-    GS_EXPR_CALL,
-    GS_EXPR_MEMBER_ACCESS,
-    GS_EXPR_ARRAY_ACCESS,
-    GS_EXPR_ARRAY_DECL,
-    GS_EXPR_CAST,
-} gs_expr_type;
-
-typedef struct gs_expr {
-    gs_expr_type type;
-    gs_token_t token;
-    union {
-        int int_val;
-        float float_val;
-        const char *symbol;
-        const char *string;
-
-        struct {
-            gs_binary_op_type type;
-            gs_expr_t *left, *right;
-        } binary_op;
-
-        struct {
-            gs_expr_t *left, *right;
-        } assignment;
-
-        struct {
-            gs_expr_t *fn;
-            int num_args;
-            gs_expr_t **args;
-        } call;
-
-        struct {
-            gs_expr_t *val;
-            gs_token_t member;
-        } member_access;
-
-        struct {
-            gs_expr_t *val, *arg;
-        } array_access;
-
-        struct {
-            int num_args;
-            gs_expr_t **args;
-        } array_decl;
-
-        struct {
-            gs_val_type type;
-            gs_expr_t *arg;
-        } cast;
-    }; 
-} gs_expr_t;
-typedef vec_t(gs_expr_t*) vec_gs_expr_t;
 
 static gs_expr_t *gs_expr_int_new(gs_parser_t *parser, gs_token_t token);
 static gs_expr_t *gs_expr_float_new(gs_parser_t *parser, gs_token_t token);
@@ -159,65 +58,6 @@ static gs_expr_t *gs_expr_array_decl_new(gs_parser_t *parser, gs_token_t token, 
 static gs_expr_t *gs_expr_cast_new(gs_parser_t *parser, gs_token_t token, gs_val_type type, gs_expr_t *arg);
 static void gs_debug_print_expr(gs_expr_t *expr);
 
-typedef enum gs_stmt_type {
-    GS_STMT_IF,
-    GS_STMT_FOR,
-    GS_STMT_RETURN,
-    GS_STMT_BLOCK,
-    GS_STMT_EXPR,
-    GS_STMT_VAR_DECL,
-    GS_STMT_FN_DECL,
-} gs_stmt_type;
-
-typedef struct gs_stmt {
-    gs_stmt_type type;
-    union {
-        gs_expr_t *expr;
-
-        struct {
-            int num_conds;
-            gs_expr_t **conds;
-            gs_stmt_t **stmts;
-            gs_stmt_t *else_stmt;
-        } if_stmt;
-
-        struct {
-            gs_val_type decl_type;
-            gs_token_t decl_symbol;
-            gs_expr_t *init, *cond, *inc;
-            gs_stmt_t *body;
-        } for_stmt;
-
-        struct {
-            gs_expr_t *expr;
-        } return_stmt;
-
-        struct {
-            int num_stmts;
-            gs_stmt_t **stmts;
-        } block_stmt;
-
-        struct {
-            gs_val_type type;
-            int num_ids;
-            gs_token_t *tokens;
-            gs_expr_t *init;
-        } var_decl;
-
-        struct {
-            gs_val_type return_type;
-            gs_token_t symbol;
-            int num_args;
-            gs_val_type *arg_types;
-            gs_token_t *arg_symbols;
-            gs_stmt_t *body;
-
-            gs_fn_t fn;
-        } fn_decl;
-    };
-} gs_stmt_t;
-typedef vec_t(gs_stmt_t*) vec_gs_stmt_t;
-
 static gs_stmt_t *gs_stmt_if_new(gs_parser_t *parser, gs_token_t token, vec_gs_expr_t conds, vec_gs_stmt_t stmts, gs_stmt_t *else_stmt);
 static gs_stmt_t *gs_stmt_for_new(gs_parser_t *parser, gs_token_t token, gs_val_type decl_type, gs_token_t decl_symbol, gs_expr_t *init, gs_expr_t *cond, gs_expr_t *inc, gs_stmt_t *body);
 static gs_stmt_t *gs_stmt_return_new(gs_parser_t *parser, gs_token_t token, gs_expr_t *expr);
@@ -226,17 +66,6 @@ static gs_stmt_t *gs_stmt_expr_new(gs_parser_t *parser, gs_token_t token, gs_exp
 static gs_stmt_t *gs_stmt_var_decl_new(gs_parser_t *parser, gs_val_type type, vec_gs_token_t tokens, gs_expr_t *init);
 static gs_stmt_t *gs_stmt_fn_decl_new(gs_parser_t *parser, gs_val_type return_type, gs_token_t symbol, vec_gs_val_type_t arg_types, vec_gs_token_t arg_symbols, gs_stmt_t *body);
 static void gs_debug_print_stmt(gs_stmt_t *stmt, int tabs);
-
-#define MAX_ERROR_STRING_LEN 2048
-typedef struct gs_parser {
-    vec_gs_token_t tokens;
-    int cur_token;
-
-    bool error;
-    char error_string[MAX_ERROR_STRING_LEN];
-    gs_token_t error_token;
-    vec_void_t allocated_memory;
-} gs_parser_t;
 
 static void *gs_parser_alloc(gs_parser_t *parser, size_t size);
 static void gs_parser_error(gs_parser_t *parser, gs_token_t token, const char *fmt, ...);
@@ -275,16 +104,6 @@ static gs_expr_t *gs_parse_expr_call(gs_parser_t *parser);
 static gs_expr_t *gs_parse_expr_primary(gs_parser_t *parser);
 static gs_expr_t *gs_parse_expr_array_decl(gs_parser_t *parser);
 
-typedef struct gs_env {
-    map_gs_val_t val_map;
-} gs_env_t;
-typedef vec_t(gs_env_t*) vec_gs_env_t;
-
-typedef struct gs_eval {
-    vec_void_t allocated_strings, allocated_lists;
-    vec_gs_env_t env;
-} gs_eval_t; 
-
 static gs_val_t gs_eval_stmt(gs_eval_t *eval, gs_stmt_t *stmt);
 static gs_val_t gs_eval_stmt_if(gs_eval_t *eval, gs_stmt_t *stmt);
 static gs_val_t gs_eval_stmt_for(gs_eval_t *eval, gs_stmt_t *stmt);
@@ -319,11 +138,6 @@ static gs_val_t gs_eval_binary_op_gte(gs_eval_t *eval, gs_val_t left, gs_val_t r
 static gs_val_t gs_eval_binary_op_eq(gs_eval_t *eval, gs_val_t left, gs_val_t right);
 
 static gs_val_t gs_eval_lval(gs_eval_t *eval, gs_expr_t *expr, gs_val_t **lval);
-
-typedef struct golf_script {
-    gs_parser_t parser;
-    gs_eval_t eval; 
-} golf_script_t;
 
 static void gs_debug_print_type(gs_val_type type) {
     switch (type) {
@@ -859,17 +673,6 @@ static gs_stmt_t *gs_stmt_fn_decl_new(gs_parser_t *parser, gs_val_type return_ty
     stmt->fn_decl.arg_symbols = gs_parser_alloc(parser, sizeof(gs_token_t) * arg_types.length);
     memcpy(stmt->fn_decl.arg_symbols, arg_symbols.data, sizeof(gs_token_t) * arg_types.length);
     stmt->fn_decl.body = body;
-
-    stmt->fn_decl.fn.return_type = return_type;
-    stmt->fn_decl.fn.name = symbol.symbol;
-    stmt->fn_decl.fn.num_args = stmt->fn_decl.num_args;
-    stmt->fn_decl.fn.arg_types = stmt->fn_decl.arg_types;
-    stmt->fn_decl.fn.arg_names = gs_parser_alloc(parser, sizeof(const char *) * stmt->fn_decl.num_args);
-    for (int i = 0; i < stmt->fn_decl.num_args; i++) {
-        stmt->fn_decl.fn.arg_names[i] = stmt->fn_decl.arg_symbols[i].symbol;
-    }
-    stmt->fn_decl.fn.stmt = stmt;
-
     return stmt;
 }
 
@@ -1145,7 +948,7 @@ cleanup:
 }
 
 static gs_val_t gs_eval_stmt_fn_decl(gs_eval_t *eval, gs_stmt_t *stmt) {
-    gs_val_t val = gs_val_fn(&(stmt->fn_decl.fn));
+    gs_val_t val = gs_val_fn(stmt);
     if (val.is_return) goto cleanup;
 
     gs_token_t token = stmt->fn_decl.symbol;
@@ -1371,7 +1174,7 @@ static gs_val_t gs_eval_expr_call(gs_eval_t *eval, gs_expr_t *expr) {
     if (val.is_return) goto cleanup;
 
     if (val.type == GS_VAL_FN) {
-        gs_stmt_t *fn_stmt = (gs_stmt_t*) val.fn_val->stmt;
+        gs_stmt_t *fn_stmt = (gs_stmt_t*) val.fn_stmt;
         if (expr->call.num_args != fn_stmt->fn_decl.num_args) {
             val = gs_val_error("Wrong number of args passed to function call");
             goto cleanup;
@@ -2802,11 +2605,11 @@ static gs_val_t gs_val_string(golf_string_t *string) {
     return val;
 }
 
-static gs_val_t gs_val_fn(gs_fn_t *fn) {
+static gs_val_t gs_val_fn(gs_stmt_t *fn_stmt) {
     gs_val_t val;
     val.type = GS_VAL_FN;
     val.is_return = false;
-    val.fn_val = fn;
+    val.fn_stmt = fn_stmt;
     return val;
 }
 
@@ -2826,18 +2629,30 @@ static gs_val_t gs_val_error(const char *v) {
     return val;
 }
 
-golf_script_t *golf_script_new(const char *src) {
-    golf_script_t *script = golf_alloc_tracked(sizeof(golf_script_t), "script");
+static golf_script_store_t _gs_store;
+void golf_script_store_init(void) {
+    vec_init(&_gs_store.scripts, "golf_script_store");
+}
+
+golf_script_store_t *golf_script_store_get(void) {
+    return &_gs_store;
+}
+
+bool golf_script_load(golf_script_t *script, const char *path, const char *data, int data_len) {
+    vec_push(&_gs_store.scripts, script);
+
+    snprintf(script->path, GOLF_FILE_MAX_PATH, "%s", path);
+    script->error = NULL;
     vec_init(&script->parser.tokens, "script/parser");
     script->parser.cur_token = 0;
     script->parser.error = false;
     vec_init(&script->parser.allocated_memory, "script/parser");
 
-    gs_tokenize(&script->parser, src);
+    gs_tokenize(&script->parser, data);
     if (script->parser.error) {
-        return script;
+        script->error = script->parser.error_string;
+        return true;
     }
-
     if (false) {
         gs_debug_print_tokens(&script->parser.tokens);
     }
@@ -2847,8 +2662,8 @@ golf_script_t *golf_script_new(const char *src) {
     map_set(&global_env->val_map, "true", gs_val_bool(true));
     map_set(&global_env->val_map, "false", gs_val_bool(false));
     map_set(&global_env->val_map, "print", gs_val_c_fn(gs_c_fn_print));
-    map_set(&global_env->val_map, "V3", gs_val_c_fn(gs_c_fn_V3));
     map_set(&global_env->val_map, "V2", gs_val_c_fn(gs_c_fn_V2));
+    map_set(&global_env->val_map, "V3", gs_val_c_fn(gs_c_fn_V3));
 
     vec_init(&script->eval.env, "script/eval");
     vec_push(&script->eval.env, global_env);
@@ -2858,32 +2673,75 @@ golf_script_t *golf_script_new(const char *src) {
     while (!gs_peek_eof(&script->parser)) {
         gs_stmt_t *stmt = gs_parse_stmt(&script->parser);
         if (script->parser.error) {
-            return script;
+            script->error = script->parser.error_string;
+            return true;
         }
 
         gs_val_t val = gs_eval_stmt(&script->eval, stmt);
+        if (val.type == GS_VAL_ERROR) {
+            script->error = val.error_val;
+            return true;
+        }
         if (false) {
             gs_debug_print_stmt(stmt, 0);
             gs_debug_print_val(val);
             printf("\n");
         }
-        if (val.type == GS_VAL_ERROR) {
-            printf("INTERP ERROR: ");
-            gs_debug_print_val(val);
-            printf("\n");
+    }
+
+    printf("LOAD\n");
+    golf_debug_print_allocations();
+
+    return true;
+}
+
+bool golf_script_unload(golf_script_t *script) {
+    for (int i = 0 ; i < _gs_store.scripts.length; i++) {
+        if (_gs_store.scripts.data[i] == script) {
+            vec_splice(&_gs_store.scripts, i, 1);
+            break;
         }
     }
 
-    return script;
-}
+    for (int i = 0; i < script->parser.tokens.length; i++) {
+        gs_token_t token = script->parser.tokens.data[i];
+        if (token.type == GS_TOKEN_SYMBOL) {
+            golf_free(token.symbol);
+        }
+        else if (token.type == GS_TOKEN_STRING) {
+            golf_free(token.string);
+        }
+    }
+    vec_deinit(&script->parser.tokens);
 
-void golf_script_init(void) {
-    char *data;
-    int data_len;
-    if (golf_file_load_data("data/scripts/teseting.gs", &data, &data_len)) {
-        golf_script_t *script = golf_script_new(data);
-        golf_free(data);
-    } 
+    for (int i = 0; i < script->parser.allocated_memory.length; i++) {
+        golf_free(script->parser.allocated_memory.data[i]);
+    }
+    vec_deinit(&script->parser.allocated_memory);
 
+    for (int i = 0; i < script->eval.env.length; i++) {
+        gs_env_t *env = script->eval.env.data[i];
+        map_deinit(&env->val_map);
+        golf_free(env);
+    }
+    vec_deinit(&script->eval.env);
+
+    for (int i = 0; i < script->eval.allocated_strings.length; i++) {
+        golf_string_t *string = script->eval.allocated_strings.data[i];
+        golf_string_deinit(string);
+        golf_free(string);
+    }
+    vec_deinit(&script->eval.allocated_strings);
+
+    for (int i = 0; i < script->eval.allocated_lists.length; i++) {
+        vec_gs_val_t *list = script->eval.allocated_lists.data[i];
+        vec_deinit(list);
+        golf_free(list);
+    }
+    vec_deinit(&script->eval.allocated_lists);
+
+    printf("UNLOAD\n");
     golf_debug_print_allocations();
+
+    return true;
 }
