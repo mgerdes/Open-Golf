@@ -4,13 +4,22 @@
 #include "golf/data.h"
 #include "golf/file.h"
 #include "golf/maths.h"
+#include "golf/script.h"
 #include "golf/string.h"
 #include "golf/vec.h"
 
+typedef struct golf_geo_generator_data_arg {
+    char name[GOLF_MAX_NAME_LEN];
+    gs_val_t val;
+} golf_geo_generator_data_arg_t;
+typedef vec_t(golf_geo_generator_data_arg_t) vec_golf_geo_generator_data_arg_t;
+
 typedef struct golf_geo_generator_data {
     golf_script_t *script;
+    vec_golf_geo_generator_data_arg_t args;
 } golf_geo_generator_data_t;
 void golf_geo_generator_data_init(golf_geo_generator_data_t *generator_data);
+bool golf_geo_generator_data_get_arg(golf_geo_generator_data_t *data, const char *name, golf_geo_generator_data_arg_t **arg);
 
 typedef enum golf_geo_face_uv_gen_type {
     GOLF_GEO_FACE_UV_GEN_MANUAL,

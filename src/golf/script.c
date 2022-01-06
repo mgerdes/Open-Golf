@@ -17,18 +17,6 @@ typedef struct gs_stmt gs_stmt_t;
 
 static void gs_debug_print_type(gs_val_type type);
 
-static gs_val_t gs_val_default(gs_val_type type);
-static gs_val_t gs_val_void(void);
-static gs_val_t gs_val_bool(bool v);
-static gs_val_t gs_val_int(int v);
-static gs_val_t gs_val_float(float v);
-static gs_val_t gs_val_vec2(vec2 v);
-static gs_val_t gs_val_vec3(vec3 v);
-static gs_val_t gs_val_list(vec_gs_val_t *list);
-static gs_val_t gs_val_string(golf_string_t *string);
-static gs_val_t gs_val_fn(gs_stmt_t *fn_stmt);
-static gs_val_t gs_val_c_fn(gs_val_t (*c_fn)(gs_eval_t *eval, gs_val_t *vals, int num_vals));
-static gs_val_t gs_val_error(const char *v);
 static int gs_val_to_int(gs_val_t val);
 static float gs_val_to_float(gs_val_t val);
 static void gs_debug_print_val(gs_val_t val);
@@ -2508,7 +2496,7 @@ cleanup:
     return expr;
 }
 
-static gs_val_t gs_val_default(gs_val_type type) {
+gs_val_t gs_val_default(gs_val_type type) {
     switch (type) {
         case GS_VAL_VOID:
             return gs_val_void();
@@ -2542,14 +2530,14 @@ static gs_val_t gs_val_default(gs_val_type type) {
     return gs_val_void();
 }
 
-static gs_val_t gs_val_void(void) {
+gs_val_t gs_val_void(void) {
     gs_val_t val;
     val.type = GS_VAL_VOID;
     val.is_return = false;
     return val;
 }
 
-static gs_val_t gs_val_bool(bool v) {
+gs_val_t gs_val_bool(bool v) {
     gs_val_t val;
     val.type = GS_VAL_BOOL;
     val.is_return = false;
@@ -2557,7 +2545,7 @@ static gs_val_t gs_val_bool(bool v) {
     return val;
 }
 
-static gs_val_t gs_val_int(int v) {
+gs_val_t gs_val_int(int v) {
     gs_val_t val;
     val.type = GS_VAL_INT;
     val.is_return = false;
@@ -2565,7 +2553,7 @@ static gs_val_t gs_val_int(int v) {
     return val;
 }
 
-static gs_val_t gs_val_float(float v) {
+gs_val_t gs_val_float(float v) {
     gs_val_t val;
     val.type = GS_VAL_FLOAT;
     val.is_return = false;
@@ -2573,7 +2561,7 @@ static gs_val_t gs_val_float(float v) {
     return val;
 }
 
-static gs_val_t gs_val_vec2(vec2 v) {
+gs_val_t gs_val_vec2(vec2 v) {
     gs_val_t val;
     val.type = GS_VAL_VEC2;
     val.is_return = false;
@@ -2581,7 +2569,7 @@ static gs_val_t gs_val_vec2(vec2 v) {
     return val;
 }
 
-static gs_val_t gs_val_vec3(vec3 v) {
+gs_val_t gs_val_vec3(vec3 v) {
     gs_val_t val;
     val.type = GS_VAL_VEC3;
     val.is_return = false;
@@ -2589,7 +2577,7 @@ static gs_val_t gs_val_vec3(vec3 v) {
     return val;
 }
 
-static gs_val_t gs_val_list(vec_gs_val_t *list) {
+gs_val_t gs_val_list(vec_gs_val_t *list) {
     gs_val_t val;
     val.type = GS_VAL_LIST;
     val.is_return = false;
@@ -2597,7 +2585,7 @@ static gs_val_t gs_val_list(vec_gs_val_t *list) {
     return val;
 }
 
-static gs_val_t gs_val_string(golf_string_t *string) {
+gs_val_t gs_val_string(golf_string_t *string) {
     gs_val_t val;
     val.type = GS_VAL_STRING;
     val.is_return = false;
@@ -2605,7 +2593,7 @@ static gs_val_t gs_val_string(golf_string_t *string) {
     return val;
 }
 
-static gs_val_t gs_val_fn(gs_stmt_t *fn_stmt) {
+gs_val_t gs_val_fn(gs_stmt_t *fn_stmt) {
     gs_val_t val;
     val.type = GS_VAL_FN;
     val.is_return = false;
@@ -2613,7 +2601,7 @@ static gs_val_t gs_val_fn(gs_stmt_t *fn_stmt) {
     return val;
 }
 
-static gs_val_t gs_val_c_fn(gs_val_t (*c_fn)(gs_eval_t *eval, gs_val_t *vals, int num_vals)) {
+gs_val_t gs_val_c_fn(gs_val_t (*c_fn)(gs_eval_t *eval, gs_val_t *vals, int num_vals)) {
     gs_val_t val;
     val.type = GS_VAL_C_FN;
     val.is_return = false;
@@ -2621,7 +2609,7 @@ static gs_val_t gs_val_c_fn(gs_val_t (*c_fn)(gs_eval_t *eval, gs_val_t *vals, in
     return val;
 }
 
-static gs_val_t gs_val_error(const char *v) {
+gs_val_t gs_val_error(const char *v) {
     gs_val_t val;
     val.type = GS_VAL_ERROR;
     val.is_return = true;
@@ -2744,4 +2732,53 @@ bool golf_script_unload(golf_script_t *script) {
     golf_debug_print_allocations();
 
     return true;
+}
+
+bool golf_script_get_val(golf_script_t *script, const char *name, gs_val_t *val) {
+    for (int i = script->eval.env.length - 1; i >= 0; i--) {
+        gs_env_t *env = script->eval.env.data[i];
+        gs_val_t *val0 = map_get(&env->val_map, name);
+        if (val0) {
+            *val = *val0;
+            return true;
+        }
+    }
+    return false;
+}
+
+gs_val_t golf_script_eval_fn(golf_script_t *script, const char *name, gs_val_t *args, int num_args) {
+    gs_val_t val;
+    gs_env_t *env = golf_alloc_tracked(sizeof(gs_env_t), "script/eval");
+    map_init(&env->val_map, "script/eval");
+    vec_push(&script->eval.env, env);
+
+    gs_val_t fn_val;
+    if (!golf_script_get_val(script, name, &fn_val) || fn_val.type != GS_VAL_FN) {
+        val = gs_val_error("Could not find function");
+        goto cleanup;
+    }
+
+    gs_stmt_t *fn_stmt = (gs_stmt_t*) fn_val.fn_stmt;
+    if (num_args != fn_stmt->fn_decl.num_args) {
+        val = gs_val_error("Invalid number of args");
+        goto cleanup;
+    }
+
+    for (int i = 0; i < num_args; i++) {
+        const char *symbol = fn_stmt->fn_decl.arg_symbols[i].symbol;
+        gs_val_type type = fn_stmt->fn_decl.arg_types[i];
+        if (type != args[i].type) {
+            val = gs_val_error("Invalid arg type");
+            goto cleanup;
+        }
+        map_set(&env->val_map, symbol, args[i]);
+    }
+
+    val = gs_eval_stmt(&script->eval, fn_stmt->fn_decl.body);
+
+cleanup:
+    (void)vec_pop(&script->eval.env);
+    map_deinit(&env->val_map);
+    golf_free(env);
+    return val;
 }

@@ -21,6 +21,17 @@ const char **golf_geo_uv_gen_type_strings(void) {
 
 void golf_geo_generator_data_init(golf_geo_generator_data_t *generator_data) {
     generator_data->script = NULL;
+    vec_init(&generator_data->args, "geo");
+}
+
+bool golf_geo_generator_data_get_arg(golf_geo_generator_data_t *data, const char *name, golf_geo_generator_data_arg_t **arg) {
+    for (int i = 0; i < data->args.length; i++) {
+        if (strcmp(data->args.data[i].name, name) == 0) {
+            *arg = &data->args.data[i];
+            return true;
+        }
+    }
+    return false;
 }
 
 golf_geo_face_t golf_geo_face(const char *material_name, int n, int *idx, golf_geo_face_uv_gen_type_t uv_gen_type, vec2 *uvs) {
@@ -337,6 +348,59 @@ static void _golf_json_object_set_geo(JSON_Object *obj, const char *name, golf_g
     }
     json_object_set_value(geo_obj, "faces", faces_val);
 
+    if (geo->generator_data.script) {
+        JSON_Value *generator_data_val = json_value_init_object();
+        JSON_Object *generator_data_obj = json_value_get_object(generator_data_val);
+        json_object_set_string(generator_data_obj, "script", geo->generator_data.script->path);
+
+        JSON_Value *args_val = json_value_init_array();
+        JSON_Array *args_arr = json_value_get_array(args_val);
+        for (int i = 0; i < geo->generator_data.args.length; i++) {
+            JSON_Value *arg_val = json_value_init_object();
+            JSON_Object *arg_obj = json_value_get_object(arg_val);
+
+            json_object_set_string(arg_obj, "name", geo->generator_data.args.data[i].name);
+            gs_val_t val = geo->generator_data.args.data[i].val;
+            switch (val.type) {
+                case GS_VAL_BOOL: 
+                    json_object_set_string(arg_obj, "type", "bool");
+                    json_object_set_number(arg_obj, "val", val.bool_val);
+                    break;
+                case GS_VAL_INT: 
+                    json_object_set_string(arg_obj, "type", "int");
+                    json_object_set_number(arg_obj, "val", val.int_val);
+                    break;
+                case GS_VAL_FLOAT: 
+                    json_object_set_string(arg_obj, "type", "float");
+                    json_object_set_number(arg_obj, "val", val.float_val);
+                    break;
+                case GS_VAL_VEC2: 
+                    json_object_set_string(arg_obj, "type", "vec2");
+                    golf_json_object_set_vec2(arg_obj, "val", val.vec2_val);
+                    break;
+                case GS_VAL_VEC3: 
+                    json_object_set_string(arg_obj, "type", "vec3");
+                    golf_json_object_set_vec3(arg_obj, "val", val.vec3_val);
+                    break;
+                case GS_VAL_VOID: 
+                case GS_VAL_LIST: 
+                case GS_VAL_STRING: 
+                case GS_VAL_FN: 
+                case GS_VAL_C_FN: 
+                case GS_VAL_ERROR: 
+                case GS_VAL_NUM_TYPES: {
+                    assert(false);
+                    break;
+                }
+            }
+
+            json_array_append_value(args_arr, arg_val);
+        }
+
+        json_object_set_value(generator_data_obj, "args", args_val);
+        json_object_set_value(geo_obj, "generator_data", generator_data_val);
+    }
+
     json_object_set_value(obj, name, geo_val);
 
     vec_deinit(&num_points_not_active);
@@ -378,6 +442,56 @@ static void _golf_json_object_get_geo(JSON_Object *obj, const char *name, golf_g
         vec_push(&geo->faces, golf_geo_face(material_name, idxs_count, idxs, uv_gen_type, uvs));
         golf_free(idxs);
         golf_free(uvs);
+    }
+
+    JSON_Object *generator_data_obj = json_object_get_object(geo_obj, "generator_data");
+    if (generator_data_obj) {
+        const char *script_path = json_object_get_string(generator_data_obj, "script");
+        geo->generator_data.script = golf_data_get_script(script_path);
+
+        JSON_Array *args_arr = json_object_get_array(generator_data_obj, "args");
+        for (int i = 0; i < (int)json_array_get_count(args_arr); i++) {
+            JSON_Object *arg_obj = json_array_get_object(args_arr, i);
+            const char *name = json_object_get_string(arg_obj, "name");
+            if (!name) {
+                golf_log_warning("No name for generator data argument");
+            }
+
+            const char *type = json_object_get_string(arg_obj, "type");
+            if (!type) {
+                golf_log_warning("No type for generator data argument");
+            }
+
+            bool valid_val = true;
+            gs_val_t val;
+
+            if (strcmp(type, "bool") == 0) {
+                val = gs_val_bool((bool)json_object_get_number(arg_obj, "val"));
+            }
+            else if (strcmp(type, "int") == 0) {
+                val = gs_val_int((int)json_object_get_number(arg_obj, "val"));
+            }
+            else if (strcmp(type, "float") == 0) {
+                val = gs_val_float((float)json_object_get_number(arg_obj, "val"));
+            }
+            else if (strcmp(type, "vec2") == 0) {
+                val = gs_val_vec2(golf_json_object_get_vec2(arg_obj, "val"));
+            }
+            else if (strcmp(type, "vec3") == 0) {
+                val = gs_val_vec3(golf_json_object_get_vec3(arg_obj, "val"));
+            }
+            else {
+                valid_val = false;
+                golf_log_warning("Invalid type for generator data argument: %s", type);
+            }
+
+            if (valid_val) {
+                golf_geo_generator_data_arg_t arg;
+                snprintf(arg.name, GOLF_MAX_NAME_LEN, "%s", name);
+                arg.val = val;
+                vec_push(&geo->generator_data.args, arg);
+            }
+        }
     }
 
     golf_geo_update_model(geo);

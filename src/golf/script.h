@@ -43,6 +43,19 @@ typedef struct gs_val {
 } gs_val_t;
 typedef map_t(gs_val_t) map_gs_val_t;
 
+gs_val_t gs_val_default(gs_val_type type);
+gs_val_t gs_val_void(void);
+gs_val_t gs_val_bool(bool v);
+gs_val_t gs_val_int(int v);
+gs_val_t gs_val_float(float v);
+gs_val_t gs_val_vec2(vec2 v);
+gs_val_t gs_val_vec3(vec3 v);
+gs_val_t gs_val_list(vec_gs_val_t *list);
+gs_val_t gs_val_string(golf_string_t *string);
+gs_val_t gs_val_fn(gs_stmt_t *fn_stmt);
+gs_val_t gs_val_c_fn(gs_val_t (*c_fn)(gs_eval_t *eval, gs_val_t *vals, int num_vals));
+gs_val_t gs_val_error(const char *v);
+
 typedef enum gs_token_type {
     GS_TOKEN_INT,
     GS_TOKEN_FLOAT,
@@ -234,5 +247,7 @@ void golf_script_store_init(void);
 golf_script_store_t *golf_script_store_get(void);
 bool golf_script_load(golf_script_t *script, const char *path, const char *data, int data_len);
 bool golf_script_unload(golf_script_t *script);
+bool golf_script_get_val(golf_script_t *script, const char *name, gs_val_t *val);
+gs_val_t golf_script_eval_fn(golf_script_t *script, const char *name, gs_val_t *args, int num_args);
 
 #endif

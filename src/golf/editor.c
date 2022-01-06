@@ -280,6 +280,17 @@ static void _golf_editor_undoable_igInputText(const char *label, char *buf, int 
     }
 }
 
+static void _golf_editor_undoable_igCheckbox(const char *label, bool *v, const char *action_name) {
+    bool v0 = *v;
+    igCheckbox(label, v);
+    if (v0 != *v) {
+        *v = !*v;
+        _golf_editor_start_action_with_data(v, sizeof(bool), action_name);
+        _golf_editor_commit_action();
+        *v = !*v;
+    }
+}
+
 static void _golf_editor_undoable_igInputInt(const char *label, int *i, const char *action_name) {
     igInputInt(label, i, 0, 0, ImGuiInputTextFlags_None);
     if (igIsItemActivated()) {
@@ -1383,11 +1394,95 @@ void golf_editor_update(float dt) {
                     golf_script_t *script = script_store->scripts.data[i];
                     bool selected = selected_script && strcmp(selected_script->path, script->path) == 0;
                     if (igSelectable_Bool(script->path, selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
-                        geo->generator_data.script = script;
+                        if (geo->generator_data.script != script) {
+                            _golf_editor_start_action_with_data(&geo->generator_data.script, sizeof(geo->generator_data.script), "Modify script");
+                            _golf_editor_commit_action();
+                            geo->generator_data.script = script;
+                        }
                     }
                 }
                 igEndCombo();
             }
+            if (selected_script) {
+                gs_val_t generate_val;
+                if (golf_script_get_val(selected_script, "generate", &generate_val) && generate_val.type == GS_VAL_FN) {
+                    gs_stmt_t *fn_stmt = generate_val.fn_stmt;
+                    for (int i = 0; i < fn_stmt->fn_decl.num_args; i++) {
+                        gs_val_type type = fn_stmt->fn_decl.arg_types[i];
+                        const char *symbol = fn_stmt->fn_decl.arg_symbols[i].symbol;
+
+                        golf_geo_generator_data_arg_t *arg;
+                        if (!golf_geo_generator_data_get_arg(&geo->generator_data, symbol, &arg)) {
+                            golf_geo_generator_data_arg_t arg0;
+                            snprintf(arg0.name, GOLF_MAX_NAME_LEN, "%s", symbol);
+                            arg0.val = gs_val_default(type);
+                            _vec_push_and_fix_actions(&geo->generator_data.args, arg0);
+
+                            golf_geo_generator_data_get_arg(&geo->generator_data, symbol, &arg);
+                        }
+                        if (arg->val.type != type) {
+                            arg->val = gs_val_default(type);
+                        }
+
+                        switch (type) {
+                            case GS_VAL_BOOL: 
+                                _golf_editor_undoable_igCheckbox(symbol, &arg->val.bool_val, "Modify arg");
+                                break;
+                            case GS_VAL_INT: 
+                                _golf_editor_undoable_igInputInt(symbol, &arg->val.int_val, "Modify arg");
+                                break;
+                            case GS_VAL_FLOAT: 
+                                _golf_editor_undoable_igInputFloat(symbol, &arg->val.float_val, "Modify arg");
+                                break;
+                            case GS_VAL_VEC2:
+                                _golf_editor_undoable_igInputFloat2(symbol, (float*)&arg->val.vec2_val, "Modify arg");
+                                break;
+                            case GS_VAL_VEC3: 
+                                _golf_editor_undoable_igInputFloat3(symbol, (float*)&arg->val.vec3_val, "Modify arg");
+                                break;
+                            case GS_VAL_LIST: 
+                            case GS_VAL_STRING:
+                            case GS_VAL_FN:
+                            case GS_VAL_C_FN:
+                            case GS_VAL_ERROR:
+                            case GS_VAL_VOID:
+                            case GS_VAL_NUM_TYPES: {
+                                break;
+                            }
+                        }
+                    }
+
+                    if (igButton("Run", (ImVec2){0, 0})) {
+                        bool error = false;
+                        int num_args = fn_stmt->fn_decl.num_args;
+                        gs_val_t *args = golf_alloc(sizeof(gs_val_t) * num_args);
+                        for (int i = 0; i < num_args; i++) {
+                            gs_val_type type = fn_stmt->fn_decl.arg_types[i];
+                            const char *symbol = fn_stmt->fn_decl.arg_symbols[i].symbol;
+
+                            golf_geo_generator_data_arg_t *arg;
+                            if (!golf_geo_generator_data_get_arg(&geo->generator_data, symbol, &arg)) {
+                                error = true;
+                                golf_log_warning("Could not find argument %s", symbol);
+                                break;
+                            }
+                            if (arg->val.type != type) {
+                                error = true;
+                                golf_log_warning("Invalid type for argument %s", symbol);
+                                break;
+                            }
+
+                            args[i] = arg->val;
+                        }
+
+                        if (!error) {
+                            golf_script_eval_fn(selected_script, "generate", args, num_args);
+                        }
+                        golf_free(args);
+                    }
+                }
+            }
+
             igTreePop();
         }
 

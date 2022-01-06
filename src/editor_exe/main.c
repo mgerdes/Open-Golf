@@ -104,6 +104,7 @@ static void frame(void) {
     float dt = (float) stm_sec(stm_laptime(&last_time));
     if (!inited) {
         golf_data_init();
+        golf_data_turn_off_reload(".level");
         golf_inputs_init();
         golf_game_init();
         golf_ui_init();

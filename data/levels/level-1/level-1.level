@@ -145,7 +145,62 @@
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
                         "uv_gen_type": "wall-side"
                     }
-                ]
+                ],
+                "generator_data": {
+                    "script": "data\/scripts\/teseting.gs",
+                    "args": [
+                        {
+                            "name": "starting_position",
+                            "type": "vec3",
+                            "val": [0, 0, 0]
+                        },
+                        {
+                            "name": "width",
+                            "type": "float",
+                            "val": 0
+                        },
+                        {
+                            "name": "aaa",
+                            "type": "vec3",
+                            "val": [5, 6, 7]
+                        },
+                        {
+                            "name": "dopedope",
+                            "type": "float",
+                            "val": 123
+                        },
+                        {
+                            "name": "dopedope2",
+                            "type": "float",
+                            "val": 213
+                        },
+                        {
+                            "name": "build_walls",
+                            "type": "bool",
+                            "val": 0
+                        },
+                        {
+                            "name": "length",
+                            "type": "float",
+                            "val": 0
+                        },
+                        {
+                            "name": "y",
+                            "type": "int",
+                            "val": 3
+                        },
+                        {
+                            "name": "x",
+                            "type": "int",
+                            "val": 2
+                        },
+                        {
+                            "name": "z",
+                            "type": "bool",
+                            "val": 1
+                        }
+                    ]
+                }
             },
             "transform": {
                 "position": [0, 0, 0],

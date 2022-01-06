@@ -143,6 +143,7 @@ typedef struct golf_data {
 typedef map_t(golf_data_t) map_golf_data_t;
 
 void golf_data_init(void);
+void golf_data_turn_off_reload(const char *ext);
 void golf_data_run_import(bool force_import);
 void golf_data_update(float dt);
 void golf_data_load(const char *path);

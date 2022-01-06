@@ -1,4 +1,6 @@
 [
+    "data/scripts/ramp.gs",
+    "data/scripts/teseting.gs",
     "data/shaders/diffuse_color_material.glsl",
     "data/shaders/environment_material.glsl",
     "data/shaders/pass_through.glsl",
@@ -16,7 +18,5 @@
     "data/textures/hole_lightmap.png",
     "data/textures/wood.jpg",
     "data/levels/level-1/level-1.obj",
-    "data/levels/level-1/level-1.level",
-    "data/scripts/ramp.gs",
-    "data/scripts/teseting.gs"
+    "data/levels/level-1/level-1.level"
 ]

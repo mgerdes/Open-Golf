@@ -1021,6 +1021,7 @@ typedef struct _golf_data_loader {
     bool (*load_fn)(void* ptr, const char *path, char *data, int data_len);
     bool (*unload_fn)(void *ptr);
     bool (*import_fn)(const char *path, char *data, int data_len);
+    bool reload_on;
 } _golf_data_loader_t;
 
 static _golf_data_loader_t _loaders[] = {
@@ -1031,6 +1032,7 @@ static _golf_data_loader_t _loaders[] = {
         .load_fn = _golf_texture_load,
         .unload_fn = _golf_texture_unload,
         .import_fn = _golf_texture_import,
+        .reload_on = true,
     },
     {
         .ext = ".jpg",
@@ -1039,6 +1041,7 @@ static _golf_data_loader_t _loaders[] = {
         .load_fn = _golf_texture_load,
         .unload_fn = _golf_texture_unload,
         .import_fn = _golf_texture_import,
+        .reload_on = true,
     },
     {
         .data_type = GOLF_DATA_TEXTURE,
@@ -1047,6 +1050,7 @@ static _golf_data_loader_t _loaders[] = {
         .load_fn = _golf_texture_load,
         .unload_fn = _golf_texture_unload,
         .import_fn = _golf_texture_import,
+        .reload_on = true,
     },
     {
         .ext = ".glsl",
@@ -1055,6 +1059,7 @@ static _golf_data_loader_t _loaders[] = {
         .load_fn = _golf_shader_load,
         .unload_fn = _golf_shader_unload,
         .import_fn = _golf_shader_import,
+        .reload_on = true,
     },
     {
         .ext = ".ttf",
@@ -1063,6 +1068,7 @@ static _golf_data_loader_t _loaders[] = {
         .load_fn = _golf_font_load,
         .unload_fn = _golf_font_unload,
         .import_fn = _golf_font_import,
+        .reload_on = true,
     },
     {
         .ext = ".obj",
@@ -1071,6 +1077,7 @@ static _golf_data_loader_t _loaders[] = {
         .load_fn = _golf_model_load,
         .unload_fn = _golf_model_unload,
         .import_fn = _golf_model_import,
+        .reload_on = true,
     },
     {
         .ext = ".level",
@@ -1079,6 +1086,7 @@ static _golf_data_loader_t _loaders[] = {
         .load_fn = _golf_level_load,
         .unload_fn = _golf_level_unload,
         .import_fn = NULL,
+        .reload_on = true,
     },
     {
         .ext = ".static_data",
@@ -1087,6 +1095,7 @@ static _golf_data_loader_t _loaders[] = {
         .load_fn = _golf_static_data_load,
         .unload_fn = _golf_static_data_unload,
         .import_fn = NULL,
+        .reload_on = true,
     },
     {
         .ext = ".gs",
@@ -1095,6 +1104,7 @@ static _golf_data_loader_t _loaders[] = {
         .load_fn = _golf_script_data_load,
         .unload_fn = _golf_script_data_unload,
         .import_fn = NULL,
+        .reload_on = true,
     },
     {
         .ext = ".cfg",
@@ -1103,6 +1113,7 @@ static _golf_data_loader_t _loaders[] = {
         .load_fn = _golf_config_load,
         .unload_fn = _golf_config_unload,
         .import_fn = NULL,
+        .reload_on = true,
     },
     {
         .ext = ".pixel_pack",
@@ -1111,8 +1122,19 @@ static _golf_data_loader_t _loaders[] = {
         .load_fn = _golf_pixel_pack_load,
         .unload_fn = _golf_pixel_pack_unload,
         .import_fn = NULL,
+        .reload_on = true,
     },
 };
+
+void golf_data_turn_off_reload(const char *ext) {
+    for (int i = 0; i < (int) (sizeof(_loaders) / sizeof(_loaders[0])); i++) {
+        _golf_data_loader_t *loader = &_loaders[i];
+        if (strcmp(loader->ext, ext) == 0) {
+            loader->reload_on = false;
+            return;
+        }
+    }
+}
 
 static _golf_data_loader_t *_golf_data_get_loader(const char *ext) {
     for (int i = 0; i < (int) (sizeof(_loaders) / sizeof(_loaders[0])); i++) {
@@ -1171,15 +1193,16 @@ void golf_data_update(float dt) {
             int data_len = 0;
             assetsys_error_t error = _golf_assetsys_file_load(file_to_load.path, &data, &data_len);
             if (error == ASSETSYS_SUCCESS) {
-                golf_log_note("Reloading file %s", key);
-
                 _golf_data_loader_t *loader = _golf_data_get_loader(file.ext);
-                if (loader) {
-                    loader->unload_fn(golf_data->ptr);
-                    loader->load_fn(golf_data->ptr, file.path, data, data_len);
-                }
-                else {
-                    golf_log_warning("Unable to load file %s", key);
+                if (loader->reload_on) {
+                    golf_log_note("Reloading file %s", key);
+                    if (loader) {
+                        loader->unload_fn(golf_data->ptr);
+                        loader->load_fn(golf_data->ptr, file.path, data, data_len);
+                    }
+                    else {
+                        golf_log_warning("Unable to load file %s", key);
+                    }
                 }
             }
             else {
