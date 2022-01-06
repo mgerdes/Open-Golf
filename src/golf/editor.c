@@ -1319,28 +1319,6 @@ void golf_editor_update(float dt) {
         golf_geo_t *geo = editor.edit_mode.geo;
 
         igBegin("RightTop", NULL, ImGuiWindowFlags_NoTitleBar);
-        for (int i = 0; i < geo->faces.length; i++) {
-            golf_geo_face_t *face = &geo->faces.data[i];
-            if (!face->active) continue;
-
-            bool selected = golf_editor_is_edit_entity_selected(golf_edit_mode_entity_face(i));
-            igPushID_Int(i);
-            if (igSelectable_Bool("Face", selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
-                _golf_editor_edit_mode_select_entity(golf_edit_mode_entity_face(i));
-            }
-            igPopID();
-        }
-        for (int i = 0; i < geo->points.length; i++) {
-            golf_geo_point_t *point = &geo->points.data[i];
-            if (!point->active) continue;
-
-            bool selected = golf_editor_is_edit_entity_selected(golf_edit_mode_entity_point(i));
-            igPushID_Int(i);
-            if (igSelectable_Bool("Point", selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
-                _golf_editor_edit_mode_select_entity(golf_edit_mode_entity_point(i));
-            }
-            igPopID();
-        }
 
         {
             int num_points_selected = 0;
@@ -1380,6 +1358,36 @@ void golf_editor_update(float dt) {
                     _golf_editor_commit_action();
                 }
             }
+        }
+
+        if (igTreeNode_Str("Faces")) {
+            for (int i = 0; i < geo->faces.length; i++) {
+                golf_geo_face_t *face = &geo->faces.data[i];
+                if (!face->active) continue;
+
+                bool selected = golf_editor_is_edit_entity_selected(golf_edit_mode_entity_face(i));
+                igPushID_Int(i);
+                if (igSelectable_Bool("Face", selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
+                    _golf_editor_edit_mode_select_entity(golf_edit_mode_entity_face(i));
+                }
+                igPopID();
+            }
+            igTreePop();
+        }
+
+        if (igTreeNode_Str("Points")) {
+            for (int i = 0; i < geo->points.length; i++) {
+                golf_geo_point_t *point = &geo->points.data[i];
+                if (!point->active) continue;
+
+                bool selected = golf_editor_is_edit_entity_selected(golf_edit_mode_entity_point(i));
+                igPushID_Int(i);
+                if (igSelectable_Bool("Point", selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
+                    _golf_editor_edit_mode_select_entity(golf_edit_mode_entity_point(i));
+                }
+                igPopID();
+            }
+            igTreePop();
         }
 
         if (igTreeNode_Str("Generator")) {
@@ -1476,6 +1484,17 @@ void golf_editor_update(float dt) {
                         }
 
                         if (!error) {
+                            golf_editor_action_t action;
+                            _golf_editor_action_init(&action, "Run generator");
+                            _golf_editor_action_push_data(&action, &geo->points.length, sizeof(geo->points.length));
+                            _golf_editor_action_push_data(&action, geo->points.data, sizeof(golf_geo_point_t) * geo->points.length);
+                            _golf_editor_action_push_data(&action, &geo->faces.length, sizeof(geo->faces.length));
+                            _golf_editor_action_push_data(&action, geo->faces.data, sizeof(golf_geo_face_t) * geo->faces.length);
+                            _golf_editor_start_action(action);
+                            _golf_editor_commit_action();
+
+                            geo->points.length = 0;
+                            geo->faces.length = 0;
                             golf_script_eval_fn(selected_script, "generate", args, num_args);
                         }
                         golf_free(args);
@@ -2324,4 +2343,35 @@ bool golf_editor_is_edit_entity_selected(golf_edit_mode_entity_t entity) {
         }
     }
     return false;
+}
+
+void golf_editor_edit_mode_geo_add_point(golf_geo_point_t point) {
+    if (!editor.in_edit_mode) {
+        golf_log_warning("Editor not in edit mode");
+        return;
+    }
+
+    golf_geo_t *geo = editor.edit_mode.geo;
+    _vec_push_and_fix_actions(&geo->points, point);
+}
+
+void golf_editor_edit_mode_geo_add_face(golf_geo_face_t face) {
+    if (!editor.in_edit_mode) {
+        golf_log_warning("Editor not in edit mode");
+        return;
+    }
+
+    golf_geo_t *geo = editor.edit_mode.geo;
+    if (face.idx.length < 3) {
+        golf_log_warning("Invalid number of points face");
+        return;
+    }
+    for (int i = 0; i < face.idx.length; i++) {
+        int idx = face.idx.data[i];
+        if (idx < 0 || idx >= geo->points.length) {
+            golf_log_warning("Invalid point idx in face");
+            return;
+        }
+    }
+    _vec_push_and_fix_actions(&geo->faces, face);
 }

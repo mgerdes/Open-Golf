@@ -104,5 +104,7 @@ void golf_editor_update(float dt);
 bool golf_editor_edit_entities_compare(golf_edit_mode_entity_t entity0, golf_edit_mode_entity_t entity1);
 bool golf_editor_is_edit_entity_hovered(golf_edit_mode_entity_t entity);
 bool golf_editor_is_edit_entity_selected(golf_edit_mode_entity_t entity);
+void golf_editor_edit_mode_geo_add_point(golf_geo_point_t point);
+void golf_editor_edit_mode_geo_add_face(golf_geo_face_t face);
 
 #endif

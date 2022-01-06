@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#include "golf/editor.h"
 #include "golf/file.h"
 #include "golf/log.h"
 #include "golf/maths.h"
@@ -1710,20 +1711,72 @@ static gs_val_t gs_c_fn_signature(gs_eval_t *eval, gs_val_t *vals, int num_vals,
     return gs_val_int(0);
 }
 
+static gs_val_t gs_c_fn_V2(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
+    gs_val_type signature_arg_types[] = { GS_VAL_FLOAT, GS_VAL_FLOAT };
+    int signature_arg_count = sizeof(signature_arg_types) / sizeof(signature_arg_types[0]);;
+    gs_val_t sig = gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
+    if (sig.is_return) return sig;
+
+    return gs_val_vec2(V2(vals[0].float_val, vals[1].float_val));
+}
+
 static gs_val_t gs_c_fn_V3(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
     gs_val_type signature_arg_types[] = { GS_VAL_FLOAT, GS_VAL_FLOAT, GS_VAL_FLOAT };
     int signature_arg_count = sizeof(signature_arg_types) / sizeof(signature_arg_types[0]);;
-    gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
+    gs_val_t sig = gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
+    if (sig.is_return) return sig;
 
     return gs_val_vec3(V3(vals[0].float_val, vals[1].float_val, vals[2].float_val));
 }
 
-static gs_val_t gs_c_fn_V2(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
-    gs_val_type signature_arg_types[] = { GS_VAL_FLOAT, GS_VAL_FLOAT };
+static gs_val_t gs_c_fn_cos(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
+    gs_val_type signature_arg_types[] = { GS_VAL_FLOAT };
     int signature_arg_count = sizeof(signature_arg_types) / sizeof(signature_arg_types[0]);;
-    gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
+    gs_val_t sig = gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
+    if (sig.is_return) return sig;
 
-    return gs_val_vec2(V2(vals[0].float_val, vals[1].float_val));
+    return gs_val_float(cosf(vals[0].float_val));
+}
+
+static gs_val_t gs_c_fn_sin(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
+    gs_val_type signature_arg_types[] = { GS_VAL_FLOAT };
+    int signature_arg_count = sizeof(signature_arg_types) / sizeof(signature_arg_types[0]);;
+    gs_val_t sig = gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
+    if (sig.is_return) return sig;
+
+    return gs_val_float(sinf(vals[0].float_val));
+}
+
+static gs_val_t gs_c_fn_terrain_model_add_point(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
+    gs_val_type signature_arg_types[] = { GS_VAL_VEC3 };
+    int signature_arg_count = sizeof(signature_arg_types) / sizeof(signature_arg_types[0]);;
+    gs_val_t sig = gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
+    if (sig.is_return) return sig;
+
+    golf_geo_point_t point = golf_geo_point(vals[0].vec3_val);
+    golf_editor_edit_mode_geo_add_point(point);
+    return gs_val_void();
+}
+
+static gs_val_t gs_c_fn_terrain_model_add_face(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
+
+    for (int i = 0; i < num_vals; i++) {
+        vals[i] = gs_eval_cast(eval, vals[i], GS_VAL_INT);
+        if (vals[i].is_return) return vals[i];
+    }
+    
+    vec2 *uvs = golf_alloc(sizeof(vec2) * num_vals);
+    int *idx = golf_alloc(sizeof(int) * num_vals);
+    for (int i = 0; i < num_vals; i++) {
+        idx[i] = vals[i].int_val;
+    }
+
+    golf_geo_face_t face = golf_geo_face("default", num_vals, idx, GOLF_GEO_FACE_UV_GEN_MANUAL, uvs);
+    golf_editor_edit_mode_geo_add_face(face);
+
+    golf_free(idx);
+    golf_free(uvs);
+    return gs_val_void();
 }
 
 static void gs_parser_error(gs_parser_t *parser, gs_token_t token, const char *fmt, ...) {
@@ -2647,11 +2700,16 @@ bool golf_script_load(golf_script_t *script, const char *path, const char *data,
 
     gs_env_t *global_env = golf_alloc_tracked(sizeof(gs_env_t), "script/eval");
     map_init(&global_env->val_map, "script/eval");
+    map_set(&global_env->val_map, "PI", gs_val_float(MF_PI));
     map_set(&global_env->val_map, "true", gs_val_bool(true));
     map_set(&global_env->val_map, "false", gs_val_bool(false));
     map_set(&global_env->val_map, "print", gs_val_c_fn(gs_c_fn_print));
     map_set(&global_env->val_map, "V2", gs_val_c_fn(gs_c_fn_V2));
     map_set(&global_env->val_map, "V3", gs_val_c_fn(gs_c_fn_V3));
+    map_set(&global_env->val_map, "cos", gs_val_c_fn(gs_c_fn_cos));
+    map_set(&global_env->val_map, "sin", gs_val_c_fn(gs_c_fn_sin));
+    map_set(&global_env->val_map, "terrain_model_add_point", gs_val_c_fn(gs_c_fn_terrain_model_add_point));
+    map_set(&global_env->val_map, "terrain_model_add_face", gs_val_c_fn(gs_c_fn_terrain_model_add_face));
 
     vec_init(&script->eval.env, "script/eval");
     vec_push(&script->eval.env, global_env);
@@ -2676,9 +2734,6 @@ bool golf_script_load(golf_script_t *script, const char *path, const char *data,
             printf("\n");
         }
     }
-
-    printf("LOAD\n");
-    golf_debug_print_allocations();
 
     return true;
 }
@@ -2727,9 +2782,6 @@ bool golf_script_unload(golf_script_t *script) {
         golf_free(list);
     }
     vec_deinit(&script->eval.allocated_lists);
-
-    printf("UNLOAD\n");
-    golf_debug_print_allocations();
 
     return true;
 }
