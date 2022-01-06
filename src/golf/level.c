@@ -1061,6 +1061,28 @@ golf_entity_t golf_entity_make_copy(golf_entity_t *entity) {
                 lightmap_section->uvs.length);
     }
 
+    golf_geo_t *geo = golf_entity_get_geo(entity);
+    golf_geo_t *geo_copy = golf_entity_get_geo(&entity_copy);
+    if (geo) {
+        golf_geo_init(geo_copy);
+        for (int i = 0; i < geo->points.length; i++) {
+            golf_geo_point_t point = geo->points.data[i];
+            golf_geo_point_t point_copy = point;
+            vec_push(&geo_copy->points, point_copy);
+        }
+        for (int i = 0; i < geo->faces.length; i++) {
+            golf_geo_face_t face = geo->faces.data[i];
+            golf_geo_face_t face_copy = golf_geo_face(face.material_name, face.idx.length, face.idx.data, face.uv_gen_type, face.uvs.data);;
+            vec_push(&geo_copy->faces, face_copy);
+        }
+        geo_copy->generator_data.script = geo->generator_data.script;
+        for (int i = 0; i < geo->generator_data.args.length; i++) {
+            golf_geo_generator_data_arg_t arg = geo->generator_data.args.data[i];
+            golf_geo_generator_data_arg_t arg_copy = arg;
+            vec_push(&geo_copy->generator_data.args, arg_copy);
+        }
+    }
+
     return entity_copy;
 }
 

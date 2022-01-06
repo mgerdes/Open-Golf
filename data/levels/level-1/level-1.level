@@ -122,7 +122,7 @@
             "name": "hole",
             "type": "hole",
             "transform": {
-                "position": [2, 0, 2],
+                "position": [-8, -5, 2.5],
                 "scale": [0.4, 0.4, 0.4],
                 "rotation": [0, 0, 0, 1]
             }
@@ -451,7 +451,89 @@
                 }
             },
             "transform": {
-                "position": [0, 0, 0],
+                "position": [0, 0, -0.5],
+                "scale": [1, 1, 1],
+                "rotation": [0, 0, 0, 1]
+            },
+            "movement": {
+                "type": "none"
+            }
+        },
+        {
+            "name": "geo",
+            "type": "geo",
+            "geo": {
+                "p": [0, 1, -2, 10, 1, -2, 10, 1, 3, 0, 1, 3, 0, 1.5, -2, 0, 1.5, 3, 10, 1.5, 3, 10, 1.5, -2],
+                "faces": [
+                    {
+                        "material_name": "default",
+                        "idxs": [3, 2, 1, 0],
+                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uv_gen_type": "ground"
+                    },
+                    {
+                        "material_name": "wall-side",
+                        "idxs": [2, 3, 5, 6],
+                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uv_gen_type": "wall-side"
+                    },
+                    {
+                        "material_name": "wall-side",
+                        "idxs": [0, 1, 7, 4],
+                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uv_gen_type": "wall-side"
+                    },
+                    {
+                        "material_name": "wall-side",
+                        "idxs": [1, 2, 6, 7],
+                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uv_gen_type": "wall-side"
+                    }
+                ]
+            },
+            "transform": {
+                "position": [-10, -6, 1.5],
+                "scale": [1, 1, 1],
+                "rotation": [0, 0, 0, 1]
+            },
+            "movement": {
+                "type": "none"
+            }
+        },
+        {
+            "name": "geo",
+            "type": "geo",
+            "geo": {
+                "p": [0, 1, -2, 10, 1, -2, 10, 1, 3, 0, 1, 3, 0, 1.5, -2, 0, 1.5, 3, 10, 1.5, 3, 10, 1.5, -2],
+                "faces": [
+                    {
+                        "material_name": "default",
+                        "idxs": [3, 2, 1, 0],
+                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uv_gen_type": "ground"
+                    },
+                    {
+                        "material_name": "wall-side",
+                        "idxs": [2, 3, 5, 6],
+                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uv_gen_type": "wall-side"
+                    },
+                    {
+                        "material_name": "wall-side",
+                        "idxs": [0, 1, 7, 4],
+                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uv_gen_type": "wall-side"
+                    },
+                    {
+                        "material_name": "wall-side",
+                        "idxs": [1, 2, 6, 7],
+                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uv_gen_type": "wall-side"
+                    }
+                ]
+            },
+            "transform": {
+                "position": [0, -6, 9],
                 "scale": [1, 1, 1],
                 "rotation": [0, 0, 0, 1]
             },
