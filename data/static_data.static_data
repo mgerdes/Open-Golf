@@ -13,6 +13,8 @@
     "data/models/sphere.obj",
     "data/models/teapot.obj",
     "data/models/ui_sprite_square.obj",
+    "data/models/gizmo/plane.obj",
+    "data/models/gizmo/triangle.obj",
     "data/textures/fallback.png",
     "data/textures/ground.png",
     "data/textures/hole_lightmap.png",

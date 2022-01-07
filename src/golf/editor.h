@@ -6,6 +6,7 @@
 #include "cimguizmo/cimguizmo.h"
 #include "golf/file.h"
 #include "golf/gi.h"
+#include "golf/gizmo.h"
 #include "golf/level.h"
 #include "golf/maths.h"
 #include "golf/vec.h"
@@ -69,6 +70,8 @@ typedef struct golf_editor {
         mat4 starting_model_mat;
         vec_int_t point_idxs;
     } edit_mode;
+
+    golf_gizmo_t gizmo0;
 
     struct {
         bool is_using;

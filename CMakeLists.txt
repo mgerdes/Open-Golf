@@ -42,6 +42,7 @@ add_library(golf_lib STATIC
     src/golf/file.c
     src/golf/game.c
     src/golf/gi.c
+    src/golf/gizmo.c
     src/golf/inputs.c
     src/golf/json.c
     src/golf/level.c

@@ -1039,3 +1039,16 @@ void golf_renderer_draw_editor(void) {
 
     sg_end_pass();
 }
+
+vec2 golf_renderer_world_to_screen(vec3 pos) {
+    vec4 t = V4(pos.x, pos.y, pos.z, 1);
+    t = vec4_apply_mat(t, renderer.proj_view_mat);
+    t = vec4_scale(t, 0.5f / t.w);
+    t = vec4_add(t, V4(0.5f, 0.5f, 0, 0));
+    t.y = 1 - t.y;
+    t.x = t.x * renderer.viewport_size.x;
+    t.y = t.y * renderer.viewport_size.y;
+    t.x = t.x + renderer.viewport_pos.x;
+    t.y = t.y + renderer.viewport_pos.y;
+    return V2(t.x, t.y);
+}

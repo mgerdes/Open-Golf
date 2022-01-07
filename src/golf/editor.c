@@ -52,6 +52,7 @@ void golf_editor_init(void) {
         vec_init(&editor.edit_mode.point_idxs, "editor");
     }
 
+    golf_gizmo_init(&editor.gizmo0);
     {
         editor.gizmo.is_using = false;
         editor.gizmo.bounds_mode_on = false;
@@ -714,8 +715,8 @@ static void _golf_editor_update_guizmo(void) {
         golf_geo_t *geo = editor.edit_mode.geo;
 
         mat4 mat = mat4_transpose(editor.gizmo.model_mat); 
-        ImGuizmo_Manipulate(view_mat_t.m, proj_mat_t.m, editor.gizmo.operation, 
-                editor.gizmo.mode, mat.m, NULL, snap, NULL, NULL);
+        //ImGuizmo_Manipulate(view_mat_t.m, proj_mat_t.m, editor.gizmo.operation, 
+                //editor.gizmo.mode, mat.m, NULL, snap, NULL, NULL);
         editor.gizmo.model_mat = mat4_transpose(mat);
 
         bool is_using = ImGuizmo_IsUsing();
@@ -779,10 +780,11 @@ static void _golf_editor_update_guizmo(void) {
     else if (!editor.in_edit_mode && editor.selected_idxs.length > 0) {
         mat4 model_mat = mat4_transpose(editor.gizmo.model_mat);
         mat4 delta_matrix;
-        ImGuizmo_Manipulate(view_mat_t.m, proj_mat_t.m, editor.gizmo.operation, 
-                editor.gizmo.mode, model_mat.m, delta_matrix.m, snap, NULL, NULL);
+        //ImGuizmo_Manipulate(view_mat_t.m, proj_mat_t.m, editor.gizmo.operation, 
+                //editor.gizmo.mode, model_mat.m, delta_matrix.m, snap, NULL, NULL);
         editor.gizmo.model_mat = mat4_transpose(model_mat);
 
+        delta_matrix = mat4_identity();
         float delta_translation_arr[3];
         float delta_rotation_arr[3];
         float delta_scale_arr[3];
@@ -817,6 +819,23 @@ static void _golf_editor_update_guizmo(void) {
         }
         editor.gizmo.is_using = is_using;
     }
+
+    if (!editor.in_edit_mode && editor.selected_idxs.length > 0) {
+        int idx = editor.selected_idxs.data[0];
+        golf_entity_t *entity = &editor.level->entities.data[idx];
+        golf_transform_t *transform = golf_entity_get_transform(entity);
+        if (transform) {
+            editor.gizmo0.is_on = true;
+            editor.gizmo0.transform = transform;
+        }
+        else {
+            editor.gizmo0.is_on = false;
+        }
+    }
+    else {
+        editor.gizmo0.is_on = false;
+    }
+    golf_gizmo_update(&editor.gizmo0, igGetWindowDrawList());
 }
 
 static void _golf_editor_edit_transform(golf_transform_t *transform) {
