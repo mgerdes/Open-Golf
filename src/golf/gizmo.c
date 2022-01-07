@@ -1,5 +1,6 @@
 #include "golf/gizmo.h"
 
+#include "golf/inputs.h"
 #include "golf/renderer.h"
 
 void golf_gizmo_init(golf_gizmo_t *gizmo) {
@@ -67,6 +68,8 @@ void golf_gizmo_update(golf_gizmo_t *gizmo, ImDrawList *draw_list) {
         return;
     }
 
+    golf_inputs_t *inputs = golf_inputs_get();
+
     golf_config_t *cfg = golf_data_get_config("data/config/editor.cfg");
     vec3 p = gizmo->transform->position;
     vec2 p_screen = _world_to_screen(p);
@@ -82,6 +85,21 @@ void golf_gizmo_update(golf_gizmo_t *gizmo, ImDrawList *draw_list) {
     vec2 z_axis = _world_to_screen(vec3_add(p, V3(0, 0, 1)));
     _add_line(draw_list, p_screen, z_axis, CFG_NUM(cfg, "gizmo_line_thickness"), CFG_VEC4(cfg, "gizmo_z_axis_color"));
     _add_axis_tip(draw_list, p_screen, z_axis, CFG_NUM(cfg, "gizmo_axis_tip_width"), CFG_VEC4(cfg, "gizmo_z_axis_color"));
+
+    {
+        vec3 ro = inputs->mouse_ray_orig;
+        vec3 rd = inputs->mouse_ray_dir;
+        vec3 circle_center = p;
+        vec3 circle_normal = V3(1, 0, 0);
+        float t;
+        int idx;
+        if (ray_intersect_planes(inputs->mouse_ray_orig, inputs->mouse_ray_dir, &circle_center, &circle_normal, 1, &t, &idx)) {
+            float radius = CFG_NUM(cfg, "gizmo_rotation_circle_radius");  
+            vec3 p = vec3_add(ro, vec3_scale(rd, t));
+            float dist = vec3_distance(p, circle_center);
+            dist = fabsf(dist - radius);
+        }
+    }
 
     _add_rotation_semi_circle(draw_list, 
             p, 
