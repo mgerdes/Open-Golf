@@ -899,7 +899,73 @@ void golf_renderer_draw_editor(void) {
         }
     }
 
+    sg_apply_pipeline(renderer.hole_pass1_pipeline);
+    for (int i = 0; i < editor->level->entities.length; i++) {
+        golf_entity_t *entity = &editor->level->entities.data[i];
+        if (!entity->active) continue;
+
+        switch (entity->type) {
+            case MODEL_ENTITY:
+            case BALL_START_ENTITY:
+            case GEO_ENTITY:
+                break;
+            case HOLE_ENTITY: {
+                golf_transform_t transform = entity->hole.transform;
+                transform.position.y += 0.001f;
+                mat4 model_mat = golf_transform_get_model_mat(transform);
+                golf_model_t *model = golf_data_get_model("data/models/hole-cover.obj");
+
+                pass_through_vs_params_t vs_params = {
+                    .mvp_mat = mat4_transpose(mat4_multiply(renderer.proj_view_mat, model_mat)),
+                };
+                sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_pass_through_vs_params,
+                        &(sg_range) { &vs_params, sizeof(vs_params) });
+                sg_bindings bindings = {
+                    .vertex_buffers[0] = model->sg_positions_buf,
+                };
+                sg_apply_bindings(&bindings);
+                sg_draw(0, model->positions.length, 1);
+
+                break;
+            }
+        }
+    }
+
+    sg_apply_pipeline(renderer.hole_pass2_pipeline);
+    for (int i = 0; i < editor->level->entities.length; i++) {
+        golf_entity_t *entity = &editor->level->entities.data[i];
+        if (!entity->active) continue;
+
+        switch (entity->type) {
+            case MODEL_ENTITY:
+            case BALL_START_ENTITY:
+            case GEO_ENTITY:
+                break;
+            case HOLE_ENTITY: {
+                golf_transform_t transform = entity->hole.transform;
+                transform.position.y += 0.001f;
+                mat4 model_mat = golf_transform_get_model_mat(transform);
+                golf_model_t *model = golf_data_get_model("data/models/hole.obj");
+                golf_material_t material = golf_material_texture("data/textures/hole_lightmap.png");
+                _golf_renderer_draw_with_material(model, 0, model->positions.length, model_mat, material);
+                break;
+            }
+        }
+    }
+
+    sg_end_pass();
+
     if (editor->in_edit_mode) {
+        sg_pass_action action = {
+            .colors[0] = {
+                .action = SG_ACTION_DONTCARE,
+                .value = { 0.529f, 0.808f, 0.922f, 1.0f },
+            },
+        };
+        sg_begin_default_pass(&action, sapp_width(), sapp_height());
+        sg_apply_viewportf(renderer.viewport_pos.x, renderer.viewport_pos.y, 
+                renderer.viewport_size.x, renderer.viewport_size.y, true);
+
         golf_geo_t *geo = editor->edit_mode.geo;
 
         sg_apply_pipeline(renderer.solid_color_material_pipeline);
@@ -981,63 +1047,8 @@ void golf_renderer_draw_editor(void) {
                 _golf_renderer_draw_solid_color_material(model, start_vertex, count, model_mat, material);
             }
         }
+        sg_end_pass();
     }
-
-    sg_apply_pipeline(renderer.hole_pass1_pipeline);
-    for (int i = 0; i < editor->level->entities.length; i++) {
-        golf_entity_t *entity = &editor->level->entities.data[i];
-        if (!entity->active) continue;
-
-        switch (entity->type) {
-            case MODEL_ENTITY:
-            case BALL_START_ENTITY:
-            case GEO_ENTITY:
-                break;
-            case HOLE_ENTITY: {
-                golf_transform_t transform = entity->hole.transform;
-                transform.position.y += 0.001f;
-                mat4 model_mat = golf_transform_get_model_mat(transform);
-                golf_model_t *model = golf_data_get_model("data/models/hole-cover.obj");
-
-                pass_through_vs_params_t vs_params = {
-                    .mvp_mat = mat4_transpose(mat4_multiply(renderer.proj_view_mat, model_mat)),
-                };
-                sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_pass_through_vs_params,
-                        &(sg_range) { &vs_params, sizeof(vs_params) });
-                sg_bindings bindings = {
-                    .vertex_buffers[0] = model->sg_positions_buf,
-                };
-                sg_apply_bindings(&bindings);
-                sg_draw(0, model->positions.length, 1);
-
-                break;
-            }
-        }
-    }
-
-    sg_apply_pipeline(renderer.hole_pass2_pipeline);
-    for (int i = 0; i < editor->level->entities.length; i++) {
-        golf_entity_t *entity = &editor->level->entities.data[i];
-        if (!entity->active) continue;
-
-        switch (entity->type) {
-            case MODEL_ENTITY:
-            case BALL_START_ENTITY:
-            case GEO_ENTITY:
-                break;
-            case HOLE_ENTITY: {
-                golf_transform_t transform = entity->hole.transform;
-                transform.position.y += 0.001f;
-                mat4 model_mat = golf_transform_get_model_mat(transform);
-                golf_model_t *model = golf_data_get_model("data/models/hole.obj");
-                golf_material_t material = golf_material_texture("data/textures/hole_lightmap.png");
-                _golf_renderer_draw_with_material(model, 0, model->positions.length, model_mat, material);
-                break;
-            }
-        }
-    }
-
-    sg_end_pass();
 }
 
 vec2 golf_renderer_world_to_screen(vec3 pos) {

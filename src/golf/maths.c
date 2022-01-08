@@ -22,6 +22,14 @@ float golf_clampf(float v, float min, float max) {
     return v;
 }
 
+float golf_snapf(float v, float s) {
+    if (s == 0) {
+        return v;
+    }
+
+    return roundf(v / s) * s;
+}
+
 struct ray ray_create(vec3 orig, vec3 dir) {
     struct ray ray;
     ray.orig = orig;
@@ -430,6 +438,13 @@ vec3 vec3_orthogonal(vec3 u) {
         u = V3(0.0f, 1.0f, 0.0f);
     }
     return vec3_cross(u, v);
+}
+
+vec3 vec3_snap(vec3 v, float s) {
+    v.x = golf_snapf(v.x, s);
+    v.y = golf_snapf(v.y, s);
+    v.z = golf_snapf(v.z, s);
+    return v;
 }
 
 float vec3_distance_squared_point_line_segment(vec3 p, vec3 a, vec3 b) {
@@ -1558,15 +1573,20 @@ float closest_point_ray_ray(vec3 p1, vec3 q1, vec3 p2, vec3 q2, float *s, float 
     return vec3_dot(vec3_sub(*c1, *c2), vec3_sub(*c1, *c2));
 }
 
-vec3 closest_point_ray_circle(vec3 ro, vec3 rd, vec3 circle_center, vec3 circle_normal, float circle_radius) {
+float closest_point_ray_circle(vec3 ro, vec3 rd, vec3 cc, vec3 cn, float cr, float *s, vec3 *c1, vec3 *c2) {
     float t;
     int idx;
-    if (ray_intersect_planes(ro, rd, &circle_center, &circle_normal, 1, &t, &idx)) {
-        vec3 p = vec3_add(ro, vec3_scale(rd, t));    
-        return vec3_add(circle_center, vec3_set_length(vec3_subtract(p, circle_center), circle_radius));
+    if (ray_intersect_planes(ro, rd, &cc, &cn, 1, &t, &idx)) {
+        *s = t;
+        *c1 = vec3_add(ro, vec3_scale(rd, t));    
+        *c2 = vec3_add(cc, vec3_set_length(vec3_subtract(*c1, cc), cr));
+        return vec3_distance(*c1, *c2);
     } else {
-        // This is wrong
-        return circle_center;
+        // This is wrong, but probably doesn't matter...
+        *s = FLT_MAX;
+        *c1 = V3(FLT_MAX, FLT_MAX, FLT_MAX);
+        *c2 = V3(FLT_MAX, FLT_MAX, FLT_MAX);
+        return FLT_MAX;
     }
 }
 

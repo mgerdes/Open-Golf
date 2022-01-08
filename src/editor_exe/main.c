@@ -125,7 +125,6 @@ static void frame(void) {
         sg_end_pass();
 
         simgui_new_frame(sapp_width(), sapp_height(), dt);
-        ImGuizmo_BeginFrame();
     }
 
     {

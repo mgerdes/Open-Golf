@@ -5,7 +5,6 @@
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "cimgui/cimgui.h"
-#include "cimguizmo/cimguizmo.h"
 #include "IconsFontAwesome5/IconsFontAwesome5.h"
 #include "stb/stb_image_write.h"
 #include "golf/alloc.h"
@@ -52,18 +51,7 @@ void golf_editor_init(void) {
         vec_init(&editor.edit_mode.point_idxs, "editor");
     }
 
-    golf_gizmo_init(&editor.gizmo0);
-    {
-        editor.gizmo.is_using = false;
-        editor.gizmo.bounds_mode_on = false;
-        editor.gizmo.operation = TRANSLATE;
-        editor.gizmo.mode = LOCAL;
-        editor.gizmo.use_snap = false;
-        editor.gizmo.translate_snap = 1;
-        editor.gizmo.scale_snap = 1;
-        editor.gizmo.rotate_snap = 1;
-        editor.gizmo.model_mat = mat4_identity();
-    }
+    golf_gizmo_init(&editor.gizmo);
 
     {
         editor.gi_state.num_iterations = 1;
@@ -681,12 +669,12 @@ static void _golf_editor_recalculate_guizmo_model_mat(void) {
 
         editor.edit_mode.local_model_mat = mat4_translation(local_pos);
         editor.edit_mode.world_model_mat = mat4_multiply(model_mat, editor.edit_mode.local_model_mat);
-        editor.gizmo.model_mat = editor.edit_mode.world_model_mat;
     }
     else {
     }
 }
 
+/*
 static void _golf_editor_update_guizmo(void) {
     ImGuizmo_SetRect(renderer->viewport_pos.x, renderer->viewport_pos.y, renderer->viewport_size.x, renderer->viewport_size.y);
     mat4 view_mat_t = mat4_transpose(renderer->view_mat);
@@ -819,24 +807,8 @@ static void _golf_editor_update_guizmo(void) {
         }
         editor.gizmo.is_using = is_using;
     }
-
-    if (!editor.in_edit_mode && editor.selected_idxs.length > 0) {
-        int idx = editor.selected_idxs.data[0];
-        golf_entity_t *entity = &editor.level->entities.data[idx];
-        golf_transform_t *transform = golf_entity_get_transform(entity);
-        if (transform) {
-            editor.gizmo0.is_on = true;
-            editor.gizmo0.transform = transform;
-        }
-        else {
-            editor.gizmo0.is_on = false;
-        }
-    }
-    else {
-        editor.gizmo0.is_on = false;
-    }
-    golf_gizmo_update(&editor.gizmo0, igGetWindowDrawList());
 }
+*/
 
 static void _golf_editor_edit_transform(golf_transform_t *transform) {
     if (igTreeNode_Str("Transform")) {
@@ -1031,19 +1003,55 @@ void golf_editor_update(float dt) {
         }
     }
 
-    _golf_editor_update_guizmo();
+    if (!editor.in_edit_mode && editor.selected_idxs.length > 0) {
+        int idx = editor.selected_idxs.data[0];
+        golf_entity_t *entity = &editor.level->entities.data[idx];
+        golf_transform_t *transform = golf_entity_get_transform(entity);
+        if (transform) {
+            editor.gizmo.is_on = true;
+            editor.gizmo.transform = transform;
+        }
+        else {
+            editor.gizmo.is_on = false;
+        }
+    }
+    else {
+        editor.gizmo.is_on = false;
+    }
+
+    {
+        bool is_active = editor.gizmo.is_active;
+        golf_gizmo_update(&editor.gizmo, igGetWindowDrawList());
+
+        if (!is_active && editor.gizmo.is_active) {
+            golf_editor_action_t action;
+            _golf_editor_action_init(&action, "Modify transform");
+            for (int i = 0; i < editor.selected_idxs.length; i++) {
+                int idx = editor.selected_idxs.data[i];
+                golf_entity_t *entity = &editor.level->entities.data[idx];
+                golf_transform_t *transform = golf_entity_get_transform(entity);
+                if (transform) {
+                    _golf_editor_action_push_data(&action, transform, sizeof(golf_transform_t));
+                }
+            }
+            _golf_editor_start_action(action);
+        }
+        if (is_active && !editor.gizmo.is_active) {
+            _golf_editor_commit_action();
+        }
+    }
 
     {
         igBegin("Top", NULL, ImGuiWindowFlags_NoTitleBar);
 
         // Translate Mode Button
         {
-            bool is_on = editor.gizmo.operation == TRANSLATE;
+            bool is_on = editor.gizmo.operation == GOLF_GIZMO_TRANSLATE;
             if (is_on) {
                 igPushStyleColor_U32(ImGuiCol_Button, igGetColorU32_Col(ImGuiCol_ButtonActive, 1));
             }
             if (igButton(ICON_FA_ARROWS_ALT, (ImVec2){20, 20})) {
-                editor.gizmo.operation = TRANSLATE;
+                golf_gizmo_set_operation(&editor.gizmo, GOLF_GIZMO_TRANSLATE);
             }
             if (is_on) {
                 igPopStyleColor(1);
@@ -1059,12 +1067,12 @@ void golf_editor_update(float dt) {
         // Rotate Mode Button
         {
             igSameLine(0, 2);
-            bool is_on = editor.gizmo.operation == ROTATE;
+            bool is_on = editor.gizmo.operation == GOLF_GIZMO_ROTATE;
             if (is_on) {
                 igPushStyleColor_U32(ImGuiCol_Button, igGetColorU32_Col(ImGuiCol_ButtonActive, 1));
             }
             if (igButton(ICON_FA_SYNC_ALT, (ImVec2){20, 20})) {
-                editor.gizmo.operation = ROTATE;
+                golf_gizmo_set_operation(&editor.gizmo, GOLF_GIZMO_ROTATE);
             }
             if (is_on) {
                 igPopStyleColor(1);
@@ -1079,12 +1087,12 @@ void golf_editor_update(float dt) {
         // Scale Mode Button
         {
             igSameLine(0, 2);
-            bool is_on = editor.gizmo.operation == SCALE;
+            bool is_on = editor.gizmo.operation == GOLF_GIZMO_SCALE;
             if (is_on) {
                 igPushStyleColor_U32(ImGuiCol_Button, igGetColorU32_Col(ImGuiCol_ButtonActive, 1));
             }
             if (igButton(ICON_FA_EXPAND_ALT, (ImVec2){20, 20})) {
-                editor.gizmo.operation = SCALE;
+                golf_gizmo_set_operation(&editor.gizmo, GOLF_GIZMO_SCALE);
             }
             if (is_on) {
                 igPopStyleColor(1);
@@ -1096,32 +1104,12 @@ void golf_editor_update(float dt) {
             }
         }
 
-        // Bounds Mode Button
-        {
-            igSameLine(0, 2);
-            bool is_on = editor.gizmo.bounds_mode_on;
-            if (is_on) {
-                igPushStyleColor_U32(ImGuiCol_Button, igGetColorU32_Col(ImGuiCol_ButtonActive, 1));
-            }
-            if (igButton(ICON_FA_EXPAND, (ImVec2){20, 20})) {
-                editor.gizmo.bounds_mode_on = !editor.gizmo.bounds_mode_on;
-            }
-            if (is_on) {
-                igPopStyleColor(1);
-            }
-            if (igIsItemHovered(ImGuiHoveredFlags_None)) {
-                igBeginTooltip();
-                igText("Bounds (T)");
-                igEndTooltip();
-            }
-        }
-
         // Local / Global Button
         {
             igSameLine(0, 10);
-            if (editor.gizmo.mode == LOCAL) {
+            if (editor.gizmo.mode == GOLF_GIZMO_LOCAL) {
                 if (igButton(ICON_FA_CUBE, (ImVec2){20, 20})) {
-                    editor.gizmo.mode = WORLD;
+                    golf_gizmo_set_mode(&editor.gizmo, GOLF_GIZMO_WORLD);
                 }
                 if (igIsItemHovered(ImGuiHoveredFlags_None)) {
                     igBeginTooltip();
@@ -1129,9 +1117,9 @@ void golf_editor_update(float dt) {
                     igEndTooltip();
                 }
             }
-            else if (editor.gizmo.mode == WORLD) {
+            else if (editor.gizmo.mode == GOLF_GIZMO_WORLD) {
                 if (igButton(ICON_FA_GLOBE_ASIA, (ImVec2){20, 20})) {
-                    editor.gizmo.mode = LOCAL;
+                    golf_gizmo_set_mode(&editor.gizmo, GOLF_GIZMO_LOCAL);
                 }
                 if (igIsItemHovered(ImGuiHoveredFlags_None)) {
                     igBeginTooltip();
@@ -1143,33 +1131,16 @@ void golf_editor_update(float dt) {
 
         // Snap Button
         {
-            igSameLine(0, 10);
-            bool is_on = editor.gizmo.use_snap;
-            if (is_on) {
-                igPushStyleColor_U32(ImGuiCol_Button, igGetColorU32_Col(ImGuiCol_ButtonActive, 1));
-            }
-            if (igButton(ICON_FA_TH, (ImVec2){20, 20})) {
-                editor.gizmo.use_snap = !editor.gizmo.use_snap;
-            }
-            if (is_on) {
-                igPopStyleColor(1);
-            }
-            if (igIsItemHovered(ImGuiHoveredFlags_None)) {
-                igBeginTooltip();
-                igText("Snap");
-                igEndTooltip();
-            }
-
             igSameLine(0, 1);
             static float *v = NULL;
-            if (editor.gizmo.operation == TRANSLATE) {
-                v = &editor.gizmo.translate_snap;
+            if (editor.gizmo.operation == GOLF_GIZMO_TRANSLATE) {
+                v = &editor.gizmo.translate.snap;
             }
-            else if (editor.gizmo.operation == SCALE) {
-                v = &editor.gizmo.scale_snap;
+            else if (editor.gizmo.operation == GOLF_GIZMO_SCALE) {
+                v = &editor.gizmo.scale.snap;
             }
-            else if (editor.gizmo.operation == ROTATE) {
-                v = &editor.gizmo.rotate_snap;
+            else if (editor.gizmo.operation == GOLF_GIZMO_ROTATE) {
+                v = &editor.gizmo.rotate.snap;
             }
             else {
                 golf_log_error("Invalid value for gizmo operation %d", editor.gizmo.operation);
@@ -2189,14 +2160,6 @@ void golf_editor_update(float dt) {
                 if (idx == -1) {
                     vec_push(&editor.selected_idxs, editor.hovered_idx);
                 }
-            }
-
-            if (editor.selected_idxs.length == 1) {
-                int idx = editor.selected_idxs.data[0];
-                golf_entity_t *entity = &editor.level->entities.data[idx];
-                editor.gizmo.model_mat = golf_transform_get_model_mat(entity->model.transform);
-            }
-            else {
             }
         }
 

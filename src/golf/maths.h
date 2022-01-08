@@ -17,6 +17,7 @@
 
 int golf_clampi(int v, int min, int max);
 float golf_clampf(float v, float min, float max);
+float golf_snapf(float v, float s);
 
 typedef struct vec2 {
     float x, y;
@@ -151,6 +152,7 @@ vec3 vec3_interpolate(vec3 v1, vec3 v2, float t);
 vec3 vec3_from_hex_color(int hex_color);
 vec3 vec3_multiply(vec3 v1, vec3 v2);
 vec3 vec3_orthogonal(vec3 u);
+vec3 vec3_snap(vec3 v, float s);
 float vec3_distance_squared_point_line_segment(vec3 p, vec3 a, vec3 b);
 bool vec3_point_on_line_segment(vec3 p, vec3 a, vec3 b, float eps);
 bool vec3_line_segments_on_same_line(vec3 a_p0, vec3 a_p1, vec3 b_p0, vec3 b_p1, float eps); 
@@ -228,7 +230,6 @@ void triangles_inside_frustum(vec3 *triangle_points, int num_triangles, vec3 *fr
 
 vec3 closest_point_point_plane(vec3 point, vec3 plane_point, vec3 plane_normal);
 vec3 closest_point_point_circle(vec3 point, vec3 circle_center, vec3 circle_plane, float circle_radius);
-vec3 closest_point_ray_circle(vec3 ro, vec3 rd, vec3 circle_center, vec3 circle_normal, float circle_radius);
 
 enum triangle_contact_type {
     TRIANGLE_CONTACT_A,
@@ -244,6 +245,7 @@ vec3 closest_point_point_triangle(vec3 p, vec3 a, vec3 b, vec3 c, enum triangle_
 vec3 closest_point_point_obb(vec3 p, vec3 bc, vec3 bx, vec3 by, vec3 bz, float bex, float bey, float bez);
 float closest_point_ray_segment(vec3 p1, vec3 q1, vec3 p2, vec3 q2, float *s, float *t, vec3 *c1, vec3 *c2);
 float closest_point_ray_ray(vec3 p1, vec3 q1, vec3 p2, vec3 q2, float *s, float *t, vec3 *c1, vec3 *c2);
+float closest_point_ray_circle(vec3 ro, vec3 rd, vec3 cc, vec3 cn, float cr, float *s, vec3 *c1, vec3 *c2);
 
 bool intersection_moving_sphere_triangle(vec3 sc, float sr, vec3 v, vec3 tp0, vec3 tp1, vec3 tp2, float *t,
         vec3 *p, vec3 *n);

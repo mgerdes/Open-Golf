@@ -71,19 +71,7 @@ typedef struct golf_editor {
         vec_int_t point_idxs;
     } edit_mode;
 
-    golf_gizmo_t gizmo0;
-
-    struct {
-        bool is_using;
-        bool bounds_mode_on;
-        OPERATION operation;
-        MODE mode;
-        bool use_snap;
-        float translate_snap;
-        float scale_snap;
-        float rotate_snap;
-        mat4 model_mat;
-    } gizmo;
+    golf_gizmo_t gizmo;
 
     struct {
         bool creating_hole;
