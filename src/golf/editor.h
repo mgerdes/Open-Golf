@@ -56,7 +56,7 @@ typedef struct golf_editor {
 
     bool in_edit_mode;
     struct {
-        mat4 model_mat;
+        golf_transform_t transform;
         golf_geo_t *geo;
 
         bool is_entity_hovered;
@@ -64,14 +64,11 @@ typedef struct golf_editor {
         vec_golf_edit_mode_entity_t selected_entities;
 
         vec_vec3_t starting_positions;
-        mat4 local_model_mat;
-        mat4 world_model_mat;
-
-        mat4 starting_model_mat;
         vec_int_t point_idxs;
     } edit_mode;
 
     golf_gizmo_t gizmo;
+    vec_golf_transform_t starting_transforms;
 
     struct {
         bool creating_hole;

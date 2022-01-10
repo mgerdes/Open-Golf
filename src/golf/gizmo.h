@@ -20,7 +20,7 @@ typedef struct golf_gizmo {
     bool is_on, is_active, is_hovered;
     golf_gizmo_operation operation;
     golf_gizmo_mode mode;
-    golf_transform_t *transform;
+    golf_transform_t transform, delta_transform;
 
     struct {
         float snap;
@@ -49,5 +49,6 @@ void golf_gizmo_init(golf_gizmo_t *gizmo);
 void golf_gizmo_update(golf_gizmo_t *gizmo, ImDrawList *draw_list);
 void golf_gizmo_set_operation(golf_gizmo_t *gizmo, golf_gizmo_operation operation);
 void golf_gizmo_set_mode(golf_gizmo_t *gizmo, golf_gizmo_mode mode);
+void golf_gizmo_set_transform(golf_gizmo_t *gizmo, golf_transform_t transform);
 
 #endif

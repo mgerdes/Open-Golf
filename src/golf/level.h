@@ -130,6 +130,7 @@ typedef struct golf_transform {
     quat rotation;
     vec3 scale;
 } golf_transform_t;
+typedef vec_t(golf_transform_t) vec_golf_transform_t;
 golf_transform_t golf_transform(vec3 position, vec3 scale, quat rotation);
 mat4 golf_transform_get_model_mat(golf_transform_t transform);
 golf_transform_t golf_transform_apply_movement(golf_transform_t transform, golf_movement_t movement);

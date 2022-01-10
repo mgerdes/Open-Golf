@@ -11,7 +11,6 @@ void golf_gizmo_init(golf_gizmo_t *gizmo) {
     gizmo->is_hovered = false;
     gizmo->operation = GOLF_GIZMO_TRANSLATE;
     gizmo->mode = GOLF_GIZMO_LOCAL;
-    gizmo->transform = NULL;
     gizmo->translate.snap = 0.5f;
     gizmo->rotate.snap = 45.0f;
     gizmo->scale.snap = 0.5f;
@@ -48,17 +47,17 @@ static void _add_convex_poly(ImDrawList *draw_list, vec2 *points, int num_points
 }
 
 void golf_gizmo_update(golf_gizmo_t *gizmo, ImDrawList *draw_list) {
-    if (!gizmo->is_on || !gizmo->transform) {
+    if (!gizmo->is_on) {
         return;
     }
 
     golf_inputs_t *inputs = golf_inputs_get();
     golf_renderer_t *renderer = golf_renderer_get();
 
-    vec3 p = gizmo->transform->position;
+    vec3 p = gizmo->transform.position;
     float dist_modifier = 0.1f * vec3_distance(renderer->cam_pos, p);
 
-    mat4 model_mat = mat4_from_quat(gizmo->transform->rotation);
+    mat4 model_mat = mat4_from_quat(gizmo->transform.rotation);
     vec3 axis[3] = {
         vec3_apply_mat4(V3(1, 0, 0), 0, model_mat),
         vec3_apply_mat4(V3(0, 1, 0), 0, model_mat),
@@ -96,23 +95,25 @@ void golf_gizmo_update(golf_gizmo_t *gizmo, ImDrawList *draw_list) {
         }
 
         if (gizmo->is_active) {
+            igCaptureMouseFromApp(true);
             if (!inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
                 gizmo->is_active = false;
             }
 
-            igCaptureMouseFromApp(true);
             int axis_i = gizmo->translate.axis;
             vec3 translate = vec3_sub(closest_point[axis_i], gizmo->translate.start_point);
             float dist = golf_snapf(vec3_length(translate), gizmo->translate.snap);
             translate = vec3_set_length(translate, dist);
-            gizmo->transform->position = vec3_add(gizmo->translate.start_position, translate);
+            gizmo->transform.position = vec3_add(gizmo->translate.start_position, translate);
+            gizmo->delta_transform.position = translate;
         }
         else {
             if (hovered_axis >= 0 && inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
                 gizmo->is_active = true;
                 gizmo->translate.axis = hovered_axis;
                 gizmo->translate.start_point = closest_point[hovered_axis];
-                gizmo->translate.start_position = gizmo->transform->position;
+                gizmo->translate.start_position = gizmo->transform.position;
+                gizmo->delta_transform = golf_transform(V3(0, 0, 0), V3(0, 0, 0), QUAT(0, 0, 0, 1));
             }
         }
 
@@ -181,6 +182,7 @@ void golf_gizmo_update(golf_gizmo_t *gizmo, ImDrawList *draw_list) {
         }
 
         if (gizmo->is_active) {
+            igCaptureMouseFromApp(true);
             if (!inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
                 gizmo->is_active = false;
             }
@@ -198,9 +200,9 @@ void golf_gizmo_update(golf_gizmo_t *gizmo, ImDrawList *draw_list) {
                     r_angle *= -1.0f;
                 }
                 r_angle = golf_snapf(r_angle, gizmo->rotate.snap * (MF_PI / 180.0f));
-                gizmo->transform->rotation = quat_multiply(
-                        quat_create_from_axis_angle(gizmo->rotate.axis_rotation, r_angle),
-                        gizmo->rotate.start_rotation);
+                quat rotation = quat_create_from_axis_angle(gizmo->rotate.axis_rotation, r_angle);
+                gizmo->transform.rotation = quat_multiply(rotation, gizmo->rotate.start_rotation);
+                gizmo->delta_transform.rotation = rotation;
             }
 
             int num_points = 25;
@@ -220,7 +222,8 @@ void golf_gizmo_update(golf_gizmo_t *gizmo, ImDrawList *draw_list) {
                 gizmo->rotate.axis = hovered_axis;
                 gizmo->rotate.axis_rotation = axis[hovered_axis];
                 gizmo->rotate.start_point = circle_p[hovered_axis];
-                gizmo->rotate.start_rotation = gizmo->transform->rotation;
+                gizmo->rotate.start_rotation = gizmo->transform.rotation;
+                gizmo->delta_transform = golf_transform(V3(0, 0, 0), V3(0, 0, 0), QUAT(0, 0, 0, 1));
             }
         }
 
@@ -273,6 +276,7 @@ void golf_gizmo_update(golf_gizmo_t *gizmo, ImDrawList *draw_list) {
         }
 
         if (gizmo->is_active) {
+            igCaptureMouseFromApp(true);
             if (!inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
                 gizmo->is_active = false;
             }
@@ -280,14 +284,16 @@ void golf_gizmo_update(golf_gizmo_t *gizmo, ImDrawList *draw_list) {
             int axis_i = gizmo->scale.axis;
             vec3 scale = vec3_sub(closest_point[axis_i], gizmo->scale.start_point);
             scale = vec3_snap(scale, gizmo->scale.snap);
-            gizmo->transform->scale = vec3_add(gizmo->scale.start_scale, scale);
+            gizmo->transform.scale = vec3_add(gizmo->scale.start_scale, scale);
+            gizmo->delta_transform.scale = scale;
         }
         else {
             if (hovered_axis >= 0 && inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
                 gizmo->is_active = true;
                 gizmo->scale.axis = hovered_axis;
                 gizmo->scale.start_point = closest_point[hovered_axis];
-                gizmo->scale.start_scale = gizmo->transform->scale;
+                gizmo->scale.start_scale = gizmo->transform.scale;
+                gizmo->delta_transform = golf_transform(V3(0, 0, 0), V3(0, 0, 0), QUAT(0, 0, 0, 1));
             }
         }
 
@@ -322,4 +328,12 @@ void golf_gizmo_set_mode(golf_gizmo_t *gizmo, golf_gizmo_mode mode) {
     }
 
     gizmo->mode = mode;
+}
+
+void golf_gizmo_set_transform(golf_gizmo_t *gizmo, golf_transform_t transform) {
+    if (gizmo->is_active) {
+        return;
+    }
+
+    gizmo->transform = transform;
 }
