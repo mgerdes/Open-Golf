@@ -11,7 +11,7 @@
             "name": "wall-top",
             "friction": 0,
             "restitution": 0,
-            "type": "environment",
+            "type": "texture",
             "texture": "data\/textures\/wood.jpg"
         },
         {
@@ -178,172 +178,172 @@
                         "uv_gen_type": "wall-side"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-top",
                         "idxs": [8, 9, 4, 5],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "ground"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-side",
                         "idxs": [17, 16, 9, 8],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "wall-side"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-side",
                         "idxs": [18, 19, 13, 12],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "wall-side"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-top",
                         "idxs": [12, 13, 7, 4],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "ground"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-side",
                         "idxs": [21, 20, 11, 10],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "wall-side"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-top",
                         "idxs": [10, 11, 6, 7],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "ground"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-side",
                         "idxs": [22, 23, 15, 14],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "wall-side"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-top",
                         "idxs": [6, 14, 15, 5],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "ground"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-side",
                         "idxs": [30, 25, 26, 31],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "wall-side"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-side",
                         "idxs": [25, 29, 27, 26],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "wall-side"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-side",
                         "idxs": [29, 24, 28, 27],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "wall-side"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-side",
                         "idxs": [24, 30, 31, 28],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "wall-side"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-top",
                         "idxs": [28, 31, 26, 27],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
                         "uv_gen_type": "manual"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-side",
                         "idxs": [32, 33, 34, 35],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "wall-side"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-side",
                         "idxs": [33, 36, 37, 34],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "wall-side"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-side",
                         "idxs": [36, 38, 39, 37],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "wall-side"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-side",
                         "idxs": [38, 32, 35, 39],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "wall-side"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-top",
                         "idxs": [39, 35, 34, 37],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "ground"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-side",
                         "idxs": [40, 41, 42, 43],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "wall-side"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-side",
                         "idxs": [41, 44, 45, 42],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "wall-side"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-side",
                         "idxs": [44, 46, 47, 45],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "wall-side"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-side",
                         "idxs": [46, 40, 43, 47],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "wall-side"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-top",
                         "idxs": [47, 43, 42, 45],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "ground"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-side",
                         "idxs": [48, 49, 50, 51],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "wall-side"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-side",
                         "idxs": [49, 52, 53, 50],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "wall-side"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-side",
                         "idxs": [52, 54, 55, 53],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "wall-side"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-side",
                         "idxs": [54, 48, 51, 55],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "wall-side"
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "wall-top",
                         "idxs": [55, 51, 50, 53],
                         "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "uv_gen_type": "manual"
+                        "uv_gen_type": "ground"
                     }
                 ]
             },

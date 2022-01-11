@@ -775,6 +775,257 @@ static void _golf_editor_edit_geo(golf_geo_t *geo, golf_transform_t transform) {
     }
 }
 
+static void _golf_editor_geo_tab(void) {
+    golf_geo_t *geo = editor.edit_mode.geo;
+    int num_points_selected = 0;
+    for (int i = 0; i < editor.edit_mode.selected_entities.length; i++) {
+        golf_edit_mode_entity_t entity = editor.edit_mode.selected_entities.data[i];
+        if (entity.type == GOLF_EDIT_MODE_ENTITY_POINT) {
+            num_points_selected++;
+        }
+    }
+    if (num_points_selected >= 3) {
+        if (igButton("Create Face", (ImVec2){0, 0}) || inputs->button_clicked[SAPP_KEYCODE_C]) {
+            int n = num_points_selected;
+            int j = 0;
+            int *idxs = golf_alloc(sizeof(int) * n);
+            vec2 *uvs = golf_alloc(sizeof(vec2) * n);
+            for (int i = 0; i < editor.edit_mode.selected_entities.length; i++) {
+                golf_edit_mode_entity_t entity = editor.edit_mode.selected_entities.data[i];
+                if (entity.type == GOLF_EDIT_MODE_ENTITY_POINT) {
+                    idxs[j] = entity.idx;
+                    uvs[j] = V2(0, 0);
+                    j++;
+                }
+            }
+            golf_geo_face_uv_gen_type_t uv_gen_type = GOLF_GEO_FACE_UV_GEN_MANUAL;
+            golf_geo_face_t face = golf_geo_face("default", n, idxs, uv_gen_type, uvs);
+            _vec_push_and_fix_actions(&geo->faces, face);
+            golf_free(idxs);
+            golf_free(uvs);
+
+            golf_geo_face_t *new_face = &vec_last(&geo->faces);
+            new_face->active = false;
+            golf_editor_action_t action;
+            _golf_editor_action_init(&action, "Create face");
+            _golf_editor_action_push_data(&action, &new_face->active, sizeof(new_face->active));
+            new_face->active = true;
+            _golf_editor_start_action(action);
+            _golf_editor_commit_action();
+        }
+    }
+
+    if (igTreeNode_Str("Faces")) {
+        for (int i = 0; i < geo->faces.length; i++) {
+            golf_geo_face_t *face = &geo->faces.data[i];
+            if (!face->active) continue;
+
+            bool selected = golf_editor_is_edit_entity_selected(golf_edit_mode_entity_face(i));
+            igPushID_Int(i);
+            if (igSelectable_Bool("Face", selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
+                _golf_editor_edit_mode_select_entity(golf_edit_mode_entity_face(i));
+            }
+            igPopID();
+        }
+        igTreePop();
+    }
+
+    if (igTreeNode_Str("Points")) {
+        for (int i = 0; i < geo->points.length; i++) {
+            golf_geo_point_t *point = &geo->points.data[i];
+            if (!point->active) continue;
+
+            bool selected = golf_editor_is_edit_entity_selected(golf_edit_mode_entity_point(i));
+            igPushID_Int(i);
+            if (igSelectable_Bool("Point", selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
+                _golf_editor_edit_mode_select_entity(golf_edit_mode_entity_point(i));
+            }
+            igPopID();
+        }
+        igTreePop();
+    }
+
+    if (igTreeNode_Str("Generator")) {
+        golf_script_store_t *script_store = golf_script_store_get();
+        golf_script_t *selected_script = geo->generator_data.script;
+        const char *selected_path = "";
+        if (selected_script) {
+            selected_path = selected_script->path;
+        }
+        if (igBeginCombo("Scripts", selected_path, ImGuiComboFlags_None)) {
+            for (int i = 0; i < script_store->scripts.length; i++) {
+                golf_script_t *script = script_store->scripts.data[i];
+                bool selected = selected_script && strcmp(selected_script->path, script->path) == 0;
+                if (igSelectable_Bool(script->path, selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
+                    if (geo->generator_data.script != script) {
+                        _golf_editor_start_action_with_data(&geo->generator_data.script, sizeof(geo->generator_data.script), "Modify script");
+                        _golf_editor_commit_action();
+                        geo->generator_data.script = script;
+                    }
+                }
+            }
+            igEndCombo();
+        }
+        if (selected_script) {
+            gs_val_t generate_val;
+            if (golf_script_get_val(selected_script, "generate", &generate_val) && generate_val.type == GS_VAL_FN) {
+                gs_stmt_t *fn_stmt = generate_val.fn_stmt;
+                for (int i = 0; i < fn_stmt->fn_decl.num_args; i++) {
+                    gs_val_type type = fn_stmt->fn_decl.arg_types[i];
+                    const char *symbol = fn_stmt->fn_decl.arg_symbols[i].symbol;
+
+                    golf_geo_generator_data_arg_t *arg;
+                    if (!golf_geo_generator_data_get_arg(&geo->generator_data, symbol, &arg)) {
+                        golf_geo_generator_data_arg_t arg0;
+                        snprintf(arg0.name, GOLF_MAX_NAME_LEN, "%s", symbol);
+                        arg0.val = gs_val_default(type);
+                        _vec_push_and_fix_actions(&geo->generator_data.args, arg0);
+
+                        golf_geo_generator_data_get_arg(&geo->generator_data, symbol, &arg);
+                    }
+                    if (arg->val.type != type) {
+                        arg->val = gs_val_default(type);
+                    }
+
+                    switch (type) {
+                        case GS_VAL_BOOL: 
+                            _golf_editor_undoable_igCheckbox(symbol, &arg->val.bool_val, "Modify arg");
+                            break;
+                        case GS_VAL_INT: 
+                            _golf_editor_undoable_igInputInt(symbol, &arg->val.int_val, "Modify arg");
+                            break;
+                        case GS_VAL_FLOAT: 
+                            _golf_editor_undoable_igInputFloat(symbol, &arg->val.float_val, "Modify arg");
+                            break;
+                        case GS_VAL_VEC2:
+                            _golf_editor_undoable_igInputFloat2(symbol, (float*)&arg->val.vec2_val, "Modify arg");
+                            break;
+                        case GS_VAL_VEC3: 
+                            _golf_editor_undoable_igInputFloat3(symbol, (float*)&arg->val.vec3_val, "Modify arg");
+                            break;
+                        case GS_VAL_LIST: 
+                        case GS_VAL_STRING:
+                        case GS_VAL_FN:
+                        case GS_VAL_C_FN:
+                        case GS_VAL_ERROR:
+                        case GS_VAL_VOID:
+                        case GS_VAL_NUM_TYPES: {
+                            break;
+                        }
+                    }
+                }
+
+                if (igButton("Run", (ImVec2){0, 0})) {
+                    bool error = false;
+                    int num_args = fn_stmt->fn_decl.num_args;
+                    gs_val_t *args = golf_alloc(sizeof(gs_val_t) * num_args);
+                    for (int i = 0; i < num_args; i++) {
+                        gs_val_type type = fn_stmt->fn_decl.arg_types[i];
+                        const char *symbol = fn_stmt->fn_decl.arg_symbols[i].symbol;
+
+                        golf_geo_generator_data_arg_t *arg;
+                        if (!golf_geo_generator_data_get_arg(&geo->generator_data, symbol, &arg)) {
+                            error = true;
+                            golf_log_warning("Could not find argument %s", symbol);
+                            break;
+                        }
+                        if (arg->val.type != type) {
+                            error = true;
+                            golf_log_warning("Invalid type for argument %s", symbol);
+                            break;
+                        }
+
+                        args[i] = arg->val;
+                    }
+
+                    if (!error) {
+                        golf_editor_action_t action;
+                        _golf_editor_action_init(&action, "Run generator");
+                        _golf_editor_action_push_data(&action, &geo->points.length, sizeof(geo->points.length));
+                        _golf_editor_action_push_data(&action, geo->points.data, sizeof(golf_geo_point_t) * geo->points.length);
+                        _golf_editor_action_push_data(&action, &geo->faces.length, sizeof(geo->faces.length));
+                        _golf_editor_action_push_data(&action, geo->faces.data, sizeof(golf_geo_face_t) * geo->faces.length);
+                        _golf_editor_start_action(action);
+                        _golf_editor_commit_action();
+
+                        geo->points.length = 0;
+                        geo->faces.length = 0;
+                        golf_script_eval_fn(selected_script, "generate", args, num_args);
+                    }
+                    golf_free(args);
+                }
+            }
+        }
+
+        igTreePop();
+    }
+
+    if (igButton("Exit Editing Geo", (ImVec2){0, 0})) {
+        _golf_editor_stop_editing_geo();
+    }
+}
+
+static void _golf_editor_entities_tab(void) {
+    for (int i = 0; i < editor.level->entities.length; i++) {
+        golf_entity_t *entity = &editor.level->entities.data[i];
+        if (!entity->active) continue;
+        bool selected = _golf_editor_is_entity_selected(i);
+        igPushID_Int(i);
+        switch (entity->type) {
+            case BALL_START_ENTITY:
+            case MODEL_ENTITY: 
+            case GEO_ENTITY:
+            case HOLE_ENTITY: {
+                if (igSelectable_Bool(entity->name, selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
+                    _golf_editor_select_entity(i);
+                }
+                break;
+            }
+        }
+        igPopID();
+    }
+
+    if (igButton("Create Model Entity", (ImVec2){0, 0})) {
+        golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
+
+        golf_lightmap_section_t lightmap_section;
+        {
+            const char *model_path = "data/models/cube.obj";
+            golf_model_t *model = golf_data_get_model(model_path);
+            vec_vec2_t uvs;
+            vec_init(&uvs, "editor");
+            for (int i = 0; i < model->positions.length; i++) {
+                vec_push(&uvs, V2(0, 0));
+            }
+
+            golf_lightmap_section_init(&lightmap_section, "main", uvs, 0, uvs.length);
+            vec_deinit(&uvs);
+        }
+
+        golf_movement_t movement;
+        movement = golf_movement_none();
+
+        golf_entity_t entity = golf_entity_model("Model", transform, "data/models/cube.obj", lightmap_section, movement);
+        _vec_push_and_fix_actions(&editor.level->entities, entity);
+        _golf_editor_commit_entity_create_action();
+    }
+
+    if (igButton("Create Geo Entity", (ImVec2){0, 0})) {
+        golf_geo_t geo;
+        golf_geo_init_cube(&geo);
+        golf_geo_update_model(&geo);
+        golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
+        golf_movement_t movement = golf_movement_none();
+
+        golf_entity_t entity = golf_entity_geo("geo", transform, movement, geo);
+        _vec_push_and_fix_actions(&editor.level->entities, entity);
+        _golf_editor_commit_entity_create_action();
+    }
+
+    if (igButton("Create Hole Entity", (ImVec2){0, 0})) {
+    }
+}
+
 void golf_editor_update(float dt) {
     golf_config_t *editor_cfg = golf_data_get_config("data/config/editor.cfg");
     ImGuiIO *IO = igGetIO();
@@ -1270,202 +1521,234 @@ void golf_editor_update(float dt) {
         igEnd();
     }
 
+    igBegin("RightTop", NULL, ImGuiWindowFlags_NoTitleBar);
+    if (igBeginTabBar("", ImGuiTabBarFlags_None)) {
+        if (editor.in_edit_mode) {
+            if (igBeginTabItem("Geo", NULL, ImGuiTabItemFlags_None)) {
+                _golf_editor_geo_tab();
+                igEndTabItem();
+            }
+        }
+        else {
+            if (igBeginTabItem("Entities", NULL, ImGuiTabItemFlags_None)) {
+                _golf_editor_entities_tab();
+                igEndTabItem();
+            }
+        }
+
+        if (igBeginTabItem("Materials", NULL, ImGuiTabItemFlags_None)) {
+            for (int i = 0; i < editor.level->materials.length; i++) {
+                golf_material_t *material = &editor.level->materials.data[i];
+                if (!material->active) {
+                    continue;
+                }
+
+                igPushID_Int(i);
+                if (igTreeNodeEx_StrStr("material", ImGuiTreeNodeFlags_None, "%s", material->name)) {
+                    golf_material_type_t material_type_before = material->type;
+                    const char *items[] = { "Texture", "Color", "Diffuse", "Environment" };
+                    igCombo_Str_arr("Type", (int*)&material->type, items, sizeof(items) / sizeof(items[0]), 0);
+                    if (material_type_before != material->type) {
+                        golf_material_type_t material_type_after = material->type;
+
+                        material->type = material_type_before;
+                        _golf_editor_start_action_with_data(material, sizeof(golf_material_t), "Change material type");
+                        _golf_editor_commit_action();
+                        material->type = material_type_after;
+
+                        switch (material->type) {
+                            case GOLF_MATERIAL_TEXTURE: {
+                                snprintf(material->texture_path, GOLF_FILE_MAX_PATH, "%s", "data/textures/fallback.png");
+                                material->texture = golf_data_get_texture("data/textures/fallback.png");
+                                break;
+                            }
+                            case GOLF_MATERIAL_COLOR: {
+                                material->color = V4(1, 0, 0, 1);
+                                break;
+                            }
+                            case GOLF_MATERIAL_DIFFUSE_COLOR: {
+                                material->color = V4(1, 0, 0, 1);
+                                break;
+                            }
+                            case GOLF_MATERIAL_ENVIRONMENT: {
+                                snprintf(material->texture_path, GOLF_FILE_MAX_PATH, "%s", "data/textures/fallback.png");
+                                material->texture = golf_data_get_texture("data/textures/fallback.png");
+                                break;
+                            }
+                        }
+                    }
+
+                    _golf_editor_undoable_igInputText("Name", material->name, GOLF_MAX_NAME_LEN, NULL, NULL, 0, "Modify material name");
+
+                    switch (material->type) {
+                        case GOLF_MATERIAL_TEXTURE: {
+                            bool edit_done = false;
+                            _golf_editor_undoable_igInputText("Texture", material->texture_path, GOLF_FILE_MAX_PATH, &edit_done, &material->texture, sizeof(material->texture), "Modify material texture");
+                            if (edit_done) {
+                                material->texture = golf_data_get_texture(material->texture_path);
+                            }
+                            break;
+                        }
+                        case GOLF_MATERIAL_COLOR: {
+                            _golf_editor_undoable_igInputFloat3("Color", (float*)&material->color, "Modify material color");
+                            break;
+                        }
+                        case GOLF_MATERIAL_DIFFUSE_COLOR: {
+                            _golf_editor_undoable_igInputFloat3("Color", (float*)&material->color, "Modify material color");
+                            break;
+                        }
+                        case GOLF_MATERIAL_ENVIRONMENT: {
+                            bool edit_done = false;
+                            _golf_editor_undoable_igInputText("Texture", material->texture_path, GOLF_FILE_MAX_PATH, &edit_done, &material->texture, sizeof(material->texture), "Modify material texture");
+                            if (edit_done) {
+                                material->texture = golf_data_get_texture(material->texture_path);
+                            }
+                            break;
+                        }
+                    }
+
+                    if (igButton("Delete Material", (ImVec2){0, 0})) {
+                        _golf_editor_start_action_with_data(&material->active, sizeof(material->active), "Delete material");
+                        material->active = false;
+                        _golf_editor_commit_action();
+                    }
+                    igTreePop();
+                }
+                igPopID();
+            }
+
+            if (igButton("Create Material", (ImVec2){0, 0})) {
+                golf_material_t new_material;
+                memset(&new_material, 0, sizeof(golf_material_t));
+                new_material.active = true;
+                snprintf(new_material.name, GOLF_MAX_NAME_LEN, "%s", "new");
+                new_material.type = GOLF_MATERIAL_COLOR;
+                new_material.color = V4(1, 0, 0, 1);
+                _vec_push_and_fix_actions(&editor.level->materials, new_material);
+
+                golf_material_t *material = &vec_last(&editor.level->materials);
+                material->active = false;
+                _golf_editor_start_action_with_data(&material->active, sizeof(material->active), "Create material");
+                material->active = true;
+                _golf_editor_commit_action();
+            }
+            igEndTabItem();
+        }
+
+        if (igBeginTabItem("Lightmap Images", NULL, ImGuiTabItemFlags_None)) {
+            for (int i = 0; i < editor.level->lightmap_images.length; i++) {
+                golf_lightmap_image_t *lightmap_image = &editor.level->lightmap_images.data[i];
+                if (!lightmap_image->active) continue;
+
+                bool queue_action = false;
+                bool queue_commit = false;
+                bool queue_decommit = false;
+
+                igPushID_Int(i);
+                if (igTreeNodeEx_StrStr("lightmap_image", ImGuiTreeNodeFlags_None, "%s", lightmap_image->name)) {
+                    _golf_editor_undoable_igInputText("Name", lightmap_image->name, GOLF_MAX_NAME_LEN, NULL, NULL, 0, "Modify lightmap image name");
+                    igInputInt("Resolution", &lightmap_image->resolution, 0, 0, ImGuiInputTextFlags_None);
+                    if (igIsItemActivated()) {
+                        queue_action = true;
+                    }
+                    if (igIsItemDeactivated()) {
+                        if (igIsItemDeactivatedAfterEdit()) {
+                            queue_commit = true;
+                        }
+                        else {
+                            queue_decommit = true;
+                        }
+                    }
+
+                    _golf_editor_undoable_igInputFloat("Time Length", &lightmap_image->time_length, "Modify lightmap time length");
+
+                    igInputInt("Num Samples", &lightmap_image->edited_num_samples, 0, 0, ImGuiInputTextFlags_None);
+                    if (igIsItemActivated()) {
+                        queue_action = true;
+                    }
+                    if (igIsItemDeactivated()) {
+                        if (igIsItemDeactivatedAfterEdit()) {
+                            queue_commit = true;
+                        }
+                        else {
+                            queue_decommit = true;
+                        }
+                    }
+
+                    igText("Size <%d, %d>", lightmap_image->width, lightmap_image->height);
+                    for (int i = 0; i < lightmap_image->num_samples; i++) {
+                        igImage((ImTextureID)(uintptr_t)lightmap_image->sg_image[i].id, 
+                                (ImVec2){(float)lightmap_image->width, (float)lightmap_image->height},
+                                (ImVec2){0, 0},
+                                (ImVec2){1, 1}, 
+                                (ImVec4){1, 1, 1, 1},
+                                (ImVec4){1, 1, 1, 1});
+                    }
+
+                    if (igButton("Delete", (ImVec2){0, 0})) {
+                        _golf_editor_start_action_with_data(&lightmap_image->active, sizeof(lightmap_image->active), "Delete lightmap image");
+                        lightmap_image->active = false;
+                        _golf_editor_commit_action();
+                    }
+
+                    igTreePop();
+                }
+                igPopID();
+
+                if (queue_action) {
+                    golf_editor_action_t action;
+                    _golf_editor_action_init(&action, "Modify lightmap image");
+                    _golf_editor_action_push_data(&action, lightmap_image, sizeof(golf_lightmap_image_t));
+                    _golf_editor_queue_start_action(action);
+                }
+                if (queue_commit) {
+                    int resolution = lightmap_image->resolution;
+                    int width = lightmap_image->width;
+                    int height = lightmap_image->height;
+                    float time_length = lightmap_image->time_length;
+                    int num_samples = lightmap_image->edited_num_samples;
+                    unsigned char **data = golf_alloc(sizeof(unsigned char*) * num_samples);
+                    for (int i = 0; i < num_samples; i++) {
+                        data[i] = golf_alloc(lightmap_image->width * lightmap_image->height);
+                        memset(data[i], 0xFF, lightmap_image->width * lightmap_image->height);
+                    }
+
+                    char name[GOLF_MAX_NAME_LEN];
+                    snprintf(name, GOLF_MAX_NAME_LEN, "%s", lightmap_image->name);
+                    golf_lightmap_image_init(lightmap_image, name, resolution, width, height, time_length, num_samples, data);
+                    golf_free(data);
+                    _golf_editor_queue_commit_action();
+                }
+                if (queue_decommit) {
+                    _golf_editor_queue_decommit_action();
+                }
+            }
+
+            if (igButton("Create Lightmap Image", (ImVec2){0, 0})) {
+                unsigned char **image_data = golf_alloc(sizeof(unsigned char*) * 1);
+                image_data[0] = golf_alloc(sizeof(unsigned char) * 1);
+                image_data[0][0] = 0xFF;
+                golf_lightmap_image_t new_lightmap_image;
+                golf_lightmap_image_init(&new_lightmap_image, "new", 256, 1, 1, 1, 1, image_data);
+                golf_free(image_data);
+                _vec_push_and_fix_actions(&editor.level->lightmap_images, new_lightmap_image);
+
+                golf_lightmap_image_t *lightmap_image = &vec_last(&editor.level->lightmap_images);
+                lightmap_image->active = false;
+                _golf_editor_start_action_with_data(&lightmap_image->active, sizeof(lightmap_image->active), "Create lightmap image");
+                lightmap_image->active = true;
+                _golf_editor_commit_action();
+            }
+            igEndTabItem();
+        }
+
+        igEndTabBar();
+    }
+    igEnd();
+
+    igBegin("RightBottom", NULL, ImGuiWindowFlags_NoTitleBar);
     if (editor.in_edit_mode) {
         golf_geo_t *geo = editor.edit_mode.geo;
-
-        igBegin("RightTop", NULL, ImGuiWindowFlags_NoTitleBar);
-
-        {
-            int num_points_selected = 0;
-            for (int i = 0; i < editor.edit_mode.selected_entities.length; i++) {
-                golf_edit_mode_entity_t entity = editor.edit_mode.selected_entities.data[i];
-                if (entity.type == GOLF_EDIT_MODE_ENTITY_POINT) {
-                    num_points_selected++;
-                }
-            }
-            if (num_points_selected >= 3) {
-                if (igButton("Create Face", (ImVec2){0, 0}) || inputs->button_clicked[SAPP_KEYCODE_C]) {
-                    int n = num_points_selected;
-                    int j = 0;
-                    int *idxs = golf_alloc(sizeof(int) * n);
-                    vec2 *uvs = golf_alloc(sizeof(vec2) * n);
-                    for (int i = 0; i < editor.edit_mode.selected_entities.length; i++) {
-                        golf_edit_mode_entity_t entity = editor.edit_mode.selected_entities.data[i];
-                        if (entity.type == GOLF_EDIT_MODE_ENTITY_POINT) {
-                            idxs[j] = entity.idx;
-                            uvs[j] = V2(0, 0);
-                            j++;
-                        }
-                    }
-                    golf_geo_face_uv_gen_type_t uv_gen_type = GOLF_GEO_FACE_UV_GEN_MANUAL;
-                    golf_geo_face_t face = golf_geo_face("default", n, idxs, uv_gen_type, uvs);
-                    _vec_push_and_fix_actions(&geo->faces, face);
-                    golf_free(idxs);
-                    golf_free(uvs);
-
-                    golf_geo_face_t *new_face = &vec_last(&geo->faces);
-                    new_face->active = false;
-                    golf_editor_action_t action;
-                    _golf_editor_action_init(&action, "Create face");
-                    _golf_editor_action_push_data(&action, &new_face->active, sizeof(new_face->active));
-                    new_face->active = true;
-                    _golf_editor_start_action(action);
-                    _golf_editor_commit_action();
-                }
-            }
-        }
-
-        if (igTreeNode_Str("Faces")) {
-            for (int i = 0; i < geo->faces.length; i++) {
-                golf_geo_face_t *face = &geo->faces.data[i];
-                if (!face->active) continue;
-
-                bool selected = golf_editor_is_edit_entity_selected(golf_edit_mode_entity_face(i));
-                igPushID_Int(i);
-                if (igSelectable_Bool("Face", selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
-                    _golf_editor_edit_mode_select_entity(golf_edit_mode_entity_face(i));
-                }
-                igPopID();
-            }
-            igTreePop();
-        }
-
-        if (igTreeNode_Str("Points")) {
-            for (int i = 0; i < geo->points.length; i++) {
-                golf_geo_point_t *point = &geo->points.data[i];
-                if (!point->active) continue;
-
-                bool selected = golf_editor_is_edit_entity_selected(golf_edit_mode_entity_point(i));
-                igPushID_Int(i);
-                if (igSelectable_Bool("Point", selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
-                    _golf_editor_edit_mode_select_entity(golf_edit_mode_entity_point(i));
-                }
-                igPopID();
-            }
-            igTreePop();
-        }
-
-        if (igTreeNode_Str("Generator")) {
-            golf_script_store_t *script_store = golf_script_store_get();
-            golf_script_t *selected_script = geo->generator_data.script;
-            const char *selected_path = "";
-            if (selected_script) {
-                selected_path = selected_script->path;
-            }
-            if (igBeginCombo("Scripts", selected_path, ImGuiComboFlags_None)) {
-                for (int i = 0; i < script_store->scripts.length; i++) {
-                    golf_script_t *script = script_store->scripts.data[i];
-                    bool selected = selected_script && strcmp(selected_script->path, script->path) == 0;
-                    if (igSelectable_Bool(script->path, selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
-                        if (geo->generator_data.script != script) {
-                            _golf_editor_start_action_with_data(&geo->generator_data.script, sizeof(geo->generator_data.script), "Modify script");
-                            _golf_editor_commit_action();
-                            geo->generator_data.script = script;
-                        }
-                    }
-                }
-                igEndCombo();
-            }
-            if (selected_script) {
-                gs_val_t generate_val;
-                if (golf_script_get_val(selected_script, "generate", &generate_val) && generate_val.type == GS_VAL_FN) {
-                    gs_stmt_t *fn_stmt = generate_val.fn_stmt;
-                    for (int i = 0; i < fn_stmt->fn_decl.num_args; i++) {
-                        gs_val_type type = fn_stmt->fn_decl.arg_types[i];
-                        const char *symbol = fn_stmt->fn_decl.arg_symbols[i].symbol;
-
-                        golf_geo_generator_data_arg_t *arg;
-                        if (!golf_geo_generator_data_get_arg(&geo->generator_data, symbol, &arg)) {
-                            golf_geo_generator_data_arg_t arg0;
-                            snprintf(arg0.name, GOLF_MAX_NAME_LEN, "%s", symbol);
-                            arg0.val = gs_val_default(type);
-                            _vec_push_and_fix_actions(&geo->generator_data.args, arg0);
-
-                            golf_geo_generator_data_get_arg(&geo->generator_data, symbol, &arg);
-                        }
-                        if (arg->val.type != type) {
-                            arg->val = gs_val_default(type);
-                        }
-
-                        switch (type) {
-                            case GS_VAL_BOOL: 
-                                _golf_editor_undoable_igCheckbox(symbol, &arg->val.bool_val, "Modify arg");
-                                break;
-                            case GS_VAL_INT: 
-                                _golf_editor_undoable_igInputInt(symbol, &arg->val.int_val, "Modify arg");
-                                break;
-                            case GS_VAL_FLOAT: 
-                                _golf_editor_undoable_igInputFloat(symbol, &arg->val.float_val, "Modify arg");
-                                break;
-                            case GS_VAL_VEC2:
-                                _golf_editor_undoable_igInputFloat2(symbol, (float*)&arg->val.vec2_val, "Modify arg");
-                                break;
-                            case GS_VAL_VEC3: 
-                                _golf_editor_undoable_igInputFloat3(symbol, (float*)&arg->val.vec3_val, "Modify arg");
-                                break;
-                            case GS_VAL_LIST: 
-                            case GS_VAL_STRING:
-                            case GS_VAL_FN:
-                            case GS_VAL_C_FN:
-                            case GS_VAL_ERROR:
-                            case GS_VAL_VOID:
-                            case GS_VAL_NUM_TYPES: {
-                                break;
-                            }
-                        }
-                    }
-
-                    if (igButton("Run", (ImVec2){0, 0})) {
-                        bool error = false;
-                        int num_args = fn_stmt->fn_decl.num_args;
-                        gs_val_t *args = golf_alloc(sizeof(gs_val_t) * num_args);
-                        for (int i = 0; i < num_args; i++) {
-                            gs_val_type type = fn_stmt->fn_decl.arg_types[i];
-                            const char *symbol = fn_stmt->fn_decl.arg_symbols[i].symbol;
-
-                            golf_geo_generator_data_arg_t *arg;
-                            if (!golf_geo_generator_data_get_arg(&geo->generator_data, symbol, &arg)) {
-                                error = true;
-                                golf_log_warning("Could not find argument %s", symbol);
-                                break;
-                            }
-                            if (arg->val.type != type) {
-                                error = true;
-                                golf_log_warning("Invalid type for argument %s", symbol);
-                                break;
-                            }
-
-                            args[i] = arg->val;
-                        }
-
-                        if (!error) {
-                            golf_editor_action_t action;
-                            _golf_editor_action_init(&action, "Run generator");
-                            _golf_editor_action_push_data(&action, &geo->points.length, sizeof(geo->points.length));
-                            _golf_editor_action_push_data(&action, geo->points.data, sizeof(golf_geo_point_t) * geo->points.length);
-                            _golf_editor_action_push_data(&action, &geo->faces.length, sizeof(geo->faces.length));
-                            _golf_editor_action_push_data(&action, geo->faces.data, sizeof(golf_geo_face_t) * geo->faces.length);
-                            _golf_editor_start_action(action);
-                            _golf_editor_commit_action();
-
-                            geo->points.length = 0;
-                            geo->faces.length = 0;
-                            golf_script_eval_fn(selected_script, "generate", args, num_args);
-                        }
-                        golf_free(args);
-                    }
-                }
-            }
-
-            igTreePop();
-        }
-
-        if (igButton("Exit Editing Geo", (ImVec2){0, 0})) {
-            _golf_editor_stop_editing_geo();
-        }
-        igEnd();
-
-        igBegin("RightBottom", NULL, ImGuiWindowFlags_NoTitleBar);
         for (int i = 0; i < editor.edit_mode.selected_entities.length; i++) {
             if (i == 0) {
                 igSetNextItemOpen(true, ImGuiCond_Once);
@@ -1478,6 +1761,23 @@ void golf_editor_update(float dt) {
                     if (igTreeNode_Str("Face")) {
                         golf_geo_face_t *face = &geo->faces.data[entity.idx];
                         _golf_editor_undoable_igInputText("Material", face->material_name, GOLF_MAX_NAME_LEN, NULL, NULL, 0, "Modify face material name");
+                        if (igButton("Permeate Material Name", (ImVec2){0, 0})) {
+                            golf_editor_action_t action;
+                            _golf_editor_action_init(&action, "Permeate material name");
+                            for (int j = 0; j < editor.edit_mode.selected_entities.length; j++) {
+                                if (i == j) continue;
+
+                                golf_edit_mode_entity_t other_entity = editor.edit_mode.selected_entities.data[j];
+                                if (other_entity.type == GOLF_EDIT_MODE_ENTITY_FACE) {
+                                    golf_geo_face_t *other_face = &geo->faces.data[other_entity.idx];
+                                    _golf_editor_action_push_data(&action, other_face->material_name, sizeof(other_face->material_name));
+                                    strcpy(other_face->material_name, face->material_name);
+                                }
+                            }
+                            _golf_editor_start_action(action);
+                            _golf_editor_commit_action();
+                        }
+
                         igText("Num points: %d", face->idx.length);
                         for (int i = 0; i < face->idx.length; i++) {
                             golf_geo_point_t *p = &geo->points.data[face->idx.data[i]];
@@ -1496,6 +1796,22 @@ void golf_editor_update(float dt) {
                                 _golf_editor_start_action_with_data(&face->uv_gen_type, sizeof(face->uv_gen_type), "Change face uv gen type");
                                 _golf_editor_commit_action();
                                 face->uv_gen_type = type_after;
+                            }
+                            if (igButton("Permeate UV Gen Type", (ImVec2){0, 0})) {
+                                golf_editor_action_t action;
+                                _golf_editor_action_init(&action, "Permeate uv gen type");
+                                for (int j = 0; j < editor.edit_mode.selected_entities.length; j++) {
+                                    if (i == j) continue;
+
+                                    golf_edit_mode_entity_t other_entity = editor.edit_mode.selected_entities.data[j];
+                                    if (other_entity.type == GOLF_EDIT_MODE_ENTITY_FACE) {
+                                        golf_geo_face_t *other_face = &geo->faces.data[other_entity.idx];
+                                        _golf_editor_action_push_data(&action, &other_face->uv_gen_type, sizeof(other_face->uv_gen_type));
+                                        other_face->uv_gen_type = face->uv_gen_type;
+                                    }
+                                }
+                                _golf_editor_start_action(action);
+                                _golf_editor_commit_action();
                             }
                         }
                         for (int i = 0; i < face->uvs.length; i++) {
@@ -1529,285 +1845,8 @@ void golf_editor_update(float dt) {
             }
             igPopID();
         }
-        igEnd();
     }
     else {
-        igBegin("RightTop", NULL, ImGuiWindowFlags_NoTitleBar);
-        if (igBeginTabBar("", ImGuiTabBarFlags_None)) {
-            if (igBeginTabItem("Entities", NULL, ImGuiTabItemFlags_None)) {
-                for (int i = 0; i < editor.level->entities.length; i++) {
-                    golf_entity_t *entity = &editor.level->entities.data[i];
-                    if (!entity->active) continue;
-                    bool selected = _golf_editor_is_entity_selected(i);
-                    igPushID_Int(i);
-                    switch (entity->type) {
-                        case BALL_START_ENTITY:
-                        case MODEL_ENTITY: 
-                        case GEO_ENTITY:
-                        case HOLE_ENTITY: {
-                            if (igSelectable_Bool(entity->name, selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
-                                _golf_editor_select_entity(i);
-                            }
-                            break;
-                        }
-                    }
-                    igPopID();
-                }
-
-                if (igButton("Create Model Entity", (ImVec2){0, 0})) {
-                    golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
-
-                    golf_lightmap_section_t lightmap_section;
-                    {
-                        const char *model_path = "data/models/cube.obj";
-                        golf_model_t *model = golf_data_get_model(model_path);
-                        vec_vec2_t uvs;
-                        vec_init(&uvs, "editor");
-                        for (int i = 0; i < model->positions.length; i++) {
-                            vec_push(&uvs, V2(0, 0));
-                        }
-
-                        golf_lightmap_section_init(&lightmap_section, "main", uvs, 0, uvs.length);
-                        vec_deinit(&uvs);
-                    }
-
-                    golf_movement_t movement;
-                    movement = golf_movement_none();
-
-                    golf_entity_t entity = golf_entity_model("Model", transform, "data/models/cube.obj", lightmap_section, movement);
-                    _vec_push_and_fix_actions(&editor.level->entities, entity);
-                    _golf_editor_commit_entity_create_action();
-                }
-
-                if (igButton("Create Geo Entity", (ImVec2){0, 0})) {
-                    golf_geo_t geo;
-                    golf_geo_init_cube(&geo);
-                    golf_geo_update_model(&geo);
-                    golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
-                    golf_movement_t movement = golf_movement_none();
-
-                    golf_entity_t entity = golf_entity_geo("geo", transform, movement, geo);
-                    _vec_push_and_fix_actions(&editor.level->entities, entity);
-                    _golf_editor_commit_entity_create_action();
-                }
-
-                if (igButton("Create Hole Entity", (ImVec2){0, 0})) {
-                }
-
-                igEndTabItem();
-            }
-
-            if (igBeginTabItem("Materials", NULL, ImGuiTabItemFlags_None)) {
-                for (int i = 0; i < editor.level->materials.length; i++) {
-                    golf_material_t *material = &editor.level->materials.data[i];
-                    if (!material->active) {
-                        continue;
-                    }
-
-                    igPushID_Int(i);
-                    if (igTreeNodeEx_StrStr("material", ImGuiTreeNodeFlags_None, "%s", material->name)) {
-                        golf_material_type_t material_type_before = material->type;
-                        const char *items[] = { "Texture", "Color", "Diffuse", "Environment" };
-                        igCombo_Str_arr("Type", (int*)&material->type, items, sizeof(items) / sizeof(items[0]), 0);
-                        if (material_type_before != material->type) {
-                            golf_material_type_t material_type_after = material->type;
-
-                            material->type = material_type_before;
-                            _golf_editor_start_action_with_data(material, sizeof(golf_material_t), "Change material type");
-                            _golf_editor_commit_action();
-                            material->type = material_type_after;
-
-                            switch (material->type) {
-                                case GOLF_MATERIAL_TEXTURE: {
-                                    snprintf(material->texture_path, GOLF_FILE_MAX_PATH, "%s", "data/textures/fallback.png");
-                                    material->texture = golf_data_get_texture("data/textures/fallback.png");
-                                    break;
-                                }
-                                case GOLF_MATERIAL_COLOR: {
-                                    material->color = V4(1, 0, 0, 1);
-                                    break;
-                                }
-                                case GOLF_MATERIAL_DIFFUSE_COLOR: {
-                                    material->color = V4(1, 0, 0, 1);
-                                    break;
-                                }
-                                case GOLF_MATERIAL_ENVIRONMENT: {
-                                    snprintf(material->texture_path, GOLF_FILE_MAX_PATH, "%s", "data/textures/fallback.png");
-                                    material->texture = golf_data_get_texture("data/textures/fallback.png");
-                                    break;
-                                }
-                            }
-                        }
-
-                        _golf_editor_undoable_igInputText("Name", material->name, GOLF_MAX_NAME_LEN, NULL, NULL, 0, "Modify material name");
-
-                        switch (material->type) {
-                            case GOLF_MATERIAL_TEXTURE: {
-                                bool edit_done = false;
-                                _golf_editor_undoable_igInputText("Texture", material->texture_path, GOLF_FILE_MAX_PATH, &edit_done, &material->texture, sizeof(material->texture), "Modify material texture");
-                                if (edit_done) {
-                                    material->texture = golf_data_get_texture(material->texture_path);
-                                }
-                                break;
-                            }
-                            case GOLF_MATERIAL_COLOR: {
-                                _golf_editor_undoable_igInputFloat3("Color", (float*)&material->color, "Modify material color");
-                                break;
-                            }
-                            case GOLF_MATERIAL_DIFFUSE_COLOR: {
-                                _golf_editor_undoable_igInputFloat3("Color", (float*)&material->color, "Modify material color");
-                                break;
-                            }
-                            case GOLF_MATERIAL_ENVIRONMENT: {
-                                bool edit_done = false;
-                                _golf_editor_undoable_igInputText("Texture", material->texture_path, GOLF_FILE_MAX_PATH, &edit_done, &material->texture, sizeof(material->texture), "Modify material texture");
-                                if (edit_done) {
-                                    material->texture = golf_data_get_texture(material->texture_path);
-                                }
-                                break;
-                            }
-                        }
-
-                        if (igButton("Delete Material", (ImVec2){0, 0})) {
-                            _golf_editor_start_action_with_data(&material->active, sizeof(material->active), "Delete material");
-                            material->active = false;
-                            _golf_editor_commit_action();
-                        }
-                        igTreePop();
-                    }
-                    igPopID();
-                }
-
-                if (igButton("Create Material", (ImVec2){0, 0})) {
-                    golf_material_t new_material;
-                    memset(&new_material, 0, sizeof(golf_material_t));
-                    new_material.active = true;
-                    snprintf(new_material.name, GOLF_MAX_NAME_LEN, "%s", "new");
-                    new_material.type = GOLF_MATERIAL_COLOR;
-                    new_material.color = V4(1, 0, 0, 1);
-                    _vec_push_and_fix_actions(&editor.level->materials, new_material);
-
-                    golf_material_t *material = &vec_last(&editor.level->materials);
-                    material->active = false;
-                    _golf_editor_start_action_with_data(&material->active, sizeof(material->active), "Create material");
-                    material->active = true;
-                    _golf_editor_commit_action();
-                }
-                igEndTabItem();
-            }
-
-            if (igBeginTabItem("Lightmap Images", NULL, ImGuiTabItemFlags_None)) {
-                for (int i = 0; i < editor.level->lightmap_images.length; i++) {
-                    golf_lightmap_image_t *lightmap_image = &editor.level->lightmap_images.data[i];
-                    if (!lightmap_image->active) continue;
-
-                    bool queue_action = false;
-                    bool queue_commit = false;
-                    bool queue_decommit = false;
-
-                    igPushID_Int(i);
-                    if (igTreeNodeEx_StrStr("lightmap_image", ImGuiTreeNodeFlags_None, "%s", lightmap_image->name)) {
-                        _golf_editor_undoable_igInputText("Name", lightmap_image->name, GOLF_MAX_NAME_LEN, NULL, NULL, 0, "Modify lightmap image name");
-                        igInputInt("Resolution", &lightmap_image->resolution, 0, 0, ImGuiInputTextFlags_None);
-                        if (igIsItemActivated()) {
-                            queue_action = true;
-                        }
-                        if (igIsItemDeactivated()) {
-                            if (igIsItemDeactivatedAfterEdit()) {
-                                queue_commit = true;
-                            }
-                            else {
-                                queue_decommit = true;
-                            }
-                        }
-
-                        _golf_editor_undoable_igInputFloat("Time Length", &lightmap_image->time_length, "Modify lightmap time length");
-
-                        igInputInt("Num Samples", &lightmap_image->edited_num_samples, 0, 0, ImGuiInputTextFlags_None);
-                        if (igIsItemActivated()) {
-                            queue_action = true;
-                        }
-                        if (igIsItemDeactivated()) {
-                            if (igIsItemDeactivatedAfterEdit()) {
-                                queue_commit = true;
-                            }
-                            else {
-                                queue_decommit = true;
-                            }
-                        }
-
-                        igText("Size <%d, %d>", lightmap_image->width, lightmap_image->height);
-                        for (int i = 0; i < lightmap_image->num_samples; i++) {
-                            igImage((ImTextureID)(uintptr_t)lightmap_image->sg_image[i].id, 
-                                    (ImVec2){(float)lightmap_image->width, (float)lightmap_image->height},
-                                    (ImVec2){0, 0},
-                                    (ImVec2){1, 1}, 
-                                    (ImVec4){1, 1, 1, 1},
-                                    (ImVec4){1, 1, 1, 1});
-                        }
-
-                        if (igButton("Delete", (ImVec2){0, 0})) {
-                            _golf_editor_start_action_with_data(&lightmap_image->active, sizeof(lightmap_image->active), "Delete lightmap image");
-                            lightmap_image->active = false;
-                            _golf_editor_commit_action();
-                        }
-
-                        igTreePop();
-                    }
-                    igPopID();
-
-                    if (queue_action) {
-                        golf_editor_action_t action;
-                        _golf_editor_action_init(&action, "Modify lightmap image");
-                        _golf_editor_action_push_data(&action, lightmap_image, sizeof(golf_lightmap_image_t));
-                        _golf_editor_queue_start_action(action);
-                    }
-                    if (queue_commit) {
-                        int resolution = lightmap_image->resolution;
-                        int width = lightmap_image->width;
-                        int height = lightmap_image->height;
-                        float time_length = lightmap_image->time_length;
-                        int num_samples = lightmap_image->edited_num_samples;
-                        unsigned char **data = golf_alloc(sizeof(unsigned char*) * num_samples);
-                        for (int i = 0; i < num_samples; i++) {
-                            data[i] = golf_alloc(lightmap_image->width * lightmap_image->height);
-                            memset(data[i], 0xFF, lightmap_image->width * lightmap_image->height);
-                        }
-
-                        char name[GOLF_MAX_NAME_LEN];
-                        snprintf(name, GOLF_MAX_NAME_LEN, "%s", lightmap_image->name);
-                        golf_lightmap_image_init(lightmap_image, name, resolution, width, height, time_length, num_samples, data);
-                        golf_free(data);
-                        _golf_editor_queue_commit_action();
-                    }
-                    if (queue_decommit) {
-                        _golf_editor_queue_decommit_action();
-                    }
-                }
-
-                if (igButton("Create Lightmap Image", (ImVec2){0, 0})) {
-                    unsigned char **image_data = golf_alloc(sizeof(unsigned char*) * 1);
-                    image_data[0] = golf_alloc(sizeof(unsigned char) * 1);
-                    image_data[0][0] = 0xFF;
-                    golf_lightmap_image_t new_lightmap_image;
-                    golf_lightmap_image_init(&new_lightmap_image, "new", 256, 1, 1, 1, 1, image_data);
-                    golf_free(image_data);
-                    _vec_push_and_fix_actions(&editor.level->lightmap_images, new_lightmap_image);
-
-                    golf_lightmap_image_t *lightmap_image = &vec_last(&editor.level->lightmap_images);
-                    lightmap_image->active = false;
-                    _golf_editor_start_action_with_data(&lightmap_image->active, sizeof(lightmap_image->active), "Create lightmap image");
-                    lightmap_image->active = true;
-                    _golf_editor_commit_action();
-                }
-                igEndTabItem();
-            }
-
-            igEndTabBar();
-        }
-        igEnd();
-
-        igBegin("RightBottom", NULL, ImGuiWindowFlags_NoTitleBar);
         if (editor.selected_idxs.length > 0) {
             int idx = editor.selected_idxs.data[0];
             golf_entity_t *entity = &editor.level->entities.data[idx];
@@ -1858,8 +1897,8 @@ void golf_editor_update(float dt) {
                 _golf_editor_edit_geo(geo, *transform);
             }
         }
-        igEnd();
     }
+    igEnd();
 
     if (editor.gi_state.open_popup) {
         igOpenPopup_Str("Lightmap Generator Running", ImGuiPopupFlags_None);

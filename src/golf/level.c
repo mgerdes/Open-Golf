@@ -153,65 +153,79 @@ void golf_geo_update_model(golf_geo_t *geo) {
                     }
                     case GOLF_GEO_FACE_UV_GEN_WALL_SIDE: {
                         // Try to guess what direction this wall is going
-                        vec3 dir, p_start;
+                        vec3 horiz_dir, vert_dir;
                         {
                             vec3 dir0 = vec3_sub(p1.position, p0.position);
                             float dir0_l = vec3_length(dir0);
                             dir0 = vec3_scale(dir0, 1.0f / dir0_l);
+                            float horiz_dot0 = vec3_dot(dir0, V3(0, 1, 0));
 
                             vec3 dir1 = vec3_sub(p2.position, p0.position);
                             float dir1_l = vec3_length(dir1);
                             dir1 = vec3_scale(dir1, 1.0f / dir1_l);
+                            float horiz_dot1 = vec3_dot(dir1, V3(0, 1, 0));
 
                             vec3 dir2 = vec3_sub(p2.position, p1.position);
                             float dir2_l = vec3_length(dir2);
                             dir2 = vec3_scale(dir2, 1.0f / dir2_l);
+                            float horiz_dot2 = vec3_dot(dir2, V3(0, 1, 0));
 
-                            if (fabsf(dir0.y) <= fabsf(dir1.y) && fabsf(dir0.y) <= fabsf(dir2.y)) {
-                                dir = dir0;
-                                p_start = p0.position;
+                            if (fabsf(horiz_dot0) <= fabsf(horiz_dot1) && fabsf(horiz_dot0) <= fabsf(horiz_dot2)) {
+                                horiz_dir = dir0;
                             }
-                            else if (fabsf(dir1.y) <= fabsf(dir0.y) && fabsf(dir1.y) <= fabsf(dir2.y)) {
-                                dir = dir1;
-                                p_start = p0.position;
+                            else if (fabsf(horiz_dot1) <= fabsf(horiz_dot0) && fabsf(horiz_dot1) <= fabsf(horiz_dot2)) {
+                                horiz_dir = dir1;
                             }
-                            else if (fabsf(dir2.y) <= fabsf(dir0.y) && fabsf(dir2.y) <= fabsf(dir1.y)) {
-                                dir = dir2;
-                                p_start = p1.position;
+                            else if (fabsf(horiz_dot2) <= fabsf(horiz_dot0) && fabsf(horiz_dot2) <= fabsf(horiz_dot1)) {
+                                horiz_dir = dir2;
                             }
                             else {
                                 golf_log_warning("Couldn't find a direction?????");
-                                dir = dir0;
+                                horiz_dir = dir0;
                             }
 
-                            float dot;
-                            float dot0 = vec3_dot(dir, V3(1, 0, 0));
-                            float dot1 = vec3_dot(dir, V3(0, 0, 1));
-                            if (fabsf(dot0) > fabsf(dot1)) {
-                                dot = dot0;
+                            float vdot;
+                            float vdot0 = vec3_dot(horiz_dir, V3(1, 0, 0));
+                            float vdot1 = vec3_dot(horiz_dir, V3(0, 0, 1));
+                            if (fabsf(vdot0) > fabsf(vdot1)) {
+                                vdot = vdot0;
                             }
                             else {
-                                dot = dot1;
+                                vdot = vdot1;
                             }
-                            if (dot < 0) {
-                                dir = vec3_scale(dir, -1);
+                            if (vdot < 0) {
+                                horiz_dir = vec3_scale(horiz_dir, -1);
+                            }
+
+                            float vert_dot0 = vec3_dot(dir0, horiz_dir); 
+                            float vert_dot1 = vec3_dot(dir1, horiz_dir); 
+                            float vert_dot2 = vec3_dot(dir2, horiz_dir); 
+                            if (fabsf(vert_dot0) <= fabsf(vert_dot1) && fabsf(vert_dot0) <= fabsf(vert_dot2)) {
+                                vert_dir = dir0;
+                            }
+                            else if (fabsf(vert_dot1) <= fabsf(vert_dot0) && fabsf(vert_dot1) <= fabsf(vert_dot2)) {
+                                vert_dir = dir1;
+                            }
+                            else if (fabsf(vert_dot2) <= fabsf(vert_dot0) && fabsf(vert_dot2) <= fabsf(vert_dot1)) {
+                                vert_dir = dir2;
+                            }
+                            else {
+                                golf_log_warning("Couldn't find a direction?????");
+                                vert_dir = dir0;
                             }
                         }
 
-                        float tc0x = vec3_length(vec3_perpindicular_component(p0.position, dir));
-                        float tc1x = vec3_length(vec3_perpindicular_component(p1.position, dir));
-                        float tc2x = vec3_length(vec3_perpindicular_component(p2.position, dir));
-                        float min_tc = fminf(tc0x, fminf(tc1x, tc2x));
+                        tc0.x = vec3_dot(p0.position, vert_dir);
+                        tc1.x = vec3_dot(p1.position, vert_dir);
+                        tc2.x = vec3_dot(p2.position, vert_dir);
 
-                        tc0.x = tc0x - min_tc;
-                        tc0.y = vec3_dot(p0.position, dir);
-                        tc1.x = tc1x - min_tc;
-                        tc1.y = vec3_dot(p1.position, dir);
-                        tc2.x = tc2x - min_tc;
-                        tc2.y = vec3_dot(p2.position, dir);
-                        tc0 = vec2_scale(tc0, 0.5f);
-                        tc1 = vec2_scale(tc1, 0.5f);
-                        tc2 = vec2_scale(tc2, 0.5f);
+                        tc0.y = 0.5f * vec3_dot(p0.position, horiz_dir);
+                        tc1.y = 0.5f * vec3_dot(p1.position, horiz_dir);
+                        tc2.y = 0.5f * vec3_dot(p2.position, horiz_dir);
+
+                        tc0 = vec2_scale(tc0, 1.0f);
+                        tc1 = vec2_scale(tc1, 1.0f);
+                        tc2 = vec2_scale(tc2, 1.0f);
                         break;
                     }
                 }
