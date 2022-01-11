@@ -1,0 +1,8 @@
+# Created by Kenney (www.kenney.nl)
+
+newmtl colorTan
+Kd 1 0.682353 0.4352941
+
+newmtl _defaultMat
+Kd 1 1 1
+

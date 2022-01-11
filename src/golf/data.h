@@ -139,8 +139,8 @@ typedef struct golf_data {
     golf_data_type_t type; 
     void *ptr;
 } golf_data_t;
-
 typedef map_t(golf_data_t) map_golf_data_t;
+typedef vec_t(golf_data_t) vec_golf_data_t;
 
 void golf_data_init(void);
 void golf_data_turn_off_reload(const char *ext);
@@ -149,6 +149,7 @@ void golf_data_update(float dt);
 void golf_data_load(const char *path);
 void golf_data_unload(const char *path);
 void golf_data_debug_console_tab(void);
+void golf_data_get_all_matching(const char *str, vec_golf_data_t *data);
 
 golf_data_t *golf_data_get_file(const char *path);
 golf_texture_t *golf_data_get_texture(const char *path);

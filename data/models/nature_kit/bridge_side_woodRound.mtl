@@ -1,0 +1,14 @@
+# Created by Kenney (www.kenney.nl)
+
+newmtl woodBark
+Kd 0.8862745 0.5137255 0.3411765
+
+newmtl wood
+Kd 1 0.5568628 0.3843137
+
+newmtl stone
+Kd 0.7215686 0.8862745 0.9098039
+
+newmtl stoneDark
+Kd 0.6039216 0.7098039 0.7294118
+

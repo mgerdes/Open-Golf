@@ -12,6 +12,7 @@ static const char *_golf_geo_face_uv_gen_type_strings[] = {
     [GOLF_GEO_FACE_UV_GEN_MANUAL] = "manual", 
     [GOLF_GEO_FACE_UV_GEN_GROUND] = "ground", 
     [GOLF_GEO_FACE_UV_GEN_WALL_SIDE] = "wall-side", 
+    [GOLF_GEO_FACE_UV_GEN_WALL_TOP] = "wall-top", 
 };
 static_assert((sizeof(_golf_geo_face_uv_gen_type_strings) / sizeof(_golf_geo_face_uv_gen_type_strings[0])) == GOLF_GEO_FACE_UV_GEN_COUNT, "Invalid number of uv gen type strings");
 
@@ -89,6 +90,69 @@ void golf_geo_init_cube(golf_geo_t *geo) {
 
 typedef map_t(vec_golf_geo_face_ptr_t) _map_vec_golf_geo_face_ptr_t;
 
+static void _golf_geo_face_guess_wall_dir(vec3 p0, vec3 p1, vec3 p2, vec3 *long_dir, vec3 *short_dir) {
+    vec3 dir0 = vec3_sub(p1, p0);
+    float dir0_l = vec3_length(dir0);
+    dir0 = vec3_scale(dir0, 1.0f / dir0_l);
+
+    vec3 dir1 = vec3_sub(p2, p0);
+    float dir1_l = vec3_length(dir1);
+    dir1 = vec3_scale(dir1, 1.0f / dir1_l);
+
+    vec3 dir2 = vec3_sub(p2, p1);
+    float dir2_l = vec3_length(dir2);
+    dir2 = vec3_scale(dir2, 1.0f / dir2_l);
+    
+    float dot0 = vec3_dot(dir0, dir1);
+    float dot1 = vec3_dot(dir0, dir2);
+    float dot2 = vec3_dot(dir1, dir2);
+
+    if (fabsf(dot0) <= fabsf(dot1) && fabsf(dot0) <= fabsf(dot2)) {
+        if (dir0_l <= dir1_l) {
+            *long_dir = dir1;
+            *short_dir = dir0;
+        }
+        else {
+            *long_dir = dir0;
+            *short_dir = dir1;
+        }
+    }
+    else if (fabsf(dot1) <= fabsf(dot0) && fabsf(dot1) <= fabsf(dot2)) {
+        if (dir0_l <= dir2_l) {
+            *long_dir = dir2;
+            *short_dir = dir0;
+        }
+        else {
+            *long_dir = dir0;
+            *short_dir = dir2;
+        }
+    }
+    else if (fabsf(dot2) <= fabsf(dot0) && fabsf(dot2) <= fabsf(dot1)) {
+        if (dir1_l <= dir2_l) {
+            *long_dir = dir2;
+            *short_dir = dir1;
+        }
+        else {
+            *long_dir = dir1;
+            *short_dir = dir2;
+        }
+    }
+    else {
+        golf_log_warning("Could not find a minimum?");
+        *long_dir = dir0;
+        *short_dir = dir1;
+    }
+
+    // Attempt to get the directions to always be in the same direction
+    vec3 d = vec3_normalize(V3(1, 2, 3));
+    if (vec3_dot(*long_dir, d) < 0) {
+        *long_dir = vec3_scale(*long_dir, -1);
+    }
+    if (vec3_dot(*short_dir, d) < 0) {
+        *short_dir = vec3_scale(*short_dir, -1);
+    }
+}
+
 void golf_geo_update_model(golf_geo_t *geo) {
     if (geo->model_updated_this_frame) {
         return;
@@ -152,80 +216,29 @@ void golf_geo_update_model(golf_geo_t *geo) {
                         break;
                     }
                     case GOLF_GEO_FACE_UV_GEN_WALL_SIDE: {
-                        // Try to guess what direction this wall is going
-                        vec3 horiz_dir, vert_dir;
-                        {
-                            vec3 dir0 = vec3_sub(p1.position, p0.position);
-                            float dir0_l = vec3_length(dir0);
-                            dir0 = vec3_scale(dir0, 1.0f / dir0_l);
-                            float horiz_dot0 = vec3_dot(dir0, V3(0, 1, 0));
+                        vec3 long_dir, short_dir;
+                        _golf_geo_face_guess_wall_dir(p0.position, p1.position, p2.position, &long_dir, &short_dir);
 
-                            vec3 dir1 = vec3_sub(p2.position, p0.position);
-                            float dir1_l = vec3_length(dir1);
-                            dir1 = vec3_scale(dir1, 1.0f / dir1_l);
-                            float horiz_dot1 = vec3_dot(dir1, V3(0, 1, 0));
+                        tc0.x = vec3_dot(p0.position, short_dir);
+                        tc1.x = vec3_dot(p1.position, short_dir);
+                        tc2.x = vec3_dot(p2.position, short_dir);
 
-                            vec3 dir2 = vec3_sub(p2.position, p1.position);
-                            float dir2_l = vec3_length(dir2);
-                            dir2 = vec3_scale(dir2, 1.0f / dir2_l);
-                            float horiz_dot2 = vec3_dot(dir2, V3(0, 1, 0));
+                        tc0.y = 0.5f * vec3_dot(p0.position, long_dir);
+                        tc1.y = 0.5f * vec3_dot(p1.position, long_dir);
+                        tc2.y = 0.5f * vec3_dot(p2.position, long_dir);
+                        break;
+                    }
+                    case GOLF_GEO_FACE_UV_GEN_WALL_TOP: {
+                        vec3 long_dir, short_dir;
+                        _golf_geo_face_guess_wall_dir(p0.position, p1.position, p2.position, &long_dir, &short_dir);
 
-                            if (fabsf(horiz_dot0) <= fabsf(horiz_dot1) && fabsf(horiz_dot0) <= fabsf(horiz_dot2)) {
-                                horiz_dir = dir0;
-                            }
-                            else if (fabsf(horiz_dot1) <= fabsf(horiz_dot0) && fabsf(horiz_dot1) <= fabsf(horiz_dot2)) {
-                                horiz_dir = dir1;
-                            }
-                            else if (fabsf(horiz_dot2) <= fabsf(horiz_dot0) && fabsf(horiz_dot2) <= fabsf(horiz_dot1)) {
-                                horiz_dir = dir2;
-                            }
-                            else {
-                                golf_log_warning("Couldn't find a direction?????");
-                                horiz_dir = dir0;
-                            }
+                        tc0.x = vec3_dot(p0.position, short_dir);
+                        tc1.x = vec3_dot(p1.position, short_dir);
+                        tc2.x = vec3_dot(p2.position, short_dir);
 
-                            float vdot;
-                            float vdot0 = vec3_dot(horiz_dir, V3(1, 0, 0));
-                            float vdot1 = vec3_dot(horiz_dir, V3(0, 0, 1));
-                            if (fabsf(vdot0) > fabsf(vdot1)) {
-                                vdot = vdot0;
-                            }
-                            else {
-                                vdot = vdot1;
-                            }
-                            if (vdot < 0) {
-                                horiz_dir = vec3_scale(horiz_dir, -1);
-                            }
-
-                            float vert_dot0 = vec3_dot(dir0, horiz_dir); 
-                            float vert_dot1 = vec3_dot(dir1, horiz_dir); 
-                            float vert_dot2 = vec3_dot(dir2, horiz_dir); 
-                            if (fabsf(vert_dot0) <= fabsf(vert_dot1) && fabsf(vert_dot0) <= fabsf(vert_dot2)) {
-                                vert_dir = dir0;
-                            }
-                            else if (fabsf(vert_dot1) <= fabsf(vert_dot0) && fabsf(vert_dot1) <= fabsf(vert_dot2)) {
-                                vert_dir = dir1;
-                            }
-                            else if (fabsf(vert_dot2) <= fabsf(vert_dot0) && fabsf(vert_dot2) <= fabsf(vert_dot1)) {
-                                vert_dir = dir2;
-                            }
-                            else {
-                                golf_log_warning("Couldn't find a direction?????");
-                                vert_dir = dir0;
-                            }
-                        }
-
-                        tc0.x = vec3_dot(p0.position, vert_dir);
-                        tc1.x = vec3_dot(p1.position, vert_dir);
-                        tc2.x = vec3_dot(p2.position, vert_dir);
-
-                        tc0.y = 0.5f * vec3_dot(p0.position, horiz_dir);
-                        tc1.y = 0.5f * vec3_dot(p1.position, horiz_dir);
-                        tc2.y = 0.5f * vec3_dot(p2.position, horiz_dir);
-
-                        tc0 = vec2_scale(tc0, 1.0f);
-                        tc1 = vec2_scale(tc1, 1.0f);
-                        tc2 = vec2_scale(tc2, 1.0f);
+                        tc0.y = 0.5f * vec3_dot(p0.position, long_dir);
+                        tc1.y = 0.5f * vec3_dot(p1.position, long_dir);
+                        tc2.y = 0.5f * vec3_dot(p2.position, long_dir);
                         break;
                     }
                 }
@@ -543,7 +556,7 @@ static void _golf_json_object_set_lightmap_section(JSON_Object *obj, const char 
 
     json_object_set_string(lightmap_section_obj, "lightmap_name", lightmap_section->lightmap_name);
     json_object_set_value(lightmap_section_obj, "uvs", uvs_val);
-    json_object_set_value(obj, "lightmap_section", lightmap_section_val);
+    json_object_set_value(obj, name, lightmap_section_val);
 }
 
 static void _golf_json_object_get_lightmap_section(JSON_Object *obj, const char *name, golf_lightmap_section_t *lightmap_section) {
@@ -761,7 +774,7 @@ bool golf_level_save(golf_level_t *level, const char *path) {
                 break;
             }
             case BALL_START_ENTITY: {
-                json_object_set_string(json_entity_obj, "type", "ball_start");
+                json_object_set_string(json_entity_obj, "type", "ball-start");
                 break;
             }
             case HOLE_ENTITY: {
@@ -915,7 +928,7 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
             entity = golf_entity_model(name, transform, model_path, lightmap_section, movement);
             valid_entity = true;
         }
-        else if (type && strcmp(type, "ball_start") == 0) {
+        else if (type && strcmp(type, "ball-start") == 0) {
             golf_transform_t transform;
             _golf_json_object_get_transform(obj, "transform", &transform);
 
@@ -939,7 +952,10 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
             golf_geo_t geo;
             _golf_json_object_get_geo(obj, "geo", &geo);
 
-            entity = golf_entity_geo(name, transform, movement, geo);
+            golf_lightmap_section_t lightmap_section;
+            _golf_json_object_get_lightmap_section(obj, "lightmap_section", &lightmap_section);
+
+            entity = golf_entity_geo(name, transform, movement, geo, lightmap_section);
             valid_entity = true;
         }
 
@@ -1051,7 +1067,7 @@ golf_entity_t golf_entity_ball_start(const char *name, golf_transform_t transfor
     return entity;
 }
 
-golf_entity_t golf_entity_geo(const char *name, golf_transform_t transform, golf_movement_t movement, golf_geo_t geo) {
+golf_entity_t golf_entity_geo(const char *name, golf_transform_t transform, golf_movement_t movement, golf_geo_t geo, golf_lightmap_section_t lightmap_section) {
     golf_entity_t entity;
     entity.active = true;
     entity.type = GEO_ENTITY;
@@ -1059,6 +1075,7 @@ golf_entity_t golf_entity_geo(const char *name, golf_transform_t transform, golf
     entity.geo.transform = transform;
     entity.geo.movement = movement;
     entity.geo.geo = geo;
+    entity.geo.lightmap_section = lightmap_section;
     return entity;
 }
 
@@ -1139,7 +1156,9 @@ golf_lightmap_section_t *golf_entity_get_lightmap_section(golf_entity_t *entity)
         case MODEL_ENTITY: {
             return &entity->model.lightmap_section;
         }
-        case GEO_ENTITY:
+        case GEO_ENTITY: {
+            return &entity->geo.lightmap_section;
+        }
         case HOLE_ENTITY:
         case BALL_START_ENTITY: {
             return NULL;
@@ -1157,7 +1176,7 @@ golf_model_t *golf_entity_get_model(golf_entity_t *entity) {
             return golf_data_get_model("data/models/hole.obj");
         }
         case BALL_START_ENTITY: {
-            return golf_data_get_model("data/models/sphere.obj");
+            return golf_data_get_model("data/models/editor/ball_start.obj");
         }
         case GEO_ENTITY: {
             return &entity->geo.geo.model;

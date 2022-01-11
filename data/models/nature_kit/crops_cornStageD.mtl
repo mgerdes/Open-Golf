@@ -1,0 +1,8 @@
+# Created by Kenney (www.kenney.nl)
+
+newmtl grass
+Kd 0.172549 0.8470588 0.7215686
+
+newmtl corn
+Kd 0.9607843 0.7372549 0.3921569
+

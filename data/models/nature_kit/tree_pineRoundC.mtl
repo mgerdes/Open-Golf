@@ -1,0 +1,8 @@
+# Created by Kenney (www.kenney.nl)
+
+newmtl leafsDark
+Kd 0.1686275 0.6509804 0.6666667
+
+newmtl woodBarkDark
+Kd 0.8 0.4627451 0.3686275
+

@@ -1,0 +1,14 @@
+# Created by Kenney (www.kenney.nl)
+
+newmtl colorRed
+Kd 0.8784314 0.2901961 0.3137255
+
+newmtl wood
+Kd 1 0.5568628 0.3843137
+
+newmtl _defaultMat
+Kd 1 1 1
+
+newmtl colorRedDark
+Kd 0.7568628 0.2117647 0.2313726
+

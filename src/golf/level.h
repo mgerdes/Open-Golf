@@ -25,6 +25,7 @@ typedef enum golf_geo_face_uv_gen_type {
     GOLF_GEO_FACE_UV_GEN_MANUAL,
     GOLF_GEO_FACE_UV_GEN_GROUND,
     GOLF_GEO_FACE_UV_GEN_WALL_SIDE,
+    GOLF_GEO_FACE_UV_GEN_WALL_TOP,
     GOLF_GEO_FACE_UV_GEN_COUNT,
 } golf_geo_face_uv_gen_type_t;
 const char **golf_geo_uv_gen_type_strings(void);
@@ -153,6 +154,7 @@ typedef struct golf_hole_entity {
 } golf_hole_entity_t;
 
 typedef struct golf_geo_entity {
+    golf_lightmap_section_t lightmap_section;
     golf_transform_t transform;
     golf_movement_t movement;
     golf_geo_t geo;
@@ -180,7 +182,7 @@ typedef vec_t(golf_entity_t) vec_golf_entity_t;
 golf_entity_t golf_entity_model(const char *name, golf_transform_t transform, const char *model_path, golf_lightmap_section_t lightmap_section, golf_movement_t movement);
 golf_entity_t golf_entity_hole(const char *name, golf_transform_t transform);
 golf_entity_t golf_entity_ball_start(const char *name, golf_transform_t transform);
-golf_entity_t golf_entity_geo(const char *name, golf_transform_t transform, golf_movement_t movement, golf_geo_t geo);
+golf_entity_t golf_entity_geo(const char *name, golf_transform_t transform, golf_movement_t movement, golf_geo_t geo, golf_lightmap_section_t lightmap_section);
 golf_entity_t golf_entity_make_copy(golf_entity_t *entity);
 golf_movement_t *golf_entity_get_movement(golf_entity_t *entity);
 golf_transform_t *golf_entity_get_transform(golf_entity_t *entity);

@@ -1,0 +1,8 @@
+# Created by Kenney (www.kenney.nl)
+
+newmtl leafsFall
+Kd 1 0.572549 0.254902
+
+newmtl wood
+Kd 1 0.5568628 0.3843137
+

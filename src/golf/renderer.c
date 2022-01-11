@@ -856,9 +856,14 @@ void golf_renderer_draw_editor(void) {
         for (int i = 0; i < model->groups.length; i++) {
             golf_model_group_t group = model->groups.data[i];
             golf_material_t material;
-            if (!golf_level_get_material(editor->level, group.material_name, &material)) {
-                golf_log_warning("Could not find material %s", group.material_name);
-                material = golf_material_texture("data/textures/fallback.png");
+            if (entity->type == BALL_START_ENTITY) {
+                material = golf_material_texture("data/textures/colors/red.png");
+            }
+            else {
+                if (!golf_level_get_material(editor->level, group.material_name, &material)) {
+                    golf_log_warning("Could not find material %s", group.material_name);
+                    material = golf_material_texture("data/textures/fallback.png");
+                }
             }
 
             switch (material.type) {

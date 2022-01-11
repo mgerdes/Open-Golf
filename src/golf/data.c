@@ -1368,6 +1368,17 @@ golf_script_t *golf_data_get_script(const char *path) {
     return data_file->ptr;
 }
 
+void golf_data_get_all_matching(const char *str, vec_golf_data_t *data) {
+    const char *key;
+    map_iter_t iter = map_iter(&_loaded_data);
+    while ((key = map_next(&_loaded_data, &iter))) {
+        if (strstr(key, str)) {
+            golf_data_t *loaded_data = map_get(&_loaded_data, key);
+            vec_push(data, *loaded_data);
+        }
+    }
+}
+
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "cimgui/cimgui.h"
 

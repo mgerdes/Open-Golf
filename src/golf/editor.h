@@ -84,6 +84,10 @@ typedef struct golf_editor {
               interpolation_threshold,
               camera_to_surface_distance_modifier;
     } gi_state;
+
+    struct {
+        char file_name[GOLF_FILE_MAX_PATH];
+    } file_picker;
 } golf_editor_t;
 
 golf_editor_t *golf_editor_get(void);

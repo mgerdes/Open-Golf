@@ -1,0 +1,8 @@
+# Created by Kenney (www.kenney.nl)
+
+newmtl woodBark
+Kd 0.8862745 0.5137255 0.3411765
+
+newmtl woodInner
+Kd 0.9607843 0.8431373 0.7333333
+

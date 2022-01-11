@@ -1,0 +1,8 @@
+# Created by Kenney (www.kenney.nl)
+
+newmtl dirtDark
+Kd 0.7098039 0.4078431 0.2705882
+
+newmtl dirt
+Kd 0.8862745 0.5137255 0.3411765
+

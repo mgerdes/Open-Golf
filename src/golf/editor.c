@@ -66,6 +66,10 @@ void golf_editor_init(void) {
         editor.gi_state.interpolation_threshold = 0.01f;
         editor.gi_state.camera_to_surface_distance_modifier = 0.0f;
     }
+
+    {
+        editor.file_picker.file_name[0] = 0;
+    }
 }
 
 static void _golf_editor_start_editing_geo(golf_geo_t *geo, golf_transform_t transform) {
@@ -1017,12 +1021,22 @@ static void _golf_editor_entities_tab(void) {
         golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
         golf_movement_t movement = golf_movement_none();
 
-        golf_entity_t entity = golf_entity_geo("geo", transform, movement, geo);
+        golf_lightmap_section_t lightmap_section;
+        {
+            golf_model_t *model = &geo.model;
+            vec_vec2_t uvs;
+            vec_init(&uvs, "editor");
+            for (int i = 0; i < model->positions.length; i++) {
+                vec_push(&uvs, V2(0, 0));
+            }
+
+            golf_lightmap_section_init(&lightmap_section, "main", uvs, 0, uvs.length);
+            vec_deinit(&uvs);
+        }
+
+        golf_entity_t entity = golf_entity_geo("geo", transform, movement, geo, lightmap_section);
         _vec_push_and_fix_actions(&editor.level->entities, entity);
         _golf_editor_commit_entity_create_action();
-    }
-
-    if (igButton("Create Hole Entity", (ImVec2){0, 0})) {
     }
 }
 
@@ -1771,7 +1785,7 @@ void golf_editor_update(float dt) {
                                 if (other_entity.type == GOLF_EDIT_MODE_ENTITY_FACE) {
                                     golf_geo_face_t *other_face = &geo->faces.data[other_entity.idx];
                                     _golf_editor_action_push_data(&action, other_face->material_name, sizeof(other_face->material_name));
-                                    strcpy(other_face->material_name, face->material_name);
+                                    memcpy(other_face->material_name, face->material_name, sizeof(other_face->material_name));
                                 }
                             }
                             _golf_editor_start_action(action);
@@ -1854,10 +1868,26 @@ void golf_editor_update(float dt) {
                 case MODEL_ENTITY: {
                     igText("TYPE: Model");
                     bool edit_done = false;
-                    _golf_editor_undoable_igInputText("Model", entity->model.model_path, GOLF_FILE_MAX_PATH, &edit_done, &entity->model.model, sizeof(entity->model.model), "Modify model");
-                    if (edit_done) {
-                        entity->model.model = golf_data_get_model(entity->model.model_path);
+                    //_golf_editor_undoable_igInputText("Model", entity->model.model_path, GOLF_FILE_MAX_PATH, &edit_done, &entity->model.model, sizeof(entity->model.model), "Modify model");
+                    igInputText("Model", entity->model.model_path, GOLF_FILE_MAX_PATH, ImGuiInputTextFlags_ReadOnly, NULL, NULL);
+                    if (igIsItemClicked(ImGuiMouseButton_Left)) {
+                        igOpenPopup_Str("file_picker", ImGuiPopupFlags_None);
                     }
+                    if (igBeginPopup("file_picker", ImGuiWindowFlags_None)) {
+
+                        igText("File Picker");
+                        igInputText("Search", editor.file_picker.file_name, GOLF_FILE_MAX_PATH, ImGuiInputTextFlags_None, NULL, NULL);
+
+                        vec_golf_data_t data;
+                        vec_init(&data, "editor");
+                        golf_data_get_all_matching(editor.file_picker.file_name, &data); 
+                        for (int i = 0; i < data.length; i++) {
+                            igText("%s", data.data[i].file.path);
+                        }
+                        vec_deinit(&data);
+                        igEndPopup();
+                    }
+
                     break;
                 }
                 case BALL_START_ENTITY: {

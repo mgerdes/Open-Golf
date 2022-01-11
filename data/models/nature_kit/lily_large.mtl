@@ -1,0 +1,11 @@
+# Created by Kenney (www.kenney.nl)
+
+newmtl leafsGreen
+Kd 0.1607843 0.7882353 0.6705883
+
+newmtl colorRed
+Kd 0.8784314 0.2901961 0.3137255
+
+newmtl leafsDark
+Kd 0.1686275 0.6509804 0.6666667
+

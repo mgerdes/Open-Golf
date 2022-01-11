@@ -1,0 +1,8 @@
+# Created by Kenney (www.kenney.nl)
+
+newmtl colorRed
+Kd 0.8784314 0.2901961 0.3137255
+
+newmtl _defaultMat
+Kd 1 1 1
+
