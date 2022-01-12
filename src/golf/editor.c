@@ -2202,7 +2202,6 @@ void golf_editor_update(float dt) {
                 vec3 pos0 = vec3_apply_mat4(p0.position, 1, model_mat);
                 vec3 pos1 = vec3_apply_mat4(p1.position, 1, model_mat);
 
-                vec3 pos_avg = vec3_scale(vec3_add(pos0, pos1), 0.5f);
                 float radius = CFG_NUM(editor_cfg, "edit_mode_line_size");
 
                 vec_push(&line_segments_p0, pos0);
@@ -2245,18 +2244,20 @@ void golf_editor_update(float dt) {
         int sphere_idx = -1;
         ray_intersect_spheres(ro, rd, sphere_centers.data, sphere_radiuses.data, sphere_centers.length, &sphere_t, &sphere_idx);
 
-        if (sphere_t < FLT_MAX && sphere_t <= line_t && sphere_t <= triangle_t) {
+        if (line_t < FLT_MAX) line_t -= CFG_NUM(editor_cfg, "edit_mode_line_size");
+
+        if (sphere_t < FLT_MAX && sphere_t < line_t && sphere_t < triangle_t) {
             editor.edit_mode.is_entity_hovered = true;
             int idx = point_idxs.data[sphere_idx];
             editor.edit_mode.hovered_entity = golf_edit_mode_entity_point(idx);
         }
-        else if (line_t < FLT_MAX && line_t <= sphere_t && line_t <= triangle_t) {
+        else if (line_t < FLT_MAX && line_t < sphere_t && line_t < triangle_t) {
             editor.edit_mode.is_entity_hovered = true;
             int idx0 = line_p0_idx.data[line_idx];
             int idx1 = line_p1_idx.data[line_idx];
             editor.edit_mode.hovered_entity = golf_edit_mode_entity_line(idx0, idx1);
         }
-        else if (triangle_t < FLT_MAX && triangle_t <= sphere_t && triangle_t <= line_t) {
+        else if (triangle_t < FLT_MAX && triangle_t < sphere_t && triangle_t < line_t) {
             editor.edit_mode.is_entity_hovered = true;
             int idx = face_idxs.data[triangle_idx];
             editor.edit_mode.hovered_entity = golf_edit_mode_entity_face(idx);
