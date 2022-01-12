@@ -27,6 +27,7 @@
 
 static map_golf_data_t _loaded_data;
 static assetsys_t *_assetsys;
+static golf_dir_t _data_dir;
 
 static assetsys_error_t _golf_assetsys_file_load(const char *path, char **data, int *data_len) {
     char assetsys_path[GOLF_FILE_MAX_PATH];
@@ -1010,6 +1011,7 @@ void golf_data_init(void) {
     }
     map_init(&_loaded_data, "data");
 
+    golf_dir_init(&_data_dir, "data", true);
     golf_data_run_import(false);
     golf_data_load("data/static_data.static_data");
 }
@@ -1147,11 +1149,8 @@ static _golf_data_loader_t *_golf_data_get_loader(const char *ext) {
 }
 
 void golf_data_run_import(bool force_import) {
-    golf_dir_t dir;
-    golf_dir_init(&dir, "data", true);
-
-    for (int i = 0; i < dir.num_files; i++) {
-        golf_file_t file = dir.files[i];
+    for (int i = 0; i < _data_dir.num_files; i++) {
+        golf_file_t file = _data_dir.files[i];
         _golf_data_loader_t *loader = _golf_data_get_loader(file.ext);
         if (loader && loader->import_fn) {
             golf_file_t import_file = golf_file_append_extension(file.path, ".golf_data");
@@ -1172,13 +1171,14 @@ void golf_data_run_import(bool force_import) {
             golf_free(data);
         }
     }
-
-    golf_dir_deinit(&dir);
 }
 
 void golf_data_update(float dt) {
     const char *key;
     map_iter_t iter = map_iter(&_loaded_data);
+
+    golf_dir_deinit(&_data_dir);
+    golf_dir_init(&_data_dir, "data", true);
 
     while ((key = map_next(&_loaded_data, &iter))) {
         golf_data_t *golf_data = map_get(&_loaded_data, key);
@@ -1368,13 +1368,14 @@ golf_script_t *golf_data_get_script(const char *path) {
     return data_file->ptr;
 }
 
-void golf_data_get_all_matching(const char *str, vec_golf_data_t *data) {
-    const char *key;
-    map_iter_t iter = map_iter(&_loaded_data);
-    while ((key = map_next(&_loaded_data, &iter))) {
-        if (strstr(key, str)) {
-            golf_data_t *loaded_data = map_get(&_loaded_data, key);
-            vec_push(data, *loaded_data);
+void golf_data_get_all_matching(golf_data_type_t type, const char *str, vec_golf_file_t *files) {
+    for (int i = 0; i < _data_dir.num_files; i++) {
+        golf_file_t file = _data_dir.files[i];
+        _golf_data_loader_t *loader = _golf_data_get_loader(file.ext);
+        if (loader && loader->data_type == type) {
+            if (strstr(file.path, str)) {
+                vec_push(files, file);
+            }
         }
     }
 }

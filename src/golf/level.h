@@ -98,7 +98,7 @@ typedef struct golf_lightmap_section {
     vec_vec2_t uvs;
     sg_buffer sg_uvs_buf;
 } golf_lightmap_section_t;
-void golf_lightmap_section_init(golf_lightmap_section_t *section, const char *lightmap_name, vec_vec2_t uvs, int start, int count);
+void golf_lightmap_section_init(golf_lightmap_section_t *section, const char *lightmap_name, vec_vec2_t uvs);
 
 typedef enum golf_material_type {
     GOLF_MATERIAL_TEXTURE,

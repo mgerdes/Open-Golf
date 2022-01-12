@@ -86,8 +86,18 @@ typedef struct golf_editor {
     } gi_state;
 
     struct {
-        char file_name[GOLF_FILE_MAX_PATH];
+        bool open_popup;
+        char search[GOLF_FILE_MAX_PATH];
+        golf_data_type_t type;
+        char *path;
+        void **data;
     } file_picker;
+
+    struct {
+        bool is_open;
+        vec2 p0, p1;
+        vec_golf_edit_mode_entity_t hovered_entities;
+    } select_box;
 } golf_editor_t;
 
 golf_editor_t *golf_editor_get(void);

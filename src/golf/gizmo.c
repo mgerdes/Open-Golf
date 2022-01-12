@@ -11,9 +11,9 @@ void golf_gizmo_init(golf_gizmo_t *gizmo) {
     gizmo->is_hovered = false;
     gizmo->operation = GOLF_GIZMO_TRANSLATE;
     gizmo->mode = GOLF_GIZMO_LOCAL;
-    gizmo->translate.snap = 0.5f;
-    gizmo->rotate.snap = 45.0f;
-    gizmo->scale.snap = 0.5f;
+    gizmo->translate.snap = 0.25f;
+    gizmo->rotate.snap = 22.5f;
+    gizmo->scale.snap = 0.25f;
 }
 
 static vec2 _world_to_screen(vec3 p) {

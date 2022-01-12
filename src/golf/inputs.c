@@ -33,6 +33,10 @@ void golf_inputs_init(void) {
 void golf_inputs_begin_frame(void) {
     inputs.mouse_delta = vec2_sub(inputs.mouse_pos, inputs.prev_mouse_pos);
     inputs.prev_mouse_pos = inputs.mouse_pos;
+    if (inputs.mouse_down) {
+        inputs.mouse_down_delta = vec2_sub(inputs.mouse_pos, inputs.mouse_down_pos);
+        inputs.screen_mouse_down_delta = vec2_sub(inputs.screen_mouse_pos, inputs.screen_mouse_down_pos);
+    }
 }
 
 void golf_inputs_end_frame(void) {
@@ -49,11 +53,20 @@ void golf_inputs_end_frame(void) {
 }
 
 void golf_inputs_handle_event(const sapp_event *event) {
+    golf_renderer_t *renderer = golf_renderer_get();
+    inputs.screen_mouse_pos.x = event->mouse_x;
+    inputs.screen_mouse_pos.y = 720 - event->mouse_y;
+    inputs.mouse_pos.x = event->mouse_x - renderer->viewport_pos.x;
+    inputs.mouse_pos.y = renderer->viewport_size.y - (event->mouse_y - renderer->viewport_pos.y);
+    _get_world_ray_from_window_pos(inputs.mouse_pos, &inputs.mouse_ray_orig, &inputs.mouse_ray_dir);
+
     if (event->type == SAPP_EVENTTYPE_MOUSE_DOWN ||
             event->type == SAPP_EVENTTYPE_MOUSE_UP ||
             event->type == SAPP_EVENTTYPE_MOUSE_MOVE) {
     }
     if (event->type == SAPP_EVENTTYPE_MOUSE_DOWN) {
+        inputs.mouse_down_pos = inputs.mouse_pos;
+        inputs.screen_mouse_down_pos = inputs.screen_mouse_pos;
         inputs.mouse_down[event->mouse_button] = true;
     }
     else if (event->type == SAPP_EVENTTYPE_MOUSE_UP) {
@@ -62,12 +75,6 @@ void golf_inputs_handle_event(const sapp_event *event) {
     }
     //inputs.window_mouse_pos = V2(event->mouse_x, 720.0f - event->mouse_y);
     //inputs.mouse_pos = inputs.window_mouse_pos;
-
-    golf_renderer_t *renderer = golf_renderer_get();
-
-    inputs.mouse_pos.x = event->mouse_x - renderer->viewport_pos.x;
-    inputs.mouse_pos.y = renderer->viewport_size.y - (event->mouse_y - renderer->viewport_pos.y);
-    _get_world_ray_from_window_pos(inputs.mouse_pos, &inputs.mouse_ray_orig, &inputs.mouse_ray_dir);
 
     if (event->type == SAPP_EVENTTYPE_KEY_DOWN) {
         inputs.button_down[event->key_code] = true;

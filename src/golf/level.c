@@ -572,7 +572,7 @@ static void _golf_json_object_get_lightmap_section(JSON_Object *obj, const char 
         vec_push(&uvs, V2(x, y));
     }
 
-    golf_lightmap_section_init(lightmap_section, lightmap_name, uvs, 0, uvs.length);
+    golf_lightmap_section_init(lightmap_section, lightmap_name, uvs);
     vec_deinit(&uvs);
 }
 
@@ -648,10 +648,10 @@ void golf_lightmap_image_init(golf_lightmap_image_t *lightmap, const char *name,
     }
 }
 
-void golf_lightmap_section_init(golf_lightmap_section_t *section, const char *lightmap_name, vec_vec2_t uvs, int start, int count) {
+void golf_lightmap_section_init(golf_lightmap_section_t *section, const char *lightmap_name, vec_vec2_t uvs) {
     snprintf(section->lightmap_name, GOLF_MAX_NAME_LEN, "%s", lightmap_name);
     vec_init(&section->uvs, "level");
-    vec_pusharr(&section->uvs, uvs.data + start, count);
+    vec_pusharr(&section->uvs, uvs.data, uvs.length);
     sg_buffer_desc desc = {
         .type = SG_BUFFERTYPE_VERTEXBUFFER,
         .data = {
@@ -925,6 +925,7 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
             golf_movement_t movement;
             _golf_json_object_get_movement(obj, "movement", &movement);
 
+            golf_data_load(model_path);
             entity = golf_entity_model(name, transform, model_path, lightmap_section, movement);
             valid_entity = true;
         }
@@ -1087,9 +1088,7 @@ golf_entity_t golf_entity_make_copy(golf_entity_t *entity) {
     if (lightmap_section) {
         golf_lightmap_section_init(lightmap_section_copy,
                 lightmap_section->lightmap_name,
-                lightmap_section->uvs,
-                0,
-                lightmap_section->uvs.length);
+                lightmap_section->uvs);
     }
 
     golf_geo_t *geo = golf_entity_get_geo(entity);

@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "golf/editor.h"
 
 #include <float.h>
@@ -68,7 +70,25 @@ void golf_editor_init(void) {
     }
 
     {
-        editor.file_picker.file_name[0] = 0;
+        editor.file_picker.open_popup = false;
+        editor.file_picker.search[0] = 0;
+    }
+
+    {
+        editor.select_box.is_open = false;
+        editor.select_box.p0 = V2(0, 0);
+        editor.select_box.p1 = V2(0, 0);
+        vec_init(&editor.select_box.hovered_entities, "editor");
+    }
+}
+
+static void _golf_editor_file_picker(const char *name, golf_data_type_t type, char *path, void **data) {
+    igInputText(name, path, GOLF_FILE_MAX_PATH, ImGuiInputTextFlags_ReadOnly, NULL, NULL);
+    if (igIsItemClicked(ImGuiMouseButton_Left)) {
+        editor.file_picker.open_popup = true;
+        editor.file_picker.type = type;
+        editor.file_picker.path = path;
+        editor.file_picker.data = data;
     }
 }
 
@@ -1002,7 +1022,7 @@ static void _golf_editor_entities_tab(void) {
                 vec_push(&uvs, V2(0, 0));
             }
 
-            golf_lightmap_section_init(&lightmap_section, "main", uvs, 0, uvs.length);
+            golf_lightmap_section_init(&lightmap_section, "main", uvs);
             vec_deinit(&uvs);
         }
 
@@ -1030,7 +1050,7 @@ static void _golf_editor_entities_tab(void) {
                 vec_push(&uvs, V2(0, 0));
             }
 
-            golf_lightmap_section_init(&lightmap_section, "main", uvs, 0, uvs.length);
+            golf_lightmap_section_init(&lightmap_section, "main", uvs);
             vec_deinit(&uvs);
         }
 
@@ -1146,6 +1166,7 @@ void golf_editor_update(float dt) {
             editor.gizmo.is_on = false;
 
             golf_geo_t *geo = editor.edit_mode.geo;
+            mat4 model_mat = golf_transform_get_model_mat(editor.edit_mode.transform);
             editor.edit_mode.point_idxs.length = 0;
             for (int i = 0; i < editor.edit_mode.selected_entities.length; i++) {
                 golf_edit_mode_entity_t *entity = &editor.edit_mode.selected_entities.data[i];
@@ -1170,7 +1191,6 @@ void golf_editor_update(float dt) {
 
             if (editor.edit_mode.point_idxs.length > 0) {
                 editor.gizmo.is_on = true;
-                mat4 model_mat = golf_transform_get_model_mat(editor.edit_mode.transform);
                 editor.gizmo.transform.position = V3(0, 0, 0);
                 editor.gizmo.transform.rotation = editor.edit_mode.transform.rotation;
                 editor.gizmo.transform.scale = V3(1, 1, 1);
@@ -1182,6 +1202,132 @@ void golf_editor_update(float dt) {
                 }
                 int n = editor.edit_mode.point_idxs.length;
                 editor.gizmo.transform.position = vec3_scale(editor.gizmo.transform.position, 1.0f / n);
+            }
+
+            if (inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT] && vec2_length(inputs->screen_mouse_down_delta) > 10) {
+                editor.select_box.is_open = true;
+            }
+
+            if (editor.select_box.is_open) {
+                igCaptureMouseFromApp(true);
+                if (!inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
+                    editor.select_box.is_open = false;
+                }
+
+                vec2 p0 = inputs->screen_mouse_down_pos;
+                vec2 p1 = inputs->screen_mouse_pos;
+                if (p1.x < p0.x) {
+                    float temp = p0.x;
+                    p0.x = p1.x;
+                    p1.x = temp;
+                }
+                if (p1.y < p0.y) {
+                    float temp = p0.y;
+                    p0.y = p1.y;
+                    p1.y = temp;
+                }
+                editor.select_box.p0 = p0;
+                editor.select_box.p1 = p1;
+
+                float h_width = 0.5f * (p1.x -  p0.x);
+                float h_height = 0.5f * (p1.y -  p0.y);
+                vec3 box_center = V3(p0.x + h_width, p0.y + h_height, 0);
+                vec3 box_half_lengths = V3(h_width, h_height, 1);
+
+                editor.select_box.hovered_entities.length = 0;
+                for (int i = 0; i < geo->points.length; i++) {
+                    vec3 p = vec3_apply_mat4(geo->points.data[i].position, 1, model_mat);
+                    vec2 p_screen = golf_renderer_world_to_screen(p);
+                    vec3 p_screen3 = V3(p_screen.x, -p_screen.y, 0);
+                    if (point_inside_box(p_screen3, box_center, box_half_lengths)) {
+                        vec_push(&editor.select_box.hovered_entities, golf_edit_mode_entity_point(i));
+                    }
+                }
+
+                {
+                    vec_vec3_t triangle_points;
+                    vec_int_t triangle_idxs;
+                    vec_bool_t is_inside;
+                    vec_init(&triangle_points, "editor");
+                    vec_init(&triangle_idxs, "editor");
+                    vec_init(&is_inside, "editor");
+
+                    for (int i = 0; i < geo->faces.length; i++) {
+                        golf_geo_face_t face = geo->faces.data[i];
+
+                        for (int j = 1; j < face.idx.length - 1; j++) {
+                            vec3 p0 = geo->points.data[face.idx.data[0]].position;
+                            vec3 p1 = geo->points.data[face.idx.data[j]].position;
+                            vec3 p2 = geo->points.data[face.idx.data[j + 1]].position;
+                            p0 = vec3_apply_mat4(p0, 1, model_mat);
+                            p1 = vec3_apply_mat4(p1, 1, model_mat);
+                            p2 = vec3_apply_mat4(p2, 1, model_mat);
+                            vec_push(&triangle_points, p0);
+                            vec_push(&triangle_points, p1);
+                            vec_push(&triangle_points, p2);
+                            vec_push(&triangle_idxs, i);
+                            vec_push(&is_inside, false);
+                        }
+                    }
+
+                    vec3 frustum_corners[8];
+                    frustum_corners[0] = V3(
+                            box_center.x - box_half_lengths.x,
+                            box_center.y - box_half_lengths.y, -1.0f);
+                    frustum_corners[1] = V3(
+                            box_center.x + box_half_lengths.x,
+                            box_center.y - box_half_lengths.y, -1.0f);
+                    frustum_corners[2] = V3(
+                            box_center.x + box_half_lengths.x,
+                            box_center.y + box_half_lengths.y, -1.0f);
+                    frustum_corners[3] = V3(
+                            box_center.x - box_half_lengths.x,
+                            box_center.y + box_half_lengths.y, -1.0f);
+                    frustum_corners[4] = V3(
+                            box_center.x - box_half_lengths.x,
+                            box_center.y - box_half_lengths.y, 1.0f);
+                    frustum_corners[5] = V3(
+                            box_center.x + box_half_lengths.x,
+                            box_center.y - box_half_lengths.y, 1.0f);
+                    frustum_corners[6] = V3(
+                            box_center.x + box_half_lengths.x,
+                            box_center.y + box_half_lengths.y, 1.0f);
+                    frustum_corners[7] = V3(
+                            box_center.x - box_half_lengths.x,
+                            box_center.y + box_half_lengths.y, 1.0f);
+                    for (int i = 0; i < 8; i++) {
+                        frustum_corners[i] = golf_renderer_screen_to_world(frustum_corners[i]);
+                    }
+                    triangles_inside_frustum(triangle_points.data, triangle_points.length / 3,
+                            frustum_corners, is_inside.data);
+                    for (int i = 0; i < is_inside.length; i++) {
+                        if (!is_inside.data[i]) {
+                            continue;
+                        }
+
+                        int face_idx = triangle_idxs.data[i];
+                        golf_edit_mode_entity_t entity = golf_edit_mode_entity_face(face_idx);
+                        vec_push(&editor.select_box.hovered_entities, entity);
+                    }
+
+                    vec_deinit(&triangle_points);
+                    vec_deinit(&triangle_idxs);
+                    vec_deinit(&is_inside);
+                }
+
+                {
+                    ImVec2 im_p0 = (ImVec2){p0.x, 720 - p0.y};
+                    ImVec2 im_p1 = (ImVec2){p0.x, 720 - p1.y};
+                    ImVec2 im_p2 = (ImVec2){p1.x, 720 - p1.y};
+                    ImVec2 im_p3 = (ImVec2){p1.x, 720 - p0.y};
+                    ImU32 im_col = igGetColorU32_Vec4((ImVec4){1, 1, 1, 1});
+                    float radius = 1;
+                    ImDrawList *draw_list = igGetWindowDrawList();
+                    ImDrawList_AddLine(draw_list, im_p0, im_p1, im_col, radius);
+                    ImDrawList_AddLine(draw_list, im_p1, im_p2, im_col, radius);
+                    ImDrawList_AddLine(draw_list, im_p2, im_p3, im_col, radius);
+                    ImDrawList_AddLine(draw_list, im_p3, im_p0, im_col, radius);
+                }
             }
         }
         else {
@@ -1596,11 +1742,7 @@ void golf_editor_update(float dt) {
 
                     switch (material->type) {
                         case GOLF_MATERIAL_TEXTURE: {
-                            bool edit_done = false;
-                            _golf_editor_undoable_igInputText("Texture", material->texture_path, GOLF_FILE_MAX_PATH, &edit_done, &material->texture, sizeof(material->texture), "Modify material texture");
-                            if (edit_done) {
-                                material->texture = golf_data_get_texture(material->texture_path);
-                            }
+                            _golf_editor_file_picker("Texture", GOLF_DATA_TEXTURE, material->texture_path, &material->texture);
                             break;
                         }
                         case GOLF_MATERIAL_COLOR: {
@@ -1612,11 +1754,7 @@ void golf_editor_update(float dt) {
                             break;
                         }
                         case GOLF_MATERIAL_ENVIRONMENT: {
-                            bool edit_done = false;
-                            _golf_editor_undoable_igInputText("Texture", material->texture_path, GOLF_FILE_MAX_PATH, &edit_done, &material->texture, sizeof(material->texture), "Modify material texture");
-                            if (edit_done) {
-                                material->texture = golf_data_get_texture(material->texture_path);
-                            }
+                            _golf_editor_file_picker("Texture", GOLF_DATA_TEXTURE, material->texture_path, &material->texture);
                             break;
                         }
                     }
@@ -1867,27 +2005,7 @@ void golf_editor_update(float dt) {
             switch (entity->type) {
                 case MODEL_ENTITY: {
                     igText("TYPE: Model");
-                    bool edit_done = false;
-                    //_golf_editor_undoable_igInputText("Model", entity->model.model_path, GOLF_FILE_MAX_PATH, &edit_done, &entity->model.model, sizeof(entity->model.model), "Modify model");
-                    igInputText("Model", entity->model.model_path, GOLF_FILE_MAX_PATH, ImGuiInputTextFlags_ReadOnly, NULL, NULL);
-                    if (igIsItemClicked(ImGuiMouseButton_Left)) {
-                        igOpenPopup_Str("file_picker", ImGuiPopupFlags_None);
-                    }
-                    if (igBeginPopup("file_picker", ImGuiWindowFlags_None)) {
-
-                        igText("File Picker");
-                        igInputText("Search", editor.file_picker.file_name, GOLF_FILE_MAX_PATH, ImGuiInputTextFlags_None, NULL, NULL);
-
-                        vec_golf_data_t data;
-                        vec_init(&data, "editor");
-                        golf_data_get_all_matching(editor.file_picker.file_name, &data); 
-                        for (int i = 0; i < data.length; i++) {
-                            igText("%s", data.data[i].file.path);
-                        }
-                        vec_deinit(&data);
-                        igEndPopup();
-                    }
-
+                    _golf_editor_file_picker("Model", GOLF_DATA_MODEL, entity->model.model_path, &entity->model.model);
                     break;
                 }
                 case BALL_START_ENTITY: {
@@ -1929,6 +2047,38 @@ void golf_editor_update(float dt) {
         }
     }
     igEnd();
+
+    if (editor.file_picker.open_popup) {
+        igOpenPopup_Str("file_picker", ImGuiPopupFlags_None);
+        editor.file_picker.open_popup = false;
+    }
+    if (igBeginPopup("file_picker", ImGuiWindowFlags_None)) {
+        igText("File Picker");
+        igInputText("Search", editor.file_picker.search, GOLF_FILE_MAX_PATH, ImGuiInputTextFlags_None, NULL, NULL);
+
+        vec_golf_file_t files;
+        vec_init(&files, "editor");
+        golf_data_get_all_matching(editor.file_picker.type, editor.file_picker.search, &files); 
+        for (int i = 0; i < files.length; i++) {
+            golf_file_t file = files.data[i];
+            if (igSelectable_Bool(file.path, false, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
+                golf_editor_action_t action;
+                _golf_editor_action_init(&action, "Select file");
+                _golf_editor_action_push_data(&action, editor.file_picker.path, GOLF_FILE_MAX_PATH);
+                _golf_editor_action_push_data(&action, editor.file_picker.data, sizeof(void*));
+
+                golf_data_load(file.path);
+                strcpy(editor.file_picker.path, file.path);
+                golf_data_t *data = golf_data_get_file(file.path); 
+                *editor.file_picker.data = data->ptr;
+
+                _golf_editor_start_action(action);
+                _golf_editor_commit_action();
+            }
+        }
+        vec_deinit(&files);
+        igEndPopup();
+    }
 
     if (editor.gi_state.open_popup) {
         igOpenPopup_Str("Lightmap Generator Running", ImGuiPopupFlags_None);
@@ -1973,7 +2123,9 @@ void golf_editor_update(float dt) {
 
         golf_geo_t *geo = golf_entity_get_geo(entity);
         if (geo) {
-            golf_geo_update_model(geo);
+            if (!geo->model_updated_this_frame) {
+                golf_geo_update_model(geo);
+            }
             geo->model_updated_this_frame = false;
         }
     }
@@ -2204,7 +2356,7 @@ void golf_editor_update(float dt) {
 
                     char name[GOLF_MAX_NAME_LEN];
                     snprintf(name, GOLF_MAX_NAME_LEN, "%s", lightmap_section->lightmap_name);
-                    golf_lightmap_section_init(lightmap_section, name, gi_lightmap_section->lightmap_uvs, 0, gi_lightmap_section->lightmap_uvs.length);
+                    golf_lightmap_section_init(lightmap_section, name, gi_lightmap_section->lightmap_uvs);
                 }
             }
             _golf_editor_start_action(action);
@@ -2351,6 +2503,15 @@ bool golf_editor_edit_entities_compare(golf_edit_mode_entity_t entity0, golf_edi
 
 bool golf_editor_is_edit_entity_hovered(golf_edit_mode_entity_t entity) {
     bool in_edit_mode = editor.in_edit_mode;
+    if (editor.select_box.is_open) {
+        for (int i = 0; i < editor.select_box.hovered_entities.length; i++) {
+            golf_edit_mode_entity_t hovered_entity = editor.select_box.hovered_entities.data[i];
+            if (golf_editor_edit_entities_compare(hovered_entity, entity)) {
+                return true;
+            }
+        }
+    }
+    
     bool is_entity_hovered = editor.edit_mode.is_entity_hovered;
     golf_edit_mode_entity_t hovered_entity = editor.edit_mode.hovered_entity;
     return in_edit_mode && is_entity_hovered && golf_editor_edit_entities_compare(hovered_entity, entity);

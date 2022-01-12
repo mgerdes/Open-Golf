@@ -24,5 +24,6 @@ void golf_renderer_init(void);
 void golf_renderer_draw(void);
 void golf_renderer_draw_editor(void);
 vec2 golf_renderer_world_to_screen(vec3 pos);
+vec3 golf_renderer_screen_to_world(vec3 screen_point);
 
 #endif
