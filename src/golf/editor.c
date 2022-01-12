@@ -1211,6 +1211,17 @@ void golf_editor_update(float dt) {
             if (editor.select_box.is_open) {
                 igCaptureMouseFromApp(true);
                 if (!inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
+                    if (!inputs->button_down[SAPP_KEYCODE_LEFT_SHIFT]) {
+                        editor.edit_mode.selected_entities.length = 0;
+                    }
+
+                    for (int i = 0; i < editor.select_box.hovered_entities.length; i++) {
+                        golf_edit_mode_entity_t entity = editor.select_box.hovered_entities.data[i];
+                        if (!golf_editor_is_edit_entity_selected(entity)) {
+                            vec_push(&editor.edit_mode.selected_entities, entity);
+                        }
+                    }
+
                     editor.select_box.is_open = false;
                 }
 
@@ -1238,7 +1249,7 @@ void golf_editor_update(float dt) {
                 for (int i = 0; i < geo->points.length; i++) {
                     vec3 p = vec3_apply_mat4(geo->points.data[i].position, 1, model_mat);
                     vec2 p_screen = golf_renderer_world_to_screen(p);
-                    vec3 p_screen3 = V3(p_screen.x, -p_screen.y, 0);
+                    vec3 p_screen3 = V3(p_screen.x, 720 - p_screen.y, 0);
                     if (point_inside_box(p_screen3, box_center, box_half_lengths)) {
                         vec_push(&editor.select_box.hovered_entities, golf_edit_mode_entity_point(i));
                     }
@@ -2502,7 +2513,10 @@ bool golf_editor_edit_entities_compare(golf_edit_mode_entity_t entity0, golf_edi
 }
 
 bool golf_editor_is_edit_entity_hovered(golf_edit_mode_entity_t entity) {
-    bool in_edit_mode = editor.in_edit_mode;
+    if (!editor.in_edit_mode) {
+        return false;
+    }
+
     if (editor.select_box.is_open) {
         for (int i = 0; i < editor.select_box.hovered_entities.length; i++) {
             golf_edit_mode_entity_t hovered_entity = editor.select_box.hovered_entities.data[i];
@@ -2514,7 +2528,7 @@ bool golf_editor_is_edit_entity_hovered(golf_edit_mode_entity_t entity) {
     
     bool is_entity_hovered = editor.edit_mode.is_entity_hovered;
     golf_edit_mode_entity_t hovered_entity = editor.edit_mode.hovered_entity;
-    return in_edit_mode && is_entity_hovered && golf_editor_edit_entities_compare(hovered_entity, entity);
+    return is_entity_hovered && golf_editor_edit_entities_compare(hovered_entity, entity);
 }
 
 bool golf_editor_is_edit_entity_selected(golf_edit_mode_entity_t entity) {

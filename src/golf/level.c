@@ -846,6 +846,7 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
             material.type = GOLF_MATERIAL_TEXTURE;
             const char *texture_path = json_object_get_string(obj, "texture");
             snprintf(material.texture_path, GOLF_FILE_MAX_PATH, "%s", texture_path);
+            golf_data_load(material.texture_path);
             material.texture = golf_data_get_texture(material.texture_path);
             valid_material = true;
         }
@@ -863,6 +864,7 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
             material.type = GOLF_MATERIAL_ENVIRONMENT;
             const char *texture_path = json_object_get_string(obj, "texture");
             snprintf(material.texture_path, GOLF_FILE_MAX_PATH, "%s", texture_path);
+            golf_data_load(material.texture_path);
             material.texture = golf_data_get_texture(material.texture_path);
             valid_material = true;
         }

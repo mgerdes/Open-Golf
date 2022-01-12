@@ -33,7 +33,7 @@
             "friction": 0,
             "restitution": 0,
             "type": "texture",
-            "texture": "data\/textures\/fallback.png"
+            "texture": "data\/textures\/colors\/black.png"
         },
         {
             "name": "default",

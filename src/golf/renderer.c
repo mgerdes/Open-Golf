@@ -1060,16 +1060,10 @@ vec3 golf_renderer_screen_to_world(vec3 screen_point) {
     float far = 150.0f;
     float c = (far + near) / (near - far);
     float d = (2.0f * far * near) / (near - far);
-
-    vec3 vp_pos = V3(
-            screen_point.x - renderer.viewport_pos.x,
-            screen_point.y - renderer.viewport_pos.y,
-            screen_point.z
-            );
-    vp_pos.x = -1.0f + (2.0f * vp_pos.x / renderer.viewport_size.x);
-    vp_pos.y = -1.0f + (2.0f * vp_pos.y / renderer.viewport_size.y);
-    float w = d / (vp_pos.z + c);
-    vec4 screen = V4(vp_pos.x * w, vp_pos.y * w, vp_pos.z * w, w);
+    screen_point.x = -1.0f + (2.0f * screen_point.x / renderer.viewport_size.x);
+    screen_point.y = -1.0f + (2.0f * screen_point.y / renderer.viewport_size.y);
+    float w = d / (screen_point.z + c);
+    vec4 screen = V4(screen_point.x * w, screen_point.y * w, screen_point.z * w, w);
     vec4 world = vec4_apply_mat(screen, mat4_inverse(renderer.proj_view_mat));
     return V3(world.x, world.y, world.z);
 }
