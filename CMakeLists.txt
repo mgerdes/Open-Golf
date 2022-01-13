@@ -51,6 +51,7 @@ add_library(golf_lib STATIC
     src/golf/renderer.c
     src/golf/script.c
     src/golf/string.c
+    src/golf/thread.c
     src/golf/ui.c
     src/golf/vec.c)
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)

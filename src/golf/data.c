@@ -9,6 +9,7 @@
 #include "stb/stb_image.h"
 #include "stb/stb_image_write.h"
 #include "stb/stb_truetype.h"
+#include "sokol/sokol_time.h"
 #include "golf/base64.h"
 #include "golf/file.h"
 #include "golf/json.h"
@@ -17,6 +18,7 @@
 #include "golf/map.h"
 #include "golf/maths.h"
 #include "golf/string.h"
+#include "golf/thread.h"
 
 #include "golf/shaders/diffuse_color_material.glsl.h"
 #include "golf/shaders/environment_material.glsl.h"
@@ -1004,6 +1006,45 @@ static bool _golf_script_data_unload(void *ptr) {
 // DATA
 //
 
+typedef struct golf_data_state {
+    bool has_new_files;
+    map_int_t seen_files;
+} golf_data_state_t;
+
+static golf_mutex_t _loaded_data_lock;
+static map_golf_data_t _loaded_data0;
+
+static void _golf_data_handle_file(const char *file_path, void *udata) {
+    golf_data_state_t *state = (golf_data_state_t*)udata;
+    if (!map_get(&state->seen_files, file_path)) {
+        map_set(&state->seen_files, file_path, 1);
+        state->has_new_files = true;
+    }
+
+    //golf_thread_mutex_lock(&_loaded_data_lock);
+    //golf_thread_mutex_unlock(&_loaded_data_lock);
+}
+
+static int _golf_data_run(void *udata) {
+    golf_data_state_t state;
+    state.has_new_files = false;
+    map_init(&state.seen_files, "_golf_data");
+
+    uint64_t last_run_time = stm_now();
+    while (true) {
+        double time_since_last_run = stm_sec(stm_since(last_run_time));
+        if (time_since_last_run > 2) {
+            state.has_new_files = false;
+            golf_dir_recurse("data", _golf_data_handle_file, &state); 
+            if (state.has_new_files) {
+                printf("FOUND NEW FILE\n");
+            }
+            last_run_time = stm_now();
+        }
+    }
+    return 0;
+}
+
 void golf_data_init(void) {
     _assetsys = assetsys_create(NULL);
     assetsys_error_t error = assetsys_mount(_assetsys, "data", "/data");
@@ -1012,6 +1053,8 @@ void golf_data_init(void) {
     }
     map_init(&_loaded_data, "data");
     map_init(&_seen_files, "data");
+
+    golf_thread_t _golf_data_thread = golf_thread_create(_golf_data_run, NULL, "_golf_data_run");
 
     golf_dir_init(&_data_dir, "data", true);
     for (int i = 0; i < _data_dir.num_files; i++) {

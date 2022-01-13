@@ -33,6 +33,7 @@ typedef struct golf_dir {
     golf_file_t *files;
 } golf_dir_t;
 
+void golf_dir_recurse(const char *dir_name, void (*fn)(const char *file_path, void *udata), void *udata);
 void golf_dir_init(golf_dir_t *dir, const char *dir_name, bool recurse);
 void golf_dir_deinit(golf_dir_t *dir);
 
