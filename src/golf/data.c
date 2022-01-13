@@ -26,6 +26,7 @@
 #include "golf/shaders/ui_sprite.glsl.h"
 
 static map_golf_data_t _loaded_data;
+static map_golf_file_t _seen_files;
 static assetsys_t *_assetsys;
 static golf_dir_t _data_dir;
 
@@ -1010,8 +1011,13 @@ void golf_data_init(void) {
         golf_log_error("Unable to mount data");
     }
     map_init(&_loaded_data, "data");
+    map_init(&_seen_files, "data");
 
     golf_dir_init(&_data_dir, "data", true);
+    for (int i = 0; i < _data_dir.num_files; i++) {
+        map_set(&_seen_files, _data_dir.files[i].path, _data_dir.files[i]);
+    }
+
     golf_data_run_import(false);
     golf_data_load("data/static_data.static_data");
 }
@@ -1179,6 +1185,20 @@ void golf_data_update(float dt) {
 
     golf_dir_deinit(&_data_dir);
     golf_dir_init(&_data_dir, "data", true);
+
+    bool has_new_file = false;
+    for (int i = 0; i < _data_dir.num_files; i++) {
+        if (!map_get(&_seen_files, _data_dir.files[i].path)) {
+            has_new_file = true;
+            map_set(&_seen_files, _data_dir.files[i].path, _data_dir.files[i]);
+        }
+    }
+
+    if (has_new_file) {
+        golf_log_note("Remounting assetsys");
+        assetsys_dismount(_assetsys, "data", "/data");
+        assetsys_mount(_assetsys, "data", "/data");
+    }
 
     while ((key = map_next(&_loaded_data, &iter))) {
         golf_data_t *golf_data = map_get(&_loaded_data, key);

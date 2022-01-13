@@ -55,7 +55,7 @@ void golf_inputs_end_frame(void) {
 void golf_inputs_handle_event(const sapp_event *event) {
     golf_renderer_t *renderer = golf_renderer_get();
     inputs.screen_mouse_pos.x = event->mouse_x;
-    inputs.screen_mouse_pos.y = 720 - event->mouse_y;
+    inputs.screen_mouse_pos.y = renderer->screen_size.y - event->mouse_y;
     inputs.mouse_pos.x = event->mouse_x - renderer->viewport_pos.x;
     inputs.mouse_pos.y = renderer->viewport_size.y - (event->mouse_y - renderer->viewport_pos.y);
     _get_world_ray_from_window_pos(inputs.mouse_pos, &inputs.mouse_ray_orig, &inputs.mouse_ray_dir);

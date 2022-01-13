@@ -824,6 +824,7 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
     vec_init(&level->lightmap_images, "level");
     vec_init(&level->materials, "level");
     vec_init(&level->entities, "level");
+    golf_data_load("data/textures/hole_lightmap.png");
 
     JSON_Value *json_val = json_parse_string(data);
     JSON_Object *json_obj = json_value_get_object(json_val);
@@ -1082,6 +1083,15 @@ golf_entity_t golf_entity_geo(const char *name, golf_transform_t transform, golf
     return entity;
 }
 
+golf_entity_t golf_entity_group(const char *name) {
+    golf_entity_t entity;
+    entity.active = true;
+    entity.type = GROUP_ENTITY;
+    snprintf(entity.name, GOLF_MAX_NAME_LEN, "%s", name);
+    vec_init(&entity.group.entities, "entity_group");
+    return entity;
+}
+
 golf_entity_t golf_entity_make_copy(golf_entity_t *entity) {
     golf_entity_t entity_copy = *entity;
 
@@ -1127,7 +1137,8 @@ golf_movement_t *golf_entity_get_movement(golf_entity_t *entity) {
             return &entity->geo.movement;
         }
         case BALL_START_ENTITY: 
-        case HOLE_ENTITY: {
+        case HOLE_ENTITY: 
+        case GROUP_ENTITY: {
             return NULL;
         }
     }
@@ -1148,6 +1159,9 @@ golf_transform_t *golf_entity_get_transform(golf_entity_t *entity) {
         case GEO_ENTITY: {
             return &entity->geo.transform;
         }
+        case GROUP_ENTITY: {
+            return NULL;
+        }
     }
     return NULL;
 }
@@ -1161,7 +1175,8 @@ golf_lightmap_section_t *golf_entity_get_lightmap_section(golf_entity_t *entity)
             return &entity->geo.lightmap_section;
         }
         case HOLE_ENTITY:
-        case BALL_START_ENTITY: {
+        case BALL_START_ENTITY:
+        case GROUP_ENTITY: {
             return NULL;
         }
     }
@@ -1182,6 +1197,9 @@ golf_model_t *golf_entity_get_model(golf_entity_t *entity) {
         case GEO_ENTITY: {
             return &entity->geo.geo.model;
         }
+        case GROUP_ENTITY: {
+            return NULL;
+        }
     }
     return NULL;
 }
@@ -1190,7 +1208,8 @@ golf_geo_t *golf_entity_get_geo(golf_entity_t *entity) {
     switch (entity->type) {
         case MODEL_ENTITY: 
         case HOLE_ENTITY: 
-        case BALL_START_ENTITY: {
+        case BALL_START_ENTITY: 
+        case GROUP_ENTITY: {
             return NULL;
         }
         case GEO_ENTITY: {

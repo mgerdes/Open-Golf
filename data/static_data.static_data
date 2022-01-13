@@ -11,18 +11,7 @@
     "data/models/hole.obj",
     "data/models/hole-cover.obj",
     "data/models/sphere.obj",
-    "data/models/teapot.obj",
     "data/models/ui_sprite_square.obj",
-    "data/models/flag_red.obj",
     "data/models/editor/ball_start.obj",
-    "data/textures/fallback.png",
-    "data/textures/ground.png",
-    "data/textures/hole_lightmap.png",
-    "data/textures/wood.jpg",
-    "data/textures/colors/dark_gray.png",
-    "data/textures/colors/light_gray.png",
-    "data/textures/colors/red.png",
-    "data/textures/colors/white.png",
-    "data/levels/level-1/level-1.obj",
-    "data/levels/level-1/level-1.level"
+    "data/textures/fallback.png"
 ]

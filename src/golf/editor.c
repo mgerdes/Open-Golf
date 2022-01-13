@@ -29,6 +29,7 @@ void golf_editor_init(void) {
     renderer = golf_renderer_get();
 
     golf_data_load("data/config/editor.cfg");
+    golf_data_load("data/levels/level-1.level");
 
     ImGuiIO *IO = igGetIO();
     IO->ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -36,7 +37,8 @@ void golf_editor_init(void) {
     memset(&editor, 0, sizeof(editor));
 
     {
-        editor.level = golf_data_get_level("data/levels/level-1/level-1.level");
+        strcpy(editor.level_path, "data/levels/level-1.level");
+        editor.level = golf_data_get_level("data/levels/level-1.level");
 
         vec_init(&editor.undo_actions, "editor");
         vec_init(&editor.redo_actions, "editor");
@@ -80,6 +82,9 @@ void golf_editor_init(void) {
         editor.select_box.p1 = V2(0, 0);
         vec_init(&editor.select_box.hovered_entities, "editor");
     }
+
+    editor.open_save_as_popup = false;
+    vec_init(&editor.copied_entities, "editor");
 }
 
 static void _golf_editor_file_picker(const char *name, golf_data_type_t type, char *path, void **data) {
@@ -105,7 +110,10 @@ static void _golf_editor_start_editing_geo(golf_geo_t *geo, golf_transform_t tra
     editor.in_edit_mode = true;
     editor.edit_mode.geo = geo;
     editor.edit_mode.transform = transform;
+    editor.edit_mode.is_entity_hovered = 0;
     editor.edit_mode.selected_entities.length = 0;
+    editor.select_box.is_open = false;
+    editor.select_box.hovered_entities.length = 0;
 }
 
 static void _golf_editor_stop_editing_geo(void) {
@@ -594,6 +602,43 @@ static void _golf_editor_duplicate_selected_entities(void) {
     }
 }
 
+static void _golf_editor_copy_selected_entities(void) {
+    if (editor.in_edit_mode) {
+    }
+    else {
+        editor.copied_entities.length = 0;
+        for (int i = 0; i < editor.selected_idxs.length; i++) {
+            int idx = editor.selected_idxs.data[i];
+            golf_entity_t *selected_entity = &editor.level->entities.data[idx];
+            golf_entity_t entity_copy = golf_entity_make_copy(selected_entity);
+            vec_push(&editor.copied_entities, entity_copy);
+        }
+    }
+}
+
+static void _golf_editor_paste_selected_entities(void) {
+    if (editor.in_edit_mode) {
+    }
+    else {
+        golf_editor_action_t action;
+        _golf_editor_action_init(&action, "Paste entities");
+
+        for (int i = 0; i < editor.copied_entities.length; i++) {
+            golf_entity_t entity_copy = editor.copied_entities.data[i];
+            _vec_push_and_fix_actions(&editor.level->entities, entity_copy);
+
+            golf_entity_t *entity = &vec_last(&editor.level->entities);
+            entity->active = false;
+            _golf_editor_action_push_data(&action, &entity->active, sizeof(entity->active));
+            entity->active = true;
+        }
+        editor.copied_entities.length = 0;
+
+        _golf_editor_start_action(action);
+        _golf_editor_commit_action();
+    }
+}
+
 static void _golf_editor_push_unique_idx(vec_int_t *idxs, int idx) {
     for (int i = 0; i < idxs->length; i++) {
         if (idxs->data[i] == idx) {
@@ -999,9 +1044,26 @@ static void _golf_editor_entities_tab(void) {
             case BALL_START_ENTITY:
             case MODEL_ENTITY: 
             case GEO_ENTITY:
-            case HOLE_ENTITY: {
+            case HOLE_ENTITY: 
+            case GROUP_ENTITY: {
                 if (igSelectable_Bool(entity->name, selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
                     _golf_editor_select_entity(i);
+                }
+
+                if (igBeginDragDropSource(ImGuiDragDropFlags_None)) {
+                    igSetDragDropPayload("entity_payload", entity, sizeof(golf_entity_t), ImGuiCond_None);
+                    igText("%s", entity->name);
+                    igEndDragDropSource();
+                }
+                if (entity->type == GROUP_ENTITY) {
+                    if (igBeginDragDropTarget()) {
+                        const ImGuiPayload *payload = igAcceptDragDropPayload("entity_payload", ImGuiDragDropFlags_None);
+                        if (payload) {
+                            golf_entity_t *entity = (golf_entity_t*) payload->Data;
+                            printf("%s\n", entity->name);
+                        }
+                        igEndDragDropTarget();
+                    }
                 }
                 break;
             }
@@ -1058,6 +1120,11 @@ static void _golf_editor_entities_tab(void) {
         _vec_push_and_fix_actions(&editor.level->entities, entity);
         _golf_editor_commit_entity_create_action();
     }
+    
+    if (igButton("Create Group Entity", (ImVec2){0, 0})) {
+        golf_entity_t entity = golf_entity_group("group");
+        _vec_push_and_fix_actions(&editor.level->entities, entity);
+    }
 }
 
 void golf_editor_update(float dt) {
@@ -1081,10 +1148,17 @@ void golf_editor_update(float dt) {
         if (igBeginMenu("File", true))
         {
             if (igMenuItem_Bool("Open", NULL, false, true)) {
+                editor.file_picker.open_popup = true;
+                editor.file_picker.type = GOLF_DATA_LEVEL;
+                editor.file_picker.path = editor.level_path;
+                editor.file_picker.data = &editor.level;
             }
             if (igMenuItem_Bool("Save", NULL, false, true)) {
                 golf_log_note("Saving...");
-                golf_level_save(editor.level, "data/levels/level-1/level-1.level");
+                golf_level_save(editor.level, editor.level_path);
+            }
+            if (igMenuItem_Bool("Save As", NULL, false, true)) {
+                editor.open_save_as_popup = true;
             }
             if (igMenuItem_Bool("Close", NULL, false, true)) {
             }
@@ -1120,8 +1194,16 @@ void golf_editor_update(float dt) {
             if (igMenuItem_Bool("Duplicate", NULL, false, true)) {
                 _golf_editor_duplicate_selected_entities();
             }
+            if (igMenuItem_Bool("Copy", NULL, false, true)) {
+                _golf_editor_copy_selected_entities();
+            }
+            if (igMenuItem_Bool("Paste", NULL, false, true)) {
+                _golf_editor_paste_selected_entities();
+            }
             igEndMenu();
         }
+
+        igText("%s", editor.level_path);
         igEndMenuBar();
     }
 
@@ -1149,8 +1231,9 @@ void golf_editor_update(float dt) {
         }
 
         ImGuiDockNode *central_node = igDockBuilderGetCentralNode(dock_main_id);
-        renderer->viewport_pos = V2(central_node->Pos.x, central_node->Pos.y);
-        renderer->viewport_size = V2(central_node->Size.x, central_node->Size.y);
+        vec2 vp_pos = V2(central_node->Pos.x, central_node->Pos.y);
+        vec2 vp_size = V2(central_node->Size.x, central_node->Size.y);
+        golf_renderer_set_viewport(vp_pos, vp_size);
     }
 
     for (int i = 0; i < editor.selected_idxs.length; i++) {
@@ -1249,7 +1332,7 @@ void golf_editor_update(float dt) {
                 for (int i = 0; i < geo->points.length; i++) {
                     vec3 p = vec3_apply_mat4(geo->points.data[i].position, 1, model_mat);
                     vec2 p_screen = golf_renderer_world_to_screen(p);
-                    vec3 p_screen3 = V3(p_screen.x, 720 - p_screen.y, 0);
+                    vec3 p_screen3 = V3(p_screen.x, renderer->screen_size.y - p_screen.y, 0);
                     if (point_inside_box(p_screen3, box_center, box_half_lengths)) {
                         vec_push(&editor.select_box.hovered_entities, golf_edit_mode_entity_point(i));
                     }
@@ -1327,10 +1410,10 @@ void golf_editor_update(float dt) {
                 }
 
                 {
-                    ImVec2 im_p0 = (ImVec2){p0.x, 720 - p0.y};
-                    ImVec2 im_p1 = (ImVec2){p0.x, 720 - p1.y};
-                    ImVec2 im_p2 = (ImVec2){p1.x, 720 - p1.y};
-                    ImVec2 im_p3 = (ImVec2){p1.x, 720 - p0.y};
+                    ImVec2 im_p0 = (ImVec2){p0.x, renderer->screen_size.y - p0.y};
+                    ImVec2 im_p1 = (ImVec2){p0.x, renderer->screen_size.y - p1.y};
+                    ImVec2 im_p2 = (ImVec2){p1.x, renderer->screen_size.y - p1.y};
+                    ImVec2 im_p3 = (ImVec2){p1.x, renderer->screen_size.y - p0.y};
                     ImU32 im_col = igGetColorU32_Vec4((ImVec4){1, 1, 1, 1});
                     float radius = 1;
                     ImDrawList *draw_list = igGetWindowDrawList();
@@ -2059,6 +2142,26 @@ void golf_editor_update(float dt) {
     }
     igEnd();
 
+    if (editor.open_save_as_popup) {
+        igOpenPopup_Str("save_as", ImGuiPopupFlags_None);
+        editor.open_save_as_popup = false;
+    }
+
+    igSetNextWindowSize((ImVec2){500, 200}, ImGuiCond_Always);
+    if (igBeginPopupModal("save_as", NULL, ImGuiWindowFlags_None)) {
+        igText("Save As");
+        igInputText("Path", editor.level_path, GOLF_FILE_MAX_PATH, ImGuiInputTextFlags_None, NULL, NULL);
+        if (igButton("Save", (ImVec2){0, 0})) {
+            golf_log_note("Saving...");
+            golf_level_save(editor.level, editor.level_path);
+            golf_data_update(0);
+            golf_data_load(editor.level_path);
+            editor.level = golf_data_get_level(editor.level_path);
+            igCloseCurrentPopup();
+        }
+        igEndPopup();
+    }
+
     if (editor.file_picker.open_popup) {
         igOpenPopup_Str("file_picker", ImGuiPopupFlags_None);
         editor.file_picker.open_popup = false;
@@ -2088,6 +2191,12 @@ void golf_editor_update(float dt) {
             }
         }
         vec_deinit(&files);
+
+        if (editor.file_picker.type == GOLF_DATA_LEVEL) {
+            editor.hovered_idx = -1;
+            editor.selected_idxs.length = 0;
+            editor.in_edit_mode = false;
+        }
         igEndPopup();
     }
 
@@ -2097,7 +2206,7 @@ void golf_editor_update(float dt) {
     }
     if (igBeginPopupModal("Lightmap Generator Running", NULL, ImGuiWindowFlags_None)) {
         igText("Progress: 1 / 10");
-        if (editor.gi_running && !golf_gi_is_running(&editor.gi)) {
+        if (!editor.gi_running && !golf_gi_is_running(&editor.gi)) {
             igCloseCurrentPopup();
         }
         igEndPopup();
@@ -2455,7 +2564,13 @@ void golf_editor_update(float dt) {
         }
         if (inputs->button_down[SAPP_KEYCODE_LEFT_CONTROL] && inputs->button_clicked[SAPP_KEYCODE_S]) {
             golf_log_note("Saving...");
-            golf_level_save(editor.level, "data/levels/level-1/level-1.level");
+            golf_level_save(editor.level, editor.level_path);
+        }
+        if (inputs->button_down[SAPP_KEYCODE_LEFT_CONTROL] && inputs->button_clicked[SAPP_KEYCODE_C]) {
+            _golf_editor_copy_selected_entities();
+        }
+        if (inputs->button_down[SAPP_KEYCODE_LEFT_CONTROL] && inputs->button_clicked[SAPP_KEYCODE_V]) {
+            _golf_editor_paste_selected_entities();
         }
         if (inputs->button_clicked[SAPP_KEYCODE_T]) {
             golf_gizmo_set_operation(&editor.gizmo, GOLF_GIZMO_TRANSLATE);

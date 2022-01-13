@@ -40,6 +40,7 @@ typedef struct golf_editor_action {
 typedef vec_t(golf_editor_action_t) vec_golf_editor_action_t;
 
 typedef struct golf_editor {
+    char level_path[GOLF_FILE_MAX_PATH];
     golf_level_t *level;
 
     bool started_action, has_queued_action, has_queued_commit, has_queued_decommit;
@@ -98,6 +99,9 @@ typedef struct golf_editor {
         vec2 p0, p1;
         vec_golf_edit_mode_entity_t hovered_entities;
     } select_box;
+
+    bool open_save_as_popup;
+    vec_golf_entity_t copied_entities;
 } golf_editor_t;
 
 golf_editor_t *golf_editor_get(void);

@@ -5,6 +5,7 @@
 #include "golf/maths.h"
 
 typedef struct golf_renderer {
+    vec2 screen_size;
     vec2 viewport_pos, viewport_size;
     mat4 ui_proj_mat, proj_mat, view_mat, proj_view_mat;
     float cam_azimuth_angle, cam_inclination_angle;
@@ -21,6 +22,8 @@ typedef struct golf_renderer {
 
 golf_renderer_t *golf_renderer_get(void);
 void golf_renderer_init(void);
+void golf_renderer_set_screen_size(vec2 size);
+void golf_renderer_set_viewport(vec2 pos, vec2 size);
 void golf_renderer_draw(void);
 void golf_renderer_draw_editor(void);
 vec2 golf_renderer_world_to_screen(vec3 pos);

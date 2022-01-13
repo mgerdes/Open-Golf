@@ -129,7 +129,7 @@ static void frame(void) {
 
     {
         time_since_import += dt;
-        if (time_since_import > 1.0f) {
+        if (time_since_import > 10.0f) {
             time_since_import = 0.0f;
             golf_data_run_import(false);
             golf_data_update(dt);
@@ -137,6 +137,7 @@ static void frame(void) {
     }
 
     {
+        golf_renderer_set_screen_size(V2(sapp_width(), sapp_height()));
         golf_inputs_begin_frame();
         golf_editor_update(dt);
         golf_renderer_draw_editor();

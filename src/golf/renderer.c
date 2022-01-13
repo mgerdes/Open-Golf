@@ -257,6 +257,14 @@ void golf_renderer_init(void) {
     renderer.cam_up = V3(0, 1, 0);
 }
 
+void golf_renderer_set_screen_size(vec2 size) {
+    renderer.screen_size = size;
+}
+
+void golf_renderer_set_viewport(vec2 pos, vec2 size) {
+    renderer.viewport_pos = pos;
+    renderer.viewport_size = size;
+}
 
 static void _draw_ui_text(golf_ui_text_t text) {
     golf_font_t *font = text.font;

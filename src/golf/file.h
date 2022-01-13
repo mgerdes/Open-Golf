@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "golf/map.h"
 #include "golf/vec.h"
 
 typedef struct golf_file {
@@ -18,6 +19,7 @@ typedef struct golf_file {
 } golf_file_t;
 
 typedef vec_t(golf_file_t) vec_golf_file_t;
+typedef map_t(golf_file_t) map_golf_file_t;
 
 golf_file_t golf_file(const char *path);
 golf_file_t golf_file_new_ext(golf_file_t *file, const char *ext);
