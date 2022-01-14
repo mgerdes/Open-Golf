@@ -103,8 +103,8 @@ static void frame(void) {
 
     float dt = (float) stm_sec(stm_laptime(&last_time));
     if (!inited) {
-        golf_data_init();
         golf_data_turn_off_reload(".level");
+        golf_data_init();
         golf_inputs_init();
         golf_game_init();
         golf_ui_init();
@@ -127,14 +127,7 @@ static void frame(void) {
         simgui_new_frame(sapp_width(), sapp_height(), dt);
     }
 
-    {
-        time_since_import += dt;
-        if (time_since_import > 10.0f) {
-            time_since_import = 0.0f;
-            golf_data_run_import(false);
-            golf_data_update(dt);
-        }
-    }
+    golf_data_update(dt);
 
     {
         golf_renderer_set_screen_size(V2(sapp_width(), sapp_height()));

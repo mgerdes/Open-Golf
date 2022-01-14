@@ -134,16 +134,14 @@ typedef enum golf_data_type {
 typedef struct golf_data {
     int load_count;
     golf_file_t file;
-    uint64_t last_load_time; 
 
     golf_data_type_t type; 
     void *ptr;
 } golf_data_t;
 typedef map_t(golf_data_t) map_golf_data_t;
 
-void golf_data_init(void);
 void golf_data_turn_off_reload(const char *ext);
-void golf_data_run_import(bool force_import);
+void golf_data_init(void);
 void golf_data_update(float dt);
 void golf_data_load(const char *path);
 void golf_data_unload(const char *path);

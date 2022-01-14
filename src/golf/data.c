@@ -27,25 +27,6 @@
 #include "golf/shaders/texture_material.glsl.h"
 #include "golf/shaders/ui_sprite.glsl.h"
 
-static map_golf_data_t _loaded_data;
-static map_golf_file_t _seen_files;
-static assetsys_t *_assetsys;
-static golf_dir_t _data_dir;
-
-static assetsys_error_t _golf_assetsys_file_load(const char *path, char **data, int *data_len) {
-    char assetsys_path[GOLF_FILE_MAX_PATH];
-    snprintf(assetsys_path, GOLF_FILE_MAX_PATH, "/%s", path);
-
-    assetsys_file_t asset_file;
-    assetsys_file(_assetsys, assetsys_path, &asset_file);
-    int size = assetsys_file_size(_assetsys, asset_file);
-    *data = (char*) golf_alloc(size + 1);
-    *data_len = 0;
-    assetsys_error_t error = assetsys_file_load(_assetsys, asset_file, data_len, *data, size);
-    (*data)[size] = 0;
-    return error;
-}
-
 //
 // TEXTURES
 //
@@ -1006,66 +987,25 @@ static bool _golf_script_data_unload(void *ptr) {
 // DATA
 //
 
-typedef struct golf_data_state {
-    bool has_new_files;
-    map_int_t seen_files;
-} golf_data_state_t;
+typedef enum _file_event_type {
+    FILE_CREATED,
+    FILE_UPDATED,
+} _file_event_type;
 
-static golf_mutex_t _loaded_data_lock;
-static map_golf_data_t _loaded_data0;
+typedef struct _file_event {
+    _file_event_type type;
+    golf_file_t file;
+} _file_event_t;
+typedef vec_t(_file_event_t) vec_file_event_t;
 
-static void _golf_data_handle_file(const char *file_path, void *udata) {
-    golf_data_state_t *state = (golf_data_state_t*)udata;
-    if (!map_get(&state->seen_files, file_path)) {
-        map_set(&state->seen_files, file_path, 1);
-        state->has_new_files = true;
-    }
-
-    //golf_thread_mutex_lock(&_loaded_data_lock);
-    //golf_thread_mutex_unlock(&_loaded_data_lock);
+static _file_event_t _file_event(_file_event_type type, golf_file_t file) {
+    _file_event_t event;
+    event.type = type;
+    event.file = file;
+    return event;
 }
 
-static int _golf_data_run(void *udata) {
-    golf_data_state_t state;
-    state.has_new_files = false;
-    map_init(&state.seen_files, "_golf_data");
-
-    uint64_t last_run_time = stm_now();
-    while (true) {
-        double time_since_last_run = stm_sec(stm_since(last_run_time));
-        if (time_since_last_run > 2) {
-            state.has_new_files = false;
-            golf_dir_recurse("data", _golf_data_handle_file, &state); 
-            if (state.has_new_files) {
-                printf("FOUND NEW FILE\n");
-            }
-            last_run_time = stm_now();
-        }
-    }
-    return 0;
-}
-
-void golf_data_init(void) {
-    _assetsys = assetsys_create(NULL);
-    assetsys_error_t error = assetsys_mount(_assetsys, "data", "/data");
-    if (error != ASSETSYS_SUCCESS) {
-        golf_log_error("Unable to mount data");
-    }
-    map_init(&_loaded_data, "data");
-    map_init(&_seen_files, "data");
-
-    golf_thread_t _golf_data_thread = golf_thread_create(_golf_data_run, NULL, "_golf_data_run");
-
-    golf_dir_init(&_data_dir, "data", true);
-    for (int i = 0; i < _data_dir.num_files; i++) {
-        map_set(&_seen_files, _data_dir.files[i].path, _data_dir.files[i]);
-    }
-
-    golf_data_run_import(false);
-    golf_data_load("data/static_data.static_data");
-}
-
-typedef struct _golf_data_loader {
+typedef struct _data_loader {
     const char *ext;
     golf_data_type_t data_type;
     int data_size;
@@ -1073,9 +1013,31 @@ typedef struct _golf_data_loader {
     bool (*unload_fn)(void *ptr);
     bool (*import_fn)(const char *path, char *data, int data_len);
     bool reload_on;
-} _golf_data_loader_t;
+} _data_loader_t;
 
-static _golf_data_loader_t _loaders[] = {
+static map_golf_data_t _loaded_data;
+static golf_mutex_t _seen_files_lock;
+static vec_golf_file_t _seen_files;
+static golf_mutex_t _file_events_lock;
+static vec_file_event_t _file_events;
+static map_uint64_t _file_time_map;
+static assetsys_t *_assetsys;
+
+static assetsys_error_t _golf_assetsys_file_load(const char *path, char **data, int *data_len) {
+    char assetsys_path[GOLF_FILE_MAX_PATH];
+    snprintf(assetsys_path, GOLF_FILE_MAX_PATH, "/%s", path);
+
+    assetsys_file_t asset_file;
+    assetsys_file(_assetsys, assetsys_path, &asset_file);
+    int size = assetsys_file_size(_assetsys, asset_file);
+    *data = (char*) golf_alloc(size + 1);
+    *data_len = 0;
+    assetsys_error_t error = assetsys_file_load(_assetsys, asset_file, data_len, *data, size);
+    (*data)[size] = 0;
+    return error;
+}
+
+static _data_loader_t _loaders[] = {
     {
         .ext = ".png",
         .data_type = GOLF_DATA_TEXTURE,
@@ -1177,19 +1139,9 @@ static _golf_data_loader_t _loaders[] = {
     },
 };
 
-void golf_data_turn_off_reload(const char *ext) {
+static _data_loader_t *_get_data_loader(const char *ext) {
     for (int i = 0; i < (int) (sizeof(_loaders) / sizeof(_loaders[0])); i++) {
-        _golf_data_loader_t *loader = &_loaders[i];
-        if (strcmp(loader->ext, ext) == 0) {
-            loader->reload_on = false;
-            return;
-        }
-    }
-}
-
-static _golf_data_loader_t *_golf_data_get_loader(const char *ext) {
-    for (int i = 0; i < (int) (sizeof(_loaders) / sizeof(_loaders[0])); i++) {
-        _golf_data_loader_t *loader = &_loaders[i];
+        _data_loader_t *loader = &_loaders[i];
         if (strcmp(loader->ext, ext) == 0) {
             return loader;
         }
@@ -1197,83 +1149,134 @@ static _golf_data_loader_t *_golf_data_get_loader(const char *ext) {
     return NULL;
 }
 
-void golf_data_run_import(bool force_import) {
-    for (int i = 0; i < _data_dir.num_files; i++) {
-        golf_file_t file = _data_dir.files[i];
-        _golf_data_loader_t *loader = _golf_data_get_loader(file.ext);
-        if (loader && loader->import_fn) {
-            golf_file_t import_file = golf_file_append_extension(file.path, ".golf_data");
-            uint64_t file_time = golf_file_get_time(file.path);
-            uint64_t import_file_time = golf_file_get_time(import_file.path);
-            if (!force_import && (import_file_time >= file_time)) {
-                continue;
-            }
+static void _golf_data_handle_file(const char *file_path, void *udata) {
+    bool push_events = *((bool*)udata);
 
-            golf_log_note("Importing file %s", file.path);
+    golf_file_t file = golf_file(file_path);
+    uint64_t file_time = golf_file_get_time(file_path);
+    if (strcmp(file.ext, ".golf_data") == 0) {
+        return;
+    }
+
+    _data_loader_t *loader = _get_data_loader(file.ext);
+    if (loader && loader->import_fn) {
+        golf_file_t import_file = golf_file_append_extension(file_path, ".golf_data");
+        uint64_t import_file_time = golf_file_get_time(import_file.path);
+
+        if (import_file_time < file_time) {
             char *data;
             int data_len;
-            if (!golf_file_load_data(file.path, &data, &data_len)) {
-                golf_log_warning("Unable to load file %s", file.path); 
-                continue;
+            if (golf_file_load_data(file_path, &data, &data_len)) {
+                printf("Importing %s\n", file_path);
+                loader->import_fn(file_path, data, data_len);
+                golf_free(data);
             }
-            loader->import_fn(file.path, data, data_len); 
-            golf_free(data);
+        }
+    }
+
+    uint64_t *last_file_time = map_get(&_file_time_map, file_path);
+    if (!last_file_time) {
+        map_set(&_file_time_map, file_path, file_time);
+
+        golf_mutex_lock(&_seen_files_lock);
+        vec_push(&_seen_files, golf_file(file_path));
+        golf_mutex_unlock(&_seen_files_lock);
+
+        if (push_events) {
+            golf_mutex_lock(&_file_events_lock);
+            vec_push(&_file_events, _file_event(FILE_CREATED, file));
+            golf_mutex_unlock(&_file_events_lock);
+        }
+    }
+    else if (*last_file_time < file_time) {
+        map_set(&_file_time_map, file_path, file_time);
+
+        if (push_events) {
+            golf_mutex_lock(&_file_events_lock);
+            vec_push(&_file_events, _file_event(FILE_UPDATED, file));
+            golf_mutex_unlock(&_file_events_lock);
         }
     }
 }
 
+static int _golf_data_thread_fn(void *udata) {
+    uint64_t last_run_time = stm_now();
+    while (true) {
+        double time_since_last_run = stm_sec(stm_since(last_run_time));
+        if (time_since_last_run > 1) {
+            bool push_events = true;
+            golf_dir_recurse("data", _golf_data_handle_file, &push_events); 
+            last_run_time = stm_now();
+        }
+    }
+    return 0;
+}
+
+void golf_data_turn_off_reload(const char *ext) {
+    for (int i = 0; i < (int) (sizeof(_loaders) / sizeof(_loaders[0])); i++) {
+        _data_loader_t *loader = &_loaders[i];
+        if (strcmp(loader->ext, ext) == 0) {
+            loader->reload_on = false;
+            return;
+        }
+    }
+}
+
+void golf_data_init(void) {
+    map_init(&_loaded_data, "data");
+    golf_mutex_init(&_seen_files_lock);
+    map_init(&_file_time_map, "data");
+    golf_mutex_init(&_file_events_lock);
+    vec_init(&_file_events, "data");
+    vec_init(&_seen_files, "data");
+    _assetsys = assetsys_create(NULL);
+    assetsys_error_t error = assetsys_mount(_assetsys, "data", "/data");
+    if (error != ASSETSYS_SUCCESS) {
+        golf_log_error("Unable to mount data");
+    }
+
+    bool push_events = false;
+    golf_dir_recurse("data", _golf_data_handle_file, &push_events); 
+    golf_thread_create(_golf_data_thread_fn, NULL, "_golf_data_thread_fn");
+
+    golf_data_load("data/static_data.static_data");
+}
+
 void golf_data_update(float dt) {
-    const char *key;
-    map_iter_t iter = map_iter(&_loaded_data);
+    golf_mutex_lock(&_file_events_lock);  
+    for (int i = 0; i < _file_events.length; i++) {
+        _file_event_t event = _file_events.data[i];
+        switch (event.type) {
+            case FILE_CREATED:
+                assetsys_dismount(_assetsys, "data", "/data");
+                assetsys_mount(_assetsys, "data", "/data");
+                break;
+            case FILE_UPDATED: {
+                _data_loader_t *loader = _get_data_loader(event.file.ext);
+                golf_data_t *data = map_get(&_loaded_data, event.file.path);
+                if (data && loader) {
+                    printf("Reloading %s\n", event.file.path);
 
-    golf_dir_deinit(&_data_dir);
-    golf_dir_init(&_data_dir, "data", true);
-
-    bool has_new_file = false;
-    for (int i = 0; i < _data_dir.num_files; i++) {
-        if (!map_get(&_seen_files, _data_dir.files[i].path)) {
-            has_new_file = true;
-            map_set(&_seen_files, _data_dir.files[i].path, _data_dir.files[i]);
-        }
-    }
-
-    if (has_new_file) {
-        golf_log_note("Remounting assetsys");
-        assetsys_dismount(_assetsys, "data", "/data");
-        assetsys_mount(_assetsys, "data", "/data");
-    }
-
-    while ((key = map_next(&_loaded_data, &iter))) {
-        golf_data_t *golf_data = map_get(&_loaded_data, key);
-
-        uint64_t file_time = golf_file_get_time(golf_data->file.path);
-        if (golf_data->last_load_time < file_time) {
-            golf_data->last_load_time = file_time;
-            golf_file_t file = golf_file(key);
-            golf_file_t file_to_load = golf_data->file;
-
-            char *data = NULL;
-            int data_len = 0;
-            assetsys_error_t error = _golf_assetsys_file_load(file_to_load.path, &data, &data_len);
-            if (error == ASSETSYS_SUCCESS) {
-                _golf_data_loader_t *loader = _golf_data_get_loader(file.ext);
-                if (loader->reload_on) {
-                    golf_log_note("Reloading file %s", key);
-                    if (loader) {
-                        loader->unload_fn(golf_data->ptr);
-                        loader->load_fn(golf_data->ptr, file.path, data, data_len);
+                    golf_file_t file_to_load = event.file;
+                    if (loader->import_fn) {
+                        file_to_load = golf_file_append_extension(file_to_load.path, ".golf_data");
                     }
-                    else {
-                        golf_log_warning("Unable to load file %s", key);
+
+                    loader->unload_fn(data->ptr);
+                    char *bytes = NULL;
+                    int bytes_len = 0;
+                    assetsys_error_t error = _golf_assetsys_file_load(file_to_load.path, &bytes, &bytes_len);
+                    if (error == ASSETSYS_SUCCESS) {
+                        loader->load_fn(data->ptr, file_to_load.path, bytes, bytes_len);
                     }
+                    golf_free(bytes);
                 }
+                break;
             }
-            else {
-                golf_log_warning("Unable to load file %s", key);
-            }
-            golf_free(data);
         }
     }
+    _file_events.length = 0;
+    golf_mutex_unlock(&_file_events_lock);  
 }
 
 void golf_data_load(const char *path) {
@@ -1286,7 +1289,7 @@ void golf_data_load(const char *path) {
     }
 
     golf_file_t file = golf_file(path);
-    _golf_data_loader_t *loader = _golf_data_get_loader(file.ext);
+    _data_loader_t *loader = _get_data_loader(file.ext);
     if (!loader) {
         golf_log_warning("No loader for file %s", file.path);
         return;
@@ -1304,7 +1307,6 @@ void golf_data_load(const char *path) {
         golf_data_t golf_data;
         golf_data.load_count = 1;
         golf_data.file = file_to_load;
-        golf_data.last_load_time = golf_file_get_time(file_to_load.path);
         golf_data.type = loader->data_type;
         golf_data.ptr = golf_alloc(loader->data_size);
 
@@ -1326,7 +1328,7 @@ void golf_data_unload(const char *path) {
     golf_data->load_count--;
     if (golf_data->load_count == 0) {
         golf_file_t file = golf_file(path);
-        _golf_data_loader_t *loader = _golf_data_get_loader(file.ext);
+        _data_loader_t *loader = _get_data_loader(file.ext);
         if (!loader) {
             golf_log_warning("Unable to unload file %s", path);
             return;
@@ -1432,15 +1434,17 @@ golf_script_t *golf_data_get_script(const char *path) {
 }
 
 void golf_data_get_all_matching(golf_data_type_t type, const char *str, vec_golf_file_t *files) {
+    /*
     for (int i = 0; i < _data_dir.num_files; i++) {
         golf_file_t file = _data_dir.files[i];
-        _golf_data_loader_t *loader = _golf_data_get_loader(file.ext);
+        _data_loader_t *loader = _get_data_loader(file.ext);
         if (loader && loader->data_type == type) {
             if (strstr(file.path, str)) {
                 vec_push(files, file);
             }
         }
     }
+    */
 }
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS

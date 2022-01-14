@@ -9,6 +9,7 @@
 #define _GOLF_MAP_H
 
 #include <string.h>
+#include <stdint.h>
 #include "golf/alloc.h"
 
 struct map_node_t;
@@ -72,6 +73,7 @@ typedef map_t(int) map_int_t;
 typedef map_t(char) map_char_t;
 typedef map_t(float) map_float_t;
 typedef map_t(double) map_double_t;
+typedef map_t(uint64_t) map_uint64_t;
 
 #endif
 

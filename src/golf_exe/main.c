@@ -47,7 +47,6 @@ static void frame(void) {
     if (!inited) {
         golf_log_init();
         golf_data_init();
-        golf_data_run_import(false);
 
         golf_inputs_init();
         golf_game_init();
@@ -80,14 +79,7 @@ static void frame(void) {
         simgui_new_frame(sapp_width(), sapp_height(), dt);
     }
 
-    {
-        time_since_import += dt;
-        if (time_since_import > 1.0f) {
-            time_since_import = 0.0f;
-            golf_data_run_import(false);
-            golf_data_update(dt);
-        }
-    }
+    golf_data_update(dt);
 
     {
         golf_inputs_begin_frame();
