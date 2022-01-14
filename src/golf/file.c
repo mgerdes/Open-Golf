@@ -266,7 +266,7 @@ static void _directory_recurse(const char *dir_name, void (*fn)(const char *file
         }
         else if (!!(find_data.dwFileAttributes & FILE_ATTRIBUTE_NORMAL) ||
                 !(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-            _directory_add_file(full_path, data);
+            fn(full_path, data);
         }
 
         if (FindNextFile(handle, &find_data) == 0) {

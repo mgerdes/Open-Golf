@@ -1043,6 +1043,7 @@ bool golf_level_get_lightmap_image(golf_level_t *level, const char *lightmap_nam
 golf_entity_t golf_entity_model(const char *name, golf_transform_t transform, const char *model_path, golf_lightmap_section_t lightmap_section, golf_movement_t movement) {
     golf_entity_t entity;
     entity.active = true;
+    entity.is_in_group = false;
     entity.type = MODEL_ENTITY;
     snprintf(entity.name, GOLF_MAX_NAME_LEN, "%s", name);
     entity.model.transform = transform;
@@ -1056,6 +1057,7 @@ golf_entity_t golf_entity_model(const char *name, golf_transform_t transform, co
 golf_entity_t golf_entity_hole(const char *name, golf_transform_t transform) {
     golf_entity_t entity;
     entity.active = true;
+    entity.is_in_group = false;
     entity.type = HOLE_ENTITY;
     snprintf(entity.name, GOLF_MAX_NAME_LEN, "%s", name);
     entity.hole.transform = transform;
@@ -1065,6 +1067,7 @@ golf_entity_t golf_entity_hole(const char *name, golf_transform_t transform) {
 golf_entity_t golf_entity_ball_start(const char *name, golf_transform_t transform) {
     golf_entity_t entity;
     entity.active = true;
+    entity.is_in_group = false;
     entity.type = BALL_START_ENTITY;
     snprintf(entity.name, GOLF_MAX_NAME_LEN, "%s", name);
     entity.ball_start.transform = transform;
@@ -1074,6 +1077,7 @@ golf_entity_t golf_entity_ball_start(const char *name, golf_transform_t transfor
 golf_entity_t golf_entity_geo(const char *name, golf_transform_t transform, golf_movement_t movement, golf_geo_t geo, golf_lightmap_section_t lightmap_section) {
     golf_entity_t entity;
     entity.active = true;
+    entity.is_in_group = false;
     entity.type = GEO_ENTITY;
     snprintf(entity.name, GOLF_MAX_NAME_LEN, "%s", name);
     entity.geo.transform = transform;
@@ -1086,9 +1090,10 @@ golf_entity_t golf_entity_geo(const char *name, golf_transform_t transform, golf
 golf_entity_t golf_entity_group(const char *name) {
     golf_entity_t entity;
     entity.active = true;
+    entity.is_in_group = false;
     entity.type = GROUP_ENTITY;
     snprintf(entity.name, GOLF_MAX_NAME_LEN, "%s", name);
-    vec_init(&entity.group.entities, "entity_group");
+    vec_init(&entity.group.entity_idxs, "entity_group");
     return entity;
 }
 

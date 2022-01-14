@@ -2,6 +2,7 @@
 
 #include "golf/editor.h"
 
+#include <assert.h>
 #include <float.h>
 #include <string.h>
 
@@ -1056,32 +1057,65 @@ static void _golf_editor_entities_tab(void) {
     for (int i = 0; i < editor.level->entities.length; i++) {
         golf_entity_t *entity = &editor.level->entities.data[i];
         if (!entity->active) continue;
+        if (entity->is_in_group) continue;
+
         bool selected = _golf_editor_is_entity_selected(i);
         igPushID_Int(i);
         switch (entity->type) {
             case BALL_START_ENTITY:
             case MODEL_ENTITY: 
             case GEO_ENTITY:
-            case HOLE_ENTITY: 
-            case GROUP_ENTITY: {
+            case HOLE_ENTITY: {
                 if (igSelectable_Bool(entity->name, selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
                     _golf_editor_select_entity(i);
                 }
-
                 if (igBeginDragDropSource(ImGuiDragDropFlags_None)) {
-                    igSetDragDropPayload("entity_payload", entity, sizeof(golf_entity_t), ImGuiCond_None);
+                    igSetDragDropPayload("entity_payload", &i, sizeof(int), ImGuiCond_None);
                     igText("%s", entity->name);
                     igEndDragDropSource();
                 }
-                if (entity->type == GROUP_ENTITY) {
-                    if (igBeginDragDropTarget()) {
-                        const ImGuiPayload *payload = igAcceptDragDropPayload("entity_payload", ImGuiDragDropFlags_None);
-                        if (payload) {
-                            golf_entity_t *entity = (golf_entity_t*) payload->Data;
-                            printf("%s\n", entity->name);
+                break;
+            }
+
+            case GROUP_ENTITY: {
+                ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow;
+                if (selected) {
+                    node_flags |= ImGuiTreeNodeFlags_Selected;
+                }
+                if (igTreeNodeEx_Str(entity->name, node_flags)) {
+                    for (int i = 0; i < entity->group.entity_idxs.length; i++) {
+                        int idx = entity->group.entity_idxs.data[i];
+                        golf_entity_t *entity = &editor.level->entities.data[idx];
+                        if (!entity->active) continue;
+                        assert(entity->is_in_group);
+
+                        if (igSelectable_Bool(entity->name, selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
+                            _golf_editor_select_entity(idx);
                         }
-                        igEndDragDropTarget();
                     }
+                    igTreePop();
+                }
+                if (igIsItemClicked(ImGuiMouseButton_Left)) {
+                    _golf_editor_select_entity(i);
+                }
+                if (igBeginDragDropTarget()) {
+                    const ImGuiPayload *payload = igAcceptDragDropPayload("entity_payload", ImGuiDragDropFlags_None);
+                    if (payload) {
+                        printf("ACCEPT PAYLOAD DROP\n");
+                        int payload_entity_idx = *((int*)payload->Data);
+                        golf_entity_t *payload_entity = &editor.level->entities.data[payload_entity_idx];
+                        if (!payload_entity->is_in_group) {
+                            golf_editor_action_t action;
+                            _golf_editor_action_init(&action, "Entity join group");
+                            _golf_editor_action_push_data(&action, entity->group.entity_idxs.data, sizeof(int) * entity->group.entity_idxs.length);
+                            _golf_editor_action_push_data(&action, &payload_entity->is_in_group, sizeof(payload_entity->is_in_group));
+                            payload_entity->is_in_group = true;
+                            _vec_push_and_fix_actions(&entity->group.entity_idxs, payload_entity_idx, &action);
+                            _golf_editor_start_action(action);
+                            _golf_editor_commit_action();
+                        }
+                    }
+                    igEndDragDropTarget();
                 }
                 break;
             }

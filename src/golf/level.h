@@ -163,7 +163,7 @@ typedef struct golf_geo_entity {
 typedef struct golf_entity golf_entity_t;
 typedef vec_t(golf_entity_t) vec_golf_entity_t;
 typedef struct golf_group_entity {
-    vec_golf_entity_t entities;
+    vec_int_t entity_idxs;
 } golf_group_entity_t;
 
 typedef enum golf_entity_type {
@@ -175,7 +175,7 @@ typedef enum golf_entity_type {
 } golf_entity_type_t;
 
 typedef struct golf_entity {
-    bool active;
+    bool active, is_in_group;
     golf_entity_type_t type;
     char name[GOLF_MAX_NAME_LEN];
     union {
