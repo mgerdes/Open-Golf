@@ -1254,7 +1254,7 @@ void golf_data_update(float dt) {
             case FILE_UPDATED: {
                 _data_loader_t *loader = _get_data_loader(event.file.ext);
                 golf_data_t *data = map_get(&_loaded_data, event.file.path);
-                if (data && loader) {
+                if (data && loader && loader->reload_on) {
                     printf("Reloading %s\n", event.file.path);
 
                     golf_file_t file_to_load = event.file;
@@ -1434,9 +1434,9 @@ golf_script_t *golf_data_get_script(const char *path) {
 }
 
 void golf_data_get_all_matching(golf_data_type_t type, const char *str, vec_golf_file_t *files) {
-    /*
-    for (int i = 0; i < _data_dir.num_files; i++) {
-        golf_file_t file = _data_dir.files[i];
+    golf_mutex_lock(&_seen_files_lock);
+    for (int i = 0; i < _seen_files.length; i++) {
+        golf_file_t file = _seen_files.data[i];
         _data_loader_t *loader = _get_data_loader(file.ext);
         if (loader && loader->data_type == type) {
             if (strstr(file.path, str)) {
@@ -1444,7 +1444,12 @@ void golf_data_get_all_matching(golf_data_type_t type, const char *str, vec_golf
             }
         }
     }
-    */
+    golf_mutex_unlock(&_seen_files_lock);
+}
+
+void golf_data_force_remount(void) {
+    assetsys_dismount(_assetsys, "data", "/data");
+    assetsys_mount(_assetsys, "data", "/data");
 }
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS

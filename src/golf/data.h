@@ -147,6 +147,7 @@ void golf_data_load(const char *path);
 void golf_data_unload(const char *path);
 void golf_data_debug_console_tab(void);
 void golf_data_get_all_matching(golf_data_type_t type, const char *str, vec_golf_file_t *files);
+void golf_data_force_remount(void);
 
 golf_data_t *golf_data_get_file(const char *path);
 golf_texture_t *golf_data_get_texture(const char *path);

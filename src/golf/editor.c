@@ -2154,7 +2154,7 @@ void golf_editor_update(float dt) {
         if (igButton("Save", (ImVec2){0, 0})) {
             golf_log_note("Saving...");
             golf_level_save(editor.level, editor.level_path);
-            golf_data_update(0);
+            golf_data_force_remount();
             golf_data_load(editor.level_path);
             editor.level = golf_data_get_level(editor.level_path);
             igCloseCurrentPopup();
