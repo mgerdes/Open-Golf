@@ -1149,6 +1149,12 @@ static _data_loader_t *_get_data_loader(const char *ext) {
     return NULL;
 }
 
+static int _file_alpha_cmp(const void *a, const void *b) {
+    const golf_file_t *file_a = (const golf_file_t*)a;
+    const golf_file_t *file_b = (const golf_file_t*)b;
+    return strcmp(file_a->path, file_b->path);
+}
+
 static void _golf_data_handle_file(const char *file_path, void *udata) {
     bool push_events = *((bool*)udata);
 
@@ -1181,6 +1187,7 @@ static void _golf_data_handle_file(const char *file_path, void *udata) {
         golf_mutex_lock(&_seen_files_lock);
         vec_push(&_seen_files, golf_file(file_path));
         golf_mutex_unlock(&_seen_files_lock);
+        qsort(_seen_files.data, _seen_files.length, sizeof(golf_file_t), _file_alpha_cmp);
 
         if (push_events) {
             golf_mutex_lock(&_file_events_lock);
@@ -1237,6 +1244,7 @@ void golf_data_init(void) {
 
     bool push_events = false;
     golf_dir_recurse("data", _golf_data_handle_file, &push_events); 
+    qsort(_seen_files.data, _seen_files.length, sizeof(golf_file_t), _file_alpha_cmp);
     golf_thread_create(_golf_data_thread_fn, NULL, "_golf_data_thread_fn");
 
     golf_data_load("data/static_data.static_data");
