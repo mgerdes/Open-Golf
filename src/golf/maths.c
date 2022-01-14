@@ -1117,7 +1117,7 @@ void ray_intersect_triangles_all(vec3 ro, vec3 rd, vec3 *points, int num_points,
         tp1 = vec3_apply_mat4(tp1, 1.0f, transform);
         tp2 = vec3_apply_mat4(tp2, 1.0f, transform);
 
-        float t0;
+        float t0 = FLT_MAX;
         if (intersect_segment_triangle(ro, vec3_add(ro, rd), tp0, tp1, tp2, &t0)) {
             t[i/3] = t0;    
         }
@@ -1135,7 +1135,7 @@ bool ray_intersect_triangles(vec3 ro, vec3 rd, vec3 *points, int num_points, flo
         vec3 tp1 = points[i + 1];
         vec3 tp2 = points[i + 2];
 
-        float t0;
+        float t0 = FLT_MAX;
         if (intersect_segment_triangle(ro, vec3_add(ro, rd), tp0, tp1, tp2, &t0)) {
             if (t0 < min_t) {
                 min_t = t0;

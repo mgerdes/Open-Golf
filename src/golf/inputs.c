@@ -27,7 +27,7 @@ golf_inputs_t *golf_inputs_get(void) {
 }
 
 void golf_inputs_init(void) {
-    memset(&inputs, 0, sizeof(golf_inputs_t));
+    memset(&inputs, 0, sizeof(inputs));
 }
 
 void golf_inputs_begin_frame(void) {
