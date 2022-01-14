@@ -1255,7 +1255,7 @@ void golf_data_update(float dt) {
                 _data_loader_t *loader = _get_data_loader(event.file.ext);
                 golf_data_t *data = map_get(&_loaded_data, event.file.path);
                 if (data && loader && loader->reload_on) {
-                    printf("Reloading %s\n", event.file.path);
+                    golf_log_note("Reloading %s", event.file.path);
 
                     golf_file_t file_to_load = event.file;
                     if (loader->import_fn) {
@@ -1280,13 +1280,13 @@ void golf_data_update(float dt) {
 }
 
 void golf_data_load(const char *path) {
-    golf_log_note("Loading file %s", path);
-
     golf_data_t *loaded_data = map_get(&_loaded_data, path);
     if (loaded_data) {
         loaded_data->load_count++;
+        golf_log_note("Loading file %s, count: %d", path, loaded_data->load_count);
         return;
     }
+    golf_log_note("Loading file %s, count: %d", path, 1);
 
     golf_file_t file = golf_file(path);
     _data_loader_t *loader = _get_data_loader(file.ext);
