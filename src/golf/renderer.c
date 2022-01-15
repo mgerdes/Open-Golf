@@ -850,15 +850,16 @@ void golf_renderer_draw_editor(void) {
 
         golf_transform_t *transform = golf_entity_get_transform(entity);
         if (!transform) continue;
+        golf_transform_t world_transform = golf_entity_get_world_transform(editor->level, entity);
 
         mat4 model_mat;
         golf_movement_t *movement = golf_entity_get_movement(entity);
         if (movement) {
-            golf_transform_t moved_transform = golf_transform_apply_movement(*transform, *movement);
+            golf_transform_t moved_transform = golf_transform_apply_movement(world_transform, *movement);
             model_mat = golf_transform_get_model_mat(moved_transform);
         }
         else {
-            model_mat = golf_transform_get_model_mat(*transform);
+            model_mat = golf_transform_get_model_mat(world_transform);
         }
 
         for (int i = 0; i < model->groups.length; i++) {

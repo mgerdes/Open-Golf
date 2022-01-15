@@ -197,7 +197,7 @@ golf_entity_t golf_entity_group(const char *name, golf_transform_t transform);
 golf_entity_t golf_entity_make_copy(golf_entity_t *entity);
 golf_movement_t *golf_entity_get_movement(golf_entity_t *entity);
 golf_transform_t *golf_entity_get_transform(golf_entity_t *entity);
-mat4 golf_entity_get_world_model_mat(golf_level_t *level, golf_entity_t *entity);
+golf_transform_t golf_entity_get_world_transform(golf_level_t *level, golf_entity_t *entity);
 golf_lightmap_section_t *golf_entity_get_lightmap_section(golf_entity_t *entity);
 golf_model_t *golf_entity_get_model(golf_entity_t *entity);
 golf_geo_t *golf_entity_get_geo(golf_entity_t *entity);

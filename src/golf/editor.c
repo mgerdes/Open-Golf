@@ -276,7 +276,7 @@ static void _golf_editor_undo_action(void) {
     golf_editor_action_t *undo_action = &vec_pop(&editor.undo_actions);
     golf_editor_action_t redo_action;
     _golf_editor_action_init(&redo_action, undo_action->name);
-    for (int i = 0; i < undo_action->datas.length; i++) {
+    for (int i = undo_action->datas.length - 1; i >= 0; i++) {
         golf_editor_action_data_t *data = &undo_action->datas.data[i];
         _golf_editor_action_push_data(&redo_action, data->ptr, data->size);
         memcpy(data->ptr, data->copy, data->size);
@@ -293,7 +293,7 @@ static void _golf_editor_redo_action(void) {
     golf_editor_action_t *redo_action = &vec_pop(&editor.redo_actions);
     golf_editor_action_t undo_action;
     _golf_editor_action_init(&undo_action, redo_action->name);
-    for (int i = 0; i < redo_action->datas.length; i++) {
+    for (int i = redo_action->datas.length - 1; i >= 0; i++) {
         golf_editor_action_data_t *data = &redo_action->datas.data[i];
         _golf_editor_action_push_data(&undo_action, data->ptr, data->size);
         memcpy(data->ptr, data->copy, data->size);
@@ -614,6 +614,13 @@ static void _golf_editor_duplicate_selected_entities(void) {
             entity->active = false;
             _golf_editor_action_push_data(&action, &entity->active, sizeof(entity->active));
             entity->active = true;
+
+            if (entity->parent_idx >= 0) {
+                golf_entity_t *parent_entity = &editor.level->entities.data[entity->parent_idx];
+                assert(parent_entity->type == GROUP_ENTITY);
+                _golf_editor_action_push_data(&action, &parent_entity->group.child_idxs.length, sizeof(parent_entity->group.child_idxs.length));
+                _vec_push_and_fix_actions(&parent_entity->group.child_idxs, idx, &action);
+            }
         }
 
         _golf_editor_start_action(action);
@@ -1490,11 +1497,9 @@ void golf_editor_update(float dt) {
             for (int i = 0; i < editor.selected_idxs.length; i++) {
                 int idx = editor.selected_idxs.data[i];
                 golf_entity_t *entity = &editor.level->entities.data[idx];
-                golf_transform_t *transform = golf_entity_get_transform(entity);
-                if (transform) {
-                    golf_gizmo_set_transform(&editor.gizmo, *transform);
-                    editor.gizmo.is_on = true;
-                }
+                golf_transform_t transform = golf_entity_get_world_transform(editor.level, entity);
+                golf_gizmo_set_transform(&editor.gizmo, transform);
+                editor.gizmo.is_on = true;
             }
         }
     }
@@ -1778,8 +1783,8 @@ void golf_editor_update(float dt) {
                                     golf_movement_t *movement = golf_entity_get_movement(entity);
                                     if (lightmap_section && transform && model && movement &&
                                             strcmp(lightmap_section->lightmap_name, lightmap->name) == 0) {
-
-                                        golf_gi_add_lightmap_section(gi, lightmap_section, model, *transform, *movement);
+                                        golf_transform_t world_transform = golf_entity_get_world_transform(editor.level, entity);
+                                        golf_gi_add_lightmap_section(gi, lightmap_section, model, world_transform, *movement);
                                     }
                                 }
                                 golf_gi_end_lightmap(gi);
@@ -2478,7 +2483,8 @@ void golf_editor_update(float dt) {
             golf_model_t *model = golf_entity_get_model(entity);
             golf_transform_t *transform = golf_entity_get_transform(entity);
             if (model && transform) {
-                mat4 model_mat = golf_transform_get_model_mat(*transform);
+                golf_transform_t world_transform = golf_entity_get_world_transform(editor.level, entity);
+                mat4 model_mat = golf_transform_get_model_mat(world_transform);
                 for (int j = 0; j < model->positions.length; j++) {
                     vec3 p0 = vec3_apply_mat4(model->positions.data[j + 0], 1, model_mat);
                     vec3 p1 = vec3_apply_mat4(model->positions.data[j + 1], 1, model_mat);
@@ -2615,7 +2621,8 @@ void golf_editor_update(float dt) {
                 golf_transform_t *transform = golf_entity_get_transform(entity);
                 golf_geo_t *geo = golf_entity_get_geo(entity);
                 if (transform && geo) {
-                    _golf_editor_start_editing_geo(geo, *transform);
+                    golf_transform_t world_transform = golf_entity_get_world_transform(editor.level, entity);
+                    _golf_editor_start_editing_geo(geo, world_transform);
                 }
             }
             else if (editor.in_edit_mode) {

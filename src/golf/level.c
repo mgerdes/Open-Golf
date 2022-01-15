@@ -1219,7 +1219,7 @@ golf_transform_t *golf_entity_get_transform(golf_entity_t *entity) {
     return NULL;
 }
 
-mat4 golf_entity_get_world_model_mat(golf_level_t *level, golf_entity_t *entity) {
+golf_transform_t golf_entity_get_world_transform(golf_level_t *level, golf_entity_t *entity) {
     golf_transform_t parent_transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
     if (entity->parent_idx >= 0) {
         golf_entity_t *parent_entity = &level->entities.data[entity->parent_idx];
@@ -1231,13 +1231,24 @@ mat4 golf_entity_get_world_model_mat(golf_level_t *level, golf_entity_t *entity)
 
     golf_transform_t *transform = golf_entity_get_transform(entity);
     if (!transform) {
-        golf_log_warning("Attempting ot get model_mat on entity with on transform");
-        return mat4_identity();
+        golf_log_warning("Attempting to get world transform on entity with no transform");
+        return parent_transform;
     }
 
-    mat4 parent_model_mat = golf_transform_get_model_mat(parent_transform); 
-    mat4 model_mat = golf_transform_get_model_mat(*transform); 
-    return mat4_multiply(parent_model_mat, model_mat);
+    quat rotation = quat_multiply(parent_transform.rotation, transform->rotation);
+
+    vec3 scale = parent_transform.scale;
+    scale.x *= transform->scale.x;
+    scale.y *= transform->scale.y;
+    scale.z *= transform->scale.z;
+
+    vec3 position = vec3_apply_mat4(transform->position, 1, mat4_from_quat(parent_transform.rotation));
+    position.x *= parent_transform.scale.x;
+    position.y *= parent_transform.scale.y;
+    position.z *= parent_transform.scale.z;
+    position = vec3_add(position, parent_transform.position);
+
+    return golf_transform(position, scale, rotation);
 }
 
 golf_lightmap_section_t *golf_entity_get_lightmap_section(golf_entity_t *entity) {
