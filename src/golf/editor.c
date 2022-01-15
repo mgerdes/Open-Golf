@@ -1057,7 +1057,7 @@ static void _golf_editor_entities_tab(void) {
     for (int i = 0; i < editor.level->entities.length; i++) {
         golf_entity_t *entity = &editor.level->entities.data[i];
         if (!entity->active) continue;
-        if (entity->is_in_group) continue;
+        if (entity->parent_idx >= 0) continue;
 
         bool selected = _golf_editor_is_entity_selected(i);
         igPushID_Int(i);
@@ -1082,40 +1082,44 @@ static void _golf_editor_entities_tab(void) {
                 if (selected) {
                     node_flags |= ImGuiTreeNodeFlags_Selected;
                 }
-                if (igTreeNodeEx_Str(entity->name, node_flags)) {
-                    for (int i = 0; i < entity->group.entity_idxs.length; i++) {
-                        int idx = entity->group.entity_idxs.data[i];
-                        golf_entity_t *entity = &editor.level->entities.data[idx];
-                        if (!entity->active) continue;
-                        assert(entity->is_in_group);
-
-                        if (igSelectable_Bool(entity->name, selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
-                            _golf_editor_select_entity(idx);
-                        }
-                    }
-                    igTreePop();
-                }
+                bool is_open = igTreeNodeEx_Str(entity->name, node_flags);
                 if (igIsItemClicked(ImGuiMouseButton_Left)) {
                     _golf_editor_select_entity(i);
                 }
                 if (igBeginDragDropTarget()) {
                     const ImGuiPayload *payload = igAcceptDragDropPayload("entity_payload", ImGuiDragDropFlags_None);
                     if (payload) {
-                        printf("ACCEPT PAYLOAD DROP\n");
                         int payload_entity_idx = *((int*)payload->Data);
                         golf_entity_t *payload_entity = &editor.level->entities.data[payload_entity_idx];
-                        if (!payload_entity->is_in_group) {
-                            golf_editor_action_t action;
-                            _golf_editor_action_init(&action, "Entity join group");
-                            _golf_editor_action_push_data(&action, entity->group.entity_idxs.data, sizeof(int) * entity->group.entity_idxs.length);
-                            _golf_editor_action_push_data(&action, &payload_entity->is_in_group, sizeof(payload_entity->is_in_group));
-                            payload_entity->is_in_group = true;
-                            _vec_push_and_fix_actions(&entity->group.entity_idxs, payload_entity_idx, &action);
-                            _golf_editor_start_action(action);
-                            _golf_editor_commit_action();
-                        }
+
+                        golf_editor_action_t action;
+                        _golf_editor_action_init(&action, "Entity join group");
+                        _golf_editor_action_push_data(&action, &entity->group.child_idxs.length, sizeof(entity->group.child_idxs.length));
+                        _golf_editor_action_push_data(&action, &payload_entity->parent_idx, sizeof(payload_entity->parent_idx));
+                        payload_entity->parent_idx = i;
+                        _vec_push_and_fix_actions(&entity->group.child_idxs, payload_entity_idx, &action);
+                        _golf_editor_start_action(action);
+                        _golf_editor_commit_action();
                     }
                     igEndDragDropTarget();
+                }
+
+                if (is_open) {
+                    for (int j = 0; j < entity->group.child_idxs.length; j++) {
+                        int idx = entity->group.child_idxs.data[j];
+                        golf_entity_t *entity = &editor.level->entities.data[idx];
+                        if (!entity->active) continue;
+                        assert(entity->parent_idx == i);
+
+                        bool selected = _golf_editor_is_entity_selected(idx);
+
+                        igPushID_Int(j);
+                        if (igSelectable_Bool(entity->name, selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
+                            _golf_editor_select_entity(idx);
+                        }
+                        igPopID();
+                    }
+                    igTreePop();
                 }
                 break;
             }
@@ -1174,7 +1178,8 @@ static void _golf_editor_entities_tab(void) {
     }
     
     if (igButton("Create Group Entity", (ImVec2){0, 0})) {
-        golf_entity_t entity = golf_entity_group("group");
+        golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
+        golf_entity_t entity = golf_entity_group("group", transform);
         _vec_push_and_fix_actions(&editor.level->entities, entity, NULL);
     }
 }
@@ -2155,7 +2160,6 @@ void golf_editor_update(float dt) {
             switch (entity->type) {
                 case MODEL_ENTITY: {
                     igText("TYPE: Model");
-                    _golf_editor_file_picker("Model", GOLF_DATA_MODEL, entity->model.model_path, &entity->model.model);
                     break;
                 }
                 case BALL_START_ENTITY: {
@@ -2170,10 +2174,19 @@ void golf_editor_update(float dt) {
                     igText("TYPE: Geo");
                     break;
                 }
+                case GROUP_ENTITY: {
+                    igText("TYPE: Group");
+                    break;
+                }
             }
+            igText("IDX: %d", idx);
 
             bool edit_done = false;
             _golf_editor_undoable_igInputText("Name", entity->name, GOLF_MAX_NAME_LEN, &edit_done, NULL, 0, "Modify entity name");
+
+            if (entity->type == MODEL_ENTITY) {
+                _golf_editor_file_picker("Model", GOLF_DATA_MODEL, entity->model.model_path, &entity->model.model);
+            }
 
             golf_transform_t *transform = golf_entity_get_transform(entity);
             if (transform) {

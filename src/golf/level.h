@@ -135,6 +135,7 @@ typedef vec_t(golf_transform_t) vec_golf_transform_t;
 golf_transform_t golf_transform(vec3 position, vec3 scale, quat rotation);
 mat4 golf_transform_get_model_mat(golf_transform_t transform);
 golf_transform_t golf_transform_apply_movement(golf_transform_t transform, golf_movement_t movement);
+golf_transform_t golf_transform_apply_transform(golf_transform_t transform, golf_transform_t movement);
 
 typedef struct golf_ball_start_entity {
     golf_transform_t transform;
@@ -163,7 +164,8 @@ typedef struct golf_geo_entity {
 typedef struct golf_entity golf_entity_t;
 typedef vec_t(golf_entity_t) vec_golf_entity_t;
 typedef struct golf_group_entity {
-    vec_int_t entity_idxs;
+    vec_int_t child_idxs;
+    golf_transform_t transform;
 } golf_group_entity_t;
 
 typedef enum golf_entity_type {
@@ -175,7 +177,8 @@ typedef enum golf_entity_type {
 } golf_entity_type_t;
 
 typedef struct golf_entity {
-    bool active, is_in_group;
+    bool active;
+    int parent_idx;
     golf_entity_type_t type;
     char name[GOLF_MAX_NAME_LEN];
     union {
@@ -190,10 +193,11 @@ golf_entity_t golf_entity_model(const char *name, golf_transform_t transform, co
 golf_entity_t golf_entity_hole(const char *name, golf_transform_t transform);
 golf_entity_t golf_entity_ball_start(const char *name, golf_transform_t transform);
 golf_entity_t golf_entity_geo(const char *name, golf_transform_t transform, golf_movement_t movement, golf_geo_t geo, golf_lightmap_section_t lightmap_section);
-golf_entity_t golf_entity_group(const char *name);
+golf_entity_t golf_entity_group(const char *name, golf_transform_t transform);
 golf_entity_t golf_entity_make_copy(golf_entity_t *entity);
 golf_movement_t *golf_entity_get_movement(golf_entity_t *entity);
 golf_transform_t *golf_entity_get_transform(golf_entity_t *entity);
+mat4 golf_entity_get_world_model_mat(golf_level_t *level, golf_entity_t *entity);
 golf_lightmap_section_t *golf_entity_get_lightmap_section(golf_entity_t *entity);
 golf_model_t *golf_entity_get_model(golf_entity_t *entity);
 golf_geo_t *golf_entity_get_geo(golf_entity_t *entity);

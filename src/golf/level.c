@@ -756,6 +756,16 @@ bool golf_level_save(golf_level_t *level, const char *path) {
         json_array_append_value(json_lightmap_images_arr, json_lightmap_image_val);
     }
 
+    vec_int_t entity_saved_idx;
+    vec_init(&entity_saved_idx, "level");
+    {
+        int saved_idx = 0;
+        for (int i = 0; i < level->entities.length; i++) {
+            vec_push(&entity_saved_idx, saved_idx);
+            if (level->entities.data[i].active) saved_idx++;
+        }
+    }
+
     JSON_Value *json_entities_val = json_value_init_array();
     JSON_Array *json_entities_arr = json_value_get_array(json_entities_val);
     for (int i = 0; i < level->entities.length; i++) {
@@ -765,6 +775,11 @@ bool golf_level_save(golf_level_t *level, const char *path) {
         JSON_Value *json_entity_val = json_value_init_object();
         JSON_Object *json_entity_obj = json_value_get_object(json_entity_val);
 
+        int parent_idx = entity->parent_idx;
+        if (parent_idx >= 0) {
+            parent_idx = entity_saved_idx.data[parent_idx];
+        }
+        json_object_set_number(json_entity_obj, "parent_idx", parent_idx);
         json_object_set_string(json_entity_obj, "name", entity->name);
         switch (entity->type) {
             case MODEL_ENTITY: {
@@ -783,6 +798,19 @@ bool golf_level_save(golf_level_t *level, const char *path) {
             }
             case GEO_ENTITY: {
                 json_object_set_string(json_entity_obj, "type", "geo");
+                break;
+            }
+            case GROUP_ENTITY: {
+                json_object_set_string(json_entity_obj, "type", "group");
+
+                JSON_Value *json_child_idxs_val = json_value_init_array();
+                JSON_Array *json_child_idxs_arr = json_value_get_array(json_child_idxs_val);
+                for (int i = 0; i < entity->group.child_idxs.length; i++) {
+                    int idx = entity->group.child_idxs.data[i];
+                    int saved_idx = entity_saved_idx.data[idx];
+                    json_array_append_number(json_child_idxs_arr, (int)saved_idx);
+                }
+                json_object_set_value(json_entity_obj, "child_idxs", json_child_idxs_val);
                 break;
             }
         }
@@ -809,6 +837,8 @@ bool golf_level_save(golf_level_t *level, const char *path) {
 
         json_array_append_value(json_entities_arr, json_entity_val);
     }
+
+    vec_deinit(&entity_saved_idx);
 
     JSON_Value *json_val = json_value_init_object();
     JSON_Object *json_obj = json_value_get_object(json_val);
@@ -913,9 +943,11 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
         JSON_Object *obj = json_array_get_object(json_entities_arr, i);
         const char *type = json_object_get_string(obj, "type");
         const char *name = json_object_get_string(obj, "name");
+        int parent_idx = (int)json_object_get_number(obj, "parent_idx");
 
         bool valid_entity = false;
         golf_entity_t entity;  
+        entity.active = true;  
         if (type && strcmp(type, "model") == 0) {
             golf_transform_t transform;
             _golf_json_object_get_transform(obj, "transform", &transform);
@@ -962,6 +994,21 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
             entity = golf_entity_geo(name, transform, movement, geo, lightmap_section);
             valid_entity = true;
         }
+        else if (type && strcmp(type, "group") == 0) {
+            golf_transform_t transform;
+            _golf_json_object_get_transform(obj, "transform", &transform);
+
+            entity = golf_entity_group(name, transform);
+
+            JSON_Array *json_child_idxs_arr = json_object_get_array(obj, "child_idxs");
+            for (int i = 0; i < (int)json_array_get_count(json_child_idxs_arr); i++)  {
+                int idx = (int)json_array_get_number(json_child_idxs_arr, i);
+                vec_push(&entity.group.child_idxs, idx);
+            }
+
+            valid_entity = true;
+        }
+        entity.parent_idx = parent_idx;
 
         if (valid_entity) {
             vec_push(&level->entities, entity);
@@ -1043,7 +1090,7 @@ bool golf_level_get_lightmap_image(golf_level_t *level, const char *lightmap_nam
 golf_entity_t golf_entity_model(const char *name, golf_transform_t transform, const char *model_path, golf_lightmap_section_t lightmap_section, golf_movement_t movement) {
     golf_entity_t entity;
     entity.active = true;
-    entity.is_in_group = false;
+    entity.parent_idx = -1;
     entity.type = MODEL_ENTITY;
     snprintf(entity.name, GOLF_MAX_NAME_LEN, "%s", name);
     entity.model.transform = transform;
@@ -1057,7 +1104,7 @@ golf_entity_t golf_entity_model(const char *name, golf_transform_t transform, co
 golf_entity_t golf_entity_hole(const char *name, golf_transform_t transform) {
     golf_entity_t entity;
     entity.active = true;
-    entity.is_in_group = false;
+    entity.parent_idx = -1;
     entity.type = HOLE_ENTITY;
     snprintf(entity.name, GOLF_MAX_NAME_LEN, "%s", name);
     entity.hole.transform = transform;
@@ -1067,7 +1114,7 @@ golf_entity_t golf_entity_hole(const char *name, golf_transform_t transform) {
 golf_entity_t golf_entity_ball_start(const char *name, golf_transform_t transform) {
     golf_entity_t entity;
     entity.active = true;
-    entity.is_in_group = false;
+    entity.parent_idx = -1;
     entity.type = BALL_START_ENTITY;
     snprintf(entity.name, GOLF_MAX_NAME_LEN, "%s", name);
     entity.ball_start.transform = transform;
@@ -1077,7 +1124,7 @@ golf_entity_t golf_entity_ball_start(const char *name, golf_transform_t transfor
 golf_entity_t golf_entity_geo(const char *name, golf_transform_t transform, golf_movement_t movement, golf_geo_t geo, golf_lightmap_section_t lightmap_section) {
     golf_entity_t entity;
     entity.active = true;
-    entity.is_in_group = false;
+    entity.parent_idx = -1;
     entity.type = GEO_ENTITY;
     snprintf(entity.name, GOLF_MAX_NAME_LEN, "%s", name);
     entity.geo.transform = transform;
@@ -1087,13 +1134,14 @@ golf_entity_t golf_entity_geo(const char *name, golf_transform_t transform, golf
     return entity;
 }
 
-golf_entity_t golf_entity_group(const char *name) {
+golf_entity_t golf_entity_group(const char *name, golf_transform_t transform) {
     golf_entity_t entity;
     entity.active = true;
-    entity.is_in_group = false;
+    entity.parent_idx = -1;
     entity.type = GROUP_ENTITY;
     snprintf(entity.name, GOLF_MAX_NAME_LEN, "%s", name);
-    vec_init(&entity.group.entity_idxs, "entity_group");
+    vec_init(&entity.group.child_idxs, "entity_group");
+    entity.group.transform = transform;
     return entity;
 }
 
@@ -1165,10 +1213,31 @@ golf_transform_t *golf_entity_get_transform(golf_entity_t *entity) {
             return &entity->geo.transform;
         }
         case GROUP_ENTITY: {
-            return NULL;
+            return &entity->group.transform;
         }
     }
     return NULL;
+}
+
+mat4 golf_entity_get_world_model_mat(golf_level_t *level, golf_entity_t *entity) {
+    golf_transform_t parent_transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
+    if (entity->parent_idx >= 0) {
+        golf_entity_t *parent_entity = &level->entities.data[entity->parent_idx];
+        golf_transform_t *transform = golf_entity_get_transform(parent_entity);
+        if (transform) {
+            parent_transform = *transform;
+        }
+    }
+
+    golf_transform_t *transform = golf_entity_get_transform(entity);
+    if (!transform) {
+        golf_log_warning("Attempting ot get model_mat on entity with on transform");
+        return mat4_identity();
+    }
+
+    mat4 parent_model_mat = golf_transform_get_model_mat(parent_transform); 
+    mat4 model_mat = golf_transform_get_model_mat(*transform); 
+    return mat4_multiply(parent_model_mat, model_mat);
 }
 
 golf_lightmap_section_t *golf_entity_get_lightmap_section(golf_entity_t *entity) {
