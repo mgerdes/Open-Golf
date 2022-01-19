@@ -611,7 +611,7 @@ static void _golf_renderer_draw_solid_color_material(golf_model_t *model, int st
     sg_draw(start, count, 1);
 }
 
-static void _golf_renderer_draw_environment_material(golf_model_t *model, int start, int count, mat4 model_mat, golf_material_t material, golf_lightmap_image_t *lightmap_image, golf_lightmap_section_t *lightmap_section, bool movement_repeats) {
+static void _golf_renderer_draw_environment_material(golf_model_t *model, int start, int count, mat4 model_mat, golf_material_t material, golf_lightmap_image_t *lightmap_image, golf_lightmap_section_t *lightmap_section, bool movement_repeats, float uv_scale, bool gi_on) {
     environment_material_vs_params_t vs_params = {
         .proj_view_mat = mat4_transpose(renderer.proj_view_mat),
         .model_mat = mat4_transpose(model_mat),
@@ -648,6 +648,7 @@ static void _golf_renderer_draw_environment_material(golf_model_t *model, int st
 
     environment_material_fs_params_t fs_params = {
         .lightmap_texture_a = lightmap_t,
+        .uv_scale = uv_scale,
     };
     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_solid_color_material_fs_params,
             &(sg_range) { &fs_params, sizeof(fs_params) });
@@ -661,12 +662,17 @@ static void _golf_renderer_draw_environment_material(golf_model_t *model, int st
         .fs_images[SLOT_environment_material_lightmap_texture0] = lightmap_image->sg_image[sample0],
         .fs_images[SLOT_environment_material_lightmap_texture1] = lightmap_image->sg_image[sample1],
     };
+    if (!gi_on) {
+        golf_texture_t *white = golf_data_get_texture("data/textures/colors/white.png");
+        bindings.fs_images[SLOT_environment_material_lightmap_texture0] = white->sg_image;
+        bindings.fs_images[SLOT_environment_material_lightmap_texture1] = white->sg_image;
+    }
     sg_apply_bindings(&bindings);
 
     sg_draw(start, count, 1);
 }
 
-static void _golf_renderer_draw_with_material(golf_model_t *model, int start, int count, mat4 model_mat, golf_material_t material) {
+static void _golf_renderer_draw_with_material(golf_model_t *model, int start, int count, mat4 model_mat, golf_material_t material, float uv_scale) {
     switch (material.type) {
         case GOLF_MATERIAL_TEXTURE: {
             texture_material_vs_params_t vs_params = {
@@ -848,6 +854,11 @@ void golf_renderer_draw_editor(void) {
         golf_model_t *model = golf_entity_get_model(entity);
         if (!model) continue;
 
+        float uv_scale = 1.0f;
+        if (entity->type == MODEL_ENTITY) {
+            uv_scale = entity->model.uv_scale;
+        }
+
         golf_transform_t *transform = golf_entity_get_transform(entity);
         if (!transform) continue;
         golf_transform_t world_transform = golf_entity_get_world_transform(editor->level, entity);
@@ -878,7 +889,7 @@ void golf_renderer_draw_editor(void) {
             switch (material.type) {
                 case GOLF_MATERIAL_TEXTURE: {
                     sg_apply_pipeline(renderer.texture_material_pipeline);
-                    _golf_renderer_draw_with_material(model, group.start_vertex, group.vertex_count, model_mat, material);
+                    _golf_renderer_draw_with_material(model, group.start_vertex, group.vertex_count, model_mat, material, 1);
                     break;
                 }
                 case GOLF_MATERIAL_COLOR: {
@@ -906,7 +917,7 @@ void golf_renderer_draw_editor(void) {
                     if (movement) {
                         movement_repeats = movement->repeats;
                     }
-                    _golf_renderer_draw_environment_material(model, group.start_vertex, group.vertex_count, model_mat, material, &lightmap_image, lightmap_section, movement_repeats);
+                    _golf_renderer_draw_environment_material(model, group.start_vertex, group.vertex_count, model_mat, material, &lightmap_image, lightmap_section, movement_repeats, uv_scale, editor->renderer.gi_on);
                     break;
                 }
             }
@@ -961,7 +972,7 @@ void golf_renderer_draw_editor(void) {
                 mat4 model_mat = golf_transform_get_model_mat(transform);
                 golf_model_t *model = golf_data_get_model("data/models/hole.obj");
                 golf_material_t material = golf_material_texture("data/textures/hole_lightmap.png");
-                _golf_renderer_draw_with_material(model, 0, model->positions.length, model_mat, material);
+                _golf_renderer_draw_with_material(model, 0, model->positions.length, model_mat, material, 1);
                 break;
             }
         }

@@ -145,7 +145,7 @@ static JSON_Value *_golf_shader_import_bare(const char *base_name, const char *n
 
     {
         golf_string_t fs_bare_name;
-        golf_string_initf(&fs_bare_name, "%s_%s_fs.glsl", base_name, name);
+        golf_string_initf(&fs_bare_name, "data", "%s_%s_fs.glsl", base_name, name);
 
         char *data;
         int data_len;

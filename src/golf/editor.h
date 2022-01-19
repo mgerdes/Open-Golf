@@ -100,6 +100,10 @@ typedef struct golf_editor {
         vec_golf_edit_mode_entity_t hovered_entities;
     } select_box;
 
+    struct {
+        bool gi_on;
+    } renderer;
+
     bool open_save_as_popup;
     vec_golf_entity_t copied_entities;
 } golf_editor_t;

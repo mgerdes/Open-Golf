@@ -84,6 +84,10 @@ void golf_editor_init(void) {
         vec_init(&editor.select_box.hovered_entities, "editor");
     }
 
+    {
+        editor.renderer.gi_on = true;
+    }
+
     editor.open_save_as_popup = false;
     vec_init(&editor.copied_entities, "editor");
 }
@@ -276,7 +280,7 @@ static void _golf_editor_undo_action(void) {
     golf_editor_action_t *undo_action = &vec_pop(&editor.undo_actions);
     golf_editor_action_t redo_action;
     _golf_editor_action_init(&redo_action, undo_action->name);
-    for (int i = undo_action->datas.length - 1; i >= 0; i++) {
+    for (int i = undo_action->datas.length - 1; i >= 0; i--) {
         golf_editor_action_data_t *data = &undo_action->datas.data[i];
         _golf_editor_action_push_data(&redo_action, data->ptr, data->size);
         memcpy(data->ptr, data->copy, data->size);
@@ -293,7 +297,7 @@ static void _golf_editor_redo_action(void) {
     golf_editor_action_t *redo_action = &vec_pop(&editor.redo_actions);
     golf_editor_action_t undo_action;
     _golf_editor_action_init(&undo_action, redo_action->name);
-    for (int i = redo_action->datas.length - 1; i >= 0; i++) {
+    for (int i = redo_action->datas.length - 1; i >= 0; i--) {
         golf_editor_action_data_t *data = &redo_action->datas.data[i];
         _golf_editor_action_push_data(&undo_action, data->ptr, data->size);
         memcpy(data->ptr, data->copy, data->size);
@@ -614,13 +618,6 @@ static void _golf_editor_duplicate_selected_entities(void) {
             entity->active = false;
             _golf_editor_action_push_data(&action, &entity->active, sizeof(entity->active));
             entity->active = true;
-
-            if (entity->parent_idx >= 0) {
-                golf_entity_t *parent_entity = &editor.level->entities.data[entity->parent_idx];
-                assert(parent_entity->type == GROUP_ENTITY);
-                _golf_editor_action_push_data(&action, &parent_entity->group.child_idxs.length, sizeof(parent_entity->group.child_idxs.length));
-                _vec_push_and_fix_actions(&parent_entity->group.child_idxs, idx, &action);
-            }
         }
 
         _golf_editor_start_action(action);
@@ -1101,10 +1098,8 @@ static void _golf_editor_entities_tab(void) {
 
                         golf_editor_action_t action;
                         _golf_editor_action_init(&action, "Entity join group");
-                        _golf_editor_action_push_data(&action, &entity->group.child_idxs.length, sizeof(entity->group.child_idxs.length));
                         _golf_editor_action_push_data(&action, &payload_entity->parent_idx, sizeof(payload_entity->parent_idx));
                         payload_entity->parent_idx = i;
-                        _vec_push_and_fix_actions(&entity->group.child_idxs, payload_entity_idx, &action);
                         _golf_editor_start_action(action);
                         _golf_editor_commit_action();
                     }
@@ -1112,17 +1107,15 @@ static void _golf_editor_entities_tab(void) {
                 }
 
                 if (is_open) {
-                    for (int j = 0; j < entity->group.child_idxs.length; j++) {
-                        int idx = entity->group.child_idxs.data[j];
-                        golf_entity_t *entity = &editor.level->entities.data[idx];
-                        if (!entity->active) continue;
-                        assert(entity->parent_idx == i);
+                    for (int j = 0; j < editor.level->entities.length; j++) {
+                        golf_entity_t *child_entity = &editor.level->entities.data[j];
+                        if (!child_entity->active) continue;
+                        if (child_entity->parent_idx != i) continue;
 
-                        bool selected = _golf_editor_is_entity_selected(idx);
-
+                        bool selected = _golf_editor_is_entity_selected(j);
                         igPushID_Int(j);
-                        if (igSelectable_Bool(entity->name, selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
-                            _golf_editor_select_entity(idx);
+                        if (igSelectable_Bool(child_entity->name, selected, ImGuiSelectableFlags_None, (ImVec2){0, 0})) {
+                            _golf_editor_select_entity(j);
                         }
                         igPopID();
                     }
@@ -1136,6 +1129,8 @@ static void _golf_editor_entities_tab(void) {
 
     if (igButton("Create Model Entity", (ImVec2){0, 0})) {
         golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
+
+        float uv_scale = 1.0f;
 
         golf_lightmap_section_t lightmap_section;
         {
@@ -1154,7 +1149,7 @@ static void _golf_editor_entities_tab(void) {
         golf_movement_t movement;
         movement = golf_movement_none();
 
-        golf_entity_t entity = golf_entity_model("Model", transform, "data/models/cube.obj", lightmap_section, movement);
+        golf_entity_t entity = golf_entity_model("Model", transform, "data/models/cube.obj", uv_scale, lightmap_section, movement);
         _vec_push_and_fix_actions(&editor.level->entities, entity, NULL);
         _golf_editor_commit_entity_create_action();
     }
@@ -1829,6 +1824,10 @@ void golf_editor_update(float dt) {
                     igPopItemWidth();
                     igTreePop();
                 }
+                if (igTreeNode_Str("Renderer")) {
+                    igCheckbox("GI On", &editor.renderer.gi_on);
+                    igTreePop();
+                }
                 igEndPopup();
             }
             if (igIsItemHovered(ImGuiHoveredFlags_None)) {
@@ -2191,6 +2190,7 @@ void golf_editor_update(float dt) {
 
             if (entity->type == MODEL_ENTITY) {
                 _golf_editor_file_picker("Model", GOLF_DATA_MODEL, entity->model.model_path, &entity->model.model);
+                _golf_editor_undoable_igInputFloat("UV Scale", &entity->model.uv_scale, "Modify model uv scale");
             }
 
             golf_transform_t *transform = golf_entity_get_transform(entity);

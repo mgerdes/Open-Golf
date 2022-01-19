@@ -31,6 +31,7 @@ void main() {
 @fs environment_material_fs
 uniform environment_material_fs_params {
     float lightmap_texture_a;
+    float uv_scale;
 };
 
 uniform sampler2D environment_material_texture;
@@ -47,7 +48,7 @@ out vec4 g_frag_color;
 void main() {
     float gi0 = (1 - lightmap_texture_a) * texture(environment_material_lightmap_texture0, frag_lightmap_uv).x; 
     float gi1 = lightmap_texture_a * texture(environment_material_lightmap_texture1, frag_lightmap_uv).x; 
-    vec3 color = texture(environment_material_texture, frag_texturecoord).xyz; 
+    vec3 color = texture(environment_material_texture, uv_scale * frag_texturecoord).xyz; 
     color = color + 0.001 * (frag_normal.xyz + frag_position.xyz);
     g_frag_color = vec4((gi0 + gi1) * color, 1.0);
     //g_frag_color *= 0.001;

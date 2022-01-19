@@ -13,5 +13,6 @@
     "data/models/sphere.obj",
     "data/models/ui_sprite_square.obj",
     "data/models/editor/ball_start.obj",
-    "data/textures/fallback.png"
+    "data/textures/fallback.png",
+    "data/textures/colors/white.png"
 ]

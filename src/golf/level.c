@@ -786,6 +786,7 @@ bool golf_level_save(golf_level_t *level, const char *path) {
                 golf_model_entity_t *model = &entity->model;
                 json_object_set_string(json_entity_obj, "type", "model");
                 json_object_set_string(json_entity_obj, "model", model->model_path);
+                json_object_set_number(json_entity_obj, "uv_scale", model->uv_scale);
                 break;
             }
             case BALL_START_ENTITY: {
@@ -802,15 +803,6 @@ bool golf_level_save(golf_level_t *level, const char *path) {
             }
             case GROUP_ENTITY: {
                 json_object_set_string(json_entity_obj, "type", "group");
-
-                JSON_Value *json_child_idxs_val = json_value_init_array();
-                JSON_Array *json_child_idxs_arr = json_value_get_array(json_child_idxs_val);
-                for (int i = 0; i < entity->group.child_idxs.length; i++) {
-                    int idx = entity->group.child_idxs.data[i];
-                    int saved_idx = entity_saved_idx.data[idx];
-                    json_array_append_number(json_child_idxs_arr, (int)saved_idx);
-                }
-                json_object_set_value(json_entity_obj, "child_idxs", json_child_idxs_val);
                 break;
             }
         }
@@ -954,6 +946,8 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
 
             const char *model_path = json_object_get_string(obj, "model");
 
+            float uv_scale = json_object_get_number(obj, "uv_scale");
+
             golf_lightmap_section_t lightmap_section;
             _golf_json_object_get_lightmap_section(obj, "lightmap_section", &lightmap_section);
 
@@ -961,7 +955,7 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
             _golf_json_object_get_movement(obj, "movement", &movement);
 
             golf_data_load(model_path);
-            entity = golf_entity_model(name, transform, model_path, lightmap_section, movement);
+            entity = golf_entity_model(name, transform, model_path, uv_scale, lightmap_section, movement);
             valid_entity = true;
         }
         else if (type && strcmp(type, "ball-start") == 0) {
@@ -999,12 +993,6 @@ bool golf_level_load(golf_level_t *level, const char *path, char *data, int data
             _golf_json_object_get_transform(obj, "transform", &transform);
 
             entity = golf_entity_group(name, transform);
-
-            JSON_Array *json_child_idxs_arr = json_object_get_array(obj, "child_idxs");
-            for (int i = 0; i < (int)json_array_get_count(json_child_idxs_arr); i++)  {
-                int idx = (int)json_array_get_number(json_child_idxs_arr, i);
-                vec_push(&entity.group.child_idxs, idx);
-            }
 
             valid_entity = true;
         }
@@ -1087,7 +1075,7 @@ bool golf_level_get_lightmap_image(golf_level_t *level, const char *lightmap_nam
     return false;
 }
 
-golf_entity_t golf_entity_model(const char *name, golf_transform_t transform, const char *model_path, golf_lightmap_section_t lightmap_section, golf_movement_t movement) {
+golf_entity_t golf_entity_model(const char *name, golf_transform_t transform, const char *model_path, float uv_scale, golf_lightmap_section_t lightmap_section, golf_movement_t movement) {
     golf_entity_t entity;
     entity.active = true;
     entity.parent_idx = -1;
@@ -1096,6 +1084,7 @@ golf_entity_t golf_entity_model(const char *name, golf_transform_t transform, co
     entity.model.transform = transform;
     snprintf(entity.model.model_path, GOLF_FILE_MAX_PATH, "%s", model_path);
     entity.model.model = golf_data_get_model(model_path);
+    entity.model.uv_scale = uv_scale;
     entity.model.lightmap_section = lightmap_section;
     entity.model.movement = movement;
     return entity;
@@ -1140,7 +1129,6 @@ golf_entity_t golf_entity_group(const char *name, golf_transform_t transform) {
     entity.parent_idx = -1;
     entity.type = GROUP_ENTITY;
     snprintf(entity.name, GOLF_MAX_NAME_LEN, "%s", name);
-    vec_init(&entity.group.child_idxs, "entity_group");
     entity.group.transform = transform;
     return entity;
 }
