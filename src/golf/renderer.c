@@ -24,8 +24,8 @@
 static golf_renderer_t renderer;
 
 static void _set_ui_proj_mat(vec2 pos_offset) {
-    float fb_width = (float) 1280;
-    float fb_height = (float) 720;
+    float fb_width = (float) 1920;
+    float fb_height = (float) 1080;
     float w_width = (float) sapp_width();
     float w_height = (float) sapp_height();
     float w_fb_width = w_width;
@@ -543,7 +543,7 @@ static void _draw_ui_scroll_list_begin(golf_ui_scroll_list_t scroll_list) {
 }
 
 static void _draw_ui_scroll_list_end(void) {
-    sg_apply_scissor_rectf(0, 0, 1280, 720, false);
+    sg_apply_scissor_rectf(0, 0, 1920, 1080, false);
 }
 
 static void _draw_ui(void) {
