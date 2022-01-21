@@ -110,6 +110,7 @@ static void frame(void) {
         golf_ui_init();
         golf_renderer_init();
         golf_editor_init();
+        golf_debug_console_init();
 
         inited = true;
     }
@@ -127,15 +128,20 @@ static void frame(void) {
         simgui_new_frame(sapp_width(), sapp_height(), dt);
     }
 
-    golf_data_update(dt);
-
+    golf_inputs_begin_frame();
     {
-        golf_renderer_set_screen_size(V2(sapp_width(), sapp_height()));
-        golf_inputs_begin_frame();
+        golf_data_update(dt);
         golf_editor_update(dt);
-        golf_renderer_draw_editor();
-        golf_inputs_end_frame();
+        golf_debug_console_update(dt);
     }
+    {
+        golf_editor_t *editor = golf_editor_get();
+        golf_renderer_set_render_size(editor->viewport_size);
+        golf_renderer_set_viewport(editor->viewport_pos, editor->viewport_size);
+        golf_renderer_update();
+        golf_renderer_draw_editor();
+    }
+    golf_inputs_end_frame();
 
     {
         sg_pass_action imgui_pass_action = {

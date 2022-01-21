@@ -45,13 +45,12 @@ static void frame(void) {
 
     float dt = (float) stm_sec(stm_laptime(&last_time));
     if (!inited) {
-        golf_log_init();
         golf_data_init();
-
         golf_inputs_init();
         golf_game_init();
         golf_ui_init();
         golf_renderer_init();
+        golf_debug_console_init();
         inited = true;
 
         golf_data_load("data/shaders/ui_sprite.glsl");
@@ -82,6 +81,9 @@ static void frame(void) {
     golf_data_update(dt);
 
     {
+        golf_renderer_set_viewport(V2(0, 0), V2(sapp_width(), sapp_height()));
+        golf_renderer_update();
+
         golf_inputs_begin_frame();
         golf_game_update(dt);
         golf_ui_update(dt);
@@ -116,13 +118,15 @@ static void event(const sapp_event *event) {
 }
 
 sapp_desc sokol_main(int argc, char *argv[]) {
+    golf_alloc_init();
+    golf_log_init();
     return (sapp_desc){
         .init_cb = init,
             .frame_cb = frame,
             .cleanup_cb = cleanup,
             .event_cb = event,
-            .width = 1280/2,
-            .height = 720/2,
+            .width = 1280,
+            .height = 720,
             .window_title = "Minigolf",
             .enable_clipboard = true,
             .clipboard_size = 1024,

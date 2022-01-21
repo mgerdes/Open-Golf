@@ -1290,9 +1290,8 @@ void golf_editor_update(float dt) {
         }
 
         ImGuiDockNode *central_node = igDockBuilderGetCentralNode(dock_main_id);
-        vec2 vp_pos = V2(central_node->Pos.x, central_node->Pos.y);
-        vec2 vp_size = V2(central_node->Size.x, central_node->Size.y);
-        golf_renderer_set_viewport(vp_pos, vp_size);
+        editor.viewport_pos = V2(central_node->Pos.x, central_node->Pos.y);
+        editor.viewport_size = V2(central_node->Size.x, central_node->Size.y);
     }
 
     for (int i = 0; i < editor.selected_idxs.length; i++) {
@@ -1394,7 +1393,7 @@ void golf_editor_update(float dt) {
 
                     vec3 p = vec3_apply_mat4(geo->points.data[i].position, 1, model_mat);
                     vec2 p_screen = golf_renderer_world_to_screen(p);
-                    vec3 p_screen3 = V3(p_screen.x, renderer->screen_size.y - p_screen.y, 0);
+                    vec3 p_screen3 = V3(p_screen.x, renderer->window_size.y - p_screen.y, 0);
                     if (point_inside_box(p_screen3, box_center, box_half_lengths)) {
                         vec_push(&editor.select_box.hovered_entities, golf_edit_mode_entity_point(i));
                     }
@@ -1473,10 +1472,10 @@ void golf_editor_update(float dt) {
                 }
 
                 {
-                    ImVec2 im_p0 = (ImVec2){p0.x, renderer->screen_size.y - p0.y};
-                    ImVec2 im_p1 = (ImVec2){p0.x, renderer->screen_size.y - p1.y};
-                    ImVec2 im_p2 = (ImVec2){p1.x, renderer->screen_size.y - p1.y};
-                    ImVec2 im_p3 = (ImVec2){p1.x, renderer->screen_size.y - p0.y};
+                    ImVec2 im_p0 = (ImVec2){p0.x, renderer->window_size.y - p0.y};
+                    ImVec2 im_p1 = (ImVec2){p0.x, renderer->window_size.y - p1.y};
+                    ImVec2 im_p2 = (ImVec2){p1.x, renderer->window_size.y - p1.y};
+                    ImVec2 im_p3 = (ImVec2){p1.x, renderer->window_size.y - p0.y};
                     ImU32 im_col = igGetColorU32_Vec4((ImVec4){1, 1, 1, 1});
                     float radius = 1;
                     ImDrawList *draw_list = igGetWindowDrawList();

@@ -38,6 +38,10 @@ void golf_debug_console_update(float dt) {
                     golf_data_debug_console_tab();
                     igEndTabItem();
                 }
+                if (igBeginTabItem("Renderer", NULL, ImGuiTabItemFlags_None)) {
+                    golf_renderer_debug_console_tab();
+                    igEndTabItem();
+                }
                 igEndTabBar();
             }
             igEnd();

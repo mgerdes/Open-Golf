@@ -20,12 +20,13 @@
 #include "golf/shaders/solid_color_material.glsl.h"
 #include "golf/shaders/texture_material.glsl.h"
 #include "golf/shaders/ui_sprite.glsl.h"
+#include "golf/shaders/render_image.glsl.h"
 
 static golf_renderer_t renderer;
 
 static void _set_ui_proj_mat(vec2 pos_offset) {
-    float fb_width = (float) 1920;
-    float fb_height = (float) 1080;
+    float fb_width = (float) 1280;
+    float fb_height = (float) 720;
     float w_width = (float) sapp_width();
     float w_height = (float) sapp_height();
     float w_fb_width = w_width;
@@ -53,6 +54,30 @@ void golf_renderer_init(void) {
     golf_data_load("data/shaders/solid_color_material.glsl");
     golf_data_load("data/shaders/texture_material.glsl");
     golf_data_load("data/shaders/ui_sprite.glsl");
+
+    {
+        renderer.window_size = V2(0, 0);
+        renderer.viewport_pos = V2(0, 0);
+        renderer.viewport_size = V2(0, 0);
+        renderer.render_size = V2(0, 0);
+        renderer.render_pass_size = V2(0, 0);
+    }
+
+    {
+        golf_shader_t *shader = golf_data_get_shader("data/shaders/render_image.glsl");
+        sg_pipeline_desc pipeline_desc = {
+            .shader = shader->sg_shader,
+            .layout = {
+                .attrs = {
+                    [ATTR_render_image_vs_position] 
+                        = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                    [ATTR_render_image_vs_texture_coord] 
+                        = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
+                },
+            },
+        };
+        renderer.render_image_pipeline = sg_make_pipeline(&pipeline_desc);
+    }
 
     {
         golf_shader_t *shader = golf_data_get_shader("data/shaders/diffuse_color_material.glsl");
@@ -257,13 +282,75 @@ void golf_renderer_init(void) {
     renderer.cam_up = V3(0, 1, 0);
 }
 
-void golf_renderer_set_screen_size(vec2 size) {
-    renderer.screen_size = size;
-}
-
 void golf_renderer_set_viewport(vec2 pos, vec2 size) {
     renderer.viewport_pos = pos;
     renderer.viewport_size = size;
+}
+
+void golf_renderer_set_render_size(vec2 size) {
+    renderer.render_size = size;
+}
+
+void golf_renderer_update(void) {
+    renderer.window_size = V2(sapp_width(), sapp_height());
+
+    if (!renderer.render_pass_inited || !vec2_equal(renderer.render_size, renderer.render_pass_size)) {
+        renderer.render_pass_size = renderer.render_size;
+
+        if (renderer.render_pass_inited) {
+            sg_destroy_image(renderer.render_pass_image);
+            sg_destroy_image(renderer.render_pass_depth_image);
+            sg_destroy_pass(renderer.render_pass);
+        }
+
+        sg_image_desc render_pass_image_desc = {
+            .render_target = true,
+            .width = renderer.render_size.x,
+            .height = renderer.render_size.y,
+            .pixel_format = SG_PIXELFORMAT_RGBA8,
+            .min_filter = SG_FILTER_LINEAR,
+            .mag_filter = SG_FILTER_LINEAR,
+        };
+        renderer.render_pass_image = sg_make_image(&render_pass_image_desc);
+
+        sg_image_desc render_pass_depth_image_desc = {
+            .render_target = true,
+            .width = renderer.render_size.x,
+            .height = renderer.render_size.y,
+            .pixel_format = SG_PIXELFORMAT_DEPTH_STENCIL,
+            .min_filter = SG_FILTER_LINEAR,
+            .mag_filter = SG_FILTER_LINEAR,
+        };
+        renderer.render_pass_depth_image = sg_make_image(&render_pass_depth_image_desc);
+
+        sg_pass_desc render_pass_desc = {
+            .color_attachments[0] = {
+                .image = renderer.render_pass_image,
+            },
+            .depth_stencil_attachment = {
+              .image = renderer.render_pass_depth_image  
+            },
+        };
+        renderer.render_pass = sg_make_pass(&render_pass_desc);
+
+        renderer.render_pass_inited = true;
+    }
+
+    {
+        float theta = renderer.cam_inclination_angle;
+        float phi = renderer.cam_azimuth_angle;
+        renderer.cam_dir.x = sinf(theta) * cosf(phi);
+        renderer.cam_dir.y = cosf(theta);
+        renderer.cam_dir.z = sinf(theta) * sinf(phi);
+
+        float near = 0.1f;
+        float far = 150.0f;
+        renderer.proj_mat = mat4_perspective_projection(66.0f,
+                renderer.viewport_size.x / renderer.viewport_size.y, near, far);
+        renderer.view_mat = mat4_look_at(renderer.cam_pos,
+                vec3_add(renderer.cam_pos, renderer.cam_dir), renderer.cam_up);
+        renderer.proj_view_mat = mat4_multiply(renderer.proj_mat, renderer.view_mat);
+    }
 }
 
 static void _draw_ui_text(golf_ui_text_t text) {
@@ -557,6 +644,8 @@ static void _draw_ui(void) {
             },
         };
         sg_begin_default_pass(&action, sapp_width(), sapp_height());
+        sg_apply_viewportf(renderer.viewport_pos.x, renderer.viewport_pos.y, 
+                renderer.viewport_size.x, renderer.viewport_size.y, true);
 
         sg_apply_pipeline(renderer.ui_sprites_pipeline);
     }
@@ -821,31 +910,13 @@ void golf_renderer_draw_editor(void) {
     golf_editor_t *editor = golf_editor_get();
     golf_config_t *editor_cfg = golf_data_get_config("data/config/editor.cfg");
 
-    {
-        float theta = renderer.cam_inclination_angle;
-        float phi = renderer.cam_azimuth_angle;
-        renderer.cam_dir.x = sinf(theta) * cosf(phi);
-        renderer.cam_dir.y = cosf(theta);
-        renderer.cam_dir.z = sinf(theta) * sinf(phi);
-
-        float near = 0.1f;
-        float far = 150.0f;
-        renderer.proj_mat = mat4_perspective_projection(66.0f,
-                renderer.viewport_size.x / renderer.viewport_size.y, near, far);
-        renderer.view_mat = mat4_look_at(renderer.cam_pos,
-                vec3_add(renderer.cam_pos, renderer.cam_dir), renderer.cam_up);
-        renderer.proj_view_mat = mat4_multiply(renderer.proj_mat, renderer.view_mat);
-    }
-
     sg_pass_action action = {
         .colors[0] = {
             .action = SG_ACTION_DONTCARE,
             .value = { 0.529f, 0.808f, 0.922f, 1.0f },
         },
     };
-    sg_begin_default_pass(&action, sapp_width(), sapp_height());
-    sg_apply_viewportf(renderer.viewport_pos.x, renderer.viewport_pos.y, 
-            renderer.viewport_size.x, renderer.viewport_size.y, true);
+    sg_begin_pass(renderer.render_pass, &action);
 
     for (int i = 0; i < editor->level->entities.length; i++) {
         golf_entity_t *entity = &editor->level->entities.data[i];
@@ -1060,6 +1131,25 @@ void golf_renderer_draw_editor(void) {
     }
 
     sg_end_pass();
+
+    {
+        sg_begin_default_pass(&action, sapp_width(), sapp_height());
+        sg_apply_viewportf(renderer.viewport_pos.x, renderer.viewport_pos.y, 
+                renderer.viewport_size.x, renderer.viewport_size.y, true);
+        sg_apply_pipeline(renderer.render_image_pipeline);
+
+        golf_model_t *square = golf_data_get_model("data/models/render_image_square.obj");
+        sg_bindings bindings = {
+            .vertex_buffers[ATTR_render_image_vs_position] = square->sg_positions_buf,
+            .vertex_buffers[ATTR_render_image_vs_texture_coord] = square->sg_texcoords_buf,
+            .fs_images[SLOT_render_image_texture] = renderer.render_pass_image,
+        };
+        sg_apply_bindings(&bindings);
+
+        sg_draw(0, square->positions.length, 1);
+
+        sg_end_pass();
+    }
 }
 
 vec2 golf_renderer_world_to_screen(vec3 pos) {
@@ -1086,4 +1176,16 @@ vec3 golf_renderer_screen_to_world(vec3 screen_point) {
     vec4 screen = V4(screen_point.x * w, screen_point.y * w, screen_point.z * w, w);
     vec4 world = vec4_apply_mat(screen, mat4_inverse(renderer.proj_view_mat));
     return V3(world.x, world.y, world.z);
+}
+
+void golf_renderer_debug_console_tab(void) {
+    igText("Window size: <%.3f, %.3f>", renderer.window_size.x, renderer.window_size.y); 
+    igText("Viewport Pos: <%.3f, %.3f>", renderer.viewport_pos.x, renderer.viewport_pos.y); 
+    igText("Viewport Size: <%.3f, %.3f>", renderer.viewport_size.x, renderer.viewport_size.y); 
+    igText("Render Size: <%.3f, %.3f>", renderer.render_size.x, renderer.render_size.y); 
+    igText("Cam Pos: <%.3f, %.3f, %.3f>", renderer.cam_pos.x, renderer.cam_pos.y, renderer.cam_pos.z); 
+    igText("Cam Dir: <%.3f, %.3f, %.3f>", renderer.cam_dir.x, renderer.cam_dir.y, renderer.cam_dir.z); 
+    igText("Cam Up: <%.3f, %.3f, %.3f>", renderer.cam_up.x, renderer.cam_up.y, renderer.cam_up.z); 
+    igText("Cam Inclination: %.3f", renderer.cam_inclination_angle); 
+    igText("Cam Azimuth: %.3f", renderer.cam_azimuth_angle); 
 }

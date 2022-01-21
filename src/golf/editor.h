@@ -106,6 +106,7 @@ typedef struct golf_editor {
 
     bool open_save_as_popup;
     vec_golf_entity_t copied_entities;
+    vec2 viewport_pos, viewport_size;
 } golf_editor_t;
 
 golf_editor_t *golf_editor_get(void);
