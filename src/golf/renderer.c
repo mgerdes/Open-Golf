@@ -282,6 +282,35 @@ void golf_renderer_init(void) {
     renderer.cam_up = V3(0, 1, 0);
 }
 
+void golf_renderer_begin_frame(float dt) {
+    sg_pass_action action = {
+        .colors[0] = {
+            .action = SG_ACTION_CLEAR,
+            .value = { 0.0f, 0.0f, 0.0f, 1.0f },
+        },
+    };
+    sg_begin_default_pass(&action, sapp_width(), sapp_height());
+    sg_end_pass();
+    simgui_new_frame(sapp_width(), sapp_height(), dt);
+}
+
+void golf_renderer_end_frame(void) {
+    sg_pass_action imgui_pass_action = {
+        .colors[0] = {
+            .action = SG_ACTION_DONTCARE,
+        },
+        .depth = {
+            .action = SG_ACTION_CLEAR,
+            .value = 1.0f,
+
+        },
+    };
+    sg_begin_default_pass(&imgui_pass_action, sapp_width(), sapp_height());
+    simgui_render();
+    sg_end_pass();
+    sg_commit();
+}
+
 void golf_renderer_set_viewport(vec2 pos, vec2 size) {
     renderer.viewport_pos = pos;
     renderer.viewport_size = size;
@@ -912,7 +941,7 @@ void golf_renderer_draw_editor(void) {
 
     sg_pass_action action = {
         .colors[0] = {
-            .action = SG_ACTION_DONTCARE,
+            .action = SG_ACTION_CLEAR,
             .value = { 0.529f, 0.808f, 0.922f, 1.0f },
         },
     };

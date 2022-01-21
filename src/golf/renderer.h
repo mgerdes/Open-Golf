@@ -30,6 +30,8 @@ typedef struct golf_renderer {
 
 golf_renderer_t *golf_renderer_get(void);
 void golf_renderer_init(void);
+void golf_renderer_begin_frame(float dt);
+void golf_renderer_end_frame(void);
 void golf_renderer_set_viewport(vec2 pos, vec2 size);
 void golf_renderer_set_render_size(vec2 size);
 void golf_renderer_update(void);

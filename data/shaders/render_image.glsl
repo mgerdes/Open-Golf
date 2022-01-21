@@ -11,7 +11,7 @@ out vec2 frag_texture_coord;
 
 void main() {
     frag_texture_coord = texture_coord;
-    gl_Position = vec4(position, 0);
+    gl_Position = vec4(position, -1);
 }
 @end
 

@@ -65,49 +65,23 @@ static void frame(void) {
         golf_data_load("data/config/ui/main_menu.cfg");
     }
 
+
+    golf_renderer_begin_frame(dt);
+    golf_inputs_begin_frame();
     {
-        sg_pass_action action = {
-            .colors[0] = {
-                .action = SG_ACTION_CLEAR,
-                .value = { 0.0f, 0.0f, 0.0f, 1.0f },
-            },
-        };
-        sg_begin_default_pass(&action, sapp_width(), sapp_height());
-        sg_end_pass();
-
-        simgui_new_frame(sapp_width(), sapp_height(), dt);
-    }
-
-    golf_data_update(dt);
-
-    {
-        golf_renderer_set_viewport(V2(0, 0), V2(sapp_width(), sapp_height()));
-        golf_renderer_update();
-
-        golf_inputs_begin_frame();
+        golf_data_update(dt);
         golf_game_update(dt);
         golf_ui_update(dt);
-        golf_renderer_draw();
         golf_debug_console_update(dt);
-        golf_inputs_end_frame();
     }
-
     {
-        sg_pass_action imgui_pass_action = {
-            .colors[0] = {
-                .action = SG_ACTION_DONTCARE,
-            },
-            .depth = {
-                .action = SG_ACTION_CLEAR,
-                .value = 1.0f,
-
-            },
-        };
-        sg_begin_default_pass(&imgui_pass_action, sapp_width(), sapp_height());
-        simgui_render();
-        sg_end_pass();
-        sg_commit();
+        golf_renderer_set_render_size(V2(sapp_width(), sapp_height()));
+        golf_renderer_set_viewport(V2(0, 0), V2(sapp_width(), sapp_height()));
+        golf_renderer_update();
+        golf_renderer_draw();
     }
+    golf_inputs_end_frame();
+    golf_renderer_end_frame();
 
     fflush(stdout);
 }
