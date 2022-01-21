@@ -9,6 +9,7 @@
 #include "stb/stb_image.h"
 #include "sokol/sokol_app.h"
 #include "sokol/sokol_gfx.h"
+#include "sokol/sokol_imgui.h"
 #include "golf/editor.h"
 #include "golf/log.h"
 #include "golf/maths.h"
@@ -1033,6 +1034,7 @@ void golf_renderer_draw_editor(void) {
             case MODEL_ENTITY:
             case BALL_START_ENTITY:
             case GEO_ENTITY:
+            case GROUP_ENTITY:
                 break;
             case HOLE_ENTITY: {
                 golf_transform_t transform = entity->hole.transform;
@@ -1065,6 +1067,7 @@ void golf_renderer_draw_editor(void) {
             case MODEL_ENTITY:
             case BALL_START_ENTITY:
             case GEO_ENTITY:
+            case GROUP_ENTITY:
                 break;
             case HOLE_ENTITY: {
                 golf_transform_t transform = entity->hole.transform;
@@ -1117,7 +1120,7 @@ void golf_renderer_draw_editor(void) {
                 golf_geo_point_t p1 = geo->points.data[idx1];
                 vec3 pos0 = vec3_apply_mat4(p0.position, 1, model_mat);
                 vec3 pos1 = vec3_apply_mat4(p1.position, 1, model_mat);
-                vec3 pos_avg = vec3_scale(vec3_add(pos0, pos1), 0.5f);
+                //vec3 pos_avg = vec3_scale(vec3_add(pos0, pos1), 0.5f);
                 float sz = CFG_NUM(editor_cfg, "edit_mode_line_size");
                 vec3 color = CFG_VEC3(editor_cfg, "edit_mode_selectable_color");
                 golf_edit_mode_entity_t entity = golf_edit_mode_entity_line(idx0, idx1);

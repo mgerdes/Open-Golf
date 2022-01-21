@@ -1210,7 +1210,7 @@ void golf_editor_update(float dt) {
                 editor.file_picker.open_popup = true;
                 editor.file_picker.type = GOLF_DATA_LEVEL;
                 editor.file_picker.path = editor.level_path;
-                editor.file_picker.data = &editor.level;
+                editor.file_picker.data = (void**)&editor.level;
             }
             if (igMenuItem_Bool("Save", NULL, false, true)) {
                 golf_log_note("Saving...");
@@ -1900,7 +1900,7 @@ void golf_editor_update(float dt) {
 
                     switch (material->type) {
                         case GOLF_MATERIAL_TEXTURE: {
-                            _golf_editor_file_picker("Texture", GOLF_DATA_TEXTURE, material->texture_path, &material->texture);
+                            _golf_editor_file_picker("Texture", GOLF_DATA_TEXTURE, material->texture_path, (void**)&material->texture);
                             break;
                         }
                         case GOLF_MATERIAL_COLOR: {
@@ -1912,7 +1912,7 @@ void golf_editor_update(float dt) {
                             break;
                         }
                         case GOLF_MATERIAL_ENVIRONMENT: {
-                            _golf_editor_file_picker("Texture", GOLF_DATA_TEXTURE, material->texture_path, &material->texture);
+                            _golf_editor_file_picker("Texture", GOLF_DATA_TEXTURE, material->texture_path, (void**)&material->texture);
                             break;
                         }
                     }
@@ -2188,7 +2188,7 @@ void golf_editor_update(float dt) {
             _golf_editor_undoable_igInputText("Name", entity->name, GOLF_MAX_NAME_LEN, &edit_done, NULL, 0, "Modify entity name");
 
             if (entity->type == MODEL_ENTITY) {
-                _golf_editor_file_picker("Model", GOLF_DATA_MODEL, entity->model.model_path, &entity->model.model);
+                _golf_editor_file_picker("Model", GOLF_DATA_MODEL, entity->model.model_path, (void**)&entity->model.model);
                 _golf_editor_undoable_igInputFloat("UV Scale", &entity->model.uv_scale, "Modify model uv scale");
             }
 

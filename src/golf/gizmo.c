@@ -80,7 +80,7 @@ void golf_gizmo_update(golf_gizmo_t *gizmo, ImDrawList *draw_list) {
             vec3 q2 = vec3_add(p2, vec3_scale(axis[i], dist_modifier));
             float s, t;
             vec3 c1, c2;
-            float world_dist = closest_point_ray_ray(p1, q1, p2, q2, &s, &t, &c1, &c2);
+            closest_point_ray_ray(p1, q1, p2, q2, &s, &t, &c1, &c2);
             float screen_dist = vec2_distance(_world_to_screen(c1), _world_to_screen(c2));
             if (t >= 0 && t <= 1.4f && screen_dist < closest_dist) {
                 closest_dist = screen_dist;
@@ -261,7 +261,7 @@ void golf_gizmo_update(golf_gizmo_t *gizmo, ImDrawList *draw_list) {
             vec3 q2 = vec3_add(p2, vec3_scale(axis[i], dist_modifier));
             float s, t;
             vec3 c1, c2;
-            float world_dist = closest_point_ray_ray(p1, q1, p2, q2, &s, &t, &c1, &c2);
+            closest_point_ray_ray(p1, q1, p2, q2, &s, &t, &c1, &c2);
             float screen_dist = vec2_distance(_world_to_screen(c1), _world_to_screen(c2));
             if (t >= 0 && t <= 1.4f && screen_dist < closest_dist) {
                 closest_dist = screen_dist;
