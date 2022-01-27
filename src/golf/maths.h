@@ -18,6 +18,7 @@
 int golf_clampi(int v, int min, int max);
 float golf_clampf(float v, float min, float max);
 float golf_snapf(float v, float s);
+float golf_randf(float min, float max);
 
 typedef struct vec2 {
     float x, y;
@@ -219,11 +220,12 @@ bool rect_2D_contains_point(struct rect_2D rect, vec2 pt);
 bool point_inside_box(vec3 p, vec3 box_center, vec3 box_half_lengths);
 
 void ray_intersect_triangles_all(vec3 ro, vec3 rd, vec3 *points, int num_points, mat4 transform, float *t);
+bool ray_intersect_triangles_with_transform(vec3 ro, vec3 rd, vec3 *points, int num_points, mat4 transform, float *t, int *idx);
 bool ray_intersect_triangles(vec3 ro, vec3 rd, vec3 *points, int num_points, float *t, int *idx);
 bool ray_intersect_spheres(vec3 ro, vec3 rd, vec3 *center, float *radius, int num_spheres, float *t, int *idx);
 bool ray_intersect_segments(vec3 ro, vec3 rd, vec3 *p0, vec3 *p1, float *radius, int num_segments, float *t, int *idx);
 bool ray_intersect_planes(vec3 ro, vec3 rd, vec3 *p, vec3 *n, int num_planes, float *t, int *idx);
-bool ray_intersect_box(vec3 ro, vec3 rd, vec3 box_center, vec3 box_half_lengths, float *t);
+bool ray_intersect_aabb(vec3 ro, vec3 rd, vec3 aabb_min, vec3 aabb_max, float *t);
 void triangles_inside_box(vec3 *triangle_points, int num_triangles, vec3 box_center, vec3 box_half_lengths,
         bool *is_inside);
 void triangles_inside_frustum(vec3 *triangle_points, int num_triangles, vec3 *frustum_corners, bool *is_inside);

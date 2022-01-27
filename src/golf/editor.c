@@ -9,8 +9,10 @@
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "cimgui/cimgui.h"
 #include "IconsFontAwesome5/IconsFontAwesome5.h"
+#include "sokol/sokol_time.h"
 #include "stb/stb_image_write.h"
 #include "golf/alloc.h"
+#include "golf/bvh.h"
 #include "golf/data.h"
 #include "golf/inputs.h"
 #include "golf/log.h"
@@ -2469,11 +2471,8 @@ void golf_editor_update(float dt) {
         vec_deinit(&point_idxs);
     }
     else {
-        vec_vec3_t triangles;
-        vec_init(&triangles, "editor");
-
-        vec_int_t entity_idxs;
-        vec_init(&entity_idxs, "editor");
+        vec_golf_bvh_node_info_t node_infos;
+        vec_init(&node_infos, "editor");
 
         for (int i = 0; i < editor.level->entities.length; i++) {
             golf_entity_t *entity = &editor.level->entities.data[i];
@@ -2483,32 +2482,25 @@ void golf_editor_update(float dt) {
             golf_transform_t *transform = golf_entity_get_transform(entity);
             if (model && transform) {
                 golf_transform_t world_transform = golf_entity_get_world_transform(editor.level, entity);
-                mat4 model_mat = golf_transform_get_model_mat(world_transform);
-                for (int j = 0; j < model->positions.length; j++) {
-                    vec3 p0 = vec3_apply_mat4(model->positions.data[j + 0], 1, model_mat);
-                    vec3 p1 = vec3_apply_mat4(model->positions.data[j + 1], 1, model_mat);
-                    vec3 p2 = vec3_apply_mat4(model->positions.data[j + 2], 1, model_mat);
-                    vec_push(&triangles, p0);
-                    vec_push(&triangles, p1);
-                    vec_push(&triangles, p2);
-                    vec_push(&entity_idxs, i);
-                }
+                vec_push(&node_infos, golf_bvh_node_info(i, model, world_transform));
             }
         }
 
-        editor.hovered_idx = -1;
-        float t = FLT_MAX;
-        int idx = -1;
-        if (ray_intersect_triangles(inputs->mouse_ray_orig, inputs->mouse_ray_dir, triangles.data, triangles.length, &t, &idx)) {
-            editor.hovered_idx = entity_idxs.data[idx];
+        {
+            golf_bvh_construct(&editor.bvh, node_infos);
+            editor.hovered_idx = -1;
+            float t = FLT_MAX;
+            int idx = -1;
+            if (golf_bvh_ray_test(&editor.bvh, inputs->mouse_ray_orig, inputs->mouse_ray_dir, &t, &idx)) {
+                editor.hovered_idx = idx;
+            }
         }
 
         if (!IO->WantCaptureMouse && !editor.mouse_down_in_imgui && inputs->mouse_clicked[SAPP_MOUSEBUTTON_LEFT]) {
             _golf_editor_select_entity(editor.hovered_idx);
         }
 
-        vec_deinit(&triangles);
-        vec_deinit(&entity_idxs);
+        vec_deinit(&node_infos);
     }
 
     if (editor.gi_running) {

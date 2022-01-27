@@ -34,6 +34,7 @@ set(GOLF_BASE_LIBRARIES
 add_library(golf_lib STATIC
     src/golf/alloc.c
     src/golf/base64.c
+    src/golf/bvh.c
     src/golf/config.c
     src/golf/data.c
     src/golf/debug_console.c

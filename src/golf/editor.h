@@ -4,6 +4,7 @@
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "cimgui/cimgui.h"
 #include "cimguizmo/cimguizmo.h"
+#include "golf/bvh.h"
 #include "golf/file.h"
 #include "golf/gi.h"
 #include "golf/gizmo.h"
@@ -49,6 +50,7 @@ typedef struct golf_editor {
 
     bool mouse_down, mouse_down_in_imgui;
 
+    golf_bvh_t bvh;
     int hovered_idx;
     vec_int_t selected_idxs;
 

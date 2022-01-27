@@ -30,6 +30,12 @@ float golf_snapf(float v, float s) {
     return roundf(v / s) * s;
 }
 
+float golf_randf(float min, float max) {
+    float v = (float)rand() / RAND_MAX;
+    v = v * (max - min) + min;
+    return v;
+}
+
 struct ray ray_create(vec3 orig, vec3 dir) {
     struct ray ray;
     ray.orig = orig;
@@ -1127,6 +1133,27 @@ void ray_intersect_triangles_all(vec3 ro, vec3 rd, vec3 *points, int num_points,
     }
 }
 
+bool ray_intersect_triangles_with_transform(vec3 ro, vec3 rd, vec3 *points, int num_points, mat4 transform, float *t, int *idx) { 
+    float min_t = FLT_MAX;  
+
+    for (int i = 0; i < num_points; i += 3) {
+        vec3 tp0 = vec3_apply_mat4(points[i + 0], 1, transform);
+        vec3 tp1 = vec3_apply_mat4(points[i + 1], 1, transform);
+        vec3 tp2 = vec3_apply_mat4(points[i + 2], 1, transform);
+
+        float t0 = FLT_MAX;
+        if (intersect_segment_triangle(ro, vec3_add(ro, rd), tp0, tp1, tp2, &t0)) {
+            if (t0 < min_t) {
+                min_t = t0;
+                *idx = (i / 3);
+            }
+        }
+    }
+
+    *t = min_t;
+    return min_t < FLT_MAX;
+}
+
 bool ray_intersect_triangles(vec3 ro, vec3 rd, vec3 *points, int num_points, float *t, int *idx) {
     float min_t = FLT_MAX;
 
@@ -1213,9 +1240,9 @@ bool ray_intersect_planes(vec3 ro, vec3 rd, vec3 *p, vec3 *n, int num_planes, fl
     return min_t < FLT_MAX;
 }
 
-bool ray_intersect_box(vec3 ro, vec3 rd, vec3 box_center, vec3 box_half_lengths, float *t) {
-    vec3 min = vec3_sub(box_center, box_half_lengths);
-    vec3 max = vec3_add(box_center, box_half_lengths);
+bool ray_intersect_aabb(vec3 ro, vec3 rd, vec3 aabb_min, vec3 aabb_max, float *t) {
+    vec3 min = aabb_min;
+    vec3 max = aabb_max;
 
     float tmin = (min.x - ro.x) / rd.x;
     float tmax = (max.x - ro.x) / rd.x;

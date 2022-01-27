@@ -50,6 +50,7 @@ typedef struct golf_model {
     int sg_size;
     sg_buffer sg_positions_buf, sg_normals_buf, sg_texcoords_buf;
 } golf_model_t;
+typedef vec_t(golf_model_t) vec_golf_model_t;
 void golf_model_init(golf_model_t *model, int size);
 void golf_model_update_buf(golf_model_t *model);
 
