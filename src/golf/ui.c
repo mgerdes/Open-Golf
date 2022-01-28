@@ -6,6 +6,7 @@
 #include "golf/config.h"
 #include "golf/data.h"
 #include "golf/inputs.h"
+#include "golf/json.h"
 #include "golf/log.h"
 
 static golf_ui_t ui;
@@ -20,84 +21,7 @@ static vec2 _ui_pos(vec2 pos) {
     }
 }
 
-static void _golf_ui_pixel_pack_square(const char *pixel_pack_name, const char *square_name, vec2 pos, vec2 size, float tile_screen_size, vec4 overlay_color) {
-    golf_ui_pixel_pack_square_t pixel_pack_square;
-    pixel_pack_square.pixel_pack = golf_data_get_pixel_pack(pixel_pack_name);
-    pixel_pack_square.square = map_get(&pixel_pack_square.pixel_pack->squares, square_name);
-    if (!pixel_pack_square.square) {
-        golf_log_warning("Invalid pixel pack square %s in pixel pack %s", square_name, pixel_pack_name);
-        return;
-    }
-    pixel_pack_square.pos = _ui_pos(pos);
-    pixel_pack_square.size = size;
-    pixel_pack_square.tile_screen_size = tile_screen_size;
-    pixel_pack_square.overlay_color = overlay_color;
-
-    golf_ui_entity_t entity;
-    entity.type = GOLF_UI_PIXEL_PACK_SQUARE;
-    entity.pixel_pack_square = pixel_pack_square;
-    vec_push(&ui.entities, entity);
-}
-
-static void _golf_ui_pixel_pack_icon(const char *pixel_pack_name, const char *icon_name, vec2 pos, vec2 size, vec4 overlay_color) {
-    golf_ui_pixel_pack_icon_t pixel_pack_icon;
-    pixel_pack_icon.pixel_pack = golf_data_get_pixel_pack(pixel_pack_name);
-    pixel_pack_icon.icon = map_get(&pixel_pack_icon.pixel_pack->icons, icon_name);
-    if (!pixel_pack_icon.icon) {
-        golf_log_warning("Invalid pixel pack icon %s in pixel pack %s", icon_name, pixel_pack_name);
-        return;
-    }
-    pixel_pack_icon.pos = _ui_pos(pos);
-    pixel_pack_icon.size = size;
-    pixel_pack_icon.overlay_color = overlay_color;
-
-    golf_ui_entity_t entity;
-    entity.type = GOLF_UI_PIXEL_PACK_ICON;
-    entity.pixel_pack_icon = pixel_pack_icon;
-    vec_push(&ui.entities, entity);
-}
-
-static void _golf_ui_text(const char *font, vec2 pos, float size, int horiz_align, int vert_align, vec4 color, const char *format, ...) {
-    golf_ui_text_t text;
-    text.font = golf_data_get_font(font);
-    text.pos = _ui_pos(pos);
-    text.size = size;
-    text.horiz_align = horiz_align;
-    text.vert_align = vert_align;
-    text.color = color;
-
-    va_list args; 
-    va_start(args, format); 
-    int len = vsnprintf(NULL, 0, format, args);
-    va_end(args);
-
-    text.string = golf_alloc(len + 1);
-    vsnprintf(text.string, len + 1, format, args);
-
-    golf_ui_entity_t entity;
-    entity.type = GOLF_UI_TEXT;
-    entity.text = text;
-    vec_push(&ui.entities, entity);
-}
-
-static golf_ui_button_state_t _golf_ui_button(vec2 pos, vec2 size) {
-    pos = _ui_pos(pos);
-
-    vec2 mp = inputs->mouse_pos;
-    if (mp.x > pos.x - 0.5f * size.x && mp.x < pos.x + 0.5f * size.x &&
-            mp.y > pos.y - 0.5f * size.y && mp.y < pos.y + 0.5f * size.y) {
-        if (inputs->mouse_clicked[SAPP_MOUSEBUTTON_LEFT]) {
-            return GOLF_UI_BUTTON_CLICKED;
-        }
-        else {
-            return GOLF_UI_BUTTON_DOWN;
-        }
-    }
-    else {
-        return GOLF_UI_BUTTON_UP;
-    }
-}
-
+/*
 static void _golf_ui_scroll_list_begin(vec2 pos, vec2 size, float total_height, const char *bar_pixel_pack_name, float bar_width, float bar_x,
         float inner_bar_width, float inner_bar_height, float inner_bar_pad) {
     if (ui.has_context) {
@@ -169,13 +93,107 @@ static void _golf_ui_scroll_list_begin(vec2 pos, vec2 size, float total_height, 
     entity.scroll_list = scroll_list;
     vec_push(&ui.entities, entity);
 }
+*/
 
+/*
 static void _golf_ui_scroll_list_end(void) {
     ui.has_context = false;
 
     golf_ui_entity_t entity;
     entity.type = GOLF_UI_SCROLL_LIST_END;
     vec_push(&ui.entities, entity);
+}
+*/
+
+bool _golf_ui_layout_parse_entity(JSON_Object *json_entity_obj, golf_ui_entity_t *entity) {
+    const char *name = json_object_get_string(json_entity_obj, "name");
+    const char *type = json_object_get_string(json_entity_obj, "type");
+    if (!type) {
+        return false;
+    }
+
+    if (strcmp(type, "pixel_pack_square") == 0) {
+        const char *pixel_pack_path = json_object_get_string(json_entity_obj, "pixel_pack");  
+        const char *square_name = json_object_get_string(json_entity_obj, "square");
+        vec2 pos = golf_json_object_get_vec2(json_entity_obj, "pos");
+        vec2 size = golf_json_object_get_vec2(json_entity_obj, "size");
+        float tile_size = (float)json_object_get_number(json_entity_obj, "tile_size");
+
+        golf_ui_pixel_pack_square_t square;
+        square.pixel_pack = golf_data_get_pixel_pack(pixel_pack_path);
+        snprintf(square.square_name, GOLF_MAX_NAME_LEN, "%s", square_name);
+        square.pos = pos;
+        square.size = size;
+        square.tile_size = tile_size;
+        square.overlay_color = V4(0, 0, 0, 0);
+
+        entity->type = GOLF_UI_PIXEL_PACK_SQUARE;
+        entity->pixel_pack_square = square;
+    }
+    else if (strcmp(type, "text") == 0) {
+        const char *font_path = json_object_get_string(json_entity_obj, "font");
+        vec2 pos = golf_json_object_get_vec2(json_entity_obj, "pos");
+        float size = (float)json_object_get_number(json_entity_obj, "size");
+        vec4 color = golf_json_object_get_vec4(json_entity_obj, "color");
+
+        golf_ui_text_t text;
+
+        entity->type = GOLF_UI_TEXT;
+        entity->text = text;
+    }
+    else if (strcmp(type, "button") == 0) {
+        vec2 pos = golf_json_object_get_vec2(json_entity_obj, "pos");
+        vec2 size = golf_json_object_get_vec2(json_entity_obj, "size");
+
+        vec_golf_ui_entity_t up_entities;
+        vec_init(&up_entities, "ui_layout");
+        JSON_Array *up_arr = json_object_get_array(json_entity_obj, "up");
+        for (int i = 0; i < (int)json_array_get_count(up_arr); i++) {
+            JSON_Object *up_entity_obj = json_array_get_object(up_arr, i);
+            golf_ui_entity_t up_entity;
+            if (_golf_ui_layout_parse_entity(up_entity_obj, &up_entity)) {
+                vec_push(&up_entities, up_entity);
+            }
+        }
+
+        vec_golf_ui_entity_t down_entities;
+        vec_init(&down_entities, "ui_layout");
+        JSON_Array *down_arr = json_object_get_array(json_entity_obj, "down");
+        for (int i = 0; i < (int)json_array_get_count(down_arr); i++) {
+            JSON_Object *down_entity_obj = json_array_get_object(down_arr, i);
+            golf_ui_entity_t down_entity;
+            if (_golf_ui_layout_parse_entity(down_entity_obj, &down_entity)) {
+                vec_push(&down_entities, down_entity);
+            }
+        }
+    }
+    else {
+        return false;
+    }
+}
+
+bool golf_ui_layout_load(golf_ui_layout_t *layout, const char *path, char *data, int data_len) {
+    vec_init(&layout->entities, "ui_layout");
+
+    JSON_Value *json_val = json_parse_string(data);
+    JSON_Object *json_obj = json_value_get_object(json_val);
+    JSON_Array *json_entities_arr = json_object_get_array(json_obj, "entities");
+    for (int i = 0; i < (int)json_array_get_count(json_entities_arr); i++) {
+        JSON_Object *json_entity_obj = json_array_get_object(json_entities_arr, i);
+
+        golf_ui_entity_t entity;
+        if (_golf_ui_layout_parse_entity(json_entity_obj, &entity)) {
+            vec_push(&layout->entities, entity);
+        }
+    }
+
+    json_value_free(json_val);
+    return true;
+}
+
+bool golf_ui_layout_unload(golf_ui_layout_t *layout) {
+    vec_deinit(&layout->entities);
+    return true;
 }
 
 golf_ui_t *golf_ui_get(void) {
@@ -190,6 +208,7 @@ void golf_ui_init(void) {
 }
 
 void golf_ui_update(float dt) {
+    /*
     for (int i = 0; i < ui.entities.length; i++) {
         golf_ui_entity_t entity = ui.entities.data[i];
         switch (entity.type) {
@@ -346,4 +365,5 @@ void golf_ui_update(float dt) {
 
     if (ui.state == GOLF_UI_MAIN_MENU) {
     }
+    */
 }

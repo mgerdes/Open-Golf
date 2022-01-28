@@ -13,9 +13,9 @@ typedef enum golf_ui_button_state {
 
 typedef struct golf_ui_pixel_pack_square {
     golf_pixel_pack_t *pixel_pack; 
-    golf_pixel_pack_square_t *square;
+    char square_name[GOLF_MAX_NAME_LEN];
     vec2 pos, size;
-    float tile_screen_size;
+    float tile_size;
     vec4 overlay_color;
 } golf_ui_pixel_pack_square_t;
 
@@ -43,12 +43,18 @@ typedef struct golf_ui_context {
     vec2 pos;
 } golf_ui_context_t;
 
+typedef struct golf_ui_button {
+    vec2 pos, size;
+    vec_golf_ui_entity_t up_entities, down_entities;
+} golf_ui_button_t;
+
 typedef enum golf_ui_entity_type {
     GOLF_UI_PIXEL_PACK_SQUARE,
     GOLF_UI_PIXEL_PACK_ICON,
     GOLF_UI_TEXT,
     GOLF_UI_SCROLL_LIST_BEGIN,
     GOLF_UI_SCROLL_LIST_END,
+    GOLF_UI_BUTTON,
 } golf_ui_entity_type_t;
 
 typedef struct golf_ui_entity {
@@ -58,9 +64,17 @@ typedef struct golf_ui_entity {
         golf_ui_pixel_pack_icon_t pixel_pack_icon;
         golf_ui_text_t text;
         golf_ui_scroll_list_t scroll_list;
+        golf_ui_button button;
     };
 } golf_ui_entity_t;
 typedef vec_t(golf_ui_entity_t) vec_golf_ui_entity_t;
+
+typedef struct golf_ui_layout {
+    vec_golf_ui_entity_t entities;
+} golf_ui_layout_t;
+
+bool golf_ui_layout_load(golf_ui_layout_t *layout, const char *path, char *data, int data_len);
+bool golf_ui_layout_unload(golf_ui_layout_t *layout);
 
 typedef enum golf_ui_state {
     GOLF_UI_MAIN_MENU,

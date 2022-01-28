@@ -1,0 +1,59 @@
+{
+    "entities": [
+        {
+            "name": "background",
+            "type": "pixel_pack_square",
+            "pixel_pack": "data/textures/pixel_pack.pixel_pack",
+            "square": "blue_background",
+            "tile_size": 32,
+            "pos": [.5, .5],
+            "size": [.1, .1]
+        },
+        {
+            "name": "main_text",
+            "type": "text",
+            "font": "data/font/FireSans-Bold.ttf",
+            "pos": [.5, .5],
+            "size": 1,
+            "color": [1, 1, 1, 1]
+        },
+        {
+            "name": "play_button",
+            "type": "button",
+            "pos": [.5, .5],
+            "size": [0.05, 0.05],
+            "up": [
+                {
+                    "type": "pixel_pack_square",
+                    "pixel_pack": "data/textures/pixel_pack.pixel_pack",
+                    "square": "blue_button_up",
+                    "tile_size": 16,
+                    "pos": [0, 0],
+                    "size": [1, 1]
+                },
+                {
+                    "type": "text",
+                    "pixel_pack": "data/font/FiraSans-Bold.ttf",
+                    "pos": [.5, .5],
+                    "size": 0.1
+                }
+            ],
+            "down": [
+                {
+                    "type": "pixel_pack_square",
+                    "pixel_pack": "data/textures/pixel_pack.pixel_pack",
+                    "square": "blue_button_down",
+                    "tile_size": 16,
+                    "pos": [0, 0],
+                    "size": [1, 1]
+                },
+                {
+                    "type": "text",
+                    "pixel_pack": "data/font/FiraSans-Bold.ttf",
+                    "pos": [.5, .5],
+                    "size": 0.1
+                }
+            ]
+        }
+    ]
+}

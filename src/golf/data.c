@@ -19,6 +19,7 @@
 #include "golf/maths.h"
 #include "golf/string.h"
 #include "golf/thread.h"
+#include "golf/ui.h"
 
 #include "golf/shaders/diffuse_color_material.glsl.h"
 #include "golf/shaders/environment_material.glsl.h"
@@ -945,6 +946,16 @@ static bool _golf_script_data_unload(void *ptr) {
     return golf_script_unload(script);
 }
 
+static bool _golf_ui_layout_load(void *ptr, const char *path, char *data, int data_len, char *meta_data, int meta_data_len) {
+    golf_ui_layout_t *layout = (golf_ui_layout_t*) ptr;
+    return golf_ui_layout_load(layout, path, data, data_len);
+}
+
+static bool _golf_ui_layout_unload(void *ptr) {
+    golf_ui_layout_t *layout = (golf_ui_layout_t*) ptr;
+    return golf_ui_layout_unload(layout);
+}
+
 //
 // DATA
 //
@@ -1096,6 +1107,15 @@ static _data_loader_t _loaders[] = {
         .data_size = sizeof(golf_pixel_pack_t),
         .load_fn = _golf_pixel_pack_load,
         .unload_fn = _golf_pixel_pack_unload,
+        .import_fn = NULL,
+        .reload_on = true,
+    },
+    {
+        .ext = ".ui",
+        .data_type = GOLF_DATA_UI_LAYOUT,
+        .data_size = sizeof(golf_ui_layout_t),
+        .load_fn = _golf_ui_layout_load,
+        .unload_fn = _golf_ui_layout_unload,
         .import_fn = NULL,
         .reload_on = true,
     },
