@@ -8,6 +8,7 @@
     "data/shaders/texture_material.glsl",
     "data/shaders/render_image.glsl",
     "data/shaders/ui_sprite.glsl",
+    "data/ui/main_menu.ui",
     "data/models/cube.obj",
     "data/models/hole.obj",
     "data/models/hole-cover.obj",

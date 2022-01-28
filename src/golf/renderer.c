@@ -383,6 +383,7 @@ void golf_renderer_update(void) {
     }
 }
 
+/*
 static void _draw_ui_text(golf_ui_text_t text) {
     golf_font_t *font = text.font;
     golf_model_t *square_model = golf_data_get_model("data/models/ui_sprite_square.obj");
@@ -703,10 +704,11 @@ static void _draw_ui(void) {
 
     sg_end_pass();
 }
+*/
 
 void golf_renderer_draw(void) {
     _set_ui_proj_mat(V2(0.0f, 0.0f));
-    _draw_ui();
+    //_draw_ui();
 }
 
 static void _golf_renderer_draw_solid_color_material(golf_model_t *model, int start, int count, mat4 model_mat, golf_material_t material) {

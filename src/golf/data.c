@@ -19,6 +19,7 @@
 #include "golf/maths.h"
 #include "golf/string.h"
 #include "golf/thread.h"
+#include "golf/ui.h"
 
 #include "golf/shaders/diffuse_color_material.glsl.h"
 #include "golf/shaders/environment_material.glsl.h"
@@ -689,7 +690,9 @@ static bool _golf_pixel_pack_load(void *ptr, const char *path, char *data, int d
     JSON_Value *val = json_parse_string(data);
     JSON_Object *obj = json_value_get_object(val);
 
-    pixel_pack->texture = golf_data_get_texture(json_object_get_string(obj, "texture"));
+    const char *texture_path = json_object_get_string(obj, "texture");
+    golf_data_load(texture_path);
+    pixel_pack->texture = golf_data_get_texture(texture_path);
     pixel_pack->tile_size = (float)json_object_get_number(obj, "tile_size");
     pixel_pack->tile_padding = (float)json_object_get_number(obj, "tile_padding");
     map_init(&pixel_pack->icons, "data");
@@ -744,6 +747,16 @@ static bool _golf_pixel_pack_unload(void *ptr) {
     map_deinit(&pixel_pack->icons);
     map_deinit(&pixel_pack->squares);
     return true;
+}
+
+static bool _golf_ui_layout_load(void *ptr, const char *path, char *data, int data_len, char *meta_data, int meta_data_len) {
+    golf_ui_layout_t *layout = (golf_ui_layout_t*) ptr;
+    return golf_ui_layout_load(layout, path, data, data_len);
+}
+
+static bool _golf_ui_layout_unload(void *ptr) {
+    golf_ui_layout_t *layout = (golf_ui_layout_t*) ptr;
+    return golf_ui_layout_unload(layout);
 }
 
 //
@@ -1099,6 +1112,15 @@ static _data_loader_t _loaders[] = {
         .import_fn = NULL,
         .reload_on = true,
     },
+    {
+        .ext = ".ui",
+        .data_type = GOLF_DATA_UI_LAYOUT,
+        .data_size = sizeof(golf_ui_layout_t),
+        .load_fn = _golf_ui_layout_load,
+        .unload_fn = _golf_ui_layout_unload,
+        .import_fn = NULL,
+        .reload_on = true,
+    },
 };
 
 static _data_loader_t *_get_data_loader(const char *ext) {
@@ -1319,6 +1341,9 @@ void golf_data_load(const char *path) {
 
         golf_free(meta_data);
     }
+    else {
+        golf_log_warning("Error loading file %s", path);
+    }
     golf_free(data);
 }
 
@@ -1435,6 +1460,14 @@ golf_script_t *golf_data_get_script(const char *path) {
     golf_data_t *data_file = golf_data_get_file(path);
     if (!data_file || data_file->type != GOLF_DATA_SCRIPT) {
         golf_log_error("Could not find script file %s", path);
+    }
+    return data_file->ptr;
+}
+
+golf_ui_layout_t *golf_data_get_ui_layout(const char *path) {
+    golf_data_t *data_file = golf_data_get_file(path);
+    if (!data_file || data_file->type != GOLF_DATA_UI_LAYOUT) {
+        golf_log_error("Could not find ui layout file %s", path);
     }
     return data_file->ptr;
 }

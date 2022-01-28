@@ -1,0 +1,26 @@
+{
+	"entities": [
+		{
+			"name": "background",
+			"type": "pixel_pack_square",
+			"pixel_pack": "data/textures/pixel_pack.pixel_pack",
+			"square": "blue_background",
+			"anchor": [0.5, 0.5],
+			"pos": [0, 0],
+			"size": [100, 100],
+			"tile_size": 32,
+			"overlay_color": [0, 0, 0, 0]
+		},
+		{
+			"parent": "background",
+			"name": "main_text",
+			"type": "text",
+			"font": "data/font/FiraSans-Bold.ttf",
+			"anchor": [0.5, 0.5],
+			"pos": [0, 0],
+			"size": 14,
+			"color": [1, 1, 1, 1],
+			"text": "OPEN GOLF"
+		}
+	]
+}
