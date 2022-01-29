@@ -200,7 +200,7 @@ static bool _golf_ui_layout_get_entity_of_type(golf_ui_layout_t *layout, const c
 }
 
 static vec2 _golf_ui_layout_get_entity_pos(golf_ui_layout_t *layout, golf_ui_entity_t entity) {
-    float ui_scale = renderer->viewport_size.x / 1280.0f;
+    float ui_scale = renderer->viewport_size.x / 720.0f;
 
     golf_ui_entity_t parent_entity;
     if (_golf_ui_layout_get_entity(layout, entity.parent_name, &parent_entity)) {
@@ -298,7 +298,7 @@ static void _golf_ui_pixel_pack_square(golf_ui_layout_t *layout, golf_ui_entity_
     }
 
     vec2 vp_size = renderer->viewport_size;
-    float ui_scale = vp_size.x / 1280.0f;
+    float ui_scale = vp_size.x / 720.0f;
     vec2 pos = _golf_ui_layout_get_entity_pos(layout, entity);
     vec2 size = vec2_scale(entity.size, ui_scale);
     float tile_size = ui_scale * entity.pixel_pack_square.tile_size;
@@ -328,7 +328,7 @@ static void _golf_ui_pixel_pack_square_name(golf_ui_layout_t *layout, const char
 static void _golf_ui_text(golf_ui_layout_t *layout, golf_ui_entity_t entity) {
     golf_font_t *font = entity.text.font;
     vec2 vp_size = renderer->viewport_size;
-    float ui_scale = vp_size.x / 1280.0f;
+    float ui_scale = vp_size.x / 720.0f;
     vec2 pos = _golf_ui_layout_get_entity_pos(layout, entity);
 
     float cur_x = 0;
@@ -432,7 +432,7 @@ static void _golf_ui_button_name(golf_ui_layout_t *layout, const char *name) {
         return;
     }
 
-    float ui_scale = renderer->viewport_size.x / 1280.0f;
+    float ui_scale = renderer->viewport_size.x / 720.0f;
     vec2 pos = _golf_ui_layout_get_entity_pos(layout, entity);
     vec2 size = vec2_scale(entity.size, ui_scale);
     vec2 mp = inputs->mouse_pos;

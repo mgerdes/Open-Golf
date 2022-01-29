@@ -11,6 +11,7 @@
 #include "sokol/sokol_gfx.h"
 #include "sokol/sokol_imgui.h"
 #include "golf/editor.h"
+#include "golf/game.h"
 #include "golf/log.h"
 #include "golf/maths.h"
 #include "golf/ui.h"
@@ -379,389 +380,6 @@ void golf_renderer_update(void) {
     }
 }
 
-/*
-static void _draw_ui_text(golf_ui_text_t text) {
-    golf_font_t *font = text.font;
-    golf_model_t *square_model = golf_data_get_model("data/models/ui_sprite_square.obj");
-
-    float cur_x = text.pos.x;
-    float cur_y = text.pos.y;
-    int i = 0;
-
-    int sz_idx = 0;
-    for (int idx = 1; idx < font->atlases.length; idx++) {
-        if (fabsf(font->atlases.data[idx].font_size - text.size) <
-                fabsf(font->atlases.data[sz_idx].font_size - text.size)) {
-            sz_idx = idx;
-        }
-    }
-
-    golf_font_atlas_t atlas = font->atlases.data[sz_idx];
-
-    float sz_scale = text.size / atlas.font_size;
-
-    {
-        sg_bindings bindings = {
-            .vertex_buffers[ATTR_ui_sprite_vs_position] = square_model->sg_positions_buf,
-            .vertex_buffers[ATTR_ui_sprite_vs_texture_coord] = square_model->sg_texcoords_buf,
-            .fs_images[SLOT_ui_sprite_texture] = atlas.sg_image,
-        };
-        sg_apply_bindings(&bindings);
-    }
-
-    float width = 0.0f;
-    while (text.string[i]) {
-        char c = text.string[i];
-        width += sz_scale * atlas.char_data[(int)c].xadvance;
-        i++;
-    }
-
-    if (text.horiz_align == 0) {
-        cur_x -= 0.5f * width;
-    }
-    else if (text.horiz_align < 0) {
-    }
-    else if (text.horiz_align > 0) {
-        cur_x -= width;
-    }
-    else {
-        golf_log_warning("Invalid text horizontal_alignment %s", text.horiz_align);
-    }
-
-    if (text.vert_align == 0) {
-        cur_y -= 0.5f * (atlas.ascent + atlas.descent);
-    }
-    else if (text.vert_align > 0) {
-    }
-    else if (text.vert_align < 0) {
-        cur_y -= (atlas.ascent + atlas.descent);
-    }
-    else {
-        golf_log_warning("Invalid text vert_align %s", text.vert_align);
-    }
-
-    i = 0;
-    while (text.string[i]) {
-        char c = text.string[i];
-
-        int x0 = (int)atlas.char_data[(int)c].x0;
-        int x1 = (int)atlas.char_data[(int)c].x1;
-        int y0 = (int)atlas.char_data[(int)c].y0;
-        int y1 = (int)atlas.char_data[(int)c].y1;
-        float xoff = atlas.char_data[(int)c].xoff;
-        float yoff = atlas.char_data[(int)c].yoff;
-        float xadvance = atlas.char_data[(int)c].xadvance;
-
-        int round_x = (int)floor((cur_x + xoff) + 0.5f);
-        int round_y = (int)floor((cur_y - yoff) + 0.5f);
-
-        float qx0 = (float)round_x; 
-        float qy0 = (float)round_y;
-        float qx1 = (float)(round_x + x1 - x0);
-        float qy1 = (float)(round_y - (y1 - y0));
-
-        vec3 translate;
-        translate.x = qx0 + 0.5f * (qx1 - qx0);
-        translate.y = qy0 + 0.5f * (qy1 - qy0);
-        translate.z = 0.0f;
-
-        vec3 scale;
-        scale.x = sz_scale * 0.5f * (qx1 - qx0);
-        scale.y = sz_scale * 0.5f * (qy1 - qy0);
-        scale.z = 1.0f;
-
-        ui_sprite_vs_params_t vs_params = {
-            .mvp_mat = mat4_transpose(mat4_multiply_n(3,
-                        renderer.ui_proj_mat,
-                        mat4_translation(translate),
-                        mat4_scale(scale)))
-
-        };
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_sprite_vs_params,
-                &(sg_range) { &vs_params, sizeof(vs_params) } );
-
-        ui_sprite_fs_params_t fs_params = {
-            .tex_x = (float) x0 / atlas.size,
-            .tex_y = (float) y0 / atlas.size, 
-            .tex_dx = (float) (x1 - x0) / atlas.size, 
-            .tex_dy = (float) (y1 - y0) / atlas.size,
-            .is_font = 1.0f,
-            .color = text.color,
-
-        };
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_sprite_fs_params,
-                &(sg_range) { &fs_params, sizeof(fs_params) });
-
-        sg_draw(0, square_model->positions.length, 1);
-
-        cur_x += sz_scale * xadvance;
-
-        i++;
-    }
-}
-
-static void _draw_ui_pixel_pack_square_section(vec2 pos, vec2 size, float tile_screen_size, golf_pixel_pack_t *pixel_pack, golf_pixel_pack_square_t *pixel_pack_square, int x, int y, vec4 overlay_color) {
-    golf_model_t *square_model = golf_data_get_model("data/models/ui_sprite_square.obj");
-
-    float px = pos.x + x * (0.5f * size.x - 0.5f * tile_screen_size);
-    float py = pos.y + y * (0.5f * size.y - 0.5f * tile_screen_size);
-
-    float sx = 0.5f * tile_screen_size;
-    float sy = 0.5f * tile_screen_size;
-    if (x == 0) {
-        sx = 0.5f*size.x - 2.0f;
-    }
-    if (y == 0) {
-        sy = 0.5f*size.y - 2.0f;
-    }
-
-    vec2 uv0, uv1;
-    if (x == -1 && y == -1) {
-        uv0 = pixel_pack_square->bl_uv0;
-        uv1 = pixel_pack_square->bl_uv1;
-    }
-    else if (x == -1 && y == 0) {
-        uv0 = pixel_pack_square->ml_uv0;
-        uv1 = pixel_pack_square->ml_uv1;
-    }
-    else if (x == -1 && y == 1) {
-        uv0 = pixel_pack_square->tl_uv0;
-        uv1 = pixel_pack_square->tl_uv1;
-    }
-    else if (x == 0 && y == -1) {
-        uv0 = pixel_pack_square->bm_uv0;
-        uv1 = pixel_pack_square->bm_uv1;
-    }
-    else if (x == 0 && y == 0) {
-        uv0 = pixel_pack_square->mm_uv0;
-        uv1 = pixel_pack_square->mm_uv1;
-    }
-    else if (x == 0 && y == 1) {
-        uv0 = pixel_pack_square->tm_uv0;
-        uv1 = pixel_pack_square->tm_uv1;
-    }
-    else if (x == 1 && y == -1) {
-        uv0 = pixel_pack_square->br_uv0;
-        uv1 = pixel_pack_square->br_uv1;
-    }
-    else if (x == 1 && y == 0) {
-        uv0 = pixel_pack_square->mr_uv0;
-        uv1 = pixel_pack_square->mr_uv1;
-    }
-    else if (x == 1 && y == 1) {
-        uv0 = pixel_pack_square->tr_uv0;
-        uv1 = pixel_pack_square->tr_uv1;
-    }
-    else {
-        golf_log_warning("Invalid x and y for pixel pack square section");
-    }
-
-    ui_sprite_vs_params_t vs_params = {
-        .mvp_mat = mat4_transpose(mat4_multiply_n(3,
-                    renderer.ui_proj_mat,
-                    mat4_translation(V3(px, py, 0.0f)),
-                    mat4_scale(V3(sx, sy, 1.0))))
-
-    };
-    sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_sprite_vs_params,
-            &(sg_range) { &vs_params, sizeof(vs_params) } );
-
-    ui_sprite_fs_params_t fs_params = {
-        .tex_x = uv0.x,
-        .tex_y = uv1.y, 
-        .tex_dx = uv1.x - uv0.x, 
-        .tex_dy = -(uv1.y - uv0.y),
-        .is_font = 0.0f,
-        .color = overlay_color,
-
-    };
-    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_sprite_fs_params,
-            &(sg_range) { &fs_params, sizeof(fs_params) });
-
-    sg_draw(0, square_model->positions.length, 1);
-}
-
-static void _draw_ui_pixel_pack_square(golf_ui_pixel_pack_square_t square) {
-    golf_model_t *square_model = golf_data_get_model("data/models/ui_sprite_square.obj");
-    golf_pixel_pack_t *pixel_pack = square.pixel_pack;
-    golf_pixel_pack_square_t *pixel_pack_square = square.square;
-
-    sg_bindings bindings = {
-        .vertex_buffers[ATTR_ui_sprite_vs_position] = square_model->sg_positions_buf,
-        .vertex_buffers[ATTR_ui_sprite_vs_texture_coord] = square_model->sg_texcoords_buf,
-        .fs_images[SLOT_ui_sprite_texture] = pixel_pack->texture->sg_image,
-    };
-    sg_apply_bindings(&bindings);
-
-    _draw_ui_pixel_pack_square_section(square.pos, square.size, square.tile_screen_size, pixel_pack, pixel_pack_square, 0, 0, square.overlay_color);
-    _draw_ui_pixel_pack_square_section(square.pos, square.size, square.tile_screen_size, pixel_pack, pixel_pack_square, 0, -1, square.overlay_color);
-    _draw_ui_pixel_pack_square_section(square.pos, square.size, square.tile_screen_size, pixel_pack, pixel_pack_square, 0, 1, square.overlay_color);
-    _draw_ui_pixel_pack_square_section(square.pos, square.size, square.tile_screen_size, pixel_pack, pixel_pack_square, -1, 0, square.overlay_color);
-    _draw_ui_pixel_pack_square_section(square.pos, square.size, square.tile_screen_size, pixel_pack, pixel_pack_square, 1, 0, square.overlay_color);
-    _draw_ui_pixel_pack_square_section(square.pos, square.size, square.tile_screen_size, pixel_pack, pixel_pack_square, -1, -1, square.overlay_color);
-    _draw_ui_pixel_pack_square_section(square.pos, square.size, square.tile_screen_size, pixel_pack, pixel_pack_square, 1, -1, square.overlay_color);
-    _draw_ui_pixel_pack_square_section(square.pos, square.size, square.tile_screen_size, pixel_pack, pixel_pack_square, -1, 1, square.overlay_color);
-    _draw_ui_pixel_pack_square_section(square.pos, square.size, square.tile_screen_size, pixel_pack, pixel_pack_square, 1, 1, square.overlay_color);
-}
-
-static void _draw_ui_pixel_pack_icon(golf_ui_pixel_pack_icon_t icon) {
-    golf_model_t *square_model = golf_data_get_model("data/models/ui_sprite_square.obj");
-    golf_pixel_pack_t *pixel_pack = icon.pixel_pack;
-    golf_pixel_pack_icon_t *pixel_pack_icon = icon.icon;
-
-    sg_bindings bindings = {
-        .vertex_buffers[ATTR_ui_sprite_vs_position] = square_model->sg_positions_buf,
-        .vertex_buffers[ATTR_ui_sprite_vs_texture_coord] = square_model->sg_texcoords_buf,
-        .fs_images[SLOT_ui_sprite_texture] = pixel_pack->texture->sg_image,
-    };
-    sg_apply_bindings(&bindings);
-
-    float px = icon.pos.x; 
-    float py = icon.pos.y;
-
-    float sx = 0.5f * icon.size.x;
-    float sy = 0.5f * icon.size.y;
-
-    ui_sprite_vs_params_t vs_params = {
-        .mvp_mat = mat4_transpose(mat4_multiply_n(3,
-                    renderer.ui_proj_mat,
-                    mat4_translation(V3(px, py, 0.0f)),
-                    mat4_scale(V3(sx, sy, 1.0))))
-
-    };
-    sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_sprite_vs_params,
-            &(sg_range) { &vs_params, sizeof(vs_params) } );
-
-    vec2 uv0 = pixel_pack_icon->uv0;
-    vec2 uv1 = pixel_pack_icon->uv1;
-
-    ui_sprite_fs_params_t fs_params = {
-        .tex_x = uv0.x,
-        .tex_y = uv1.y, 
-        .tex_dx = uv1.x - uv0.x, 
-        .tex_dy = -(uv1.y - uv0.y),
-        .is_font = 0.0f,
-        .color = icon.overlay_color,
-
-    };
-    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_sprite_fs_params,
-            &(sg_range) { &fs_params, sizeof(fs_params) });
-
-    sg_draw(0, square_model->positions.length, 1);
-}
-
-static void _draw_ui_scroll_list_begin(golf_ui_scroll_list_t scroll_list) {
-    vec2 p = scroll_list.pos;
-    vec2 s = scroll_list.size;
-    sg_apply_scissor_rectf(p.x - 0.5f * s.x, p.y - 0.5f * s.y, s.x, s.y, false);
-}
-
-static void _draw_ui_scroll_list_end(void) {
-    sg_apply_scissor_rectf(0, 0, 1920, 1080, false);
-}
-
-static void _draw_ui(void) {
-    golf_ui_t *ui = golf_ui_get();
-
-    {
-        sg_pass_action action = {
-            .colors[0] = {
-                .action = SG_ACTION_DONTCARE,
-                .value = { 0.529f, 0.808f, 0.922f, 1.0f },
-            },
-        };
-        sg_begin_default_pass(&action, sapp_width(), sapp_height());
-        sg_apply_viewportf(renderer.viewport_pos.x, renderer.viewport_pos.y, 
-                renderer.viewport_size.x, renderer.viewport_size.y, true);
-
-        sg_apply_pipeline(renderer.ui_sprites_pipeline);
-    }
-
-    for (int i = 0; i < ui->entities.length; i++) {
-        golf_ui_entity_t entity = ui->entities.data[i];
-        switch (entity.type) {
-            case GOLF_UI_PIXEL_PACK_SQUARE:
-                _draw_ui_pixel_pack_square(entity.pixel_pack_square);
-                break;
-            case GOLF_UI_PIXEL_PACK_ICON:
-                _draw_ui_pixel_pack_icon(entity.pixel_pack_icon);
-                break;
-            case GOLF_UI_TEXT:
-                _draw_ui_text(entity.text);
-                break;
-            case GOLF_UI_SCROLL_LIST_BEGIN:
-                _draw_ui_scroll_list_begin(entity.scroll_list);
-                break;
-            case GOLF_UI_SCROLL_LIST_END:
-                _draw_ui_scroll_list_end();
-                break;
-        }
-    }
-
-    sg_end_pass();
-}
-*/
-
-static void _draw_ui(void) {
-    mat4 ui_proj_mat = mat4_orthographic_projection(0, renderer.viewport_size.x, 
-            renderer.viewport_size.y, 0, 0, 1); 
-
-    sg_pass_action action = {
-        .colors[0] = {
-            .action = SG_ACTION_CLEAR,
-            .value = { 0.529f, 0.808f, 0.922f, 1.0f },
-        },
-    };
-    sg_begin_default_pass(&action, sapp_width(), sapp_height());
-    sg_apply_viewportf(renderer.viewport_pos.x, renderer.viewport_pos.y, 
-            renderer.viewport_size.x, renderer.viewport_size.y, true);
-    sg_apply_pipeline(renderer.ui_pipeline);
-
-    golf_ui_t *ui = golf_ui_get();
-    for (int i = 0; i < ui->draw_entities.length; i++) {
-        golf_ui_draw_entity_t draw = ui->draw_entities.data[i];
-        vec3 translate = V3(draw.pos.x, draw.pos.y, 0);
-        vec3 scale = V3(0.5f * draw.size.x, 0.5f * draw.size.y, 1);
-
-        golf_model_t *square = golf_data_get_model("data/models/ui_square.obj");
-        sg_bindings bindings = {
-            .vertex_buffers[ATTR_ui_vs_position] = square->sg_positions_buf,
-            .vertex_buffers[ATTR_ui_vs_texture_coord] = square->sg_texcoords_buf,
-            .fs_images[SLOT_ui_texture] = draw.image,
-        };
-        sg_apply_bindings(&bindings);
-
-        ui_vs_params_t vs_params = {
-            .mvp_mat = mat4_transpose(mat4_multiply_n(3,
-                        ui_proj_mat,
-                        mat4_translation(translate),
-                        mat4_scale(scale)))
-        };
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params,
-                &(sg_range) { &vs_params, sizeof(vs_params) } );
-
-        ui_fs_params_t fs_params = {
-            .tex_x = draw.uv0.x,
-            .tex_y = draw.uv0.y, 
-            .tex_dx = draw.uv1.x - draw.uv0.x, 
-            .tex_dy = draw.uv1.y - draw.uv0.y,
-            .is_font = draw.is_font,
-            .color = draw.overlay_color,
-        };
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params,
-                &(sg_range) { &fs_params, sizeof(fs_params) });
-
-        sg_draw(0, square->positions.length, 1);
-    }
-
-    sg_end_pass();
-}
-
-void golf_renderer_draw(void) {
-    _set_ui_proj_mat(V2(0.0f, 0.0f));
-    _draw_ui();
-}
-
 static void _golf_renderer_draw_solid_color_material(golf_model_t *model, int start, int count, mat4 model_mat, golf_material_t material) {
     solid_color_material_vs_params_t vs_params = {
         .mvp_mat = mat4_transpose(mat4_multiply(renderer.proj_view_mat, model_mat)),
@@ -895,114 +513,10 @@ static void _golf_renderer_draw_with_material(golf_model_t *model, int start, in
     }
 }
 
-/*
-static void _golf_renderer_draw_model(golf_model_t *model, mat4 model_mat, golf_lightmap_t *lightmap, golf_material_t *material_override, golf_level_t *level) {
-    for (int i = 0; i < model->groups.length; i++) {
-        golf_model_group_t group = model->groups.data[i];
-        golf_material_t material;
-        if (material_override) {
-            material = *material_override;
-        }
-        else if (!golf_level_get_material(level, group.material_name, &material)) {
-            golf_log_warning("Could not find material %s", group.material_name);
-            material.type = GOLF_MATERIAL_TEXTURE;
-            material.texture = golf_data_get_texture("data/textures/fallback.png");
-        }
 
-        switch (material.type) {
-            case GOLF_MATERIAL_TEXTURE: {
-                sg_apply_pipeline(renderer.environment_material_pipeline);
-
-                environment_vs_params_t vs_params = {
-                    .proj_view_mat = mat4_transpose(renderer.proj_view_mat),
-                    .model_mat = mat4_transpose(model_mat),
-                };
-                sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_environment_vs_params, 
-                        &(sg_range) { &vs_params, sizeof(vs_params) });
-
-                sg_bindings bindings = {
-                    .vertex_buffers[0] = model->sg_positions_buf,
-                    .vertex_buffers[1] = model->sg_texcoords_buf,
-                    .vertex_buffers[2] = model->sg_normals_buf,
-                    .vertex_buffers[3] = lightmap->sg_uvs_buf,
-                    .fs_images[SLOT_kd_texture] = material.texture->sg_image,
-                    .fs_images[SLOT_lightmap_texture] = lightmap->sg_image,
-                };
-                sg_apply_bindings(&bindings);
-
-                sg_draw(group.start_vertex, group.vertex_count, 1);
-
-                break;
-            }
-            case GOLF_MATERIAL_COLOR: {
-                sg_apply_pipeline(renderer.solid_color_material_pipeline);
-
-                solid_color_material_vs_params_t vs_params = {
-                    .mvp_mat = mat4_transpose(mat4_multiply(renderer.proj_view_mat, model_mat)),
-                };
-                sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_solid_color_material_vs_params,
-                        &(sg_range) { &vs_params, sizeof(vs_params) });
-
-                solid_color_material_fs_params_t fs_params = {
-                    .color = material.color,
-                };
-                sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_solid_color_material_fs_params,
-                        &(sg_range) { &fs_params, sizeof(fs_params) });
-
-                sg_bindings bindings = {
-                    .vertex_buffers[0] = model->sg_positions_buf,
-                };
-                sg_apply_bindings(&bindings);
-
-                sg_draw(group.start_vertex, group.vertex_count, 1);
-
-                break;
-            }
-            case GOLF_MATERIAL_DIFFUSE_COLOR: {
-                sg_apply_pipeline(renderer.diffuse_color_material_pipeline);
-
-                diffuse_color_material_vs_params_t vs_params = {
-                    .proj_view_mat = mat4_transpose(renderer.proj_view_mat),
-                    .model_mat =mat4_transpose(model_mat), 
-                };
-                sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_diffuse_color_material_vs_params,
-                        &(sg_range) { &vs_params, sizeof(vs_params) });
-
-                diffuse_color_material_fs_params_t fs_params = {
-                    .color = material.color,
-                };
-                sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_diffuse_color_material_fs_params,
-                        &(sg_range) { &fs_params, sizeof(fs_params) });
-
-                sg_bindings bindings = {
-                    .vertex_buffers[0] = model->sg_positions_buf,
-                    .vertex_buffers[1] = model->sg_normals_buf,
-                };
-                sg_apply_bindings(&bindings);
-
-                sg_draw(group.start_vertex, group.vertex_count, 1);
-
-                break;
-            }
-        }
-    }
-}
-*/
-
-void golf_renderer_draw_editor(void) {
-    golf_editor_t *editor = golf_editor_get();
-    golf_config_t *editor_cfg = golf_data_get_config("data/config/editor.cfg");
-
-    sg_pass_action action = {
-        .colors[0] = {
-            .action = SG_ACTION_CLEAR,
-            .value = { 0.529f, 0.808f, 0.922f, 1.0f },
-        },
-    };
-    sg_begin_pass(renderer.render_pass, &action);
-
-    for (int i = 0; i < editor->level->entities.length; i++) {
-        golf_entity_t *entity = &editor->level->entities.data[i];
+static void _draw_level(golf_level_t *level, bool gi_on) {
+    for (int i = 0; i < level->entities.length; i++) {
+        golf_entity_t *entity = &level->entities.data[i];
         if (!entity->active || entity->type == HOLE_ENTITY) continue;
 
         golf_model_t *model = golf_entity_get_model(entity);
@@ -1015,7 +529,7 @@ void golf_renderer_draw_editor(void) {
 
         golf_transform_t *transform = golf_entity_get_transform(entity);
         if (!transform) continue;
-        golf_transform_t world_transform = golf_entity_get_world_transform(editor->level, entity);
+        golf_transform_t world_transform = golf_entity_get_world_transform(level, entity);
 
         mat4 model_mat;
         golf_movement_t *movement = golf_entity_get_movement(entity);
@@ -1034,7 +548,7 @@ void golf_renderer_draw_editor(void) {
                 material = golf_material_texture("data/textures/colors/red.png");
             }
             else {
-                if (!golf_level_get_material(editor->level, group.material_name, &material)) {
+                if (!golf_level_get_material(level, group.material_name, &material)) {
                     golf_log_warning("Could not find material %s", group.material_name);
                     material = golf_material_texture("data/textures/fallback.png");
                 }
@@ -1060,7 +574,7 @@ void golf_renderer_draw_editor(void) {
                     }
 
                     golf_lightmap_image_t lightmap_image;
-                    if (!golf_level_get_lightmap_image(editor->level, lightmap_section->lightmap_name, &lightmap_image)) {
+                    if (!golf_level_get_lightmap_image(level, lightmap_section->lightmap_name, &lightmap_image)) {
                         golf_log_warning("Could not find lightmap %s", lightmap_section->lightmap_name);
                         break;
                     }
@@ -1071,7 +585,7 @@ void golf_renderer_draw_editor(void) {
                     if (movement) {
                         movement_repeats = movement->repeats;
                     }
-                    _golf_renderer_draw_environment_material(model, group.start_vertex, group.vertex_count, model_mat, material, &lightmap_image, lightmap_section, movement_repeats, uv_scale, editor->renderer.gi_on);
+                    _golf_renderer_draw_environment_material(model, group.start_vertex, group.vertex_count, model_mat, material, &lightmap_image, lightmap_section, movement_repeats, uv_scale, gi_on);
                     break;
                 }
             }
@@ -1079,8 +593,8 @@ void golf_renderer_draw_editor(void) {
     }
 
     sg_apply_pipeline(renderer.hole_pass1_pipeline);
-    for (int i = 0; i < editor->level->entities.length; i++) {
-        golf_entity_t *entity = &editor->level->entities.data[i];
+    for (int i = 0; i < level->entities.length; i++) {
+        golf_entity_t *entity = &level->entities.data[i];
         if (!entity->active) continue;
 
         switch (entity->type) {
@@ -1112,8 +626,8 @@ void golf_renderer_draw_editor(void) {
     }
 
     sg_apply_pipeline(renderer.hole_pass2_pipeline);
-    for (int i = 0; i < editor->level->entities.length; i++) {
-        golf_entity_t *entity = &editor->level->entities.data[i];
+    for (int i = 0; i < level->entities.length; i++) {
+        golf_entity_t *entity = &level->entities.data[i];
         if (!entity->active) continue;
 
         switch (entity->type) {
@@ -1133,6 +647,119 @@ void golf_renderer_draw_editor(void) {
             }
         }
     }
+}
+
+static void _draw_game(void) {
+    golf_game_t *game = golf_game_get();
+
+    sg_pass_action action = {
+        .colors[0] = {
+            .action = SG_ACTION_CLEAR,
+            .value = { 0.529f, 0.808f, 0.922f, 1.0f },
+        },
+    };
+    sg_begin_pass(renderer.render_pass, &action);
+    _draw_level(game->level, true);
+    sg_end_pass();
+
+    {
+        sg_begin_default_pass(&action, sapp_width(), sapp_height());
+        sg_apply_viewportf(renderer.viewport_pos.x, renderer.viewport_pos.y, 
+                renderer.viewport_size.x, renderer.viewport_size.y, true);
+        sg_apply_pipeline(renderer.render_image_pipeline);
+
+        golf_model_t *square = golf_data_get_model("data/models/render_image_square.obj");
+        sg_bindings bindings = {
+            .vertex_buffers[ATTR_render_image_vs_position] = square->sg_positions_buf,
+            .vertex_buffers[ATTR_render_image_vs_texture_coord] = square->sg_texcoords_buf,
+            .fs_images[SLOT_render_image_texture] = renderer.render_pass_image,
+        };
+        sg_apply_bindings(&bindings);
+
+        sg_draw(0, square->positions.length, 1);
+
+        sg_end_pass();
+    }
+}
+
+static void _draw_ui(void) {
+    mat4 ui_proj_mat = mat4_orthographic_projection(0, renderer.viewport_size.x, 
+            renderer.viewport_size.y, 0, 0, 1); 
+
+    sg_pass_action action = {
+        .colors[0] = {
+            .action = SG_ACTION_DONTCARE,
+        },
+        .depth = {
+            .action = SG_ACTION_CLEAR,
+            .value = 1.0f,
+        }
+    };
+    sg_begin_default_pass(&action, sapp_width(), sapp_height());
+    sg_apply_viewportf(renderer.viewport_pos.x, renderer.viewport_pos.y, 
+            renderer.viewport_size.x, renderer.viewport_size.y, true);
+    sg_apply_pipeline(renderer.ui_pipeline);
+
+    golf_ui_t *ui = golf_ui_get();
+    for (int i = 0; i < ui->draw_entities.length; i++) {
+        golf_ui_draw_entity_t draw = ui->draw_entities.data[i];
+        vec3 translate = V3(draw.pos.x, draw.pos.y, 0);
+        vec3 scale = V3(0.5f * draw.size.x, 0.5f * draw.size.y, 1);
+
+        golf_model_t *square = golf_data_get_model("data/models/ui_square.obj");
+        sg_bindings bindings = {
+            .vertex_buffers[ATTR_ui_vs_position] = square->sg_positions_buf,
+            .vertex_buffers[ATTR_ui_vs_texture_coord] = square->sg_texcoords_buf,
+            .fs_images[SLOT_ui_texture] = draw.image,
+        };
+        sg_apply_bindings(&bindings);
+
+        ui_vs_params_t vs_params = {
+            .mvp_mat = mat4_transpose(mat4_multiply_n(3,
+                        ui_proj_mat,
+                        mat4_translation(translate),
+                        mat4_scale(scale)))
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params,
+                &(sg_range) { &vs_params, sizeof(vs_params) } );
+
+        ui_fs_params_t fs_params = {
+            .tex_x = draw.uv0.x,
+            .tex_y = draw.uv0.y, 
+            .tex_dx = draw.uv1.x - draw.uv0.x, 
+            .tex_dy = draw.uv1.y - draw.uv0.y,
+            .is_font = draw.is_font,
+            .color = draw.overlay_color,
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params,
+                &(sg_range) { &fs_params, sizeof(fs_params) });
+
+        sg_draw(0, square->positions.length, 1);
+    }
+
+    sg_end_pass();
+}
+
+void golf_renderer_draw(void) {
+    _set_ui_proj_mat(V2(0.0f, 0.0f));
+
+    _draw_game();
+    _draw_ui();
+}
+
+void golf_renderer_draw_editor(void) {
+    golf_editor_t *editor = golf_editor_get();
+    golf_config_t *editor_cfg = golf_data_get_config("data/config/editor.cfg");
+
+    sg_pass_action action = {
+        .colors[0] = {
+            .action = SG_ACTION_CLEAR,
+            .value = { 0.529f, 0.808f, 0.922f, 1.0f },
+        },
+    };
+    sg_begin_pass(renderer.render_pass, &action);
+
+    _draw_level(editor->level, editor->renderer.gi_on);
 
     if (editor->in_edit_mode) {
         golf_geo_t *geo = editor->edit_mode.geo;
