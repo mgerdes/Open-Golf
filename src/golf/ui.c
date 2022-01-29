@@ -8,14 +8,17 @@
 #include "golf/inputs.h"
 #include "golf/json.h"
 #include "golf/log.h"
+#include "golf/renderer.h"
 
 static golf_ui_t ui;
 static golf_inputs_t *inputs; 
+static golf_renderer_t *renderer; 
 
-static golf_ui_draw_entity_t _golf_ui_draw_entity(golf_texture_t *texture, vec2 pos, vec2 uv0, vec2 uv1, vec4 overlay_color) {
+static golf_ui_draw_entity_t _golf_ui_draw_entity(golf_texture_t *texture, vec2 pos, vec2 size, vec2 uv0, vec2 uv1, vec4 overlay_color) {
     golf_ui_draw_entity_t entity;
     entity.texture = texture;
     entity.pos = pos;
+    entity.size = size;
     entity.uv0 = uv0;
     entity.uv1 = uv1;
     entity.overlay_color = overlay_color;
@@ -186,6 +189,7 @@ static bool _golf_ui_layout_load_entity(JSON_Object *entity_obj, golf_ui_entity_
     const char *type = json_object_get_string(entity_obj, "type");
     const char *name = json_object_get_string(entity_obj, "name");
     if (!type) {
+        golf_log_warning("No ui entity type %s", type);
         return false;
     }
 
@@ -196,34 +200,36 @@ static bool _golf_ui_layout_load_entity(JSON_Object *entity_obj, golf_ui_entity_
         entity->name[0] = 0;
     }
 
+    entity->pos = golf_json_object_get_vec2(entity_obj, "pos");
+    entity->size = golf_json_object_get_vec2(entity_obj, "size");
+    entity->anchor = golf_json_object_get_vec2(entity_obj, "anchor");
+
     if (strcmp(type, "pixel_pack_square") == 0) {
         const char *pixel_pack_path = json_object_get_string(entity_obj, "pixel_pack");
-        const char *square_name = json_object_get_string(entity_obj, "square");
         golf_data_load(pixel_pack_path);
+        const char *square_name = json_object_get_string(entity_obj, "square");
 
         entity->type = GOLF_UI_PIXEL_PACK_SQUARE;
         entity->pixel_pack_square.pixel_pack = golf_data_get_pixel_pack(pixel_pack_path);
         snprintf(entity->pixel_pack_square.square_name, GOLF_MAX_NAME_LEN, "%s", square_name);
-        entity->pixel_pack_square.pos = golf_json_object_get_vec2(entity_obj, "pos");
-        entity->pixel_pack_square.size = golf_json_object_get_vec2(entity_obj, "size");
         entity->pixel_pack_square.tile_size = (float)json_object_get_number(entity_obj, "tile_size");
         entity->pixel_pack_square.overlay_color = golf_json_object_get_vec4(entity_obj, "overlay_color");
     }
     else if (strcmp(type, "text") == 0) {
         const char *font_path = json_object_get_string(entity_obj, "font");
-        const char *text = json_object_get_string(entity_obj, "text");
         golf_data_load(font_path);
+        const char *text = json_object_get_string(entity_obj, "text");
 
         entity->type = GOLF_UI_TEXT;
         entity->text.font = golf_data_get_font(font_path);
         golf_string_init(&entity->text.text, "ui_layout", text);
-        entity->text.pos = golf_json_object_get_vec2(entity_obj, "pos");
-        entity->text.size = (float)json_object_get_number(entity_obj, "size");
+        entity->text.font_size = (float)json_object_get_number(entity_obj, "font_size");
         entity->text.color = golf_json_object_get_vec4(entity_obj, "color");
         entity->text.horiz_align = 0;
         entity->text.vert_align = 0;
     }
     else {
+        golf_log_warning("Unknown ui entity type %s", type);
         return false;
     }
 
@@ -273,7 +279,9 @@ void golf_ui_init(void) {
     vec_init(&ui.entities, "ui");
     vec_init(&ui.draw_entities, "ui");
     ui.state = GOLF_UI_MAIN_MENU;
+
     inputs = golf_inputs_get();
+    renderer = golf_renderer_get();
 }
 
 static bool _golf_ui_layout_get_entity_of_type(golf_ui_layout_t *layout, const char *name, golf_ui_entity_type_t type, golf_ui_entity_t *entity) {
@@ -299,13 +307,13 @@ static void _golf_ui_pixel_pack_square_section(vec2 pos, vec2 size, float tile_s
     float px = pos.x + x * (0.5f * size.x - 0.5f * tile_size);
     float py = pos.y + y * (0.5f * size.y - 0.5f * tile_size);
 
-    float sx = 0.5f * tile_size;
-    float sy = 0.5f * tile_size;
+    float sx = tile_size;
+    float sy = tile_size;
     if (x == 0) {
-        sx = 0.5f*size.x - 2.0f;
+        sx = size.x - 2.0f;
     }
     if (y == 0) {
-        sy = 0.5f*size.y - 2.0f;
+        sy = size.y - 2.0f;
     }
 
     vec2 uv0, uv1;
@@ -350,7 +358,7 @@ static void _golf_ui_pixel_pack_square_section(vec2 pos, vec2 size, float tile_s
         return;
     }
 
-    vec_push(&ui.draw_entities, _golf_ui_draw_entity(pixel_pack->texture, pos, uv0, uv1, overlay_color));
+    vec_push(&ui.draw_entities, _golf_ui_draw_entity(pixel_pack->texture, V2(px, py), V2(sx, sy), uv0, uv1, overlay_color));
 }
 
 static void _golf_ui_pixel_pack_square(golf_ui_layout_t *layout, const char *name) {
@@ -367,9 +375,14 @@ static void _golf_ui_pixel_pack_square(golf_ui_layout_t *layout, const char *nam
         return;
     }
 
-    vec2 pos = entity.pixel_pack_square.pos;
-    vec2 size = entity.pixel_pack_square.size;
-    float tile_size = entity.pixel_pack_square.tile_size;
+    vec2 vp_size = renderer->viewport_size;
+    float ui_scale = vp_size.x / 1280.0f;
+
+    vec2 anchor = entity.anchor;
+    vec2 pos = V2(anchor.x * vp_size.x, anchor.y * vp_size.y);
+    pos = vec2_add(pos, vec2_scale(entity.pos, ui_scale));
+    vec2 size = vec2_scale(entity.size, ui_scale);
+    float tile_size = ui_scale * entity.pixel_pack_square.tile_size;
     vec4 overlay_color = entity.pixel_pack_square.overlay_color;
 
     _golf_ui_pixel_pack_square_section(pos, size, tile_size, overlay_color, pixel_pack, pixel_pack_square, 0, 0);

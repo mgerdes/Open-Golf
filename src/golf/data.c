@@ -26,7 +26,7 @@
 #include "golf/shaders/pass_through.glsl.h"
 #include "golf/shaders/solid_color_material.glsl.h"
 #include "golf/shaders/texture_material.glsl.h"
-#include "golf/shaders/ui_sprite.glsl.h"
+#include "golf/shaders/ui.glsl.h"
 #include "golf/shaders/render_image.glsl.h"
 
 //
@@ -212,8 +212,8 @@ static bool _golf_shader_load(void *ptr, const char *path, char *data, int data_
     else if (strcmp(path, "data/shaders/texture_material.glsl") == 0) {
         const_shader_desc = texture_material_shader_desc(sg_query_backend());
     }
-    else if (strcmp(path, "data/shaders/ui_sprite.glsl") == 0) {
-        const_shader_desc = ui_sprite_shader_desc(sg_query_backend());
+    else if (strcmp(path, "data/shaders/ui.glsl") == 0) {
+        const_shader_desc = ui_shader_desc(sg_query_backend());
     }
     else if (strcmp(path, "data/shaders/render_image.glsl") == 0) {
         const_shader_desc = render_image_shader_desc(sg_query_backend());

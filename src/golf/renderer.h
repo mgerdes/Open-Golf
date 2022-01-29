@@ -23,7 +23,7 @@ typedef struct golf_renderer {
                 environment_material_pipeline,
                 solid_color_material_pipeline,
                 texture_material_pipeline,
-                ui_sprites_pipeline,
+                ui_pipeline,
                 hole_pass1_pipeline,
                 hole_pass2_pipeline;
 } golf_renderer_t;

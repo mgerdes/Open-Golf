@@ -52,17 +52,6 @@ static void frame(void) {
         golf_renderer_init();
         golf_debug_console_init();
         inited = true;
-
-        golf_data_load("data/shaders/ui_sprite.glsl");
-        golf_data_load("data/textures/fallback.png");
-        golf_data_load("data/textures/pixel_pack_tex.png");
-        golf_data_load("data/textures/pixel_pack.pixel_pack");
-        golf_data_load("data/font/FantasqueSansMono-Bold.ttf");
-        golf_data_load("data/font/FiraSans-Bold.ttf");
-        golf_data_load("data/font/SourceSans3-Bold.ttf");
-        golf_data_load("data/font/DroidSerif-Bold.ttf");
-        golf_data_load("data/models/ui_sprite_square.obj");
-        golf_data_load("data/config/ui/main_menu.cfg");
     }
 
 
@@ -99,8 +88,8 @@ sapp_desc sokol_main(int argc, char *argv[]) {
             .frame_cb = frame,
             .cleanup_cb = cleanup,
             .event_cb = event,
-            .width = 1280/4,
-            .height = 720/4,
+            .width = 1280,
+            .height = 720,
             .window_title = "Minigolf",
             .enable_clipboard = true,
             .clipboard_size = 1024,

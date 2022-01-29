@@ -20,7 +20,7 @@
 #include "golf/shaders/pass_through.glsl.h"
 #include "golf/shaders/solid_color_material.glsl.h"
 #include "golf/shaders/texture_material.glsl.h"
-#include "golf/shaders/ui_sprite.glsl.h"
+#include "golf/shaders/ui.glsl.h"
 #include "golf/shaders/render_image.glsl.h"
 
 static golf_renderer_t renderer;
@@ -49,13 +49,6 @@ golf_renderer_t *golf_renderer_get(void) {
 }
 
 void golf_renderer_init(void) {
-    golf_data_load("data/shaders/diffuse_color_material.glsl");
-    golf_data_load("data/shaders/environment_material.glsl");
-    golf_data_load("data/shaders/pass_through.glsl");
-    golf_data_load("data/shaders/solid_color_material.glsl");
-    golf_data_load("data/shaders/texture_material.glsl");
-    golf_data_load("data/shaders/ui_sprite.glsl");
-
     {
         renderer.window_size = V2(0, 0);
         renderer.viewport_pos = V2(0, 0);
@@ -172,14 +165,14 @@ void golf_renderer_init(void) {
     }
 
     {
-        golf_shader_t *shader = golf_data_get_shader("data/shaders/ui_sprite.glsl");
+        golf_shader_t *shader = golf_data_get_shader("data/shaders/ui.glsl");
         sg_pipeline_desc pipeline_desc = {
             .shader = shader->sg_shader,
             .layout = {
                 .attrs = {
-                    [ATTR_ui_sprite_vs_position] 
+                    [ATTR_ui_vs_position] 
                         = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
-                    [ATTR_ui_sprite_vs_texture_coord] 
+                    [ATTR_ui_vs_texture_coord] 
                         = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
                 },
             },
@@ -191,7 +184,7 @@ void golf_renderer_init(void) {
                 },
             },
         };
-        renderer.ui_sprites_pipeline = sg_make_pipeline(&pipeline_desc);
+        renderer.ui_pipeline = sg_make_pipeline(&pipeline_desc);
     }
 
     {
@@ -706,9 +699,55 @@ static void _draw_ui(void) {
 }
 */
 
+static void _draw_ui(void) {
+    mat4 ui_proj_mat = mat4_orthographic_projection(0, renderer.viewport_size.x, 
+            renderer.viewport_size.y, 0, 0, 1); 
+
+    sg_pass_action action = {
+        .colors[0] = {
+            .action = SG_ACTION_CLEAR,
+            .value = { 0.529f, 0.808f, 0.922f, 1.0f },
+        },
+    };
+    sg_begin_default_pass(&action, sapp_width(), sapp_height());
+    sg_apply_viewportf(renderer.viewport_pos.x, renderer.viewport_pos.y, 
+            renderer.viewport_size.x, renderer.viewport_size.y, true);
+    sg_apply_pipeline(renderer.ui_pipeline);
+
+
+    golf_ui_t *ui = golf_ui_get();
+    for (int i = 0; i < ui->draw_entities.length; i++) {
+        golf_ui_draw_entity_t draw = ui->draw_entities.data[i];
+
+        golf_model_t *square = golf_data_get_model("data/models/ui_square.obj");
+        sg_bindings bindings = {
+            .vertex_buffers[ATTR_ui_vs_position] = square->sg_positions_buf,
+            .vertex_buffers[ATTR_ui_vs_texture_coord] = square->sg_texcoords_buf,
+            .fs_images[SLOT_ui_texture] = renderer.render_pass_image,
+        };
+        sg_apply_bindings(&bindings);
+
+        vec3 translate = V3(draw.pos.x, draw.pos.y, 1);
+        vec3 scale = V3(0.5f * draw.size.x, 0.5f * draw.size.y, 1);
+
+        ui_vs_params_t vs_params = {
+            .mvp_mat = mat4_transpose(mat4_multiply_n(3,
+                        ui_proj_mat,
+                        mat4_translation(translate),
+                        mat4_scale(scale)))
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params,
+                &(sg_range) { &vs_params, sizeof(vs_params) } );
+
+        sg_draw(0, square->positions.length, 1);
+    }
+
+    sg_end_pass();
+}
+
 void golf_renderer_draw(void) {
     _set_ui_proj_mat(V2(0.0f, 0.0f));
-    //_draw_ui();
+    _draw_ui();
 }
 
 static void _golf_renderer_draw_solid_color_material(golf_model_t *model, int start, int count, mat4 model_mat, golf_material_t material) {

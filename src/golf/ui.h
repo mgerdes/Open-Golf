@@ -8,7 +8,7 @@
 
 typedef struct golf_ui_draw_entity {
     golf_texture_t *texture;
-    vec2 pos, uv0, uv1;
+    vec2 pos, size, uv0, uv1;
     vec4 overlay_color;
 } golf_ui_draw_entity_t;
 typedef vec_t(golf_ui_draw_entity_t) vec_golf_ui_draw_entity_t;
@@ -22,7 +22,6 @@ typedef enum golf_ui_button_state {
 typedef struct golf_ui_pixel_pack_square {
     golf_pixel_pack_t *pixel_pack; 
     char square_name[GOLF_MAX_NAME_LEN];
-    vec2 pos, size;
     float tile_size;
     vec4 overlay_color;
 } golf_ui_pixel_pack_square_t;
@@ -30,8 +29,7 @@ typedef struct golf_ui_pixel_pack_square {
 typedef struct golf_ui_text {
     golf_font_t *font;
     golf_string_t text;
-    vec2 pos;
-    float size;
+    float font_size;
     int horiz_align, vert_align;
     vec4 color;
 } golf_ui_text_t;
@@ -44,7 +42,7 @@ typedef enum golf_ui_entity_type {
 typedef struct golf_ui_entity {
     golf_ui_entity_type_t type;
     char name[GOLF_MAX_NAME_LEN];
-    vec2 pos, size;
+    vec2 pos, size, anchor;
     union {
         golf_ui_pixel_pack_square_t pixel_pack_square;
         golf_ui_text_t text;
