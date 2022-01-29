@@ -114,6 +114,9 @@ vec4 golf_config_get_vec4(golf_config_t *cfg, const char *name);
 #define CFG_VEC3(cfg, name) golf_config_get_vec3(cfg, name)
 #define CFG_VEC4(cfg, name) golf_config_get_vec4(cfg, name)
 
+typedef struct golf_ui_layout golf_ui_layout_t;
+typedef struct golf_level golf_level_t;
+
 typedef struct golf_static_data {
     vec_str_t data_paths;
 } golf_static_data_t;
