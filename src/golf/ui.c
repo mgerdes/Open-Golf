@@ -14,13 +14,14 @@ static golf_ui_t ui;
 static golf_inputs_t *inputs; 
 static golf_renderer_t *renderer; 
 
-static golf_ui_draw_entity_t _golf_ui_draw_entity(golf_texture_t *texture, vec2 pos, vec2 size, vec2 uv0, vec2 uv1, vec4 overlay_color) {
+static golf_ui_draw_entity_t _golf_ui_draw_entity(sg_image image, vec2 pos, vec2 size, vec2 uv0, vec2 uv1, float is_font, vec4 overlay_color) {
     golf_ui_draw_entity_t entity;
-    entity.texture = texture;
+    entity.image = image;
     entity.pos = pos;
     entity.size = size;
     entity.uv0 = uv0;
     entity.uv1 = uv1;
+    entity.is_font = is_font;
     entity.overlay_color = overlay_color;
     return entity;
 }
@@ -225,8 +226,8 @@ static bool _golf_ui_layout_load_entity(JSON_Object *entity_obj, golf_ui_entity_
         golf_string_init(&entity->text.text, "ui_layout", text);
         entity->text.font_size = (float)json_object_get_number(entity_obj, "font_size");
         entity->text.color = golf_json_object_get_vec4(entity_obj, "color");
-        entity->text.horiz_align = 0;
-        entity->text.vert_align = 0;
+        entity->text.horiz_align = (int)json_object_get_number(entity_obj, "horiz_align");
+        entity->text.vert_align = (int)json_object_get_number(entity_obj, "vert_align");
     }
     else {
         golf_log_warning("Unknown ui entity type %s", type);
@@ -358,7 +359,7 @@ static void _golf_ui_pixel_pack_square_section(vec2 pos, vec2 size, float tile_s
         return;
     }
 
-    vec_push(&ui.draw_entities, _golf_ui_draw_entity(pixel_pack->texture, V2(px, py), V2(sx, sy), uv0, uv1, overlay_color));
+    vec_push(&ui.draw_entities, _golf_ui_draw_entity(pixel_pack->texture->sg_image, V2(px, py), V2(sx, sy), uv0, uv1, 0, overlay_color));
 }
 
 static void _golf_ui_pixel_pack_square(golf_ui_layout_t *layout, const char *name) {
@@ -402,6 +403,96 @@ static void _golf_ui_text(golf_ui_layout_t *layout, const char *name) {
         golf_log_warning("Could not find text entity %s.", name);
         return;
     }
+
+    golf_font_t *font = entity.text.font;
+    vec2 vp_size = renderer->viewport_size;
+    float ui_scale = vp_size.x / 1280.0f;
+    vec2 anchor = entity.anchor;
+    vec2 pos = V2(anchor.x * vp_size.x, anchor.y * vp_size.y);
+
+    float cur_x = ui_scale * entity.pos.x;
+    float cur_y = ui_scale * entity.pos.y;
+    int sz_idx = 0;
+    float font_size = ui_scale * entity.text.font_size;
+    for (int idx = 1; idx < font->atlases.length; idx++) {
+        if (fabsf(font->atlases.data[idx].font_size - font_size) <
+                fabsf(font->atlases.data[sz_idx].font_size - font_size)) {
+            sz_idx = idx;
+        }
+    }
+    golf_font_atlas_t atlas = font->atlases.data[sz_idx];
+    float sz_scale = font_size / atlas.font_size;
+
+    float width = 0.0f;
+    int i = 0;
+    while (entity.text.text.cstr[i]) {
+        char c = entity.text.text.cstr[i];
+        width += sz_scale * atlas.char_data[(int)c].xadvance;
+        i++;
+    }
+
+    if (entity.text.horiz_align == 0) {
+        cur_x -= 0.5f * width;
+    }
+    else if (entity.text.horiz_align < 0) {
+    }
+    else if (entity.text.horiz_align > 0) {
+        cur_x -= width;
+    }
+    else {
+        golf_log_warning("Invalid text horizontal_alignment %s", entity.text.horiz_align);
+    }
+
+    if (entity.text.vert_align == 0) {
+        cur_y += 0.5f * (atlas.ascent + atlas.descent);
+    }
+    else if (entity.text.vert_align > 0) {
+    }
+    else if (entity.text.vert_align < 0) {
+        cur_y += (atlas.ascent + atlas.descent);
+    }
+    else {
+        golf_log_warning("Invalid text vert_align %s", entity.text.vert_align);
+    }
+
+    i = 0;
+    while (entity.text.text.cstr[i]) {
+        char c = entity.text.text.cstr[i];
+
+        int x0 = (int)atlas.char_data[(int)c].x0;
+        int x1 = (int)atlas.char_data[(int)c].x1;
+        int y0 = (int)atlas.char_data[(int)c].y0;
+        int y1 = (int)atlas.char_data[(int)c].y1;
+
+        float xoff = atlas.char_data[(int)c].xoff;
+        float yoff = atlas.char_data[(int)c].yoff;
+        float xadvance = atlas.char_data[(int)c].xadvance;
+
+        int round_x = (int)floor((cur_x + xoff) + 0.5f);
+        int round_y = (int)floor((cur_y + yoff) + 0.5f);
+
+        float qx0 = (float)round_x; 
+        float qy0 = (float)round_y;
+        float qx1 = (float)(round_x + x1 - x0);
+        float qy1 = (float)(round_y + (y1 - y0));
+
+        float px = pos.x + qx0 + 0.5f * (qx1 - qx0);
+        float py = pos.y + qy0 + 0.5f * (qy1 - qy0);
+
+        float sx = sz_scale * (qx1 - qx0);
+        float sy = sz_scale * (qy1 - qy0);
+
+        vec2 uv0 = V2((float)x0 / atlas.size, (float)y0 / atlas.size);
+        vec2 uv1 = V2((float)x1 / atlas.size, (float)y1 / atlas.size);
+
+        vec4 overlay_color = V4(1, 1, 1, 1);
+
+        vec_push(&ui.draw_entities, _golf_ui_draw_entity(atlas.sg_image, V2(px, py), V2(sx, sy), uv0, uv1, 1, overlay_color));
+
+        cur_x += sz_scale * xadvance;
+
+        i++;
+    }
 }
 
 static void _golf_ui_button(golf_ui_layout_t *layout, const char *name) {
@@ -413,6 +504,7 @@ void golf_ui_update(float dt) {
     golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
     _golf_ui_pixel_pack_square(layout, "background");
     _golf_ui_text(layout, "main_text");
+    _golf_ui_text(layout, "main2_text");
 
     /*
     for (int i = 0; i < ui.entities.length; i++) {

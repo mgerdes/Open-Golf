@@ -176,6 +176,9 @@ void golf_renderer_init(void) {
                         = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
                 },
             },
+            .depth = {
+                .compare = SG_COMPAREFUNC_ALWAYS
+            },
             .colors[0] = {
                 .blend = {
                     .enabled = true,
@@ -714,21 +717,19 @@ static void _draw_ui(void) {
             renderer.viewport_size.x, renderer.viewport_size.y, true);
     sg_apply_pipeline(renderer.ui_pipeline);
 
-
     golf_ui_t *ui = golf_ui_get();
     for (int i = 0; i < ui->draw_entities.length; i++) {
         golf_ui_draw_entity_t draw = ui->draw_entities.data[i];
+        vec3 translate = V3(draw.pos.x, draw.pos.y, 0);
+        vec3 scale = V3(0.5f * draw.size.x, 0.5f * draw.size.y, 1);
 
         golf_model_t *square = golf_data_get_model("data/models/ui_square.obj");
         sg_bindings bindings = {
             .vertex_buffers[ATTR_ui_vs_position] = square->sg_positions_buf,
             .vertex_buffers[ATTR_ui_vs_texture_coord] = square->sg_texcoords_buf,
-            .fs_images[SLOT_ui_texture] = renderer.render_pass_image,
+            .fs_images[SLOT_ui_texture] = draw.image,
         };
         sg_apply_bindings(&bindings);
-
-        vec3 translate = V3(draw.pos.x, draw.pos.y, 1);
-        vec3 scale = V3(0.5f * draw.size.x, 0.5f * draw.size.y, 1);
 
         ui_vs_params_t vs_params = {
             .mvp_mat = mat4_transpose(mat4_multiply_n(3,
@@ -738,6 +739,17 @@ static void _draw_ui(void) {
         };
         sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params,
                 &(sg_range) { &vs_params, sizeof(vs_params) } );
+
+        ui_fs_params_t fs_params = {
+            .tex_x = draw.uv0.x,
+            .tex_y = draw.uv0.y, 
+            .tex_dx = draw.uv1.x - draw.uv0.x, 
+            .tex_dy = draw.uv1.y - draw.uv0.y,
+            .is_font = draw.is_font,
+            .color = draw.overlay_color,
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params,
+                &(sg_range) { &fs_params, sizeof(fs_params) });
 
         sg_draw(0, square->positions.length, 1);
     }

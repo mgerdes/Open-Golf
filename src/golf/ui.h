@@ -7,8 +7,9 @@
 #include "golf/string.h"
 
 typedef struct golf_ui_draw_entity {
-    golf_texture_t *texture;
+    sg_image image;
     vec2 pos, size, uv0, uv1;
+    float is_font;
     vec4 overlay_color;
 } golf_ui_draw_entity_t;
 typedef vec_t(golf_ui_draw_entity_t) vec_golf_ui_draw_entity_t;
