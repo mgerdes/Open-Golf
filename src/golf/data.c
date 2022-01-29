@@ -676,12 +676,12 @@ static bool _golf_model_unload(void *ptr) {
 static void _golf_pixel_pack_pos_to_uvs(golf_pixel_pack_t *pp, int tex_w, int tex_h, vec2 p, vec2 *uv0, vec2 *uv1) {
     uv0->x = (pp->tile_size + pp->tile_padding) * p.x;
     uv0->x /= tex_w;
-    uv0->y = (pp->tile_size + pp->tile_padding) * (p.y + 1) - pp->tile_padding;
+    uv0->y = (pp->tile_size + pp->tile_padding) * p.y;
     uv0->y /= tex_h;
 
     uv1->x = (pp->tile_size + pp->tile_padding) * (p.x + 1) - pp->tile_padding;
     uv1->x /= tex_w;
-    uv1->y = (pp->tile_size + pp->tile_padding) * p.y;
+    uv1->y = (pp->tile_size + pp->tile_padding) * (p.y + 1) - pp->tile_padding;
     uv1->y /= tex_h;
 }
 

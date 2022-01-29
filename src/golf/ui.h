@@ -6,6 +6,9 @@
 #include "golf/data.h"
 #include "golf/string.h"
 
+typedef struct golf_ui_entity golf_ui_entity_t;
+typedef vec_t(golf_ui_entity_t) vec_golf_ui_entity_t;
+
 typedef struct golf_ui_draw_entity {
     sg_image image;
     vec2 pos, size, uv0, uv1;
@@ -35,21 +38,26 @@ typedef struct golf_ui_text {
     vec4 color;
 } golf_ui_text_t;
 
+typedef struct golf_ui_button {
+    vec_golf_ui_entity_t up_entities, down_entities;
+} golf_ui_button_t;
+
 typedef enum golf_ui_entity_type {
     GOLF_UI_PIXEL_PACK_SQUARE,
     GOLF_UI_TEXT,
+    GOLF_UI_BUTTON,
 } golf_ui_entity_type_t;
 
 typedef struct golf_ui_entity {
     golf_ui_entity_type_t type;
-    char name[GOLF_MAX_NAME_LEN];
+    char name[GOLF_MAX_NAME_LEN], parent_name[GOLF_MAX_NAME_LEN];
     vec2 pos, size, anchor;
     union {
         golf_ui_pixel_pack_square_t pixel_pack_square;
         golf_ui_text_t text;
+        golf_ui_button_t button;
     };
 } golf_ui_entity_t;
-typedef vec_t(golf_ui_entity_t) vec_golf_ui_entity_t;
 
 typedef struct golf_ui_layout {
     vec_golf_ui_entity_t entities;

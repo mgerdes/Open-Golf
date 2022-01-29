@@ -7,35 +7,151 @@
 			"square": "blue_background",
 			"anchor": [0.5, 0.5],
 			"pos": [0, 0],
-			"size": [300, 300],
+			"size": [400, 400],
 			"tile_size": 64,
 			"overlay_color": [0, 0, 0, 0]
 		},
+        {
+            "parent": "background",
+            "name": "play_button",
+            "type": "button",
+            "anchor": [0.5, 0.5],
+            "pos": [0, 40],
+            "size": [150, 55],
+            "up_entities": [
+                {
+                    "parent": "play_button",
+                    "type": "pixel_pack_square",
+                    "pixel_pack": "data/textures/pixel_pack.pixel_pack",
+                    "square": "blue_button_up",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 0],
+                    "size": [150, 55],
+                    "tile_size": 32,
+                    "overlay_color": [0, 0, 0, 0]
+                },
+                {
+                    "parent": "play_button",
+                    "type": "text",
+                    "font": "data/font/Castle-Rock.ttf",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 2],
+                    "horiz_align": 0,
+                    "vert_align": 0,
+                    "font_size": 32,
+                    "color": [0.3, 0.1, 0.3, 1],
+                    "text": "PLAY"
+                }
+            ],
+            "down_entities": [
+                {
+                    "parent": "play_button",
+                    "type": "pixel_pack_square",
+                    "pixel_pack": "data/textures/pixel_pack.pixel_pack",
+                    "square": "blue_button_down",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 0],
+                    "size": [150, 55],
+                    "tile_size": 32,
+                    "overlay_color": [0, 0, 0, 0]
+                },
+                {
+                    "parent": "play_button",
+                    "type": "text",
+                    "font": "data/font/Castle-Rock.ttf",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 5],
+                    "horiz_align": 0,
+                    "vert_align": 0,
+                    "font_size": 32,
+                    "color": [0.3, 0.1, 0.3, 1],
+                    "text": "PLAY"
+                }
+            ]
+        },
+        {
+            "parent": "background",
+            "name": "courses_button",
+            "type": "button",
+            "anchor": [0.5, 0.5],
+            "pos": [0, 120],
+            "size": [150, 55],
+            "up_entities": [
+                {
+                    "parent": "courses_button",
+                    "type": "pixel_pack_square",
+                    "pixel_pack": "data/textures/pixel_pack.pixel_pack",
+                    "square": "blue_button_up",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 0],
+                    "size": [150, 55],
+                    "tile_size": 32,
+                    "overlay_color": [0, 0, 0, 0]
+                },
+                {
+                    "parent": "courses_button",
+                    "type": "text",
+                    "font": "data/font/Castle-Rock.ttf",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 2],
+                    "horiz_align": 0,
+                    "vert_align": 0,
+                    "font_size": 32,
+                    "color": [0.3, 0.1, 0.3, 1],
+                    "text": "COURSES"
+                }
+            ],
+            "down_entities": [
+                {
+                    "parent": "courses_button",
+                    "type": "pixel_pack_square",
+                    "pixel_pack": "data/textures/pixel_pack.pixel_pack",
+                    "square": "blue_button_down",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 0],
+                    "size": [150, 55],
+                    "tile_size": 32,
+                    "overlay_color": [0, 0, 0, 0]
+                },
+                {
+                    "parent": "courses_button",
+                    "type": "text",
+                    "font": "data/font/Castle-Rock.ttf",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 5],
+                    "horiz_align": 0,
+                    "vert_align": 0,
+                    "font_size": 32,
+                    "color": [0.3, 0.1, 0.3, 1],
+                    "text": "COURSES"
+                }
+            ]
+        },
 		{
 			"parent": "background",
 			"name": "main_text",
 			"type": "text",
-			"font": "data/font/FiraSans-Bold.ttf",
-			"anchor": [0.5, 0.5],
-			"pos": [0, 0],
+			"font": "data/font/Castle-Rock.ttf",
+			"anchor": [0.5, 0.2],
+			"pos": [0, 2],
             "horiz_align": 0,
             "vert_align": 0,
-			"font_size": 50,
-			"color": [1, 1, 1, 1],
+			"font_size": 72,
+			"color": [0, 0, 0, 1],
 			"text": "OPEN GOLF"
 		},
 		{
 			"parent": "background",
 			"name": "main2_text",
 			"type": "text",
-			"font": "data/font/FiraSans-Bold.ttf",
-			"anchor": [0.5, 0.5],
-			"pos": [0, 80],
+			"font": "data/font/Castle-Rock.ttf",
+			"anchor": [0.5, 0.2],
+			"pos": [2, 0],
             "horiz_align": 0,
             "vert_align": 0,
-			"font_size": 16,
-			"color": [1, 1, 1, 1],
-			"text": "WANNA PLAY SOME GOLF?"
+			"font_size": 72,
+			"color": [0.7, 0.9, 0.7, 1],
+			"text": "OPEN GOLF"
 		}
 	]
 }

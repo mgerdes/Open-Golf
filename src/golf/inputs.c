@@ -12,7 +12,7 @@ static void _get_world_ray_from_window_pos(vec2 mouse_pos, vec3 *world_ro, vec3 
     mat4 inv_proj = mat4_inverse(renderer->proj_mat);
     mat4 inv_view = mat4_inverse(renderer->view_mat);
     float x = -1.0f + 2.0f * mouse_pos.x / renderer->viewport_size.x;
-    float y = -1.0f + 2.0f * mouse_pos.y / renderer->viewport_size.y;
+    float y = -1.0f + 2.0f * (renderer->viewport_size.y - mouse_pos.y) / renderer->viewport_size.y;
     vec4 clip_space = V4(x, y, -1.0f, 1.0f);
     vec4 eye_space = vec4_apply_mat(clip_space, inv_proj);
     eye_space = V4(eye_space.x, eye_space.y, -1.0f, 0.0f);
@@ -57,7 +57,7 @@ void golf_inputs_handle_event(const sapp_event *event) {
     inputs.screen_mouse_pos.x = event->mouse_x;
     inputs.screen_mouse_pos.y = renderer->window_size.y - event->mouse_y;
     inputs.mouse_pos.x = event->mouse_x - renderer->viewport_pos.x;
-    inputs.mouse_pos.y = renderer->viewport_size.y - (event->mouse_y - renderer->viewport_pos.y);
+    inputs.mouse_pos.y = event->mouse_y - renderer->viewport_pos.y;
     _get_world_ray_from_window_pos(inputs.mouse_pos, &inputs.mouse_ray_orig, &inputs.mouse_ray_dir);
 
     if (event->type == SAPP_EVENTTYPE_MOUSE_DOWN ||
@@ -73,8 +73,6 @@ void golf_inputs_handle_event(const sapp_event *event) {
         inputs.mouse_down[event->mouse_button] = false;
         inputs.mouse_clicked[event->mouse_button] = true;
     }
-    //inputs.window_mouse_pos = V2(event->mouse_x, 720.0f - event->mouse_y);
-    //inputs.mouse_pos = inputs.window_mouse_pos;
 
     if (event->type == SAPP_EVENTTYPE_KEY_DOWN) {
         inputs.button_down[event->key_code] = true;

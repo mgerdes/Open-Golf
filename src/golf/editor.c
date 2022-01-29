@@ -2577,7 +2577,7 @@ void golf_editor_update(float dt) {
         }
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT]) {
             renderer->cam_azimuth_angle += 0.2f * dt * inputs->mouse_delta.x;
-            renderer->cam_inclination_angle -= 0.2f * dt * inputs->mouse_delta.y;
+            renderer->cam_inclination_angle += 0.2f * dt * inputs->mouse_delta.y;
         }
     }
 
