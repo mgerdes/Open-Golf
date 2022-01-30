@@ -6,6 +6,10 @@
 #include "dbgtools/callstack.h"
 #include "golf/log.h"
 
+#if GOLF_PLATFORM_ANDROID
+#include <android/log.h>
+#endif
+
 typedef struct _golf_log_entry {
     char msg[1024];
 } _golf_log_entry_t;
@@ -38,6 +42,16 @@ static void _print_callstack(void) {
 */
 
 static void _log(golf_log_level_t level, const char *fmt, va_list arg) {
+#if GOLF_PLATFORM_ANDROID
+    int log_level = ANDROID_LOG_INFO;
+    if (level == GOLF_LOG_LEVEL_WARNING) {
+        log_level = ANDROID_LOG_WARN;
+    }
+    else if (level == GOLF_LOG_LEVEL_ERROR) {
+        log_level = ANDROID_LOG_ERROR;
+    }
+    __android_log_vprint(log_level, "golf", fmt, arg);
+#else
     if (level == GOLF_LOG_LEVEL_WARNING) {
         printf("WARNING: ");
     }
@@ -46,6 +60,7 @@ static void _log(golf_log_level_t level, const char *fmt, va_list arg) {
     }
     vprintf(fmt, arg);
     printf("\n");
+#endif
     if (level == GOLF_LOG_LEVEL_WARNING) {
         //_print_callstack();
         //if (_state.entry_count < 32) {

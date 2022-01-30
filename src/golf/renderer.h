@@ -5,6 +5,7 @@
 #include "golf/maths.h"
 
 typedef struct golf_renderer {
+    float framerate;
     vec2 window_size;
     vec2 viewport_pos, viewport_size;
     vec2 render_size;

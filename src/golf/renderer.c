@@ -319,6 +319,7 @@ void golf_renderer_set_render_size(vec2 size) {
 }
 
 void golf_renderer_update(void) {
+    renderer.framerate = igGetIO()->Framerate;
     renderer.window_size = V2(sapp_width(), sapp_height());
 
     if (!renderer.render_pass_inited || !vec2_equal(renderer.render_size, renderer.render_pass_size)) {

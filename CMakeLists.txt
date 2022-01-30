@@ -3,11 +3,13 @@ cmake_minimum_required(VERSION 3.12)
 project(minigolf)
 set(CMAKE_BUILD_TYPE Debug)
 
+message("CMAKE_SYSTEM_NAME: ${CMAKE_SYSTEM_NAME}")
+
 if(CMAKE_SYSTEM_NAME STREQUAL Android)
-    add_library(native-golf
+    add_library(golf
         SHARED
         src/golf_exe/main.c)
-    target_link_libraries(native-golf PRIVATE
+    target_link_libraries(golf PRIVATE
         golf_lib)
 else()
     add_executable(golf

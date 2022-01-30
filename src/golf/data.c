@@ -9,6 +9,7 @@
 #include "stb/stb_image.h"
 #include "stb/stb_image_write.h"
 #include "stb/stb_truetype.h"
+#include "sokol/sokol_app.h"
 #include "sokol/sokol_time.h"
 #include "golf/base64.h"
 #include "golf/file.h"
@@ -1235,6 +1236,10 @@ void golf_data_turn_off_reload(const char *ext) {
     }
 }
 
+#if GOLF_PLATFORM_ANDROID
+#include <android/native_activity.h>
+#endif
+
 void golf_data_init(void) {
     map_init(&_loaded_data, "data");
     golf_mutex_init(&_seen_files_lock);
@@ -1243,9 +1248,27 @@ void golf_data_init(void) {
     vec_init(&_file_events, "data");
     vec_init(&_seen_files, "data");
     _assetsys = assetsys_create(NULL);
-    assetsys_error_t error = assetsys_mount(_assetsys, "data", "/data");
+#if GOLF_PLATFORM_ANDROID
+    ANativeActivity *native_activity = (ANativeActivity *)sapp_android_get_native_activity();
+    AAssetManager *asset_manager = native_activity->assetManager;
+    AAsset *asset = AAssetManager_open(asset_manager, "data.zip", AASSET_MODE_BUFFER);
+    if (!asset) {
+        golf_log_error("Unable to open data.zip");
+    }
+    const char *buffer = AAsset_getBuffer(asset);
+    size_t buffer_size = AAsset_getLength(asset);
+    golf_log_note("Android data.zip asset size %d", (int)buffer_size);
+
+    assetsys_error_t error = assetsys_mount(_assetsys, "data.zip", buffer, buffer_size, "/data");
+    int file_count = assetsys_file_count(_assetsys, "/");
+    golf_log_note("file_count: %d", file_count);
+
+    //AAsset_close(asset);
+#else
+    assetsys_error_t error = assetsys_mount(_assetsys, "data", NULL, 0, "/data");
+#endif
     if (error != ASSETSYS_SUCCESS) {
-        golf_log_error("Unable to mount data");
+        golf_log_error("Unable to mount data, error: %d", (int)error);
     }
 
     bool push_events = false;
@@ -1263,7 +1286,10 @@ void golf_data_update(float dt) {
         switch (event.type) {
             case FILE_CREATED:
                 assetsys_dismount(_assetsys, "data", "/data");
-                assetsys_mount(_assetsys, "data", "/data");
+                assetsys_error_t error = assetsys_mount(_assetsys, "data", NULL, 0, "/data");
+                if (error != ASSETSYS_SUCCESS) {
+                    golf_log_error("Unable to mount data");
+                }
                 break;
             case FILE_UPDATED: {
                 _data_loader_t *loader = _get_data_loader(event.file.ext);
@@ -1342,7 +1368,7 @@ void golf_data_load(const char *path) {
         golf_free(meta_data);
     }
     else {
-        golf_log_warning("Error loading file %s", path);
+        golf_log_warning("Error loading file %s. error: %d", path, (int)error);
     }
     golf_free(data);
 }
@@ -1488,7 +1514,7 @@ void golf_data_get_all_matching(golf_data_type_t type, const char *str, vec_golf
 
 void golf_data_force_remount(void) {
     assetsys_dismount(_assetsys, "data", "/data");
-    assetsys_mount(_assetsys, "data", "/data");
+    assetsys_mount(_assetsys, "data", NULL, 0, "/data");
 }
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS

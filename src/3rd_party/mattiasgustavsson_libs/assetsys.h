@@ -43,7 +43,7 @@ typedef struct assetsys_t assetsys_t;
 assetsys_t* assetsys_create( void* memctx );
 void assetsys_destroy( assetsys_t* sys );
 
-assetsys_error_t assetsys_mount( assetsys_t* sys, char const* path, char const* mount_as );
+assetsys_error_t assetsys_mount( assetsys_t* sys, char const* path, const char *zip_mem, size_t zip_mem_size, char const* mount_as );
 assetsys_error_t assetsys_dismount( assetsys_t* sys, char const* path, char const* mounted_as );
 
 typedef struct assetsys_file_t { ASSETSYS_U64 mount; ASSETSYS_U64 path; int index; } assetsys_file_t;
@@ -5857,7 +5857,7 @@ static void assetsys_internal_recurse_directories( assetsys_t* sys, int const co
     }
 
 
-assetsys_error_t assetsys_mount( assetsys_t* sys, char const* path, char const* mount_as )
+assetsys_error_t assetsys_mount( assetsys_t* sys, char const* path, const char *zip_mem, size_t zip_mem_size, char const* mount_as )
     {
     if( !path ) return ASSETSYS_ERROR_INVALID_PARAMETER;
     if( !mount_as ) return ASSETSYS_ERROR_INVALID_PARAMETER;
@@ -5873,6 +5873,8 @@ assetsys_error_t assetsys_mount( assetsys_t* sys, char const* path, char const* 
     
     enum assetsys_internal_mount_type_t type;
 
+    if (!zip_mem) 
+    {
     #if defined( _MSC_VER ) && _MSC_VER >= 1400
         struct _stat64 s;
         int res = __stat64( *path == '\0' ? "." : path, &s );
@@ -5890,6 +5892,11 @@ assetsys_error_t assetsys_mount( assetsys_t* sys, char const* path, char const* 
         {
         return ASSETSYS_ERROR_INVALID_PATH;
         }
+    }
+    else 
+    {
+        type = ASSETSYS_INTERNAL_MOUNT_TYPE_ZIP;
+    }
 
     if( sys->mounts_count >= sys->mounts_capacity )
         {
@@ -5932,7 +5939,8 @@ assetsys_error_t assetsys_mount( assetsys_t* sys, char const* path, char const* 
         mount->zip.m_pRealloc = assetsys_internal_mz_realloc;
         mount->zip.m_pFree = assetsys_internal_mz_free;
         mount->zip.m_pAlloc_opaque = sys->memctx;
-        mz_bool status = mz_zip_reader_init_file( &mount->zip, path, 0 );
+        //mz_bool status = mz_zip_reader_init_file( &mount->zip, path, 0 );
+        mz_bool status = mz_zip_reader_init_mem( &mount->zip, zip_mem, zip_mem_size, 0 );
         if( !status )
             {
             ASSETSYS_FREE( sys->memctx, mount->dirs );

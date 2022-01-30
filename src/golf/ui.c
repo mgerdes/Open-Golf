@@ -185,14 +185,14 @@ static bool _golf_ui_layout_get_entity(golf_ui_layout_t *layout, const char *nam
     return false;
 }
 
-static bool _golf_ui_layout_get_entity_of_type(golf_ui_layout_t *layout, const char *name, golf_ui_entity_type_t type, golf_ui_entity_t *entity) {
+static bool _golf_ui_layout_get_entity_of_type(golf_ui_layout_t *layout, const char *name, golf_ui_entity_type_t type, golf_ui_entity_t **entity) {
     if (!name[0]) {
         return false;
     }
 
     for (int i = 0; i < layout->entities.length; i++) {
         if (strcmp(layout->entities.data[i].name, name) == 0 && layout->entities.data[i].type == type) {
-            *entity = layout->entities.data[i];
+            *entity = &layout->entities.data[i];
             return true;
         }
     }
@@ -316,13 +316,13 @@ static void _golf_ui_pixel_pack_square(golf_ui_layout_t *layout, golf_ui_entity_
 }
 
 static void _golf_ui_pixel_pack_square_name(golf_ui_layout_t *layout, const char *name) {
-    golf_ui_entity_t entity;
+    golf_ui_entity_t *entity;
     if (!_golf_ui_layout_get_entity_of_type(layout, name, GOLF_UI_PIXEL_PACK_SQUARE, &entity)) {
         golf_log_warning("Could not find pixel pack square entity %s.", name);
         return;
     }
 
-    _golf_ui_pixel_pack_square(layout, entity);
+    _golf_ui_pixel_pack_square(layout, *entity);
 }
 
 static void _golf_ui_text(golf_ui_layout_t *layout, golf_ui_entity_t entity) {
@@ -417,32 +417,32 @@ static void _golf_ui_text(golf_ui_layout_t *layout, golf_ui_entity_t entity) {
 }
 
 static void _golf_ui_text_name(golf_ui_layout_t *layout, const char *name) {
-    golf_ui_entity_t entity;
+    golf_ui_entity_t *entity;
     if (!_golf_ui_layout_get_entity_of_type(layout, name, GOLF_UI_TEXT, &entity)) {
         golf_log_warning("Could not find text entity %s.", name);
         return;
     }
-    _golf_ui_text(layout, entity);
+    _golf_ui_text(layout, *entity);
 }
 
 static void _golf_ui_button_name(golf_ui_layout_t *layout, const char *name) {
-    golf_ui_entity_t entity;
+    golf_ui_entity_t *entity;
     if (!_golf_ui_layout_get_entity_of_type(layout, name, GOLF_UI_BUTTON, &entity)) {
         golf_log_warning("Could not find button entity %s.", name);
         return;
     }
 
     float ui_scale = renderer->viewport_size.x / 720.0f;
-    vec2 pos = _golf_ui_layout_get_entity_pos(layout, entity);
-    vec2 size = vec2_scale(entity.size, ui_scale);
+    vec2 pos = _golf_ui_layout_get_entity_pos(layout, *entity);
+    vec2 size = vec2_scale(entity->size, ui_scale);
     vec2 mp = inputs->mouse_pos;
     vec_golf_ui_entity_t entities;
     if (pos.x - 0.5f * size.x <= mp.x && pos.x + 0.5f * size.x >= mp.x &&
             pos.y - 0.5f * size.y <= mp.y && pos.y + 0.5f * size.y >= mp.y) {
-        entities = entity.button.down_entities;
+        entities = entity->button.down_entities;
     }
     else {
-        entities = entity.button.up_entities;
+        entities = entity->button.up_entities;
     }
 
     for (int i = 0; i < entities.length; i++) {
@@ -469,4 +469,14 @@ void golf_ui_update(float dt) {
     _golf_ui_button_name(layout, "courses_button");
     _golf_ui_text_name(layout, "main_text");
     _golf_ui_text_name(layout, "main2_text");
+
+
+    {
+        golf_ui_entity_t *entity;
+        if (_golf_ui_layout_get_entity_of_type(layout, "fps_text", GOLF_UI_TEXT, &entity)) {
+            entity->text.text.len = 0;
+            golf_string_appendf(&entity->text.text, "%.3f", renderer->framerate);
+            _golf_ui_text_name(layout, "fps_text");
+        }
+    }
 }
