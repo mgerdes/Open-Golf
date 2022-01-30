@@ -1753,8 +1753,8 @@ static gs_val_t gs_c_fn_terrain_model_add_point(gs_eval_t *eval, gs_val_t *vals,
     gs_val_t sig = gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
     if (sig.is_return) return sig;
 
-    golf_geo_point_t point = golf_geo_point(vals[0].vec3_val);
-    golf_editor_edit_mode_geo_add_point(point);
+    //golf_geo_point_t point = golf_geo_point(vals[0].vec3_val);
+    //golf_editor_edit_mode_geo_add_point(point);
     return gs_val_void();
 }
 
@@ -1771,8 +1771,8 @@ static gs_val_t gs_c_fn_terrain_model_add_face(gs_eval_t *eval, gs_val_t *vals, 
         idx[i] = vals[i].int_val;
     }
 
-    golf_geo_face_t face = golf_geo_face("default", num_vals, idx, GOLF_GEO_FACE_UV_GEN_MANUAL, uvs);
-    golf_editor_edit_mode_geo_add_face(face);
+    //golf_geo_face_t face = golf_geo_face("default", num_vals, idx, GOLF_GEO_FACE_UV_GEN_MANUAL, uvs);
+    //golf_editor_edit_mode_geo_add_face(face);
 
     golf_free(idx);
     golf_free(uvs);

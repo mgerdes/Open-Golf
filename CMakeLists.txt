@@ -3,25 +3,33 @@ cmake_minimum_required(VERSION 3.12)
 project(minigolf)
 set(CMAKE_BUILD_TYPE Debug)
 
-add_executable(golf
-    src/golf_exe/main.c)
-target_link_libraries(golf PRIVATE
-    golf_lib)
-set_property(TARGET golf PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+if(CMAKE_SYSTEM_NAME STREQUAL Android)
+    add_library(native-golf
+        SHARED
+        src/golf_exe/main.c)
+    target_link_libraries(native-golf PRIVATE
+        golf_lib)
+else()
+    add_executable(golf
+        src/golf_exe/main.c)
+    target_link_libraries(golf PRIVATE
+        golf_lib)
+    set_property(TARGET golf PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+endif()
 
-add_executable(editor
-    src/editor_exe/main.c)
-target_link_libraries(editor PRIVATE
-    golf_lib)
-set_property(TARGET editor PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+#add_executable(editor
+#src/editor_exe/main.c)
+#target_link_libraries(editor PRIVATE
+#golf_lib)
+#set_property(TARGET editor PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 
 set(GOLF_BASE_LIBRARIES 
     cimgui
     cute_headers
-    dbgtools
+    #dbgtools
     fast_obj
-    glad
-    glfw
+    #glad
+    #glfw
     lightmapper
     mattiasgustavsson_libs
     miniz
@@ -38,10 +46,10 @@ add_library(golf_lib STATIC
     src/golf/config.c
     src/golf/data.c
     src/golf/debug_console.c
-    src/golf/editor.c
+    #src/golf/editor.c
     src/golf/file.c
     src/golf/game.c
-    src/golf/gi.c
+    #src/golf/gi.c
     src/golf/gizmo.c
     src/golf/inputs.c
     src/golf/json.c
@@ -119,6 +127,16 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
         MACOSX_BUNDLE_BUNDLE_VERSION 0.0.0
         MACOSX_BUNDLE_SHORT_VERSION_STRING 0.0.0)
     set(CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM RMF5MGUCT2 CACHE INTERNAL "")
+elseif(CMAKE_SYSTEM_NAME STREQUAL Android)
+    target_link_libraries(golf_lib PUBLIC
+        ${GOLF_BASE_LIBRARIES}
+        "GLESv3"
+        "EGL"
+        "log" 
+        "android"
+        "OpenSLES")
+    target_compile_definitions(golf_lib PUBLIC
+        GOLF_PLATFORM_ANDROID)
 endif()
 
 add_library(cimgui STATIC
@@ -131,12 +149,12 @@ target_link_libraries(cimgui PRIVATE
 add_library(cute_headers STATIC
     src/3rd_party/cute_headers/impl.c)
 
-add_library(dbgtools STATIC
-    src/3rd_party/dbgtools/callstack.cpp)
-target_compile_options(dbgtools PRIVATE 
-    -std=c++11)
-target_compile_definitions(dbgtools PRIVATE 
-    _CRT_SECURE_NO_WARNINGS)
+#add_library(dbgtools STATIC
+#src/3rd_party/dbgtools/callstack.cpp)
+#target_compile_options(dbgtools PRIVATE 
+#-std=c++11)
+#target_compile_definitions(dbgtools PRIVATE 
+#_CRT_SECURE_NO_WARNINGS)
 
 add_library(fast_obj STATIC
     src/3rd_party/fast_obj/fast_obj.c)
@@ -237,6 +255,9 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
 elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
     target_compile_options(sokol PRIVATE 
         -x objective-c)
+    target_compile_definitions(sokol PUBLIC
+        SOKOL_GLES3)
+elseif(CMAKE_SYSTEM_NAME STREQUAL Android)
     target_compile_definitions(sokol PUBLIC
         SOKOL_GLES3)
 elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)

@@ -31,7 +31,7 @@ typedef struct tagTHREADNAME_INFO
     } THREADNAME_INFO;
 #pragma pack(pop)
 
-#elif GOLF_PLATFORM_LINUX
+#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID
 
 #include <stdint.h>
 #include <pthread.h>
@@ -69,7 +69,7 @@ golf_thread_t golf_thread_create(int (*proc)(void*), void *user_data, const char
 
     return (golf_thread_t) handle;
 
-#elif GOLF_PLATFORM_LINUX 
+#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID 
 
     pthread_t thread;
     if( 0 != pthread_create( &thread, NULL, ( void* (*)( void * ) ) proc, user_data ) )
@@ -101,7 +101,7 @@ void golf_mutex_init(golf_mutex_t *mutex) {
 
     InitializeCriticalSectionAndSpinCount( (CRITICAL_SECTION*) mutex, 32 );
 
-#elif GOLF_PLATFORM_LINUX
+#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID
 
     // Compile-time size check
     struct x { char thread_mutex_type_too_small : ( sizeof( golf_mutex_t ) < sizeof( pthread_mutex_t ) ? 0 : 1 ); };
@@ -118,7 +118,7 @@ void golf_mutex_deinit(golf_mutex_t *mutex) {
 
     DeleteCriticalSection( (CRITICAL_SECTION*) mutex );
 
-#elif GOLF_PLATFORM_LINUX
+#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID
 
     pthread_mutex_destroy( (pthread_mutex_t*) mutex );
 
@@ -132,7 +132,7 @@ void golf_mutex_lock(golf_mutex_t *mutex) {
 
     EnterCriticalSection( (CRITICAL_SECTION*) mutex );
 
-#elif GOLF_PLATFORM_LINUX
+#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID
 
     pthread_mutex_lock( (pthread_mutex_t*) mutex );
 
@@ -146,7 +146,7 @@ void golf_mutex_unlock(golf_mutex_t *mutex) {
 
     LeaveCriticalSection( (CRITICAL_SECTION*) mutex );
 
-#elif GOLF_PLATFORM_LINUX
+#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID
 
     pthread_mutex_unlock( (pthread_mutex_t*) mutex );
 

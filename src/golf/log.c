@@ -21,6 +21,7 @@ void golf_log_init(void) {
     _state.entry_count = 0;
 }
 
+/*
 static void _print_callstack(void) {
     void *addresses[256];
     int i;
@@ -34,6 +35,7 @@ static void _print_callstack(void) {
         printf( "%3d) %-50s %s(%u)\n", i, symbols[i].function, symbols[i].file, symbols[i].line );
     }
 }
+*/
 
 static void _log(golf_log_level_t level, const char *fmt, va_list arg) {
     if (level == GOLF_LOG_LEVEL_WARNING) {
@@ -52,7 +54,7 @@ static void _log(golf_log_level_t level, const char *fmt, va_list arg) {
         //}
     }
     else if (level == GOLF_LOG_LEVEL_ERROR) {
-        _print_callstack();
+        //_print_callstack();
         assert(false);
     }
 }

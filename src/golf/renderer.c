@@ -747,6 +747,7 @@ void golf_renderer_draw(void) {
     _draw_ui();
 }
 
+/*
 void golf_renderer_draw_editor(void) {
     golf_editor_t *editor = golf_editor_get();
     golf_config_t *editor_cfg = golf_data_get_config("data/config/editor.cfg");
@@ -863,6 +864,7 @@ void golf_renderer_draw_editor(void) {
         sg_end_pass();
     }
 }
+*/
 
 vec2 golf_renderer_world_to_screen(vec3 pos) {
     vec4 t = V4(pos.x, pos.y, pos.z, 1);
