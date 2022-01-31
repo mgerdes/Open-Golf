@@ -470,12 +470,11 @@ void golf_ui_update(float dt) {
     _golf_ui_text_name(layout, "main_text");
     _golf_ui_text_name(layout, "main2_text");
 
-
     {
         golf_ui_entity_t *entity;
         if (_golf_ui_layout_get_entity_of_type(layout, "fps_text", GOLF_UI_TEXT, &entity)) {
             entity->text.text.len = 0;
-            golf_string_appendf(&entity->text.text, "%.3f", renderer->framerate);
+            golf_string_appendf(&entity->text.text, "%.1f", renderer->framerate);
             _golf_ui_text_name(layout, "fps_text");
         }
     }

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="me.mgerdes.open_golf">
+    <uses-feature android:glEsVersion="0x00030000" />
+    <application
+        android:label="Open Golf"
+        android:hasCode="false">
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            tools:node="remove" />
+
+        <activity android:name="android.app.NativeActivity"
+            android:label="golf"
+            android:launchMode="singleTask"
+            android:screenOrientation="fullUser"
+            android:exported="true">
+            <meta-data android:name="android.app.lib_name" android:value="golf"/>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
