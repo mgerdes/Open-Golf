@@ -19,16 +19,15 @@ set(GOLF_LIBRARIES
     xatlas)
 
 if(CMAKE_SYSTEM_NAME STREQUAL Android)
-	add_library(golf SHARED
-		main.c
-		game.c
-		ui.c)
+    add_library(golf SHARED
+        main.c
+        game.c
+        ui.c)
     target_link_libraries(golf PRIVATE
-		common)
+        common)
     add_dependencies(golf android_data_zip)
 else()
     if(CMAKE_SYSTEM_NAME STREQUAL Windows)
-        set_property(TARGET golf PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
     elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
         set(GOLF_LIBRARIES 
             ${GOLF_LIBRARIES}

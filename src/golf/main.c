@@ -54,8 +54,6 @@ static void frame(void) {
     }
 
     golf_graphics_begin_frame(dt);
-	golf_graphics_set_render_size(V2(sapp_width(), sapp_height()));
-	golf_graphics_set_viewport(V2(0, 0), V2(sapp_width(), sapp_height()));
     golf_inputs_begin_frame();
 
     {
@@ -66,14 +64,17 @@ static void frame(void) {
     }
 
     {
-		golf_game_draw();
-		golf_ui_draw();
+        golf_game_draw();
+        golf_ui_draw();
         //golf_renderer_update();
         //golf_renderer_draw();
     }
 
     golf_inputs_end_frame();
     golf_graphics_end_frame();
+
+    golf_graphics_set_render_size(V2(sapp_width(), sapp_height()));
+    golf_graphics_set_viewport(V2(0, 0), V2(sapp_width(), sapp_height()));
 
     fflush(stdout);
 }

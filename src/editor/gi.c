@@ -1,4 +1,4 @@
-#include "golf/gi.h"
+#include "editor/gi.h"
 
 #include <assert.h>
 #include "glad/glad.h"
@@ -164,7 +164,7 @@ static int _gi_run(void *user_data) {
             vec2 *lightmap_uv = lightmap_uvs->data;
             vec3 *vertices = positions->data;
             int num_vertices = positions->length;
-            xatlas_wrapper_generate_lightmap_uvs(resolution, lightmap_uv, vertices, num_vertices, image_width, image_height);
+            xatlas_wrapper_generate_lightmap_uvs(resolution, (float*)lightmap_uv, (float*)vertices, num_vertices, image_width, image_height);
         }
 
         entity->image_data = malloc(sizeof(float*) * entity->num_samples);
@@ -387,7 +387,7 @@ void golf_gi_start(golf_gi_t *gi) {
     }
 
     _gi_set_is_running(gi, true);
-    gi->thread = golf_thread_create(_gi_run, gi, "gi", THREAD_STACK_SIZE_DEFAULT);
+    gi->thread = golf_thread_create(_gi_run, gi, "gi");
 }
 
 void golf_gi_start_lightmap(golf_gi_t *gi, golf_lightmap_image_t *lightmap_image) {

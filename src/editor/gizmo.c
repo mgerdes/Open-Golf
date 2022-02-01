@@ -1,9 +1,9 @@
-#include "golf/gizmo.h"
+#include "editor/gizmo.h"
 
 #include <float.h>
 
+#include "common/graphics.h"
 #include "common/inputs.h"
-#include "common/renderer.h"
 
 void golf_gizmo_init(golf_gizmo_t *gizmo) {
     gizmo->is_on = false;
@@ -17,7 +17,7 @@ void golf_gizmo_init(golf_gizmo_t *gizmo) {
 }
 
 static vec2 _world_to_screen(vec3 p) {
-    return golf_renderer_world_to_screen(p);
+    return golf_graphics_world_to_screen(p);
 }
 
 static void _add_line(ImDrawList *draw_list, vec2 p0, vec2 p1, float radius, vec4 color) {
@@ -52,10 +52,10 @@ void golf_gizmo_update(golf_gizmo_t *gizmo, ImDrawList *draw_list) {
     }
 
     golf_inputs_t *inputs = golf_inputs_get();
-    golf_renderer_t *renderer = golf_renderer_get();
+    golf_graphics_t *graphics = golf_graphics_get();
 
     vec3 p = gizmo->transform.position;
-    float dist_modifier = 0.1f * vec3_distance(renderer->cam_pos, p);
+    float dist_modifier = 0.1f * vec3_distance(graphics->cam_pos, p);
 
     mat4 model_mat = mat4_from_quat(gizmo->transform.rotation);
     vec3 axis[3] = {

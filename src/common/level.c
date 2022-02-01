@@ -690,7 +690,20 @@ golf_transform_t golf_transform(vec3 position, vec3 scale, quat rotation) {
     return transform;
 }
 
+static void _add_dependency(vec_str_t *data_dependencies, char *path) {
+    for (int i = 0; i < data_dependencies->length; i++) {
+        if (strcmp(data_dependencies->data[i], path) == 0) {
+            return;
+        }
+    }
+    vec_push(data_dependencies, path);
+}
+
 bool golf_level_save(golf_level_t *level, const char *path) {
+    vec_str_t data_dependencies;
+    vec_init(&data_dependencies, "level");
+    _add_dependency(&data_dependencies, "data/textures/hole_lightmap.png");
+
     JSON_Value *json_materials_val = json_value_init_array();
     JSON_Array *json_materials_arr = json_value_get_array(json_materials_val);
     for (int i = 0; i < level->materials.length; i++) {
@@ -707,6 +720,7 @@ bool golf_level_save(golf_level_t *level, const char *path) {
             case GOLF_MATERIAL_TEXTURE: {
                 json_object_set_string(json_material_obj, "type", "texture");
                 json_object_set_string(json_material_obj, "texture", material->texture_path);
+                _add_dependency(&data_dependencies, material->texture_path);
                 break;
             }
             case GOLF_MATERIAL_COLOR: {
@@ -722,6 +736,7 @@ bool golf_level_save(golf_level_t *level, const char *path) {
             case GOLF_MATERIAL_ENVIRONMENT: {
                 json_object_set_string(json_material_obj, "type", "environment");
                 json_object_set_string(json_material_obj, "texture", material->texture_path);
+                _add_dependency(&data_dependencies, material->texture_path);
                 break;
             }
         }
@@ -787,6 +802,7 @@ bool golf_level_save(golf_level_t *level, const char *path) {
                 json_object_set_string(json_entity_obj, "type", "model");
                 json_object_set_string(json_entity_obj, "model", model->model_path);
                 json_object_set_number(json_entity_obj, "uv_scale", model->uv_scale);
+                _add_dependency(&data_dependencies, model->model_path);
                 break;
             }
             case BALL_START_ENTITY: {
@@ -832,8 +848,16 @@ bool golf_level_save(golf_level_t *level, const char *path) {
 
     vec_deinit(&entity_saved_idx);
 
+    JSON_Value *json_data_dependencies_val = json_value_init_array();
+    JSON_Array *json_data_dependencies_arr = json_value_get_array(json_data_dependencies_val);
+    for (int i = 0; i < data_dependencies.length; i++) {
+        json_array_append_string(json_data_dependencies_arr, data_dependencies.data[i]);
+    }
+    vec_deinit(&data_dependencies);
+
     JSON_Value *json_val = json_value_init_object();
     JSON_Object *json_obj = json_value_get_object(json_val);
+    json_object_set_value(json_obj, "data_dependencies", json_data_dependencies_val);
     json_object_set_value(json_obj, "materials", json_materials_val);
     json_object_set_value(json_obj, "lightmap_images", json_lightmap_images_val);
     json_object_set_value(json_obj, "entities", json_entities_val);

@@ -5,11 +5,11 @@
 #include "cimgui/cimgui.h"
 #include "common/bvh.h"
 #include "common/file.h"
-#include "golf/gi.h"
-#include "golf/gizmo.h"
 #include "common/level.h"
 #include "common/maths.h"
 #include "common/vec.h"
+#include "editor/gi.h"
+#include "editor/gizmo.h"
 
 typedef enum golf_edit_mode_entity_type {
     GOLF_EDIT_MODE_ENTITY_FACE,

@@ -1,6 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 
-#include "golf/editor.h"
+#include "editor/editor.h"
 
 #include <assert.h>
 #include <float.h>
@@ -11,17 +11,17 @@
 #include "IconsFontAwesome5/IconsFontAwesome5.h"
 #include "sokol/sokol_time.h"
 #include "stb/stb_image_write.h"
-#include "golf/alloc.h"
-#include "golf/bvh.h"
-#include "golf/data.h"
-#include "golf/inputs.h"
-#include "golf/log.h"
-#include "golf/renderer.h"
-#include "golf/script.h"
+#include "common/alloc.h"
+#include "common/bvh.h"
+#include "common/data.h"
+#include "common/graphics.h"
+#include "common/inputs.h"
+#include "common/log.h"
+#include "common/script.h"
 
 static golf_editor_t editor;
 static golf_inputs_t *inputs;
-static golf_renderer_t *renderer;
+static golf_graphics_t *graphics;
 
 golf_editor_t *golf_editor_get(void) {
     return &editor;
@@ -29,7 +29,7 @@ golf_editor_t *golf_editor_get(void) {
 
 void golf_editor_init(void) {
     inputs = golf_inputs_get();
-    renderer = golf_renderer_get();
+    graphics = golf_graphics_get();
 
     golf_data_load("data/config/editor.cfg");
     golf_data_load("data/levels/level-1.level");
@@ -1394,8 +1394,8 @@ void golf_editor_update(float dt) {
                     if (!point.active) continue;
 
                     vec3 p = vec3_apply_mat4(geo->points.data[i].position, 1, model_mat);
-                    vec2 p_screen = golf_renderer_world_to_screen(p);
-                    vec3 p_screen3 = V3(p_screen.x, renderer->window_size.y - p_screen.y, 0);
+                    vec2 p_screen = golf_graphics_world_to_screen(p);
+                    vec3 p_screen3 = V3(p_screen.x, graphics->window_size.y - p_screen.y, 0);
                     if (point_inside_box(p_screen3, box_center, box_half_lengths)) {
                         vec_push(&editor.select_box.hovered_entities, golf_edit_mode_entity_point(i));
                     }
@@ -1454,7 +1454,7 @@ void golf_editor_update(float dt) {
                             box_center.x - box_half_lengths.x,
                             box_center.y + box_half_lengths.y, 1.0f);
                     for (int i = 0; i < 8; i++) {
-                        frustum_corners[i] = golf_renderer_screen_to_world(frustum_corners[i]);
+                        frustum_corners[i] = golf_graphics_screen_to_world(frustum_corners[i]);
                     }
                     triangles_inside_frustum(triangle_points.data, triangle_points.length / 3,
                             frustum_corners, is_inside.data);
@@ -1474,10 +1474,10 @@ void golf_editor_update(float dt) {
                 }
 
                 {
-                    ImVec2 im_p0 = (ImVec2){p0.x, renderer->window_size.y - p0.y};
-                    ImVec2 im_p1 = (ImVec2){p0.x, renderer->window_size.y - p1.y};
-                    ImVec2 im_p2 = (ImVec2){p1.x, renderer->window_size.y - p1.y};
-                    ImVec2 im_p3 = (ImVec2){p1.x, renderer->window_size.y - p0.y};
+                    ImVec2 im_p0 = (ImVec2){p0.x, graphics->window_size.y - p0.y};
+                    ImVec2 im_p1 = (ImVec2){p0.x, graphics->window_size.y - p1.y};
+                    ImVec2 im_p2 = (ImVec2){p1.x, graphics->window_size.y - p1.y};
+                    ImVec2 im_p3 = (ImVec2){p1.x, graphics->window_size.y - p0.y};
                     ImU32 im_col = igGetColorU32_Vec4((ImVec4){1, 1, 1, 1});
                     float radius = 1;
                     ImDrawList *draw_list = igGetWindowDrawList();
@@ -2564,46 +2564,46 @@ void golf_editor_update(float dt) {
 
     if (!IO->WantCaptureMouse) {
         if (inputs->button_down[SAPP_KEYCODE_LEFT]) {
-            renderer->cam_azimuth_angle -= 1.0f * dt;
+            graphics->cam_azimuth_angle -= 1.0f * dt;
         }
         if (inputs->button_down[SAPP_KEYCODE_RIGHT]) {
-            renderer->cam_azimuth_angle += 1.0f * dt;
+            graphics->cam_azimuth_angle += 1.0f * dt;
         }
         if (inputs->button_down[SAPP_KEYCODE_UP]) {
-            renderer->cam_inclination_angle -= 1.0f * dt;
+            graphics->cam_inclination_angle -= 1.0f * dt;
         }
         if (inputs->button_down[SAPP_KEYCODE_DOWN]) {
-            renderer->cam_inclination_angle += 1.0f * dt;
+            graphics->cam_inclination_angle += 1.0f * dt;
         }
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT]) {
-            renderer->cam_azimuth_angle += 0.2f * dt * inputs->mouse_delta.x;
-            renderer->cam_inclination_angle += 0.2f * dt * inputs->mouse_delta.y;
+            graphics->cam_azimuth_angle += 0.2f * dt * inputs->mouse_delta.x;
+            graphics->cam_inclination_angle += 0.2f * dt * inputs->mouse_delta.y;
         }
     }
 
     float cam_speed = 8.0f;
     if (!IO->WantCaptureKeyboard) {
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_W]) {
-            renderer->cam_pos.x += cam_speed * dt * cosf(renderer->cam_azimuth_angle);
-            renderer->cam_pos.z += cam_speed * dt * sinf(renderer->cam_azimuth_angle);
+            graphics->cam_pos.x += cam_speed * dt * cosf(graphics->cam_azimuth_angle);
+            graphics->cam_pos.z += cam_speed * dt * sinf(graphics->cam_azimuth_angle);
         }
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_S]) {
-            renderer->cam_pos.x -= cam_speed * dt * cosf(renderer->cam_azimuth_angle);
-            renderer->cam_pos.z -= cam_speed * dt * sinf(renderer->cam_azimuth_angle);
+            graphics->cam_pos.x -= cam_speed * dt * cosf(graphics->cam_azimuth_angle);
+            graphics->cam_pos.z -= cam_speed * dt * sinf(graphics->cam_azimuth_angle);
         }
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_D]) {
-            renderer->cam_pos.x += cam_speed * dt * cosf(renderer->cam_azimuth_angle + 0.5f * MF_PI);
-            renderer->cam_pos.z += cam_speed * dt * sinf(renderer->cam_azimuth_angle + 0.5f * MF_PI);
+            graphics->cam_pos.x += cam_speed * dt * cosf(graphics->cam_azimuth_angle + 0.5f * MF_PI);
+            graphics->cam_pos.z += cam_speed * dt * sinf(graphics->cam_azimuth_angle + 0.5f * MF_PI);
         }
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_A]) {
-            renderer->cam_pos.x -= cam_speed * dt * cosf(renderer->cam_azimuth_angle + 0.5f * MF_PI);
-            renderer->cam_pos.z -= cam_speed * dt * sinf(renderer->cam_azimuth_angle + 0.5f * MF_PI);
+            graphics->cam_pos.x -= cam_speed * dt * cosf(graphics->cam_azimuth_angle + 0.5f * MF_PI);
+            graphics->cam_pos.z -= cam_speed * dt * sinf(graphics->cam_azimuth_angle + 0.5f * MF_PI);
         }
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_Q]) {
-            renderer->cam_pos.y -= cam_speed * dt;
+            graphics->cam_pos.y -= cam_speed * dt;
         }
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_E]) {
-            renderer->cam_pos.y += cam_speed * dt;
+            graphics->cam_pos.y += cam_speed * dt;
         }
         if (inputs->button_clicked[SAPP_KEYCODE_G]) {
             if (!editor.in_edit_mode && editor.selected_idxs.length > 0) {

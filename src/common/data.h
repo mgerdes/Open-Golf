@@ -188,6 +188,7 @@ void golf_data_turn_off_reload(const char *ext);
 void golf_data_init(void);
 void golf_data_update(float dt);
 void golf_data_load(const char *path);
+void golf_data_is_loaded(const char *path);
 void golf_data_unload(const char *path);
 void golf_data_debug_console_tab(void);
 void golf_data_get_all_matching(golf_data_type_t type, const char *str, vec_golf_file_t *files);

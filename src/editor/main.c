@@ -4,7 +4,6 @@
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "cimgui/cimgui.h"
-#include "cimguizmo/cimguizmo.h"
 #include "glad/glad.h"
 #include "IconsFontAwesome5/IconsFontAwesome5.h"
 #include "sokol/sokol_app.h"
@@ -13,18 +12,16 @@
 #include "sokol/sokol_glue.h"
 #include "sokol/sokol_imgui.h"
 #include "sokol/sokol_time.h"
-#include "golf/alloc.h"
-#include "golf/base64.h"
-#include "golf/config.h"
-#include "golf/data.h"
-#include "golf/editor.h"
-#include "golf/debug_console.h"
-#include "golf/game.h"
-#include "golf/inputs.h"
-#include "golf/log.h"
-#include "golf/renderer.h"
-#include "golf/script.h"
-#include "golf/ui.h"
+#include "common/alloc.h"
+#include "common/base64.h"
+#include "common/data.h"
+#include "common/debug_console.h"
+#include "common/graphics.h"
+#include "common/inputs.h"
+#include "common/log.h"
+#include "common/script.h"
+#include "editor/draw.h"
+#include "editor/editor.h"
 
 static void init(void) {
     int load_gl = gladLoadGL();
@@ -106,31 +103,32 @@ static void frame(void) {
         golf_data_turn_off_reload(".level");
         golf_data_init();
         golf_inputs_init();
-        golf_game_init();
-        golf_ui_init();
-        golf_renderer_init();
+        golf_graphics_init();
         golf_editor_init();
         golf_debug_console_init();
-
         inited = true;
     }
 
-    golf_renderer_begin_frame(dt);
+	golf_editor_t *editor = golf_editor_get();
+
+    golf_graphics_begin_frame(dt);
     golf_inputs_begin_frame();
+
     {
         golf_data_update(dt);
         golf_editor_update(dt);
         golf_debug_console_update(dt);
     }
+
     {
-        golf_editor_t *editor = golf_editor_get();
-        golf_renderer_set_render_size(editor->viewport_size);
-        golf_renderer_set_viewport(editor->viewport_pos, editor->viewport_size);
-        golf_renderer_update();
-        golf_renderer_draw_editor();
+		golf_editor_draw();
     }
+
     golf_inputs_end_frame();
-    golf_renderer_end_frame();
+    golf_graphics_end_frame();
+
+	golf_graphics_set_render_size(editor->viewport_size);
+	golf_graphics_set_viewport(editor->viewport_pos, editor->viewport_size);
 
     fflush(stdout);
 }
@@ -162,9 +160,3 @@ sapp_desc sokol_main(int argc, char *argv[]) {
             .swap_interval = 1,
     };
 }
-
-#define SOKOL_EXTERNAL_GL_LOADER
-#define SOKOL_WIN32_FORCE_MAIN
-#define SOKOL_IMPL
-#include "sokol/sokol_app.h"
-

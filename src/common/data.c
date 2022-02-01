@@ -1377,13 +1377,14 @@ void golf_data_update(float dt) {
     for (int i = 0; i < _file_events.length; i++) {
         _file_event_t event = _file_events.data[i];
         switch (event.type) {
-            case FILE_CREATED:
+            case FILE_CREATED: {
                 assetsys_dismount(_assetsys, "data", "/data");
                 assetsys_error_t error = assetsys_mount(_assetsys, "data", NULL, 0, "/data");
                 if (error != ASSETSYS_SUCCESS) {
                     golf_log_error("Unable to mount data");
                 }
                 break;
+            }
             case FILE_UPDATED: {
                 _data_loader_t *loader = _get_data_loader(event.file.ext);
                 golf_data_t *data = map_get(&_loaded_data, event.file.path);
@@ -1424,7 +1425,7 @@ void golf_data_load(const char *path) {
     if (loaded_data) {
         loaded_data->load_count++;
         golf_log_note("Loading file %s, count: %d", path, loaded_data->load_count);
-        return;
+        return 1;
     }
     golf_log_note("Loading file %s, count: %d", path, 1);
 
@@ -1432,7 +1433,7 @@ void golf_data_load(const char *path) {
     _data_loader_t *loader = _get_data_loader(file.ext);
     if (!loader) {
         golf_log_warning("No loader for file %s", file.path);
-        return;
+        return 1;
     }
 
     golf_file_t file_to_load = golf_file(path);
@@ -1464,6 +1465,10 @@ void golf_data_load(const char *path) {
         golf_log_warning("Error loading file %s. error: %d", path, (int)error);
     }
     golf_free(data);
+}
+
+void golf_data_is_loaded(const char *path) {
+    return true;
 }
 
 void golf_data_unload(const char *path) {
