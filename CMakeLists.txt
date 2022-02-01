@@ -2,11 +2,19 @@ cmake_minimum_required(VERSION 3.12)
 
 project(minigolf)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
 include_directories(SYSTEM src/3rd_party)
 include_directories(src)
 
-add_compile_definitions(SOKOL_GLCORE33)
-add_compile_definitions(GOLF_PLATFORM_WINDOWS)
+if(CMAKE_SYSTEM_NAME STREQUAL Windows)
+    add_compile_definitions(SOKOL_GLCORE33)
+    add_compile_definitions(GOLF_PLATFORM_WINDOWS)
+elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
+    add_compile_definitions(SOKOL_GLCORE33)
+    add_compile_definitions(GOLF_PLATFORM_LINUX)
+else()
+endif()
 
 add_subdirectory(src/3rd_party/cimgui)
 add_subdirectory(src/3rd_party/fast_obj)

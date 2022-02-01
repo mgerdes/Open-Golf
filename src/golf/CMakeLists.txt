@@ -7,6 +7,17 @@ add_custom_target(android_data_zip
     DEPENDS data_zip
     COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_SOURCE_DIR}/out/data.zip" "${CMAKE_SOURCE_DIR}/build/android/OpenGolf/app/src/main/assets/data.zip")
 
+set(GOLF_LIBRARIES
+    common
+    cimgui
+    fast_obj
+    mattiasgustavsson_libs
+    miniz
+    parson
+    sokol
+    stb
+    xatlas)
+
 if(CMAKE_SYSTEM_NAME STREQUAL Android)
 	add_library(golf SHARED
 		main.c
@@ -16,21 +27,24 @@ if(CMAKE_SYSTEM_NAME STREQUAL Android)
 		common)
     add_dependencies(golf android_data_zip)
 else()
+    if(CMAKE_SYSTEM_NAME STREQUAL Windows)
+        set_property(TARGET golf PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+    elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
+        set(GOLF_LIBRARIES 
+            ${GOLF_LIBRARIES}
+            -lX11
+            -lXcursor
+            -lXi
+            -lGL
+            -ldl
+            -lpthread
+            -lm
+            -lasound)
+    else()
+    endif()
     add_executable(golf
         main.c
-		game.c
-		ui.c)
-	target_link_libraries(golf PRIVATE
-		cimgui
-		common
-		fast_obj
-		mattiasgustavsson_libs
-		miniz
-		parson
-		sokol
-		stb
-		xatlas)
-    set_property(TARGET golf PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+        game.c
+        ui.c)
+    target_link_libraries(golf PRIVATE ${GOLF_LIBRARIES})
 endif()
-
-set_target_properties(golf PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}")
