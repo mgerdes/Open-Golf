@@ -25,4 +25,4 @@
  */
 
 #define FAST_OBJ_IMPLEMENTATION
-#include "fast_obj/fast_obj.h"
+#include "fast_obj.h"

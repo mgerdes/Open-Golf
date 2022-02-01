@@ -1,0 +1,36 @@
+file(GLOB data_files "${CMAKE_SOURCE_DIR}/data/*")
+add_custom_target(data_zip
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/data"
+    COMMAND ${CMAKE_COMMAND} -E tar "cvf" "${CMAKE_SOURCE_DIR}/out/data.zip" --format=zip .
+    DEPENDS ${data_files})
+add_custom_target(android_data_zip
+    DEPENDS data_zip
+    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_SOURCE_DIR}/out/data.zip" "${CMAKE_SOURCE_DIR}/build/android/OpenGolf/app/src/main/assets/data.zip")
+
+if(CMAKE_SYSTEM_NAME STREQUAL Android)
+	add_library(golf SHARED
+		main.c
+		game.c
+		ui.c)
+    target_link_libraries(golf PRIVATE
+		common)
+    add_dependencies(golf android_data_zip)
+else()
+    add_executable(golf
+        main.c
+		game.c
+		ui.c)
+	target_link_libraries(golf PRIVATE
+		cimgui
+		common
+		fast_obj
+		mattiasgustavsson_libs
+		miniz
+		parson
+		sokol
+		stb
+		xatlas)
+    set_property(TARGET golf PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+endif()
+
+set_target_properties(golf PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}")

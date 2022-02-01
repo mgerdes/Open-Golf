@@ -1,2 +1,0 @@
-#include "golf/config.h"
-

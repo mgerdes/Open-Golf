@@ -9521,15 +9521,14 @@ const char *StringForEnum(ProgressCategory::Enum category)
 
 } // namespace xatlas
 
-#include "golf/maths.h"
 #include <assert.h>
 
-extern "C" bool xatlas_wrapper_generate_lightmap_uvs(int resolution, vec2 *lightmap_uv, vec3 *vertices, int num_vertices, int *atlas_width, int *atlas_height) {
+extern "C" bool xatlas_wrapper_generate_lightmap_uvs(int resolution, float *lightmap_uv, float *vertices, int num_vertices, int *atlas_width, int *atlas_height) {
     xatlas::Atlas *atlas = xatlas::Create();
     xatlas::MeshDecl meshDecl;
     meshDecl.vertexCount = num_vertices;
     meshDecl.vertexPositionData = vertices;
-    meshDecl.vertexPositionStride = sizeof(vec3);
+    meshDecl.vertexPositionStride = 3*sizeof(float);
     xatlas::AddMeshError::Enum error = xatlas::AddMesh(atlas, meshDecl);
     if (error != xatlas::AddMeshError::Success) {
         xatlas::Destroy(atlas);
@@ -9548,8 +9547,8 @@ extern "C" bool xatlas_wrapper_generate_lightmap_uvs(int resolution, vec2 *light
         const xatlas::Vertex &vertex = mesh.vertexArray[lightmap_idx];
         float lightmap_tx = vertex.uv[0] / atlas->width;
         float lightmap_ty = vertex.uv[1] / atlas->height;
-        lightmap_uv[i].x = lightmap_tx; 
-        lightmap_uv[i].y = lightmap_ty; 
+        lightmap_uv[2*i] = lightmap_tx; 
+        lightmap_uv[2*i+1] = lightmap_ty; 
     }
     *atlas_width = atlas->width;
     *atlas_height = atlas->height;
