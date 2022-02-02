@@ -109,9 +109,10 @@ static void frame(void) {
         inited = true;
     }
 
-	golf_editor_t *editor = golf_editor_get();
+    golf_editor_t *editor = golf_editor_get();
 
     golf_graphics_begin_frame(dt);
+    golf_graphics_set_viewport(editor->viewport_pos, editor->viewport_size);
     golf_inputs_begin_frame();
 
     {
@@ -121,14 +122,11 @@ static void frame(void) {
     }
 
     {
-		golf_editor_draw();
+        golf_editor_draw();
     }
 
     golf_inputs_end_frame();
     golf_graphics_end_frame();
-
-	golf_graphics_set_render_size(editor->viewport_size);
-	golf_graphics_set_viewport(editor->viewport_pos, editor->viewport_size);
 
     fflush(stdout);
 }

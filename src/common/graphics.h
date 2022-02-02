@@ -10,11 +10,6 @@ typedef struct golf_graphics {
     vec2 viewport_pos, viewport_size;
     vec2 render_size;
 
-    vec2 render_pass_size;
-    bool render_pass_inited;
-    sg_image render_pass_image, render_pass_depth_image;
-    sg_pass render_pass;
-
     mat4 ui_proj_mat, proj_mat, view_mat, proj_view_mat;
     vec3 cam_pos, cam_dir, cam_up;
     float cam_azimuth_angle, cam_inclination_angle;

@@ -50,11 +50,13 @@ static void frame(void) {
         golf_game_init();
         golf_ui_init();
         golf_graphics_init();
+        golf_draw_init();
         golf_debug_console_init();
         inited = true;
     }
 
     golf_graphics_begin_frame(dt);
+    golf_graphics_set_viewport(V2(0, 0), V2(sapp_width(), sapp_height()));
     golf_inputs_begin_frame();
 
     {
@@ -68,9 +70,6 @@ static void frame(void) {
 
     golf_inputs_end_frame();
     golf_graphics_end_frame();
-
-    golf_graphics_set_render_size(V2(sapp_width(), sapp_height()));
-    golf_graphics_set_viewport(V2(0, 0), V2(sapp_width(), sapp_height()));
 
     fflush(stdout);
 }
@@ -88,8 +87,8 @@ sapp_desc sokol_main(int argc, char *argv[]) {
             .frame_cb = frame,
             .cleanup_cb = cleanup,
             .event_cb = event,
-            .width = 1280,
-            .height = 720,
+            .width = 1280/4,
+            .height = 720/4,
             .window_title = "Minigolf",
             .enable_clipboard = true,
             .clipboard_size = 1024,

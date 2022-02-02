@@ -16,9 +16,16 @@
 #include "golf/shaders/ui.glsl.h"
 #include "golf/shaders/render_image.glsl.h"
 
-golf_game_t *game = NULL;
-golf_graphics_t *graphics = NULL;
-golf_ui_t *ui = NULL;
+typedef struct golf_draw {
+    vec2 game_draw_pass_size;
+    sg_image game_draw_pass_image, game_draw_pass_depth_image;
+    sg_pass game_draw_pass;
+} golf_draw_t;
+
+static golf_draw_t draw;
+static golf_game_t *game = NULL;
+static golf_graphics_t *graphics = NULL;
+static golf_ui_t *ui = NULL;
 
 static void _golf_renderer_draw_environment_material(golf_model_t *model, int start, int count, mat4 model_mat, golf_material_t material, golf_lightmap_image_t *lightmap_image, golf_lightmap_section_t *lightmap_section, bool movement_repeats, float uv_scale, bool gi_on) {
     environment_material_vs_params_t vs_params = {
@@ -285,7 +292,7 @@ static void _draw_ui(void) {
             .value = 1.0f,
         }
     };
-    sg_begin_default_pass(&action, sapp_width(), sapp_height());
+    sg_begin_default_pass(&action, (int)graphics->viewport_size.x, (int)graphics->viewport_size.y);
     sg_apply_viewportf(graphics->viewport_pos.x, graphics->viewport_pos.y, 
             graphics->viewport_size.x, graphics->viewport_size.y, true);
     sg_apply_pipeline(graphics->ui_pipeline);
@@ -329,15 +336,55 @@ static void _draw_ui(void) {
     sg_end_pass();
 }
 
+static void _golf_draw_update_create_draw_pass(void) {
+    sg_image_desc image_desc = {
+        .render_target = true,
+        .width = (int)draw.game_draw_pass_size.x,
+        .height = (int)draw.game_draw_pass_size.y,
+        .pixel_format = SG_PIXELFORMAT_RGBA8,
+        .min_filter = SG_FILTER_LINEAR,
+        .mag_filter = SG_FILTER_LINEAR,
+    };
+    draw.game_draw_pass_image = sg_make_image(&image_desc);
+
+    sg_image_desc depth_image_desc = {
+        .render_target = true,
+        .width = (int)draw.game_draw_pass_size.x,
+        .height = (int)draw.game_draw_pass_size.y,
+        .pixel_format = SG_PIXELFORMAT_DEPTH_STENCIL,
+        .min_filter = SG_FILTER_LINEAR,
+        .mag_filter = SG_FILTER_LINEAR,
+    };
+    draw.game_draw_pass_depth_image = sg_make_image(&depth_image_desc);
+
+    sg_pass_desc pass_desc = {
+        .color_attachments[0] = {
+            .image = draw.game_draw_pass_image,
+        },
+        .depth_stencil_attachment = {
+            .image = draw.game_draw_pass_depth_image,  
+        },
+    };
+    draw.game_draw_pass = sg_make_pass(&pass_desc);
+}
+
+void golf_draw_init(void) {
+    game = golf_game_get();
+    graphics = golf_graphics_get();
+    ui = golf_ui_get();
+
+    memset(&draw, 0, sizeof(draw));
+    draw.game_draw_pass_size = graphics->viewport_size;
+    _golf_draw_update_create_draw_pass();
+}
+
 void golf_draw(void) {
-    if (!game) {
-        game = golf_game_get();
-    }
-    if (!graphics) {
-        graphics = golf_graphics_get();
-    }
-    if (!ui) {
-        ui = golf_ui_get();
+    if (!vec2_equal(draw.game_draw_pass_size, graphics->viewport_size)) {
+        draw.game_draw_pass_size = graphics->viewport_size;
+        sg_destroy_image(draw.game_draw_pass_image);
+        sg_destroy_image(draw.game_draw_pass_depth_image);
+        sg_destroy_pass(draw.game_draw_pass);
+        _golf_draw_update_create_draw_pass();
     }
 
     sg_pass_action action = {
@@ -346,8 +393,30 @@ void golf_draw(void) {
             .value = { 0.529f, 0.808f, 0.922f, 1.0f },
         },
     };
-    sg_begin_pass(graphics->render_pass, &action);
+    sg_begin_pass(draw.game_draw_pass, &action);
     _draw_level();
-    _draw_ui();
     sg_end_pass();
+
+    {
+        sg_pass_action action = {
+            .colors[0] = {
+                .action = SG_ACTION_DONTCARE,
+            },
+        };
+
+        sg_begin_default_pass(&action, (int)graphics->viewport_size.x, (int)graphics->viewport_size.y);
+        sg_apply_viewportf(graphics->viewport_pos.x, graphics->viewport_pos.y, 
+                graphics->viewport_size.x, graphics->viewport_size.y, true);
+        sg_apply_pipeline(graphics->render_image_pipeline);
+        golf_model_t *square = golf_data_get_model("data/models/render_image_square.obj");
+        sg_bindings bindings = {
+            .vertex_buffers[ATTR_render_image_vs_position] = square->sg_positions_buf,
+            .vertex_buffers[ATTR_render_image_vs_texture_coord] = square->sg_texcoords_buf,
+            .fs_images[SLOT_render_image_texture] = draw.game_draw_pass_image,
+        };
+        sg_apply_bindings(&bindings);
+        sg_draw(0, square->positions.length, 1);
+        sg_end_pass();
+    }
+    _draw_ui();
 }

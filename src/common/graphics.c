@@ -31,9 +31,6 @@ void golf_graphics_init(void) {
         graphics.window_size = V2(sapp_width(), sapp_width());
         graphics.viewport_pos = V2(0, 0);
         graphics.viewport_size = V2(sapp_width(), sapp_width());
-        graphics.render_size = V2(sapp_width(), sapp_width());
-        graphics.render_pass_size = V2(sapp_width(), sapp_width());
-        graphics.render_pass_inited = false;
 
         graphics.cam_azimuth_angle = 0.5f*MF_PI;
         graphics.cam_inclination_angle = 0;
@@ -273,48 +270,6 @@ void golf_graphics_begin_frame(float dt) {
         graphics.proj_view_mat = mat4_multiply(graphics.proj_mat, graphics.view_mat);
     }
 
-    if (!graphics.render_pass_inited || !vec2_equal(graphics.render_size, graphics.render_pass_size)) {
-        graphics.render_pass_size = graphics.render_size;
-
-        if (graphics.render_pass_inited) {
-            sg_destroy_image(graphics.render_pass_image);
-            sg_destroy_image(graphics.render_pass_depth_image);
-            sg_destroy_pass(graphics.render_pass);
-        }
-
-        sg_image_desc render_pass_image_desc = {
-            .render_target = true,
-            .width = (int)graphics.render_size.x,
-            .height = (int)graphics.render_size.y,
-            .pixel_format = SG_PIXELFORMAT_RGBA8,
-            .min_filter = SG_FILTER_LINEAR,
-            .mag_filter = SG_FILTER_LINEAR,
-        };
-        graphics.render_pass_image = sg_make_image(&render_pass_image_desc);
-
-        sg_image_desc render_pass_depth_image_desc = {
-            .render_target = true,
-            .width = (int)graphics.render_size.x,
-            .height = (int)graphics.render_size.y,
-            .pixel_format = SG_PIXELFORMAT_DEPTH_STENCIL,
-            .min_filter = SG_FILTER_LINEAR,
-            .mag_filter = SG_FILTER_LINEAR,
-        };
-        graphics.render_pass_depth_image = sg_make_image(&render_pass_depth_image_desc);
-
-        sg_pass_desc render_pass_desc = {
-            .color_attachments[0] = {
-                .image = graphics.render_pass_image,
-            },
-            .depth_stencil_attachment = {
-                .image = graphics.render_pass_depth_image  
-            },
-        };
-        graphics.render_pass = sg_make_pass(&render_pass_desc);
-
-        graphics.render_pass_inited = true;
-    }
-
     sg_pass_action action = {
         .colors[0] = {
             .action = SG_ACTION_CLEAR,
@@ -327,29 +282,6 @@ void golf_graphics_begin_frame(float dt) {
 }
 
 void golf_graphics_end_frame(void) {
-    {
-        sg_pass_action action = {
-            .colors[0] = {
-                .action = SG_ACTION_CLEAR,
-                .value = { 0.529f, 0.808f, 0.922f, 1.0f },
-            },
-        };
-
-        sg_begin_default_pass(&action, sapp_width(), sapp_height());
-        sg_apply_viewportf(graphics.viewport_pos.x, graphics.viewport_pos.y, 
-                graphics.viewport_size.x, graphics.viewport_size.y, true);
-        sg_apply_pipeline(graphics.render_image_pipeline);
-        golf_model_t *square = golf_data_get_model("data/models/render_image_square.obj");
-        sg_bindings bindings = {
-            .vertex_buffers[ATTR_render_image_vs_position] = square->sg_positions_buf,
-            .vertex_buffers[ATTR_render_image_vs_texture_coord] = square->sg_texcoords_buf,
-            .fs_images[SLOT_render_image_texture] = graphics.render_pass_image,
-        };
-        sg_apply_bindings(&bindings);
-        sg_draw(0, square->positions.length, 1);
-        sg_end_pass();
-    }
-
     {
         sg_pass_action imgui_pass_action = {
             .colors[0] = {
@@ -372,10 +304,6 @@ void golf_graphics_end_frame(void) {
 void golf_graphics_set_viewport(vec2 pos, vec2 size) {
     graphics.viewport_pos = pos;
     graphics.viewport_size = size;
-}
-
-void golf_graphics_set_render_size(vec2 size) {
-    graphics.render_size = size;
 }
 
 vec2 golf_graphics_world_to_screen(vec3 world_pos) {
@@ -408,7 +336,6 @@ void golf_graphics_debug_console_tab(void) {
     igText("Window size: <%.3f, %.3f>", graphics.window_size.x, graphics.window_size.y); 
     igText("Viewport Pos: <%.3f, %.3f>", graphics.viewport_pos.x, graphics.viewport_pos.y); 
     igText("Viewport Size: <%.3f, %.3f>", graphics.viewport_size.x, graphics.viewport_size.y); 
-    igText("Render Size: <%.3f, %.3f>", graphics.render_size.x, graphics.render_size.y); 
     igText("Cam Pos: <%.3f, %.3f, %.3f>", graphics.cam_pos.x, graphics.cam_pos.y, graphics.cam_pos.z); 
     igText("Cam Dir: <%.3f, %.3f, %.3f>", graphics.cam_dir.x, graphics.cam_dir.y, graphics.cam_dir.z); 
     igText("Cam Up: <%.3f, %.3f, %.3f>", graphics.cam_up.x, graphics.cam_up.y, graphics.cam_up.z); 

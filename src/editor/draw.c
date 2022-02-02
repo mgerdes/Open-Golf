@@ -36,6 +36,7 @@ static void _golf_renderer_draw_solid_color_material(golf_model_t *model, int st
 }
 
 void golf_editor_draw(void) {
+    /*
     golf_editor_t *editor = golf_editor_get();
     golf_graphics_t *graphics = golf_graphics_get();
     golf_config_t *editor_cfg = golf_data_get_config("data/config/editor.cfg");
@@ -132,4 +133,5 @@ void golf_editor_draw(void) {
     }
 
     sg_end_pass();
+    */
 }

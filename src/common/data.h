@@ -12,7 +12,9 @@
 #define GOLF_MAX_NAME_LEN 64
 
 typedef struct golf_texture {
+    sg_filter filter;
     int width, height;
+    unsigned char *image_data;
     sg_image sg_image;
 } golf_texture_t;
 
@@ -25,6 +27,7 @@ typedef struct golf_font_atlas {
     int size;
     float ascent, descent, linegap, font_size;
     golf_font_atlas_char_data_t char_data[256];
+    unsigned char *image_data;
     sg_image sg_image;
 } golf_font_atlas_t;
 typedef vec_t(golf_font_atlas_t) vec_golf_font_atlas_t;
@@ -55,6 +58,8 @@ void golf_model_init(golf_model_t *model, int size);
 void golf_model_update_buf(golf_model_t *model);
 
 typedef struct golf_shader {
+    char *fs, *vs;
+    sg_shader_desc shader_desc;
     sg_shader sg_shader;
 } golf_shader_t;
 
@@ -188,7 +193,7 @@ void golf_data_turn_off_reload(const char *ext);
 void golf_data_init(void);
 void golf_data_update(float dt);
 void golf_data_load(const char *path);
-void golf_data_is_loaded(const char *path);
+bool golf_data_is_loaded(const char *path);
 void golf_data_unload(const char *path);
 void golf_data_debug_console_tab(void);
 void golf_data_get_all_matching(golf_data_type_t type, const char *str, vec_golf_file_t *files);
