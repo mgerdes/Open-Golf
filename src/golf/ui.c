@@ -346,6 +346,3 @@ void golf_ui_update(float dt) {
         }
     }
 }
-
-void golf_ui_draw(void) {
-}

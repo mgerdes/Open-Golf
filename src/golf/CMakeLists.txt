@@ -42,8 +42,9 @@ else()
     else()
     endif()
     add_executable(golf
-        main.c
+        draw.c
         game.c
+        main.c
         ui.c)
     target_link_libraries(golf PRIVATE ${GOLF_LIBRARIES})
 endif()

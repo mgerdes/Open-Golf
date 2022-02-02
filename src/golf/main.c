@@ -12,6 +12,7 @@
 #include "common/graphics.h"
 #include "common/inputs.h"
 #include "common/log.h"
+#include "golf/draw.h"
 #include "golf/game.h"
 #include "golf/ui.h"
 
@@ -63,12 +64,7 @@ static void frame(void) {
         golf_debug_console_update(dt);
     }
 
-    {
-        golf_game_draw();
-        golf_ui_draw();
-        //golf_renderer_update();
-        //golf_renderer_draw();
-    }
+    golf_draw();
 
     golf_inputs_end_frame();
     golf_graphics_end_frame();

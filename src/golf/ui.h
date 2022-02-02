@@ -34,6 +34,5 @@ typedef struct golf_ui {
 golf_ui_t *golf_ui_get(void);
 void golf_ui_init(void);
 void golf_ui_update(float dt);
-void golf_ui_draw(void);
 
 #endif

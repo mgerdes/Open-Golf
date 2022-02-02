@@ -10,6 +10,5 @@ typedef struct golf_game {
 golf_game_t *golf_game_get(void);
 void golf_game_init(void);
 void golf_game_update(float dt);
-void golf_game_draw(void);
 
 #endif
