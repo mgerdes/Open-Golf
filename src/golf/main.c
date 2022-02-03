@@ -38,7 +38,14 @@ static void cleanup(void) {
     sg_shutdown();
 }
 
+typedef enum golf_game_state {
+    GOLF_GAME_STATE_NONE,
+    GOLF_GAME_STATE_LOADING_TITLE_SCREEN,
+    GOLF_GAME_STATE_TITLE_SCREEN,
+} golf_game_state_t;
+
 static void frame(void) {
+    static golf_game_state_t state = GOLF_GAME_STATE_NONE;
     static bool inited = false;
     static uint64_t last_time = 0;
     static float time_since_import = 0.0f;
@@ -47,14 +54,40 @@ static void frame(void) {
     if (!inited) {
         golf_data_init();
         golf_inputs_init();
+        /*
         golf_game_init();
         golf_ui_init();
         golf_graphics_init();
         golf_draw_init();
         golf_debug_console_init();
+        */
         inited = true;
     }
 
+    switch (state) {
+        case GOLF_GAME_STATE_NONE: {
+            golf_data_load("data/title_screen.static_data");
+            state = GOLF_GAME_STATE_LOADING_TITLE_SCREEN;
+            break;
+        }
+        case GOLF_GAME_STATE_LOADING_TITLE_SCREEN: {
+            if (golf_data_get_load_state("data/title_screen.static_data") == GOLF_DATA_LOADED) {
+                state = GOLF_GAME_STATE_TITLE_SCREEN;
+            }
+            break;
+        }
+        case GOLF_GAME_STATE_TITLE_SCREEN: {
+            break;
+        }
+    }
+
+    golf_data_update(dt);
+
+    //printf("%d %d\n", 
+            //golf_data_get_load_state("data/shaders/pass_through.glsl"),
+            //golf_data_get_load_state("data/textures/circle.png"));
+
+    /*
     golf_graphics_begin_frame(dt);
     golf_graphics_set_viewport(V2(0, 0), V2(sapp_width(), sapp_height()));
     golf_inputs_begin_frame();
@@ -70,6 +103,7 @@ static void frame(void) {
 
     golf_inputs_end_frame();
     golf_graphics_end_frame();
+    */
 
     fflush(stdout);
 }

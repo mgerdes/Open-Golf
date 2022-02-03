@@ -22,6 +22,8 @@
 #include "common/string.h"
 #include "common/thread.h"
 
+static void _golf_data_thread_load_file(golf_file_t file);
+
 //
 // TEXTURES
 //
@@ -701,7 +703,8 @@ static bool _golf_pixel_pack_load(void *ptr, const char *path, char *data, int d
     JSON_Object *obj = json_value_get_object(val);
 
     const char *texture_path = json_object_get_string(obj, "texture");
-    golf_data_load(texture_path);
+    _golf_data_thread_load_file(golf_file(texture_path));
+    while (golf_data_get_load_state(texture_path) != GOLF_DATA_LOADED);
     pixel_pack->texture = golf_data_get_texture(texture_path);
     pixel_pack->tile_size = (float)json_object_get_number(obj, "tile_size");
     pixel_pack->tile_padding = (float)json_object_get_number(obj, "tile_padding");
@@ -788,7 +791,8 @@ static bool _golf_ui_layout_load_entity(JSON_Object *entity_obj, golf_ui_layout_
 
     if (strcmp(type, "pixel_pack_square") == 0) {
         const char *pixel_pack_path = json_object_get_string(entity_obj, "pixel_pack");
-        golf_data_load(pixel_pack_path);
+        _golf_data_thread_load_file(golf_file(pixel_pack_path));
+        while (golf_data_get_load_state(pixel_pack_path) != GOLF_DATA_LOADED);
         const char *square_name = json_object_get_string(entity_obj, "square");
 
         entity->type = GOLF_UI_PIXEL_PACK_SQUARE;
@@ -799,7 +803,8 @@ static bool _golf_ui_layout_load_entity(JSON_Object *entity_obj, golf_ui_layout_
     }
     else if (strcmp(type, "text") == 0) {
         const char *font_path = json_object_get_string(entity_obj, "font");
-        golf_data_load(font_path);
+        _golf_data_thread_load_file(golf_file(font_path));
+        while (golf_data_get_load_state(font_path) != GOLF_DATA_LOADED);
         const char *text = json_object_get_string(entity_obj, "text");
 
         entity->type = GOLF_UI_TEXT;
@@ -1059,8 +1064,18 @@ static bool _golf_static_data_load(void *ptr, const char *path, char *data, int 
             char *data_path_copy = golf_alloc(strlen(data_path) + 1);
             strcpy(data_path_copy, data_path);
             vec_push(&static_data->data_paths, data_path_copy);
-            golf_data_load(data_path_copy);
+            _golf_data_thread_load_file(golf_file(data_path_copy));
         }
+    }
+
+    while (true) {
+        bool all_loaded = true;
+        for (int i = 0; i < static_data->data_paths.length; i++) {
+            if (golf_data_get_load_state(static_data->data_paths.data[i]) != GOLF_DATA_LOADED) {
+                all_loaded = false;
+            }
+        }
+        if (all_loaded) break;
     }
 
     json_value_free(val);
@@ -1098,6 +1113,7 @@ static bool _golf_script_data_unload(void *ptr) {
 typedef enum _file_event_type {
     FILE_CREATED,
     FILE_UPDATED,
+    FILE_LOADED,
 } _file_event_type;
 
 typedef struct _file_event {
@@ -1125,10 +1141,10 @@ static vec_golf_file_t _seen_files;
 static golf_mutex_t _file_events_lock;
 static vec_file_event_t _file_events;
 
-static map_uint64_t _file_time_map;
-
 static golf_mutex_t _assetsys_lock;
 static assetsys_t *_assetsys;
+
+static map_uint64_t _file_time_map;
 
 static assetsys_error_t _golf_assetsys_file_load(const char *path, char **data, int *data_len) {
     char assetsys_path[GOLF_FILE_MAX_PATH];
@@ -1411,9 +1427,20 @@ static void _golf_data_thread_load_file(golf_file_t file) {
         golf_data.file = file_to_load;
         golf_data.type = loader->data_type;
         golf_data.ptr = golf_alloc(loader->data_size);
+        golf_data.is_loaded = false;
+
+        golf_mutex_lock(&_loaded_data_lock);
+        map_set(&_loaded_data, file.path, golf_data);
+        golf_mutex_unlock(&_loaded_data_lock);
 
         loader->load_fn(golf_data.ptr, file.path, data, data_len, meta_data, meta_data_len);
+        golf_mutex_lock(&_file_events_lock);
+        vec_push(&_file_events, _file_event(FILE_LOADED, file));
+        golf_mutex_unlock(&_file_events_lock);
+
+        golf_free(meta_data);
     }
+    golf_free(data);
 }
 
 static int _golf_data_thread_fn(void *udata) {
@@ -1467,10 +1494,10 @@ void golf_data_init(void) {
     golf_mutex_init(&_seen_files_lock);
     vec_init(&_seen_files, "data");
     golf_mutex_init(&_file_events_lock);
-    map_init(&_file_time_map, "data");
     vec_init(&_file_events, "data");
     golf_mutex_init(&_assetsys_lock);
     _assetsys = assetsys_create(NULL);
+    map_init(&_file_time_map, "data");
 #if GOLF_PLATFORM_ANDROID
     ANativeActivity *native_activity = (ANativeActivity *)sapp_android_get_native_activity();
     AAssetManager *asset_manager = native_activity->assetManager;
@@ -1483,9 +1510,6 @@ void golf_data_init(void) {
     golf_log_note("Android data.zip asset size %d", (int)buffer_size);
 
     assetsys_error_t error = assetsys_mount(_assetsys, "data.zip", buffer, buffer_size, "/data");
-    int file_count = assetsys_file_count(_assetsys, "/");
-    golf_log_note("file_count: %d", file_count);
-
     //AAsset_close(asset);
 #else
     assetsys_error_t error = assetsys_mount(_assetsys, "data", NULL, 0, "/data");
@@ -1499,7 +1523,7 @@ void golf_data_init(void) {
     qsort(_seen_files.data, _seen_files.length, sizeof(golf_file_t), _file_alpha_cmp);
     golf_thread_create(_golf_data_thread_fn, NULL, "_golf_data_thread_fn");
 
-    golf_data_load("data/static_data.static_data");
+    //golf_data_load("data/static_data.static_data");
 }
 
 void golf_data_update(float dt) {
@@ -1508,14 +1532,17 @@ void golf_data_update(float dt) {
         _file_event_t event = _file_events.data[i];
         switch (event.type) {
             case FILE_CREATED: {
+                golf_mutex_lock(&_assetsys_lock);
                 assetsys_dismount(_assetsys, "data", "/data");
                 assetsys_error_t error = assetsys_mount(_assetsys, "data", NULL, 0, "/data");
+                golf_mutex_unlock(&_assetsys_lock);
                 if (error != ASSETSYS_SUCCESS) {
                     golf_log_error("Unable to mount data");
                 }
                 break;
             }
             case FILE_UPDATED: {
+                /*
                 _data_loader_t *loader = _get_data_loader(event.file.ext);
                 golf_data_t *data = map_get(&_loaded_data, event.file.path);
                 if (data && loader && loader->reload_on) {
@@ -1546,6 +1573,26 @@ void golf_data_update(float dt) {
                     golf_free(bytes);
                 }
                 break;
+                */
+            }
+            case FILE_LOADED: {
+                golf_data_t *data;
+
+                golf_mutex_lock(&_loaded_data_lock);
+                data = map_get(&_loaded_data, event.file.path);
+                void *ptr = data->ptr;
+                golf_mutex_unlock(&_loaded_data_lock);
+
+                _data_loader_t *loader = _get_data_loader(event.file.ext);
+                if (loader->finalize_fn) {
+                    loader->finalize_fn(ptr);
+                }
+
+                golf_mutex_lock(&_loaded_data_lock);
+                data = map_get(&_loaded_data, event.file.path);
+                data->is_loaded = true;
+                golf_mutex_unlock(&_loaded_data_lock);
+                break;
             }
         }
     }
@@ -1554,6 +1601,11 @@ void golf_data_update(float dt) {
 }
 
 void golf_data_load(const char *path) {
+    golf_mutex_lock(&_files_to_load_lock);
+    vec_push(&_files_to_load, golf_file(path));
+    golf_mutex_unlock(&_files_to_load_lock);
+
+#if 0
     golf_data_t *loaded_data = map_get(&_loaded_data, path);
     if (loaded_data) {
         loaded_data->load_count++;
@@ -1588,6 +1640,7 @@ void golf_data_load(const char *path) {
         golf_data.file = file_to_load;
         golf_data.type = loader->data_type;
         golf_data.ptr = golf_alloc(loader->data_size);
+        golf_data.is_loaded = true;
 
         loader->load_fn(golf_data.ptr, path, data, data_len, meta_data, meta_data_len);
         if (loader->finalize_fn) {
@@ -1601,10 +1654,24 @@ void golf_data_load(const char *path) {
         golf_log_warning("Error loading file %s. error: %d", path, (int)error);
     }
     golf_free(data);
+#endif
 }
 
-bool golf_data_is_loaded(const char *path) {
-    return true;
+golf_data_load_state_t golf_data_get_load_state(const char *path) {
+    golf_mutex_lock(&_loaded_data_lock);
+    golf_data_t *data = map_get(&_loaded_data, path);
+    golf_data_load_state_t state;
+    if (!data) {
+        state = GOLF_DATA_UNLOADED;
+    }
+    else if (!data->is_loaded) {
+        state = GOLF_DATA_LOADING;
+    }
+    else {
+        state = GOLF_DATA_LOADED;
+    }
+    golf_mutex_unlock(&_loaded_data_lock);
+    return state;
 }
 
 void golf_data_unload(const char *path) {
@@ -1631,105 +1698,110 @@ void golf_data_unload(const char *path) {
     }
 }
 
-golf_data_t *golf_data_get_file(const char *path) {
-    return map_get(&_loaded_data, path);
+static void *_golf_data_get_ptr(const char *path, golf_data_type_t type) {
+    void *ptr = NULL;
+    golf_mutex_lock(&_loaded_data_lock);
+    golf_data_t *data_file = map_get(&_loaded_data, path);
+    if (!data_file || !data_file->is_loaded || data_file->type != type) {
+        ptr = NULL;
+    }
+    else {
+        ptr = data_file->ptr;
+    }
+    golf_mutex_unlock(&_loaded_data_lock);
+    return ptr;
 }
 
 golf_texture_t *golf_data_get_texture(const char *path) {
-    static const char *fallback_texture = "data/textures/fallback.png";
+    static const char *fallback = "data/textures/fallback.png";
 
-    golf_data_t *data_file = golf_data_get_file(path);
-    if (!data_file || data_file->type != GOLF_DATA_TEXTURE) {
-        golf_log_warning("Could not find texture %s. Using fallback", path);
-        data_file = golf_data_get_file(fallback_texture);
-        if (!data_file || data_file->type != GOLF_DATA_TEXTURE) {
+    golf_texture_t *texture = _golf_data_get_ptr(path, GOLF_DATA_TEXTURE);
+    if (!texture) {
+        texture = _golf_data_get_ptr(fallback, GOLF_DATA_TEXTURE);
+        if (!texture) {
             golf_log_error("Could not find fallback texture");
         }
     }
-    return data_file->ptr;
+    return texture;
 }
 
 golf_pixel_pack_t *golf_data_get_pixel_pack(const char *path) {
-    static const char *fallback_pixel_pack = "data/textures/pixel_pack.pixel_pack";
+    static const char *fallback = "data/textures/pixel_pack.pixel_pack";
 
-    golf_data_t *data_file = golf_data_get_file(path);
-    if (!data_file || data_file->type != GOLF_DATA_PIXEL_PACK) {
-        golf_log_warning("Could not find pixel pack %s. Using fallback", path);
-        data_file = golf_data_get_file(fallback_pixel_pack);
-        if (!data_file || data_file->type != GOLF_DATA_PIXEL_PACK) {
+    golf_pixel_pack_t *pixel_pack = _golf_data_get_ptr(path, GOLF_DATA_PIXEL_PACK);
+    if (!pixel_pack) {
+        pixel_pack = _golf_data_get_ptr(fallback, GOLF_DATA_PIXEL_PACK);
+        if (!pixel_pack) {
             golf_log_error("Could not find fallback pixel pack");
         }
     }
-    return data_file->ptr;
+    return pixel_pack;
 }
 
 golf_model_t *golf_data_get_model(const char *path) {
     static const char *fallback = "data/models/cube.obj";
 
-    golf_data_t *data_file = golf_data_get_file(path);
-    if (!data_file || data_file->type != GOLF_DATA_MODEL) {
-        golf_log_warning("Could not find model %s. Using fallback", path);
-        data_file = golf_data_get_file(fallback);
-        if (!data_file || data_file->type != GOLF_DATA_MODEL) {
+    golf_model_t *model = _golf_data_get_ptr(path, GOLF_DATA_MODEL);
+    if (!model) {
+        model = _golf_data_get_ptr(fallback, GOLF_DATA_MODEL);
+        if (!model) {
             golf_log_error("Could not find fallback model");
         }
     }
-    return data_file->ptr;
+    return model;
 }
 
 golf_shader_t *golf_data_get_shader(const char *path) {
-    golf_data_t *data_file = golf_data_get_file(path);
-    if (!data_file || data_file->type != GOLF_DATA_SHADER) {
-        golf_log_error("Could not find shader %s.", path);
-        return NULL;
+    golf_shader_t *shader = _golf_data_get_ptr(path, GOLF_DATA_SHADER);
+    if (!shader) {
+        golf_log_error("Could not find shader %s", path);
     }
-    return data_file->ptr;
+    return shader;
 }
 
 golf_font_t *golf_data_get_font(const char *path) {
     static const char *fallback = "data/font/DroidSerif-Bold.ttf";
 
-    golf_data_t *data_file = golf_data_get_file(path);
-    if (!data_file || data_file->type != GOLF_DATA_FONT) {
-        golf_log_warning("Could not find font %s. Using fallback", path);
-        data_file = golf_data_get_file(fallback);
-        if (!data_file || data_file->type != GOLF_DATA_FONT) {
+    golf_font_t *font = _golf_data_get_ptr(path, GOLF_DATA_FONT);
+    if (!font) {
+        font = _golf_data_get_ptr(fallback, GOLF_DATA_FONT);
+        if (!font) {
             golf_log_error("Could not find fallback font");
         }
     }
-    return data_file->ptr;
+    return font;
 }
 
 golf_config_t *golf_data_get_config(const char *path) {
-    golf_data_t *data_file = golf_data_get_file(path);
-    if (!data_file || data_file->type != GOLF_DATA_CONFIG) {
-        golf_log_error("Could not find config file %s", path);
+    golf_config_t *config = _golf_data_get_ptr(path, GOLF_DATA_CONFIG);
+    if (!config) {
+        golf_log_error("Could not find config %s", path);
     }
-    return data_file->ptr;
+    return config;
 }
 
 golf_level_t *golf_data_get_level(const char *path) {
-    golf_data_t *data_file = golf_data_get_file(path);
-    if (!data_file || data_file->type != GOLF_DATA_LEVEL) {
-        golf_log_error("Could not find level file %s", path);
+    golf_level_t *level = _golf_data_get_ptr(path, GOLF_DATA_LEVEL);
+    if (!level) {
+        golf_log_error("Could not find level %s", path);
     }
-    return data_file->ptr;
+    return level;
 }
 
 golf_script_t *golf_data_get_script(const char *path) {
-    golf_data_t *data_file = golf_data_get_file(path);
-    if (!data_file || data_file->type != GOLF_DATA_SCRIPT) {
-        golf_log_error("Could not find script file %s", path);
+    golf_script_t *script = _golf_data_get_ptr(path, GOLF_DATA_SCRIPT);
+    if (!script) {
+        golf_log_error("Could not find script %s", path);
     }
-    return data_file->ptr;
+    return script;
 }
 
 golf_ui_layout_t *golf_data_get_ui_layout(const char *path) {
-    golf_data_t *data_file = golf_data_get_file(path);
-    if (!data_file || data_file->type != GOLF_DATA_UI_LAYOUT) {
-        golf_log_error("Could not find ui layout file %s", path);
+    golf_ui_layout_t *ui_layout = _golf_data_get_ptr(path, GOLF_DATA_UI_LAYOUT);
+    if (!ui_layout) {
+        golf_log_error("Could not find ui_layout %s", path);
     }
-    return data_file->ptr;
+    return ui_layout;
 }
 
 void golf_data_get_all_matching(golf_data_type_t type, const char *str, vec_golf_file_t *files) {
@@ -1747,14 +1819,17 @@ void golf_data_get_all_matching(golf_data_type_t type, const char *str, vec_golf
 }
 
 void golf_data_force_remount(void) {
+    golf_mutex_lock(&_assetsys_lock);
     assetsys_dismount(_assetsys, "data", "/data");
     assetsys_mount(_assetsys, "data", NULL, 0, "/data");
+    golf_mutex_unlock(&_assetsys_lock);
 }
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "cimgui/cimgui.h"
 
 void golf_data_debug_console_tab(void) {
+    /*
     if (igCollapsingHeader_TreeNodeFlags("Textures", ImGuiTreeNodeFlags_None)) {
         const char *key;
         map_iter_t iter = map_iter(&_loaded_data);
@@ -1915,4 +1990,5 @@ void golf_data_debug_console_tab(void) {
             }
         }
     }
+    */
 }

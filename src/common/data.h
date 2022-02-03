@@ -181,6 +181,7 @@ typedef enum golf_data_type {
 } golf_data_type_t;
 
 typedef struct golf_data {
+    bool is_loaded;
     int load_count;
     golf_file_t file;
 
@@ -189,17 +190,22 @@ typedef struct golf_data {
 } golf_data_t;
 typedef map_t(golf_data_t) map_golf_data_t;
 
+typedef enum golf_data_load_state {
+    GOLF_DATA_UNLOADED,
+    GOLF_DATA_LOADING,
+    GOLF_DATA_LOADED,
+} golf_data_load_state_t;
+
 void golf_data_turn_off_reload(const char *ext);
 void golf_data_init(void);
 void golf_data_update(float dt);
 void golf_data_load(const char *path);
-bool golf_data_is_loaded(const char *path);
+golf_data_load_state_t golf_data_get_load_state(const char *path);
 void golf_data_unload(const char *path);
 void golf_data_debug_console_tab(void);
 void golf_data_get_all_matching(golf_data_type_t type, const char *str, vec_golf_file_t *files);
 void golf_data_force_remount(void);
 
-golf_data_t *golf_data_get_file(const char *path);
 golf_texture_t *golf_data_get_texture(const char *path);
 golf_pixel_pack_t *golf_data_get_pixel_pack(const char *path);
 golf_model_t *golf_data_get_model(const char *path);
