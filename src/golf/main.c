@@ -87,11 +87,11 @@ static void frame(void) {
             //golf_data_get_load_state("data/shaders/pass_through.glsl"),
             //golf_data_get_load_state("data/textures/circle.png"));
 
-    /*
     golf_graphics_begin_frame(dt);
     golf_graphics_set_viewport(V2(0, 0), V2(sapp_width(), sapp_height()));
     golf_inputs_begin_frame();
 
+    /*
     {
         golf_data_update(dt);
         golf_game_update(dt);
@@ -100,10 +100,10 @@ static void frame(void) {
     }
 
     golf_draw();
+    */
 
     golf_inputs_end_frame();
     golf_graphics_end_frame();
-    */
 
     fflush(stdout);
 }

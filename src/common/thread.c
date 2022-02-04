@@ -154,3 +154,68 @@ void golf_mutex_unlock(golf_mutex_t *mutex) {
 #error Unknown platform.
 #endif
 }
+
+void golf_thread_timer_init(golf_thread_timer_t* timer) {
+#if GOLF_PLATFORM_WINDOWS
+
+    // Compile-time size check
+#pragma warning( push )
+#pragma warning( disable: 4214 ) // nonstandard extension used: bit field types other than int
+    struct x { char thread_timer_type_too_small : ( sizeof( thread_mutex_t ) < sizeof( HANDLE ) ? 0 : 1 ); }; 
+#pragma warning( pop )
+
+    TIMECAPS tc;
+    if( timeGetDevCaps( &tc, sizeof( TIMECAPS ) ) == TIMERR_NOERROR ) 
+        timeBeginPeriod( tc.wPeriodMin );
+
+    *(HANDLE*)timer = CreateWaitableTimer( NULL, TRUE, NULL );
+
+#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID
+
+    // Nothing
+
+#else 
+#error Unknown platform.
+#endif
+}
+
+void golf_thread_timer_deinit(golf_thread_timer_t* timer) {
+#if GOLF_PLATFORM_WINDOWS
+
+    CloseHandle( *(HANDLE*)timer );
+
+    TIMECAPS tc;
+    if( timeGetDevCaps( &tc, sizeof( TIMECAPS ) ) == TIMERR_NOERROR ) 
+        timeEndPeriod( tc.wPeriodMin );
+
+#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID
+
+    // Nothing
+
+#else 
+#error Unknown platform.
+#endif
+}
+
+void golf_thread_timer_wait(golf_thread_timer_t* timer, uint64_t nanoseconds) {
+#if GOLF_PLATFORM_WINDOWS
+
+    LARGE_INTEGER due_time;
+    due_time.QuadPart = - (LONGLONG) ( nanoseconds / 100 );
+    BOOL b = SetWaitableTimer( *(HANDLE*)timer, &due_time, 0, 0, 0, FALSE );
+    (void) b;
+    WaitForSingleObject( *(HANDLE*)timer, INFINITE ); 
+
+#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID
+
+    struct timespec rem;
+    struct timespec req;
+    req.tv_sec = nanoseconds / 1000000000ULL;
+    req.tv_nsec = nanoseconds - req.tv_sec * 1000000000ULL;
+    while( nanosleep( &req, &rem ) )
+        req = rem;
+
+#else 
+#error Unknown platform.
+#endif
+}

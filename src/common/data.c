@@ -22,6 +22,37 @@
 #include "common/string.h"
 #include "common/thread.h"
 
+typedef enum _file_event_type {
+    FILE_CREATED,
+    FILE_UPDATED,
+    FILE_LOADED,
+} _file_event_type;
+
+typedef struct _file_event {
+    _file_event_type type;
+    golf_file_t file;
+} _file_event_t;
+typedef vec_t(_file_event_t) vec_file_event_t;
+
+static golf_thread_timer_t _data_thread_timer;
+
+static golf_mutex_t _loaded_data_lock;
+static map_golf_data_t _loaded_data;
+
+static golf_mutex_t _files_to_load_lock;
+static vec_golf_file_t _files_to_load;
+
+static golf_mutex_t _seen_files_lock;
+static vec_golf_file_t _seen_files;
+
+static golf_mutex_t _file_events_lock;
+static vec_file_event_t _file_events;
+
+static golf_mutex_t _assetsys_lock;
+static assetsys_t *_assetsys;
+
+static map_uint64_t _file_time_map;
+
 static void _golf_data_thread_load_file(golf_file_t file);
 
 //
@@ -375,6 +406,8 @@ static void _golf_font_load_atlas(JSON_Object *atlas_obj, golf_font_atlas_t *atl
     if (!atlas->image_data) {
         golf_log_error("STB Failed to load image");
     }
+
+    golf_free(img_data);
 }
 
 static bool _golf_font_load(void *ptr, const char *path, char *data, int data_len, char *meta_data, int meta_data_len) {
@@ -704,7 +737,8 @@ static bool _golf_pixel_pack_load(void *ptr, const char *path, char *data, int d
 
     const char *texture_path = json_object_get_string(obj, "texture");
     _golf_data_thread_load_file(golf_file(texture_path));
-    while (golf_data_get_load_state(texture_path) != GOLF_DATA_LOADED);
+    while (golf_data_get_load_state(texture_path) != GOLF_DATA_LOADED) 
+        golf_thread_timer_wait(&_data_thread_timer, 10000000);
     pixel_pack->texture = golf_data_get_texture(texture_path);
     pixel_pack->tile_size = (float)json_object_get_number(obj, "tile_size");
     pixel_pack->tile_padding = (float)json_object_get_number(obj, "tile_padding");
@@ -792,7 +826,8 @@ static bool _golf_ui_layout_load_entity(JSON_Object *entity_obj, golf_ui_layout_
     if (strcmp(type, "pixel_pack_square") == 0) {
         const char *pixel_pack_path = json_object_get_string(entity_obj, "pixel_pack");
         _golf_data_thread_load_file(golf_file(pixel_pack_path));
-        while (golf_data_get_load_state(pixel_pack_path) != GOLF_DATA_LOADED);
+        while (golf_data_get_load_state(pixel_pack_path) != GOLF_DATA_LOADED)
+            golf_thread_timer_wait(&_data_thread_timer, 10000000);
         const char *square_name = json_object_get_string(entity_obj, "square");
 
         entity->type = GOLF_UI_PIXEL_PACK_SQUARE;
@@ -804,7 +839,8 @@ static bool _golf_ui_layout_load_entity(JSON_Object *entity_obj, golf_ui_layout_
     else if (strcmp(type, "text") == 0) {
         const char *font_path = json_object_get_string(entity_obj, "font");
         _golf_data_thread_load_file(golf_file(font_path));
-        while (golf_data_get_load_state(font_path) != GOLF_DATA_LOADED);
+        while (golf_data_get_load_state(font_path) != GOLF_DATA_LOADED)
+            golf_thread_timer_wait(&_data_thread_timer, 10000000);
         const char *text = json_object_get_string(entity_obj, "text");
 
         entity->type = GOLF_UI_TEXT;
@@ -1076,6 +1112,7 @@ static bool _golf_static_data_load(void *ptr, const char *path, char *data, int 
             }
         }
         if (all_loaded) break;
+        golf_thread_timer_wait(&_data_thread_timer, 10000000);
     }
 
     json_value_free(val);
@@ -1110,41 +1147,12 @@ static bool _golf_script_data_unload(void *ptr) {
 // DATA
 //
 
-typedef enum _file_event_type {
-    FILE_CREATED,
-    FILE_UPDATED,
-    FILE_LOADED,
-} _file_event_type;
-
-typedef struct _file_event {
-    _file_event_type type;
-    golf_file_t file;
-} _file_event_t;
-typedef vec_t(_file_event_t) vec_file_event_t;
-
 static _file_event_t _file_event(_file_event_type type, golf_file_t file) {
     _file_event_t event;
     event.type = type;
     event.file = file;
     return event;
 }
-
-static golf_mutex_t _loaded_data_lock;
-static map_golf_data_t _loaded_data;
-
-static golf_mutex_t _files_to_load_lock;
-static vec_golf_file_t _files_to_load;
-
-static golf_mutex_t _seen_files_lock;
-static vec_golf_file_t _seen_files;
-
-static golf_mutex_t _file_events_lock;
-static vec_file_event_t _file_events;
-
-static golf_mutex_t _assetsys_lock;
-static assetsys_t *_assetsys;
-
-static map_uint64_t _file_time_map;
 
 static assetsys_error_t _golf_assetsys_file_load(const char *path, char **data, int *data_len) {
     char assetsys_path[GOLF_FILE_MAX_PATH];
@@ -1330,7 +1338,7 @@ static void _golf_data_handle_file(const char *file_path, void *udata) {
             char *data;
             int data_len;
             if (golf_file_load_data(file_path, &data, &data_len)) {
-                printf("Importing %s\n", file_path);
+                golf_log_note("Importing %s\n", file_path);
                 loader->import_fn(file_path, data, data_len);
                 golf_free(data);
             }
@@ -1434,6 +1442,7 @@ static void _golf_data_thread_load_file(golf_file_t file) {
         golf_mutex_unlock(&_loaded_data_lock);
 
         loader->load_fn(golf_data.ptr, file.path, data, data_len, meta_data, meta_data_len);
+
         golf_mutex_lock(&_file_events_lock);
         vec_push(&_file_events, _file_event(FILE_LOADED, file));
         golf_mutex_unlock(&_file_events_lock);
@@ -1487,6 +1496,7 @@ void golf_data_turn_off_reload(const char *ext) {
 #endif
 
 void golf_data_init(void) {
+    golf_thread_timer_init(&_data_thread_timer);
     golf_mutex_init(&_loaded_data_lock);
     map_init(&_loaded_data, "data");
     golf_mutex_init(&_files_to_load_lock);
