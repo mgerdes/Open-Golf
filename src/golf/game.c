@@ -11,7 +11,7 @@ golf_game_t *golf_game_get(void) {
 }
 
 void golf_game_init(void) {
-    golf_data_load("data/levels/level-1.level");
+    golf_data_load("data/levels/level-1.level", false);
     game.level = golf_data_get_level("data/levels/level-1.level");
 
     graphics = golf_graphics_get();

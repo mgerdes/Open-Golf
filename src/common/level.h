@@ -40,7 +40,7 @@ typedef struct golf_geo_face {
 } golf_geo_face_t;
 typedef vec_t(golf_geo_face_t) vec_golf_geo_face_t;
 typedef vec_t(golf_geo_face_t*) vec_golf_geo_face_ptr_t;
-golf_geo_face_t golf_geo_face(const char *material_name, int n, int *idx, golf_geo_face_uv_gen_type_t uv_gen_type, vec2 *uvs);
+golf_geo_face_t golf_geo_face(const char *material_name, int n, vec_int_t idx, golf_geo_face_uv_gen_type_t uv_gen_type, vec_vec2_t uvs);
 
 typedef struct golf_geo_point {
     bool active;
@@ -56,8 +56,8 @@ typedef struct golf_geo {
     bool model_updated_this_frame;
     golf_model_t model;
 } golf_geo_t;
-void golf_geo_init(golf_geo_t *geo);
-void golf_geo_init_cube(golf_geo_t *geo);
+golf_geo_t golf_geo(vec_golf_geo_point_t points, vec_golf_geo_face_t faces);
+void golf_geo_finalize(golf_geo_t *geo);
 void golf_geo_update_model(golf_geo_t *geo);
 
 typedef enum golf_movement_type {
@@ -91,14 +91,16 @@ typedef struct golf_lightmap_image {
     sg_image *sg_image;
 } golf_lightmap_image_t;
 typedef vec_t(golf_lightmap_image_t) vec_golf_lightmap_image_t;
-void golf_lightmap_image_init(golf_lightmap_image_t *lightmap, const char *name, int resolution, int width, int height, float time_length, int num_samples, unsigned char **data);
+golf_lightmap_image_t golf_lightmap_image(const char *name, int resolution, int width, int height, float time_length, int num_samples, unsigned char **data, sg_image *sg_image);
+void golf_lightmap_image_finalize(golf_lightmap_image_t *lightmap);
 
 typedef struct golf_lightmap_section {
     char lightmap_name[GOLF_MAX_NAME_LEN];
     vec_vec2_t uvs;
     sg_buffer sg_uvs_buf;
 } golf_lightmap_section_t;
-void golf_lightmap_section_init(golf_lightmap_section_t *section, const char *lightmap_name, vec_vec2_t uvs);
+golf_lightmap_section_t golf_lightmap_section(const char *lightmap_name, vec_vec2_t uvs);
+void golf_lightmap_section_finalize(golf_lightmap_section_t *section);
 
 typedef enum golf_material_type {
     GOLF_MATERIAL_TEXTURE,
@@ -123,8 +125,10 @@ typedef struct golf_material {
     };
 } golf_material_t;
 typedef vec_t(golf_material_t) vec_golf_material_t;
-golf_material_t golf_material_color(vec4 color);
-golf_material_t golf_material_texture(const char *texture_path);
+golf_material_t golf_material_texture(const char *name, float friction, float restitution, const char *texture_path);
+golf_material_t golf_material_diffuse_color(const char *name, float friction, float restitution, vec4 color);
+golf_material_t golf_material_color(const char *name, float friction, float resitution, vec4 color);
+golf_material_t golf_material_environment(const char *name, float friction, float resitution, const char *texture_path);
 
 typedef struct golf_transform {
     vec3 position;
@@ -208,8 +212,6 @@ typedef struct golf_level {
     vec_golf_entity_t entities;
 } golf_level_t;
 bool golf_level_save(golf_level_t *level, const char *path);
-bool golf_level_load(golf_level_t *level, const char *path, char *data, int data_len);
-bool golf_level_unload(golf_level_t *level);
 bool golf_level_get_material(golf_level_t *level, const char *material_name, golf_material_t *out_material);
 bool golf_level_get_lightmap_image(golf_level_t *level, const char *lightmap_name, golf_lightmap_image_t *out_lightmap_image);
 

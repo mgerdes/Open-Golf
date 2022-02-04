@@ -66,7 +66,7 @@ static void frame(void) {
 
     switch (state) {
         case GOLF_GAME_STATE_NONE: {
-            golf_data_load("data/title_screen.static_data");
+            golf_data_load("data/title_screen.static_data", true);
             state = GOLF_GAME_STATE_LOADING_TITLE_SCREEN;
             break;
         }

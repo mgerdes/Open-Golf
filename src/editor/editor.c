@@ -31,8 +31,8 @@ void golf_editor_init(void) {
     inputs = golf_inputs_get();
     graphics = golf_graphics_get();
 
-    golf_data_load("data/config/editor.cfg");
-    golf_data_load("data/levels/level-1.level");
+    golf_data_load("data/config/editor.cfg", false);
+    golf_data_load("data/levels/level-1.level", false);
 
     ImGuiIO *IO = igGetIO();
     IO->ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -487,7 +487,16 @@ static void _golf_editor_duplicate_selected_entities(void) {
             switch (entity->type) {
                 case GOLF_EDIT_MODE_ENTITY_FACE: {
                     golf_geo_face_t face = geo->faces.data[entity->idx];
-                    golf_geo_face_t new_face = golf_geo_face(face.material_name, face.idx.length, face.idx.data, face.uv_gen_type, face.uvs.data);
+
+                    vec_int_t idx_copy;
+                    vec_init(&idx_copy, "face");
+                    vec_pusharr(&idx_copy, face.idx.data, face.idx.length);
+
+                    vec_vec2_t uvs_copy;
+                    vec_init(&uvs_copy, "face");
+                    vec_pusharr(&uvs_copy, face.uvs.data, face.uvs.length);
+
+                    golf_geo_face_t new_face = golf_geo_face(face.material_name, face.idx.length, idx_copy, face.uv_gen_type, uvs_copy);
                     for (int i = 0; i < face.idx.length; i++) {
                         int idx = face.idx.data[i];
 
@@ -881,22 +890,20 @@ static void _golf_editor_geo_tab(void) {
     if (num_points_selected >= 3) {
         if (igButton("Create Face", (ImVec2){0, 0}) || inputs->button_clicked[SAPP_KEYCODE_C]) {
             int n = num_points_selected;
-            int j = 0;
-            int *idxs = golf_alloc(sizeof(int) * n);
-            vec2 *uvs = golf_alloc(sizeof(vec2) * n);
+            vec_int_t idxs;
+            vec_init(&idxs, "face");
+            vec_vec2_t uvs;
+            vec_init(&uvs, "face");
             for (int i = 0; i < editor.edit_mode.selected_entities.length; i++) {
                 golf_edit_mode_entity_t entity = editor.edit_mode.selected_entities.data[i];
                 if (entity.type == GOLF_EDIT_MODE_ENTITY_POINT) {
-                    idxs[j] = entity.idx;
-                    uvs[j] = V2(0, 0);
-                    j++;
+                    vec_push(&idxs, entity.idx);
+                    vec_push(&uvs, V2(0, 0));
                 }
             }
             golf_geo_face_uv_gen_type_t uv_gen_type = GOLF_GEO_FACE_UV_GEN_MANUAL;
             golf_geo_face_t face = golf_geo_face("default", n, idxs, uv_gen_type, uvs);
             _vec_push_and_fix_actions(&geo->faces, face, NULL);
-            golf_free(idxs);
-            golf_free(uvs);
 
             golf_geo_face_t *new_face = &vec_last(&geo->faces);
             new_face->active = false;
@@ -1144,8 +1151,8 @@ static void _golf_editor_entities_tab(void) {
                 vec_push(&uvs, V2(0, 0));
             }
 
-            golf_lightmap_section_init(&lightmap_section, "main", uvs);
-            vec_deinit(&uvs);
+            lightmap_section = golf_lightmap_section("main", uvs);
+            golf_lightmap_section_finalize(&lightmap_section);
         }
 
         golf_movement_t movement;
@@ -1156,6 +1163,7 @@ static void _golf_editor_entities_tab(void) {
         _golf_editor_commit_entity_create_action();
     }
 
+    /*
     if (igButton("Create Geo Entity", (ImVec2){0, 0})) {
         golf_geo_t geo;
         golf_geo_init_cube(&geo);
@@ -1180,6 +1188,7 @@ static void _golf_editor_entities_tab(void) {
         _vec_push_and_fix_actions(&editor.level->entities, entity, NULL);
         _golf_editor_commit_entity_create_action();
     }
+    */
     
     if (igButton("Create Group Entity", (ImVec2){0, 0})) {
         golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
@@ -2027,8 +2036,12 @@ void golf_editor_update(float dt) {
 
                     char name[GOLF_MAX_NAME_LEN];
                     snprintf(name, GOLF_MAX_NAME_LEN, "%s", lightmap_image->name);
-                    golf_lightmap_image_init(lightmap_image, name, resolution, width, height, time_length, num_samples, data);
-                    golf_free(data);
+
+                    sg_image *sg_images = golf_alloc(sizeof(sg_image) * num_samples);
+
+                    *lightmap_image = golf_lightmap_image(name, resolution, width, height, time_length, num_samples, data, sg_images);
+                    golf_lightmap_image_finalize(lightmap_image);
+
                     _golf_editor_queue_commit_action();
                 }
                 if (queue_decommit) {
@@ -2040,9 +2053,9 @@ void golf_editor_update(float dt) {
                 unsigned char **image_data = golf_alloc(sizeof(unsigned char*) * 1);
                 image_data[0] = golf_alloc(sizeof(unsigned char) * 1);
                 image_data[0][0] = 0xFF;
-                golf_lightmap_image_t new_lightmap_image;
-                golf_lightmap_image_init(&new_lightmap_image, "new", 256, 1, 1, 1, 1, image_data);
-                golf_free(image_data);
+                sg_image *sg_images = golf_alloc(sizeof(sg_image) * 1);
+                golf_lightmap_image_t new_lightmap_image = golf_lightmap_image("new", 256, 1, 1, 1, 1, image_data, sg_images);
+                golf_lightmap_image_finalize(&new_lightmap_image);
                 _vec_push_and_fix_actions(&editor.level->lightmap_images, new_lightmap_image, NULL);
 
                 golf_lightmap_image_t *lightmap_image = &vec_last(&editor.level->lightmap_images);
@@ -2230,7 +2243,7 @@ void golf_editor_update(float dt) {
             golf_log_note("Saving...");
             golf_level_save(editor.level, editor.level_path);
             golf_data_force_remount();
-            golf_data_load(editor.level_path);
+            golf_data_load(editor.level_path, false);
             editor.level = golf_data_get_level(editor.level_path);
             igCloseCurrentPopup();
         }
@@ -2256,7 +2269,7 @@ void golf_editor_update(float dt) {
                 _golf_editor_action_push_data(&action, editor.file_picker.path, GOLF_FILE_MAX_PATH);
                 _golf_editor_action_push_data(&action, editor.file_picker.data, sizeof(void*));
 
-                golf_data_load(file.path);
+                golf_data_load(file.path, false);
                 strcpy(editor.file_picker.path, file.path);
                 //golf_data_t *data = golf_data_get_file(file.path); 
                 //*editor.file_picker.data = data->ptr;
@@ -2528,13 +2541,14 @@ void golf_editor_update(float dt) {
                         data[s][i] = (unsigned char)(0xFF * a);
                     }
                 }
+                sg_image *sg_images = golf_alloc(sizeof(sg_image) * num_samples);
 
                 golf_lightmap_image_t *lightmap_image = gi_entity->lightmap_image;
                 char name[GOLF_MAX_NAME_LEN];
                 snprintf(name, GOLF_MAX_NAME_LEN, "%s", lightmap_image->name);
                 _golf_editor_action_push_data(&action, lightmap_image, sizeof(golf_lightmap_image_t));
-                golf_lightmap_image_init(lightmap_image, name, res, w, h, time_length, num_samples, data);
-                golf_free(data);
+                *lightmap_image = golf_lightmap_image(name, res, w, h, time_length, num_samples, data, sg_images);
+                golf_lightmap_image_finalize(lightmap_image);
 
                 for (int i = 0; i < gi_entity->gi_lightmap_sections.length; i++) {
                     golf_gi_lightmap_section_t *gi_lightmap_section = &gi_entity->gi_lightmap_sections.data[i];
@@ -2543,7 +2557,13 @@ void golf_editor_update(float dt) {
 
                     char name[GOLF_MAX_NAME_LEN];
                     snprintf(name, GOLF_MAX_NAME_LEN, "%s", lightmap_section->lightmap_name);
-                    golf_lightmap_section_init(lightmap_section, name, gi_lightmap_section->lightmap_uvs);
+
+                    vec_vec2_t uvs;
+                    vec_init(&uvs, "level");
+                    vec_pusharr(&uvs, gi_lightmap_section->lightmap_uvs.data, gi_lightmap_section->lightmap_uvs.length);
+
+                    *lightmap_section = golf_lightmap_section(name, uvs);
+                    golf_lightmap_section_finalize(lightmap_section);
                 }
             }
             _golf_editor_start_action(action);

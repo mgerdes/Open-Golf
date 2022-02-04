@@ -161,7 +161,7 @@ void golf_thread_timer_init(golf_thread_timer_t* timer) {
     // Compile-time size check
 #pragma warning( push )
 #pragma warning( disable: 4214 ) // nonstandard extension used: bit field types other than int
-    struct x { char thread_timer_type_too_small : ( sizeof( thread_mutex_t ) < sizeof( HANDLE ) ? 0 : 1 ); }; 
+    struct x { char thread_timer_type_too_small : ( sizeof( golf_thread_timer_t ) < sizeof( HANDLE ) ? 0 : 1 ); }; 
 #pragma warning( pop )
 
     TIMECAPS tc;

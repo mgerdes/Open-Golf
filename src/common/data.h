@@ -54,8 +54,11 @@ typedef struct golf_model {
     sg_buffer sg_positions_buf, sg_normals_buf, sg_texcoords_buf;
 } golf_model_t;
 typedef vec_t(golf_model_t) vec_golf_model_t;
-void golf_model_init(golf_model_t *model, int size);
-void golf_model_update_buf(golf_model_t *model);
+golf_model_t golf_model_dynamic(vec_golf_group_t groups, vec_vec3_t positions, vec_vec3_t normals, vec_vec2_t texcoords);
+void golf_model_dynamic_finalize(golf_model_t *model);
+void golf_model_dynamic_update_sg_buf(golf_model_t *model);
+//void golf_model_init(golf_model_t *model, int size);
+//void golf_model_update_buf(golf_model_t *model);
 
 typedef struct golf_shader {
     char *fs, *vs;
@@ -199,7 +202,7 @@ typedef enum golf_data_load_state {
 void golf_data_turn_off_reload(const char *ext);
 void golf_data_init(void);
 void golf_data_update(float dt);
-void golf_data_load(const char *path);
+void golf_data_load(const char *path, bool load_async);
 golf_data_load_state_t golf_data_get_load_state(const char *path);
 void golf_data_unload(const char *path);
 void golf_data_debug_console_tab(void);

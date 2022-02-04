@@ -175,12 +175,12 @@ static void _draw_level(void) {
             golf_model_group_t group = model->groups.data[i];
             golf_material_t material;
             if (entity->type == BALL_START_ENTITY) {
-                material = golf_material_texture("data/textures/colors/red.png");
+                material = golf_material_texture("", 0, 0, "data/textures/colors/red.png");
             }
             else {
                 if (!golf_level_get_material(level, group.material_name, &material)) {
                     golf_log_warning("Could not find material %s", group.material_name);
-                    material = golf_material_texture("data/textures/fallback.png");
+                    material = golf_material_texture("", 0, 0, "data/textures/fallback.png");
                 }
             }
 
@@ -271,7 +271,7 @@ static void _draw_level(void) {
                 transform.position.y += 0.001f;
                 mat4 model_mat = golf_transform_get_model_mat(transform);
                 golf_model_t *model = golf_data_get_model("data/models/hole.obj");
-                golf_material_t material = golf_material_texture("data/textures/hole_lightmap.png");
+                golf_material_t material = golf_material_texture("", 0, 0, "data/textures/hole_lightmap.png");
                 _golf_renderer_draw_with_material(model, 0, model->positions.length, model_mat, material, 1);
                 break;
             }

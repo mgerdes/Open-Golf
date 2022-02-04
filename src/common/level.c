@@ -35,17 +35,13 @@ bool golf_geo_generator_data_get_arg(golf_geo_generator_data_t *data, const char
     return false;
 }
 
-golf_geo_face_t golf_geo_face(const char *material_name, int n, int *idx, golf_geo_face_uv_gen_type_t uv_gen_type, vec2 *uvs) {
+golf_geo_face_t golf_geo_face(const char *material_name, int n, vec_int_t idx, golf_geo_face_uv_gen_type_t uv_gen_type, vec_vec2_t uvs) {
     golf_geo_face_t face;
     face.active = true;
     snprintf(face.material_name, GOLF_MAX_NAME_LEN, "%s", material_name);
-    vec_init(&face.idx, "geo");
-    vec_init(&face.uvs, "geo");
+    face.idx = idx;
+    face.uvs = uvs;
     face.uv_gen_type = uv_gen_type;
-    for (int i = 0; i < n; i++) {
-        vec_push(&face.idx, idx[i]);
-        vec_push(&face.uvs, uvs[i]);
-    }
     face.start_vertex_in_model = 0;
     return face;
 }
@@ -55,37 +51,6 @@ golf_geo_point_t golf_geo_point(vec3 position) {
     point.active = true;
     point.position = position;
     return point;
-}
-
-void golf_geo_init(golf_geo_t *geo) {
-    golf_geo_generator_data_init(&geo->generator_data);
-    vec_init(&geo->points, "level");
-    vec_init(&geo->faces, "level");
-    geo->model_updated_this_frame = false;
-    golf_model_init(&geo->model, 64);
-}
-
-void golf_geo_init_cube(golf_geo_t *geo) {
-    golf_geo_init(geo);
-
-    vec_push(&geo->points, golf_geo_point(V3(0, 0, 0)));
-    vec_push(&geo->points, golf_geo_point(V3(1, 0, 0)));
-    vec_push(&geo->points, golf_geo_point(V3(1, 0, 1)));
-    vec_push(&geo->points, golf_geo_point(V3(0, 0, 1)));
-
-    vec_push(&geo->points, golf_geo_point(V3(0, 1, 0)));
-    vec_push(&geo->points, golf_geo_point(V3(1, 1, 0)));
-    vec_push(&geo->points, golf_geo_point(V3(1, 1, 1)));
-    vec_push(&geo->points, golf_geo_point(V3(0, 1, 1)));
-
-    vec2 uvs[] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}};
-    golf_geo_face_uv_gen_type_t uv_gen_type = GOLF_GEO_FACE_UV_GEN_MANUAL;
-    vec_push(&geo->faces, golf_geo_face("default", 4, (int[]){0, 1, 2, 3}, uv_gen_type, uvs));
-    vec_push(&geo->faces, golf_geo_face("default", 4, (int[]){7, 6, 5, 4}, uv_gen_type, uvs));
-    vec_push(&geo->faces, golf_geo_face("default", 4, (int[]){7, 4, 0, 3}, uv_gen_type, uvs));
-    vec_push(&geo->faces, golf_geo_face("default", 4, (int[]){5, 6, 2, 1}, uv_gen_type, uvs));
-    vec_push(&geo->faces, golf_geo_face("default", 4, (int[]){4, 5, 1, 0}, uv_gen_type, uvs));
-    vec_push(&geo->faces, golf_geo_face("default", 4, (int[]){6, 7, 3, 2}, uv_gen_type, uvs));
 }
 
 typedef map_t(vec_golf_geo_face_ptr_t) _map_vec_golf_geo_face_ptr_t;
@@ -153,16 +118,11 @@ static void _golf_geo_face_guess_wall_dir(vec3 p0, vec3 p1, vec3 p2, vec3 *long_
     }
 }
 
-void golf_geo_update_model(golf_geo_t *geo) {
-    if (geo->model_updated_this_frame) {
-        return;
-    }
-    geo->model_updated_this_frame = true;
-
-    geo->model.groups.length = 0;
-    geo->model.positions.length = 0;
-    geo->model.normals.length = 0;
-    geo->model.texcoords.length = 0;
+static void _golf_geo_generate_model_data(golf_geo_t *geo, vec_golf_group_t *groups, vec_vec3_t *positions, vec_vec3_t *normals, vec_vec2_t *texcoords) {
+    groups->length = 0;
+    positions->length = 0;
+    normals->length = 0;
+    texcoords->length = 0;
 
     _map_vec_golf_geo_face_ptr_t material_faces;
     map_init(&material_faces, "geo");
@@ -246,26 +206,58 @@ void golf_geo_update_model(golf_geo_t *geo) {
                             vec3_sub(p1.position, p0.position), 
                             vec3_sub(p2.position, p0.position)));
 
-                vec_push(&geo->model.positions, p0.position);
-                vec_push(&geo->model.positions, p1.position);
-                vec_push(&geo->model.positions, p2.position);
-                vec_push(&geo->model.normals, n);
-                vec_push(&geo->model.normals, n);
-                vec_push(&geo->model.normals, n);
-                vec_push(&geo->model.texcoords, tc0);
-                vec_push(&geo->model.texcoords, tc1);
-                vec_push(&geo->model.texcoords, tc2);
+                vec_push(positions, p0.position);
+                vec_push(positions, p1.position);
+                vec_push(positions, p2.position);
+                vec_push(normals, n);
+                vec_push(normals, n);
+                vec_push(normals, n);
+                vec_push(texcoords, tc0);
+                vec_push(texcoords, tc1);
+                vec_push(texcoords, tc2);
                 group_count += 3;
             }
         }
         vec_deinit(faces);
 
         golf_model_group_t group = golf_model_group(key, group_start, group_count);
-        vec_push(&geo->model.groups, group);
+        vec_push(groups, group);
     }
-    map_deinit(&material_faces);
+}
 
-    golf_model_update_buf(&geo->model);
+golf_geo_t golf_geo(vec_golf_geo_point_t points, vec_golf_geo_face_t faces) {
+    golf_geo_t geo;
+    golf_geo_generator_data_init(&geo.generator_data);
+    geo.points = points;
+    geo.faces = faces;
+    geo.model_updated_this_frame = false;
+
+    vec_golf_group_t groups;
+    vec_init(&groups, "geo");
+    vec_vec3_t positions;
+    vec_init(&positions, "positions");
+    vec_vec3_t normals;
+    vec_init(&normals, "normals");
+    vec_vec2_t texcoords;
+    vec_init(&texcoords, "texcoords");
+    _golf_geo_generate_model_data(&geo, &groups, &positions, &normals, &texcoords);
+
+    geo.model = golf_model_dynamic(groups, positions, normals, texcoords);
+    return geo;
+}
+
+void golf_geo_finalize(golf_geo_t *geo) {
+    golf_model_dynamic_finalize(&geo->model);
+}
+
+void golf_geo_update_model(golf_geo_t *geo) {
+    if (geo->model_updated_this_frame) {
+        return;
+    }
+    geo->model_updated_this_frame = true;
+
+    _golf_geo_generate_model_data(geo, &geo->model.groups, &geo->model.positions, &geo->model.normals, &geo->model.texcoords);
+    golf_model_dynamic_update_sg_buf(&geo->model);
 }
 
 static void _golf_json_object_set_movement(JSON_Object *obj, const char *name, golf_movement_t *movement) {
@@ -292,29 +284,6 @@ static void _golf_json_object_set_movement(JSON_Object *obj, const char *name, g
     }
 
     json_object_set_value(obj, name, movement_val);
-}
-
-static void _golf_json_object_get_movement(JSON_Object *obj, const char *name, golf_movement_t *movement) {
-    JSON_Object *movement_obj = json_object_get_object(obj, name);
-
-    const char *type = json_object_get_string(movement_obj, "type");
-    if (type && strcmp(type, "none") == 0) {
-        *movement = golf_movement_none();
-    }
-    else if (type && strcmp(type, "linear") == 0) {
-        float length = (float)json_object_get_number(movement_obj, "length");
-        vec3 p0 = golf_json_object_get_vec3(movement_obj, "p0");
-        vec3 p1 = golf_json_object_get_vec3(movement_obj, "p1");
-        *movement = golf_movement_linear(p0, p1, length);
-    }
-    else if (type && strcmp(type, "spinner") == 0) {
-        float length = (float)json_object_get_number(movement_obj, "length");
-        *movement = golf_movement_spinner(length);
-    }
-    else {
-        golf_log_warning("Invalid type for movement");
-        *movement = golf_movement_none();
-    }
 }
 
 static void _golf_json_object_set_geo(JSON_Object *obj, const char *name, golf_geo_t *geo) {
@@ -433,97 +402,6 @@ static void _golf_json_object_set_geo(JSON_Object *obj, const char *name, golf_g
     vec_deinit(&num_points_not_active);
 }
 
-static void _golf_json_object_get_geo(JSON_Object *obj, const char *name, golf_geo_t *geo) {
-    golf_geo_init(geo);
-    JSON_Object *geo_obj = json_object_get_object(obj, name);
-
-    JSON_Array *p_arr = json_object_get_array(geo_obj, "p");
-    for (int i = 0; i < (int)json_array_get_count(p_arr); i += 3) {
-        float x = (float)json_array_get_number(p_arr, i);
-        float y = (float)json_array_get_number(p_arr, i + 1);
-        float z = (float)json_array_get_number(p_arr, i + 2);
-        vec_push(&geo->points, golf_geo_point(V3(x, y, z)));
-    }
-
-    JSON_Array *faces_arr = json_object_get_array(geo_obj, "faces");
-    for (int i = 0; i < (int)json_array_get_count(faces_arr); i++) {
-        JSON_Object *face = json_array_get_object(faces_arr, i);
-        const char *material_name = json_object_get_string(face, "material_name");
-        JSON_Array *idxs_arr = json_object_get_array(face, "idxs");
-        JSON_Array *uvs_arr = json_object_get_array(face, "uvs");
-        int idxs_count = (int)json_array_get_count(idxs_arr);
-        int *idxs = golf_alloc(sizeof(int) * idxs_count);
-        vec2 *uvs = golf_alloc(sizeof(vec2) * idxs_count);
-        for (int i = 0; i < idxs_count; i++) {
-            idxs[i] = (int)json_array_get_number(idxs_arr, i);
-            uvs[i].x = (float)json_array_get_number(uvs_arr, 2*i);
-            uvs[i].y = (float)json_array_get_number(uvs_arr, 2*i + 1);
-        }
-        const char *uv_gen_type_str = json_object_get_string(face, "uv_gen_type");
-        golf_geo_face_uv_gen_type_t uv_gen_type = GOLF_GEO_FACE_UV_GEN_MANUAL;
-        for (int i = 0; i < GOLF_GEO_FACE_UV_GEN_COUNT; i++) {
-            if (uv_gen_type_str && strcmp(uv_gen_type_str, golf_geo_uv_gen_type_strings()[i]) == 0) {
-                uv_gen_type = i;
-            }
-        }
-        vec_push(&geo->faces, golf_geo_face(material_name, idxs_count, idxs, uv_gen_type, uvs));
-        golf_free(idxs);
-        golf_free(uvs);
-    }
-
-    JSON_Object *generator_data_obj = json_object_get_object(geo_obj, "generator_data");
-    if (generator_data_obj) {
-        const char *script_path = json_object_get_string(generator_data_obj, "script");
-        geo->generator_data.script = golf_data_get_script(script_path);
-
-        JSON_Array *args_arr = json_object_get_array(generator_data_obj, "args");
-        for (int i = 0; i < (int)json_array_get_count(args_arr); i++) {
-            JSON_Object *arg_obj = json_array_get_object(args_arr, i);
-            const char *name = json_object_get_string(arg_obj, "name");
-            if (!name) {
-                golf_log_warning("No name for generator data argument");
-            }
-
-            const char *type = json_object_get_string(arg_obj, "type");
-            if (!type) {
-                golf_log_warning("No type for generator data argument");
-            }
-
-            bool valid_val = true;
-            gs_val_t val;
-
-            if (strcmp(type, "bool") == 0) {
-                val = gs_val_bool((bool)json_object_get_number(arg_obj, "val"));
-            }
-            else if (strcmp(type, "int") == 0) {
-                val = gs_val_int((int)json_object_get_number(arg_obj, "val"));
-            }
-            else if (strcmp(type, "float") == 0) {
-                val = gs_val_float((float)json_object_get_number(arg_obj, "val"));
-            }
-            else if (strcmp(type, "vec2") == 0) {
-                val = gs_val_vec2(golf_json_object_get_vec2(arg_obj, "val"));
-            }
-            else if (strcmp(type, "vec3") == 0) {
-                val = gs_val_vec3(golf_json_object_get_vec3(arg_obj, "val"));
-            }
-            else {
-                valid_val = false;
-                golf_log_warning("Invalid type for generator data argument: %s", type);
-            }
-
-            if (valid_val) {
-                golf_geo_generator_data_arg_t arg;
-                snprintf(arg.name, GOLF_MAX_NAME_LEN, "%s", name);
-                arg.val = val;
-                vec_push(&geo->generator_data.args, arg);
-            }
-        }
-    }
-
-    golf_geo_update_model(geo);
-}
-
 static void _golf_json_object_set_transform(JSON_Object *obj, const char *name, golf_transform_t *transform) {
     JSON_Value *transform_val = json_value_init_object();
     JSON_Object *transform_obj = json_value_get_object(transform_val);
@@ -533,14 +411,6 @@ static void _golf_json_object_set_transform(JSON_Object *obj, const char *name, 
     golf_json_object_set_quat(transform_obj, "rotation", transform->rotation);
 
     json_object_set_value(obj, name, transform_val);
-}
-
-static void _golf_json_object_get_transform(JSON_Object *obj, const char *name, golf_transform_t *transform) {
-    JSON_Object *transform_obj = json_object_get_object(obj, name);
-
-    transform->position = golf_json_object_get_vec3(transform_obj, "position");
-    transform->scale = golf_json_object_get_vec3(transform_obj, "scale");
-    transform->rotation = golf_json_object_get_quat(transform_obj, "rotation");
 }
 
 static void _golf_json_object_set_lightmap_section(JSON_Object *obj, const char *name, golf_lightmap_section_t *lightmap_section) {
@@ -557,23 +427,6 @@ static void _golf_json_object_set_lightmap_section(JSON_Object *obj, const char 
     json_object_set_string(lightmap_section_obj, "lightmap_name", lightmap_section->lightmap_name);
     json_object_set_value(lightmap_section_obj, "uvs", uvs_val);
     json_object_set_value(obj, name, lightmap_section_val);
-}
-
-static void _golf_json_object_get_lightmap_section(JSON_Object *obj, const char *name, golf_lightmap_section_t *lightmap_section) {
-    JSON_Object *section_obj = json_object_get_object(obj, name);
-
-    const char *lightmap_name = json_object_get_string(section_obj, "lightmap_name");
-    JSON_Array *uvs_arr = json_object_get_array(section_obj, "uvs");
-    vec_vec2_t uvs;
-    vec_init(&uvs, "level");
-    for (int i = 0; i < (int)json_array_get_count(uvs_arr); i += 2) {
-        float x = (float)json_array_get_number(uvs_arr, i + 0);
-        float y = (float)json_array_get_number(uvs_arr, i + 1);
-        vec_push(&uvs, V2(x, y));
-    }
-
-    golf_lightmap_section_init(lightmap_section, lightmap_name, uvs);
-    vec_deinit(&uvs);
 }
 
 golf_movement_t golf_movement_none(void) {
@@ -605,34 +458,34 @@ golf_movement_t golf_movement_spinner(float length) {
     return movement;
 }
 
-void golf_lightmap_image_init(golf_lightmap_image_t *lightmap, const char *name, int resolution, int width, int height, float time_length, int num_samples, unsigned char **data) {
-    lightmap->active = true;
-    snprintf(lightmap->name, GOLF_MAX_NAME_LEN, "%s", name);
-    lightmap->resolution = resolution;
-    lightmap->width = width;
-    lightmap->height = height;
-    lightmap->cur_time = 0;
-    lightmap->time_length = time_length;
-    lightmap->edited_num_samples = num_samples;
-    lightmap->num_samples = num_samples;
-    lightmap->data = golf_alloc(sizeof(unsigned char*) * num_samples);
-    for (int i = 0; i < num_samples; i++) {
-        lightmap->data[i] = golf_alloc(width * height);
-        memcpy(lightmap->data[i], data[i], width * height);
-    }
+golf_lightmap_image_t golf_lightmap_image(const char *name, int resolution, int width, int height, float time_length, int num_samples, unsigned char **data, sg_image *sg_image) {
+    golf_lightmap_image_t lightmap;
+    lightmap.active = true;
+    snprintf(lightmap.name, GOLF_MAX_NAME_LEN, "%s", name);
+    lightmap.resolution = resolution;
+    lightmap.width = width;
+    lightmap.height = height;
+    lightmap.cur_time = 0;
+    lightmap.time_length = time_length;
+    lightmap.edited_num_samples = num_samples;
+    lightmap.num_samples = num_samples;
+    lightmap.data = data;
+    lightmap.sg_image = sg_image;
+    return lightmap;
+}
 
-    lightmap->sg_image = golf_alloc(sizeof(sg_image*) * num_samples);
-    for (int s = 0; s < num_samples; s++) {
-        char *sg_image_data = golf_alloc(4 * width * height);
-        for (int i = 0; i < 4 * width * height; i += 4) {
-            sg_image_data[i + 0] = data[s][i / 4];
-            sg_image_data[i + 1] = data[s][i / 4];
-            sg_image_data[i + 2] = data[s][i / 4];
+void golf_lightmap_image_finalize(golf_lightmap_image_t *lightmap) {
+    for (int s = 0; s < lightmap->num_samples; s++) {
+        char *sg_image_data = golf_alloc(4 * lightmap->width * lightmap->height);
+        for (int i = 0; i < 4 * lightmap->width * lightmap->height; i += 4) {
+            sg_image_data[i + 0] = lightmap->data[s][i / 4];
+            sg_image_data[i + 1] = lightmap->data[s][i / 4];
+            sg_image_data[i + 2] = lightmap->data[s][i / 4];
             sg_image_data[i + 3] = 0xFF;
         }
         sg_image_desc img_desc = {
-            .width = width,
-            .height = height,
+            .width = lightmap->width,
+            .height = lightmap->height,
             .pixel_format = SG_PIXELFORMAT_RGBA8,
             .min_filter = SG_FILTER_LINEAR,
             .mag_filter = SG_FILTER_LINEAR,
@@ -640,7 +493,7 @@ void golf_lightmap_image_init(golf_lightmap_image_t *lightmap, const char *name,
             .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
             .data.subimage[0][0] = {
                 .ptr = sg_image_data,
-                .size = 4 * width * height,
+                .size = 4 * lightmap->width * lightmap->height,
             },
         };
         lightmap->sg_image[s] = sg_make_image(&img_desc);
@@ -648,10 +501,14 @@ void golf_lightmap_image_init(golf_lightmap_image_t *lightmap, const char *name,
     }
 }
 
-void golf_lightmap_section_init(golf_lightmap_section_t *section, const char *lightmap_name, vec_vec2_t uvs) {
-    snprintf(section->lightmap_name, GOLF_MAX_NAME_LEN, "%s", lightmap_name);
-    vec_init(&section->uvs, "level");
-    vec_pusharr(&section->uvs, uvs.data, uvs.length);
+golf_lightmap_section_t golf_lightmap_section(const char *lightmap_name, vec_vec2_t uvs) {
+    golf_lightmap_section_t section;
+    snprintf(section.lightmap_name, GOLF_MAX_NAME_LEN, "%s", lightmap_name);
+    section.uvs = uvs;
+    return section;
+}
+
+void golf_lightmap_section_finalize(golf_lightmap_section_t *section) {
     sg_buffer_desc desc = {
         .type = SG_BUFFERTYPE_VERTEXBUFFER,
         .data = {
@@ -667,16 +524,47 @@ static void _stbi_write_func(void *context, void *data, int size) {
     vec_pusharr(v, (char*)data, size);
 }
 
-golf_material_t golf_material_color(vec4 color) {
+golf_material_t golf_material_texture(const char *name, float friction, float restitution, const char *texture_path) {
     golf_material_t material;
+    material.active = true;
+    snprintf(material.name, GOLF_MAX_NAME_LEN, "%s", name);
+    material.friction = friction;
+    material.restitution = restitution;
+    material.type = GOLF_MATERIAL_TEXTURE;
+    snprintf(material.texture_path, GOLF_FILE_MAX_PATH, "%s", texture_path);
+    material.texture = golf_data_get_texture(texture_path);
+    return material;
+}
+
+golf_material_t golf_material_diffuse_color(const char *name, float friction, float restitution, vec4 color) {
+    golf_material_t material;
+    material.active = true;
+    snprintf(material.name, GOLF_MAX_NAME_LEN, "%s", name);
+    material.friction = friction;
+    material.restitution = restitution;
+    material.type = GOLF_MATERIAL_DIFFUSE_COLOR;
+    material.color = color;
+    return material;
+}
+
+golf_material_t golf_material_color(const char *name, float friction, float restitution, vec4 color) {
+    golf_material_t material;
+    material.active = true;
+    snprintf(material.name, GOLF_MAX_NAME_LEN, "%s", name);
+    material.friction = friction;
+    material.restitution = restitution;
     material.type = GOLF_MATERIAL_COLOR;
     material.color = color;
     return material;
 }
 
-golf_material_t golf_material_texture(const char *texture_path) {
+golf_material_t golf_material_environment(const char *name, float friction, float restitution, const char *texture_path) {
     golf_material_t material;
-    material.type = GOLF_MATERIAL_TEXTURE;
+    material.active = true;
+    snprintf(material.name, GOLF_MAX_NAME_LEN, "%s", name);
+    material.friction = friction;
+    material.restitution = restitution;
+    material.type = GOLF_MATERIAL_ENVIRONMENT;
     snprintf(material.texture_path, GOLF_FILE_MAX_PATH, "%s", texture_path);
     material.texture = golf_data_get_texture(texture_path);
     return material;
@@ -866,174 +754,6 @@ bool golf_level_save(golf_level_t *level, const char *path) {
     return true;
 }
 
-bool golf_level_load(golf_level_t *level, const char *path, char *data, int data_len) {
-    vec_init(&level->lightmap_images, "level");
-    vec_init(&level->materials, "level");
-    vec_init(&level->entities, "level");
-    golf_data_load("data/textures/hole_lightmap.png");
-
-    JSON_Value *json_val = json_parse_string(data);
-    JSON_Object *json_obj = json_value_get_object(json_val);
-    JSON_Array *json_materials_arr = json_object_get_array(json_obj, "materials");
-    for (int i = 0; i < (int)json_array_get_count(json_materials_arr); i++) {
-        JSON_Object *obj = json_array_get_object(json_materials_arr, i);
-        const char *type = json_object_get_string(obj, "type");
-        const char *name = json_object_get_string(obj, "name");
-        float friction = (float)json_object_get_number(obj, "friction");
-        float restitution = (float)json_object_get_number(obj, "restitution");
-
-        bool valid_material = false;
-        golf_material_t material;
-        memset(&material, 0, sizeof(golf_material_t));
-        material.active = true;
-        snprintf(material.name, GOLF_MAX_NAME_LEN, "%s", name);
-        material.friction = friction;
-        material.restitution = restitution;
-        if (type && strcmp(type, "texture") == 0) {
-            material.type = GOLF_MATERIAL_TEXTURE;
-            const char *texture_path = json_object_get_string(obj, "texture");
-            snprintf(material.texture_path, GOLF_FILE_MAX_PATH, "%s", texture_path);
-            golf_data_load(material.texture_path);
-            material.texture = golf_data_get_texture(material.texture_path);
-            valid_material = true;
-        }
-        else if (type && strcmp(type, "color") == 0) {
-            material.type = GOLF_MATERIAL_COLOR;
-            material.color = golf_json_object_get_vec4(obj, "color");
-            valid_material = true;
-        }
-        else if (type && strcmp(type, "diffuse_color") == 0) {
-            material.type = GOLF_MATERIAL_DIFFUSE_COLOR;
-            material.color = golf_json_object_get_vec4(obj, "color");
-            valid_material = true;
-        }
-        else if (type && strcmp(type, "environment") == 0) {
-            material.type = GOLF_MATERIAL_ENVIRONMENT;
-            const char *texture_path = json_object_get_string(obj, "texture");
-            snprintf(material.texture_path, GOLF_FILE_MAX_PATH, "%s", texture_path);
-            golf_data_load(material.texture_path);
-            material.texture = golf_data_get_texture(material.texture_path);
-            valid_material = true;
-        }
-
-        if (valid_material) {
-            vec_push(&level->materials, material);
-        }
-        else {
-            golf_log_warning("Invalid material. type: %s, name: %s", type, name);
-        }
-    }
-
-    JSON_Array *json_lightmap_images_arr = json_object_get_array(json_obj, "lightmap_images");
-    for (int i = 0; i < (int)json_array_get_count(json_lightmap_images_arr); i++) {
-        JSON_Object *obj = json_array_get_object(json_lightmap_images_arr, i);
-        const char *name = json_object_get_string(obj, "name");
-        int resolution = (int)json_object_get_number(obj, "resolution");
-        float time_length = (float)json_object_get_number(obj, "time_length");
-
-        int width, height, c;
-        JSON_Array *datas_arr = json_object_get_array(obj, "datas");
-        int num_samples = (int)json_array_get_count(datas_arr);
-        unsigned char **image_datas = golf_alloc(sizeof(unsigned char*) * num_samples);
-        for (int i = 0; i < num_samples; i++) {
-            unsigned char *data;
-            int data_len;
-            golf_json_array_get_data(datas_arr, i, &data, &data_len);
-            unsigned char *image_data = stbi_load_from_memory(data, data_len, &width, &height, &c, 1);
-            image_datas[i] = image_data;
-            golf_free(data);
-        }
-
-        golf_lightmap_image_t lightmap_image;
-        golf_lightmap_image_init(&lightmap_image, name, resolution, width, height, time_length, num_samples, image_datas);
-        vec_push(&level->lightmap_images, lightmap_image);
-
-        for (int i = 0; i < num_samples; i++) {
-            free(image_datas[i]);
-        }
-        golf_free(image_datas);
-    }
-
-    JSON_Array *json_entities_arr = json_object_get_array(json_obj, "entities");
-    for (int i = 0; i < (int)json_array_get_count(json_entities_arr); i++) {
-        JSON_Object *obj = json_array_get_object(json_entities_arr, i);
-        const char *type = json_object_get_string(obj, "type");
-        const char *name = json_object_get_string(obj, "name");
-        int parent_idx = (int)json_object_get_number(obj, "parent_idx");
-
-        bool valid_entity = false;
-        golf_entity_t entity;  
-        entity.active = true;  
-        if (type && strcmp(type, "model") == 0) {
-            golf_transform_t transform;
-            _golf_json_object_get_transform(obj, "transform", &transform);
-
-            const char *model_path = json_object_get_string(obj, "model");
-
-            float uv_scale = json_object_get_number(obj, "uv_scale");
-
-            golf_lightmap_section_t lightmap_section;
-            _golf_json_object_get_lightmap_section(obj, "lightmap_section", &lightmap_section);
-
-            golf_movement_t movement;
-            _golf_json_object_get_movement(obj, "movement", &movement);
-
-            golf_data_load(model_path);
-            entity = golf_entity_model(name, transform, model_path, uv_scale, lightmap_section, movement);
-            valid_entity = true;
-        }
-        else if (type && strcmp(type, "ball-start") == 0) {
-            golf_transform_t transform;
-            _golf_json_object_get_transform(obj, "transform", &transform);
-
-            entity = golf_entity_ball_start(name, transform);
-            valid_entity = true;
-        }
-        else if (type && strcmp(type, "hole") == 0) {
-            golf_transform_t transform;
-            _golf_json_object_get_transform(obj, "transform", &transform);
-
-            entity = golf_entity_hole(name, transform);
-            valid_entity = true;
-        }
-        else if (type && strcmp(type, "geo") == 0) {
-            golf_transform_t transform;
-            _golf_json_object_get_transform(obj, "transform", &transform);
-
-            golf_movement_t movement;
-            _golf_json_object_get_movement(obj, "movement", &movement);
-
-            golf_geo_t geo;
-            _golf_json_object_get_geo(obj, "geo", &geo);
-
-            golf_lightmap_section_t lightmap_section;
-            _golf_json_object_get_lightmap_section(obj, "lightmap_section", &lightmap_section);
-
-            entity = golf_entity_geo(name, transform, movement, geo, lightmap_section);
-            valid_entity = true;
-        }
-        else if (type && strcmp(type, "group") == 0) {
-            golf_transform_t transform;
-            _golf_json_object_get_transform(obj, "transform", &transform);
-
-            entity = golf_entity_group(name, transform);
-
-            valid_entity = true;
-        }
-        entity.parent_idx = parent_idx;
-
-        if (valid_entity) {
-            vec_push(&level->entities, entity);
-        }
-        else {
-            golf_log_warning("Invalid entity. type: %s, name: %s", type, name);
-        }
-    }
-
-    json_value_free(json_val);
-    return false;
-}
-
 bool golf_level_unload(golf_level_t *level) {
     return false;
 }
@@ -1163,31 +883,51 @@ golf_entity_t golf_entity_make_copy(golf_entity_t *entity) {
     golf_lightmap_section_t *lightmap_section = golf_entity_get_lightmap_section(entity);
     golf_lightmap_section_t *lightmap_section_copy = golf_entity_get_lightmap_section(&entity_copy);
     if (lightmap_section) {
-        golf_lightmap_section_init(lightmap_section_copy,
-                lightmap_section->lightmap_name,
-                lightmap_section->uvs);
+        vec_vec2_t uvs_copy;
+        vec_init(&uvs_copy, "level");
+        vec_pusharr(&uvs_copy, lightmap_section->uvs.data, lightmap_section->uvs.length);
+        *lightmap_section_copy = golf_lightmap_section(lightmap_section->lightmap_name, uvs_copy);
+        golf_lightmap_section_finalize(lightmap_section_copy);
     }
 
     golf_geo_t *geo = golf_entity_get_geo(entity);
     golf_geo_t *geo_copy = golf_entity_get_geo(&entity_copy);
     if (geo) {
-        golf_geo_init(geo_copy);
+        vec_golf_geo_point_t points_copy;
+        vec_init(&points_copy, "geo");
         for (int i = 0; i < geo->points.length; i++) {
             golf_geo_point_t point = geo->points.data[i];
-            golf_geo_point_t point_copy = point;
-            vec_push(&geo_copy->points, point_copy);
+            golf_geo_point_t point_copy = golf_geo_point(point.position);
+            vec_push(&points_copy, point_copy);
         }
+
+        vec_golf_geo_face_t faces_copy;
+        vec_init(&faces_copy, "geo");
         for (int i = 0; i < geo->faces.length; i++) {
             golf_geo_face_t face = geo->faces.data[i];
-            golf_geo_face_t face_copy = golf_geo_face(face.material_name, face.idx.length, face.idx.data, face.uv_gen_type, face.uvs.data);;
-            vec_push(&geo_copy->faces, face_copy);
+
+            vec_int_t idx_copy;
+            vec_init(&idx_copy, "face");
+            vec_pusharr(&idx_copy, face.idx.data, face.idx.length);
+
+            vec_vec2_t uvs_copy;
+            vec_init(&uvs_copy, "face");
+            vec_pusharr(&uvs_copy, face.uvs.data, face.uvs.length);
+
+            golf_geo_face_t face_copy = golf_geo_face(face.material_name, face.idx.length, idx_copy, face.uv_gen_type, uvs_copy);
+            vec_push(&faces_copy, face_copy);
         }
+
+        *geo_copy = golf_geo(points_copy, faces_copy);
+        golf_geo_finalize(geo_copy);
+        /*
         geo_copy->generator_data.script = geo->generator_data.script;
         for (int i = 0; i < geo->generator_data.args.length; i++) {
             golf_geo_generator_data_arg_t arg = geo->generator_data.args.data[i];
             golf_geo_generator_data_arg_t arg_copy = arg;
             vec_push(&geo_copy->generator_data.args, arg_copy);
         }
+        */
     }
 
     return entity_copy;
