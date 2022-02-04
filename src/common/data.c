@@ -55,6 +55,15 @@ static map_uint64_t _file_time_map;
 
 static void _golf_data_thread_load_file(golf_file_t file);
 
+static void _golf_data_add_dependency(vec_golf_file_t *deps, golf_file_t dep) {
+    for (int i = 0; i < deps->length; i++) {
+        if (strcmp(deps->data[i].path, dep.path) == 0) {
+            return;
+        }
+    }
+    vec_push(deps, dep);
+}
+
 //
 // TEXTURES
 //
@@ -825,9 +834,6 @@ static bool _golf_ui_layout_load_entity(JSON_Object *entity_obj, golf_ui_layout_
 
     if (strcmp(type, "pixel_pack_square") == 0) {
         const char *pixel_pack_path = json_object_get_string(entity_obj, "pixel_pack");
-        _golf_data_thread_load_file(golf_file(pixel_pack_path));
-        while (golf_data_get_load_state(pixel_pack_path) != GOLF_DATA_LOADED)
-            golf_thread_timer_wait(&_data_thread_timer, 10000000);
         const char *square_name = json_object_get_string(entity_obj, "square");
 
         entity->type = GOLF_UI_PIXEL_PACK_SQUARE;
@@ -838,9 +844,6 @@ static bool _golf_ui_layout_load_entity(JSON_Object *entity_obj, golf_ui_layout_
     }
     else if (strcmp(type, "text") == 0) {
         const char *font_path = json_object_get_string(entity_obj, "font");
-        _golf_data_thread_load_file(golf_file(font_path));
-        while (golf_data_get_load_state(font_path) != GOLF_DATA_LOADED)
-            golf_thread_timer_wait(&_data_thread_timer, 10000000);
         const char *text = json_object_get_string(entity_obj, "text");
 
         entity->type = GOLF_UI_TEXT;
@@ -891,6 +894,28 @@ static bool _golf_ui_layout_load(void *ptr, const char *path, char *data, int da
     JSON_Object *json_obj = json_value_get_object(json_val);
 
     JSON_Array *entities_arr = json_object_get_array(json_obj, "entities");
+
+    vec_golf_file_t deps;
+    vec_init(&deps, "data");
+    for (int i = 0; i < (int)json_array_get_count(entities_arr); i++) {
+        JSON_Object *entity_obj = json_array_get_object(entities_arr, i);
+        const char *type = json_object_get_string(entity_obj, "type");
+        if (type && strcmp(type, "pixel_pack_square") == 0) {
+            const char *pixel_pack_path = json_object_get_string(entity_obj, "pixel_pack");
+            if (pixel_pack_path) _golf_data_add_dependency(&deps, golf_file(pixel_pack_path));
+        }
+        else if (type && strcmp(type, "text") == 0) {
+            const char *font_path = json_object_get_string(entity_obj, "font");
+            if (font_path) _golf_data_add_dependency(&deps, golf_file(font_path));
+        }
+    }
+    for (int i = 0; i < deps.length; i++) {
+        _golf_data_thread_load_file(deps.data[i]);
+        while (golf_data_get_load_state(deps.data[i].path) != GOLF_DATA_LOADED)
+            golf_thread_timer_wait(&_data_thread_timer, 10000000);
+    }
+    vec_deinit(&deps);
+
     for (int i = 0; i < (int)json_array_get_count(entities_arr); i++) {
         JSON_Object *entity_obj = json_array_get_object(entities_arr, i);
 
