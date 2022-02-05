@@ -327,6 +327,28 @@ static void _golf_ui_button_name(golf_ui_layout_t *layout, const char *name) {
     }
 }
 
+static void _golf_ui_gif_texture_name(golf_ui_layout_t *layout, const char *name, float dt) {
+    golf_ui_layout_entity_t *entity;
+    if (!_golf_ui_layout_get_entity_of_type(layout, name, GOLF_UI_GIF_TEXTURE, &entity)) {
+        golf_log_warning("Could not find gif texture entity %s.", name);
+        return;
+    }
+
+    float ui_scale = graphics->viewport_size.x / 720.0f;
+    vec2 pos = _golf_ui_layout_get_entity_pos(layout, *entity);
+    vec2 size = vec2_scale(entity->size, ui_scale);
+
+    golf_gif_texture_t *texture = entity->gif_texture.texture;
+
+    entity->gif_texture.t += dt;
+    float a = fmodf(entity->gif_texture.t, entity->gif_texture.total_time) / entity->gif_texture.total_time;
+    int frame = (int) (a * texture->num_frames);
+    if (frame < 0) frame = 0;
+    if (frame >= texture->num_frames) frame = texture->num_frames - 1;
+
+    vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_images[frame], pos, size, V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0)));
+}
+
 void golf_ui_update(float dt) {
     ui.draw_entities.length = 0;
 
@@ -336,6 +358,7 @@ void golf_ui_update(float dt) {
     _golf_ui_button_name(layout, "courses_button");
     _golf_ui_text_name(layout, "main_text");
     _golf_ui_text_name(layout, "main2_text");
+    _golf_ui_gif_texture_name(layout, "loading_icon", dt);
 
     {
         golf_ui_layout_entity_t *entity;

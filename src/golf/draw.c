@@ -280,8 +280,7 @@ static void _draw_level(void) {
 }
 
 static void _draw_ui(void) {
-    mat4 ui_proj_mat = mat4_orthographic_projection(0, graphics->viewport_size.x, 
-            graphics->viewport_size.y, 0, 0, 1); 
+    mat4 ui_proj_mat = mat4_orthographic_projection(0, graphics->viewport_size.x, graphics->viewport_size.y, 0, 0, 1); 
 
     sg_pass_action action = {
         .colors[0] = {
@@ -387,6 +386,7 @@ void golf_draw(void) {
         _golf_draw_update_create_draw_pass();
     }
 
+    /*
     sg_pass_action action = {
         .colors[0] = {
             .action = SG_ACTION_CLEAR,
@@ -396,7 +396,9 @@ void golf_draw(void) {
     sg_begin_pass(draw.game_draw_pass, &action);
     _draw_level();
     sg_end_pass();
+    */
 
+    /*
     {
         sg_pass_action action = {
             .colors[0] = {
@@ -418,5 +420,7 @@ void golf_draw(void) {
         sg_draw(0, square->positions.length, 1);
         sg_end_pass();
     }
+    */
+
     _draw_ui();
 }

@@ -19,6 +19,5 @@
     "data/models/editor/ball_start.obj",
     "data/textures/fallback.png",
     "data/textures/colors/white.png",
-    "data/textures/loading.gif",
-    "data/levels/level-1.level"
+    "data/textures/loading.gif"
 ]

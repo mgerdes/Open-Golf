@@ -11,12 +11,17 @@ golf_game_t *golf_game_get(void) {
 }
 
 void golf_game_init(void) {
-    golf_data_load("data/levels/level-1.level", false);
-    game.level = golf_data_get_level("data/levels/level-1.level");
-
+    golf_data_load("data/title_screen.static_data", false);
+    game.state = GOLF_GAME_STATE_TITLE_SCREEN;
     graphics = golf_graphics_get();
 }
 
 void golf_game_update(float dt) {
+    switch (game.state) {
+        case GOLF_GAME_STATE_TITLE_SCREEN: {
+            break;
+        }
+    }
+
     graphics->cam_azimuth_angle += dt;
 }

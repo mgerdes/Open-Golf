@@ -72,7 +72,7 @@ static void _golf_data_add_dependency(vec_golf_file_t *deps, golf_file_t dep) {
 static bool _golf_gif_texture_finalize(void *ptr) {
     golf_gif_texture_t *texture = (golf_gif_texture_t*) ptr;
 
-    for (int i = 0; i < texture->num_images; i++) {
+    for (int i = 0; i < texture->num_frames; i++) {
         sg_image_desc img_desc = {
             .width = texture->width,
             .height = texture->height,
@@ -101,14 +101,14 @@ static bool _golf_gif_texture_load(void *ptr, const char *path, char *data, int 
     texture->filter = SG_FILTER_LINEAR;
 
     int *delays = NULL;
-    int width, height, num_images, n;
+    int width, height, num_frames, n;
     stbi_set_flip_vertically_on_load(0);
-    texture->image_data = stbi_load_gif_from_memory(data, data_len, &delays, &width, &height, &num_images, &n, 4);
+    texture->image_data = stbi_load_gif_from_memory(data, data_len, &delays, &width, &height, &num_frames, &n, 4);
     texture->width = width;
     texture->height = height;
-    texture->num_images = num_images;
+    texture->num_frames = num_frames;
     texture->delays = delays;
-    texture->sg_images = golf_alloc(sizeof(sg_image)*num_images);
+    texture->sg_images = golf_alloc(sizeof(sg_image)*num_frames);
 
     return true;
 }
@@ -995,6 +995,16 @@ static bool _golf_ui_layout_load_entity(JSON_Object *entity_obj, golf_ui_layout_
             }
         }
     }
+    else if (strcmp(type, "gif_texture") == 0) {
+        entity->type = GOLF_UI_GIF_TEXTURE;
+
+        const char *texture_path = json_object_get_string(entity_obj, "texture");
+        float total_time = (float)json_object_get_number(entity_obj, "time");
+
+        entity->gif_texture.total_time = total_time;
+        entity->gif_texture.texture = golf_data_get_gif_texture(texture_path);
+        entity->gif_texture.t = 0;
+    }
     else {
         golf_log_warning("Unknown ui entity type %s", type);
         return false;
@@ -1024,6 +1034,10 @@ static bool _golf_ui_layout_load(void *ptr, const char *path, char *data, int da
         else if (type && strcmp(type, "text") == 0) {
             const char *font_path = json_object_get_string(entity_obj, "font");
             if (font_path) _golf_data_add_dependency(&deps, golf_file(font_path));
+        }
+        else if (type && strcmp(type, "gif_texture") == 0) {
+            const char *texture_path = json_object_get_string(entity_obj, "texture");
+            if (texture_path) _golf_data_add_dependency(&deps, golf_file(texture_path));
         }
     }
     for (int i = 0; i < deps.length; i++) {
@@ -2057,10 +2071,19 @@ void golf_data_update(float dt) {
                 break;
             }
             case FILE_UPDATED: {
-                /*
+                void *ptr;
+
                 _data_loader_t *loader = _get_data_loader(event.file.ext);
+                golf_mutex_lock(&_loaded_data_lock);
                 golf_data_t *data = map_get(&_loaded_data, event.file.path);
-                if (data && loader && loader->reload_on) {
+                if (data) {
+                    ptr = data->ptr;
+                }
+                else {
+                    ptr = NULL;
+                }
+                golf_mutex_unlock(&_loaded_data_lock);
+                if (ptr && loader && loader->reload_on) {
                     golf_log_note("Reloading %s", event.file.path);
 
                     golf_file_t file_to_load = event.file;
@@ -2068,7 +2091,7 @@ void golf_data_update(float dt) {
                         file_to_load = golf_file_append_extension(file_to_load.path, ".golf_data");
                     }
 
-                    loader->unload_fn(data->ptr);
+                    loader->unload_fn(ptr);
                     char *bytes = NULL;
                     int bytes_len = 0;
                     assetsys_error_t error = _golf_assetsys_file_load(file_to_load.path, &bytes, &bytes_len);
@@ -2078,9 +2101,9 @@ void golf_data_update(float dt) {
                         int meta_data_len;
                         _golf_assetsys_file_load(meta_file.path, &meta_data, &meta_data_len);
 
-                        loader->load_fn(data->ptr, file_to_load.path, bytes, bytes_len, meta_data, meta_data_len);
+                        loader->load_fn(ptr, file_to_load.path, bytes, bytes_len, meta_data, meta_data_len);
                         if (loader->finalize_fn) {
-                            loader->finalize_fn(data->ptr);
+                            loader->finalize_fn(ptr);
                         }
 
                         golf_free(meta_data);
@@ -2088,7 +2111,6 @@ void golf_data_update(float dt) {
                     golf_free(bytes);
                 }
                 break;
-                */
             }
             case FILE_LOADED: {
                 golf_data_t *data;

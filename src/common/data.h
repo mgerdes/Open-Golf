@@ -16,7 +16,7 @@ typedef struct golf_gif_texture {
     int width, height;
     unsigned char *image_data;
 
-    int num_images;
+    int num_frames;
     int *delays;
     sg_image *sg_images;
 } golf_gif_texture_t;
@@ -145,6 +145,7 @@ typedef enum golf_ui_layout_entity_type {
     GOLF_UI_PIXEL_PACK_SQUARE,
     GOLF_UI_TEXT,
     GOLF_UI_BUTTON,
+    GOLF_UI_GIF_TEXTURE,
 } golf_ui_layout_entity_type;
 
 typedef struct golf_ui_layout_entity golf_ui_layout_entity_t;
@@ -173,6 +174,11 @@ typedef struct golf_ui_layout_entity {
         struct {
             vec_golf_ui_layout_entity_t up_entities, down_entities;
         } button;
+
+        struct {
+            float t, total_time;
+            golf_gif_texture_t *texture;
+        } gif_texture;
     };
 } golf_ui_layout_entity_t;
 
