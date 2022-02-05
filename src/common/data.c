@@ -3,6 +3,7 @@
 
 #include <inttypes.h>
 
+#include "remotery/Remotery.h"
 #include "fast_obj/fast_obj.h"
 #include "mattiasgustavsson_libs/assetsys.h"
 #include "parson/parson.h"
@@ -1424,6 +1425,8 @@ static bool _golf_level_load(void *ptr, const char *path, char *data, int data_l
         vec_golf_file_t deps; 
         vec_init(&deps, "level");
         _golf_data_add_dependency(&deps, golf_file("data/textures/hole_lightmap.png"));
+        _golf_data_add_dependency(&deps, golf_file("data/models/hole.obj"));
+        _golf_data_add_dependency(&deps, golf_file("data/models/hole-cover.obj"));
         for (int i = 0; i < (int)json_array_get_count(json_materials_arr); i++) {
             JSON_Object *obj = json_array_get_object(json_materials_arr, i);
             const char *type = json_object_get_string(obj, "type");
@@ -1967,6 +1970,9 @@ static void _golf_data_thread_load_file(golf_file_t file) {
 
         golf_free(meta_data);
     }
+    else {
+        golf_log_warning("Assetys unable to load file %s", file_to_load.path);
+    }
     golf_free(data);
 }
 
@@ -2056,6 +2062,8 @@ void golf_data_init(void) {
 }
 
 void golf_data_update(float dt) {
+    rmt_BeginCPUSample(DataUpdate, 0);
+
     golf_mutex_lock(&_file_events_lock);  
     for (int i = 0; i < _file_events.length; i++) {
         _file_event_t event = _file_events.data[i];
@@ -2135,6 +2143,8 @@ void golf_data_update(float dt) {
     }
     _file_events.length = 0;
     golf_mutex_unlock(&_file_events_lock);  
+
+    rmt_EndCPUSample();
 }
 
 void golf_data_load(const char *path, bool load_async) {

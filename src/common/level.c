@@ -146,12 +146,12 @@ static void _golf_geo_generate_model_data(golf_geo_t *geo, vec_golf_group_t *gro
     const char *key;
     map_iter_t iter = map_iter(&material_faces);
     while ((key = map_next(&material_faces, &iter))) {
-        int group_start = geo->model.positions.length;
+        int group_start = positions->length;
         int group_count = 0;
         vec_golf_geo_face_ptr_t *faces = map_get(&material_faces, key);
         for (int i = 0; i < faces->length; i++) {
             golf_geo_face_t *face = faces->data[i];
-            face->start_vertex_in_model = geo->model.positions.length;
+            face->start_vertex_in_model = positions->length;
 
             int idx0 = face->idx.data[0];
             for (int i = 1; i < face->idx.length - 1; i++) {

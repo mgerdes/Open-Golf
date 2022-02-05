@@ -1,5 +1,6 @@
 #include "golf/draw.h"
 
+#include "remotery/Remotery.h"
 #include "common/data.h"
 #include "common/graphics.h"
 #include "common/level.h"
@@ -378,6 +379,8 @@ void golf_draw_init(void) {
 }
 
 void golf_draw(void) {
+    rmt_BeginCPUSample(Draw, 0);
+
     if (!vec2_equal(draw.game_draw_pass_size, graphics->viewport_size)) {
         draw.game_draw_pass_size = graphics->viewport_size;
         sg_destroy_image(draw.game_draw_pass_image);
@@ -386,19 +389,20 @@ void golf_draw(void) {
         _golf_draw_update_create_draw_pass();
     }
 
-    /*
-    sg_pass_action action = {
-        .colors[0] = {
-            .action = SG_ACTION_CLEAR,
-            .value = { 0.529f, 0.808f, 0.922f, 1.0f },
-        },
-    };
-    sg_begin_pass(draw.game_draw_pass, &action);
-    _draw_level();
-    sg_end_pass();
-    */
+    {
+        sg_pass_action action = {
+            .colors[0] = {
+                .action = SG_ACTION_CLEAR,
+                .value = { 0.529f, 0.808f, 0.922f, 1.0f },
+            },
+        };
+        sg_begin_pass(draw.game_draw_pass, &action);
+        if (game->state == GOLF_GAME_STATE_MAIN_MENU) {
+            _draw_level();
+        }
+        sg_end_pass();
+    }
 
-    /*
     {
         sg_pass_action action = {
             .colors[0] = {
@@ -420,7 +424,8 @@ void golf_draw(void) {
         sg_draw(0, square->positions.length, 1);
         sg_end_pass();
     }
-    */
 
     _draw_ui();
+
+    rmt_EndCPUSample();
 }

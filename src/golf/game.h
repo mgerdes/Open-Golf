@@ -5,6 +5,7 @@
 
 typedef enum golf_game_state {
     GOLF_GAME_STATE_TITLE_SCREEN,
+    GOLF_GAME_STATE_MAIN_MENU,
 } golf_game_state_t;
 
 typedef struct golf_game {

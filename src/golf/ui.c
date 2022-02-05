@@ -353,9 +353,9 @@ void golf_ui_update(float dt) {
     ui.draw_entities.length = 0;
 
     golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
-    _golf_ui_pixel_pack_square_name(layout, "background");
-    _golf_ui_button_name(layout, "play_button");
-    _golf_ui_button_name(layout, "courses_button");
+    //_golf_ui_pixel_pack_square_name(layout, "background");
+    //_golf_ui_button_name(layout, "play_button");
+    //_golf_ui_button_name(layout, "courses_button");
     _golf_ui_text_name(layout, "main_text");
     _golf_ui_text_name(layout, "main2_text");
     _golf_ui_gif_texture_name(layout, "loading_icon", dt);

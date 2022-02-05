@@ -10,6 +10,9 @@
     "data/shaders/ui.glsl",
     "data/ui/main_menu.ui",
     "data/models/ui_square.obj",
+    "data/models/cube.obj",
+    "data/models/render_image_square.obj",
+    "data/models/editor/ball_start.obj",
     "data/textures/fallback.png",
     "data/textures/loading.gif"
 ]

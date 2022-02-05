@@ -1,5 +1,9 @@
 #include_directories(SYSTEM ../../src/3rd_party)
 #include_directories(../../src)
+
+set(LIBRARIES
+    remotery)
+
 add_library(common STATIC
     alloc.c
     base64.c
@@ -19,3 +23,5 @@ add_library(common STATIC
     string.c
     thread.c
     vec.c)
+
+target_link_libraries(common PRIVATE ${LIBRARIES})

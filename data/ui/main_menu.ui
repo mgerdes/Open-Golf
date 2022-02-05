@@ -149,28 +149,26 @@
             ]
         },
 		{
-			"parent": "background",
 			"name": "main_text",
 			"type": "text",
 			"font": "data/font/Castle-Rock.ttf",
-			"anchor": [0.5, 0.2],
+			"anchor": [0.5, 0.15],
 			"pos": [0, 2],
             "horiz_align": 0,
             "vert_align": 0,
-			"font_size": 72,
+			"font_size": 128,
 			"color": [0, 0, 0, 1],
 			"text": "OPEN GOLF"
 		},
 		{
-			"parent": "background",
 			"name": "main2_text",
 			"type": "text",
 			"font": "data/font/Castle-Rock.ttf",
-			"anchor": [0.5, 0.2],
+			"anchor": [0.5, 0.15],
 			"pos": [2, 0],
             "horiz_align": 0,
             "vert_align": 0,
-			"font_size": 72,
+			"font_size": 128,
 			"color": [0.7, 0.9, 0.7, 1],
 			"text": "OPEN GOLF"
 		}
