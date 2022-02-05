@@ -14,6 +14,7 @@ set(GOLF_LIBRARIES
     mattiasgustavsson_libs
     miniz
     parson
+    remotery
     sokol
     stb
     xatlas)

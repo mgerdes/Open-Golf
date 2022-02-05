@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "remotery/Remotery.h"
 #include "sokol/sokol_app.h"
 #include "sokol/sokol_audio.h"
 #include "sokol/sokol_gfx.h"
@@ -17,6 +18,9 @@
 #include "golf/ui.h"
 
 static void init(void) {
+    Remotery* rmt;
+    rmt_CreateGlobalInstance(&rmt);
+
     stm_setup();
     sg_setup(&(sg_desc){ 
             .buffer_pool_size = 2048, 
@@ -39,12 +43,14 @@ static void cleanup(void) {
 }
 
 static void frame(void) {
+
     static bool inited = false;
     static uint64_t last_time = 0;
     static float time_since_import = 0.0f;
 
     float dt = (float) stm_sec(stm_laptime(&last_time));
     if (!inited) {
+        rmt_BeginCPUSample(Init, 0);
         golf_data_init();
         golf_inputs_init();
         golf_game_init();
@@ -53,7 +59,10 @@ static void frame(void) {
         golf_draw_init();
         golf_debug_console_init();
         inited = true;
+        rmt_EndCPUSample();
     }
+
+    rmt_BeginCPUSample(Update, 0);
 
     golf_data_update(dt);
 
@@ -72,6 +81,8 @@ static void frame(void) {
 
     golf_inputs_end_frame();
     golf_graphics_end_frame();
+
+    rmt_EndCPUSample();
 
     fflush(stdout);
 }

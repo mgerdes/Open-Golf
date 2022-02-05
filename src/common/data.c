@@ -2244,6 +2244,7 @@ golf_model_t *golf_data_get_model(const char *path) {
 
     golf_model_t *model = _golf_data_get_ptr(path, GOLF_DATA_MODEL);
     if (!model) {
+        golf_log_warning("Could not find model %s", path);
         model = _golf_data_get_ptr(fallback, GOLF_DATA_MODEL);
         if (!model) {
             golf_log_error("Could not find fallback model");

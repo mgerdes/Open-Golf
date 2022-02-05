@@ -9,15 +9,7 @@
     "data/shaders/render_image.glsl",
     "data/shaders/ui.glsl",
     "data/ui/main_menu.ui",
-    "data/models/cube.obj",
-    "data/models/hole.obj",
-    "data/models/hole-cover.obj",
-    "data/models/sphere.obj",
-    "data/models/ui_sprite_square.obj",
     "data/models/ui_square.obj",
-    "data/models/render_image_square.obj",
-    "data/models/editor/ball_start.obj",
     "data/textures/fallback.png",
-    "data/textures/colors/white.png",
     "data/textures/loading.gif"
 ]
