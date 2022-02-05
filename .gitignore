@@ -54,3 +54,4 @@ minigolf.worker.js
 src/membedder/membedded_files.h
 Makefile
 .vscode
+build/android/OpenGolf/app/src/main/assets/data.zip

@@ -20,12 +20,19 @@ set(GOLF_LIBRARIES
     xatlas)
 
 if(CMAKE_SYSTEM_NAME STREQUAL Android)
+    set(GOLF_LIBRARIES
+        ${GOLF_LIBRARIES}
+        GLESv3
+        EGL 
+        log 
+        android
+        OpenSLES)
     add_library(golf SHARED
-        main.c
+        draw.c
         game.c
+        main.c
         ui.c)
-    target_link_libraries(golf PRIVATE
-        common)
+    target_link_libraries(golf PRIVATE ${GOLF_LIBRARIES})
     add_dependencies(golf android_data_zip)
 else()
     if(CMAKE_SYSTEM_NAME STREQUAL Windows)
