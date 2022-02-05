@@ -11,6 +11,16 @@
 
 #define GOLF_MAX_NAME_LEN 64
 
+typedef struct golf_gif_texture {
+    sg_filter filter;
+    int width, height;
+    unsigned char *image_data;
+
+    int num_images;
+    int *delays;
+    sg_image *sg_images;
+} golf_gif_texture_t;
+
 typedef struct golf_texture {
     sg_filter filter;
     int width, height;
@@ -172,6 +182,7 @@ typedef struct golf_ui_layout {
 
 typedef enum golf_data_type {
     GOLF_DATA_TEXTURE,
+    GOLF_DATA_GIF_TEXTURE,
     GOLF_DATA_FONT,
     GOLF_DATA_MODEL,
     GOLF_DATA_SHADER,
@@ -209,6 +220,7 @@ void golf_data_debug_console_tab(void);
 void golf_data_get_all_matching(golf_data_type_t type, const char *str, vec_golf_file_t *files);
 void golf_data_force_remount(void);
 
+golf_gif_texture_t *golf_data_get_gif_texture(const char *path);
 golf_texture_t *golf_data_get_texture(const char *path);
 golf_pixel_pack_t *golf_data_get_pixel_pack(const char *path);
 golf_model_t *golf_data_get_model(const char *path);

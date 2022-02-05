@@ -66,6 +66,58 @@ static void _golf_data_add_dependency(vec_golf_file_t *deps, golf_file_t dep) {
 }
 
 //
+// GIF TEXTURES
+//
+
+static bool _golf_gif_texture_finalize(void *ptr) {
+    golf_gif_texture_t *texture = (golf_gif_texture_t*) ptr;
+
+    for (int i = 0; i < texture->num_images; i++) {
+        sg_image_desc img_desc = {
+            .width = texture->width,
+            .height = texture->height,
+            .pixel_format = SG_PIXELFORMAT_RGBA8,
+            .min_filter = texture->filter,
+            .mag_filter = texture->filter,
+            .wrap_u = SG_WRAP_REPEAT,
+            .wrap_v = SG_WRAP_REPEAT,
+            .data.subimage[0][0] = {
+                .ptr = texture->image_data + i * 4 * texture->width * texture->height,
+                .size = 4 * texture->width * texture->height,
+            },
+        };
+        texture->sg_images[i] = sg_make_image(&img_desc);
+    }
+
+    free(texture->image_data);
+    texture->image_data = NULL;
+
+    return true;
+}
+
+static bool _golf_gif_texture_load(void *ptr, const char *path, char *data, int data_len, char *meta_data, int meta_data_len) {
+    golf_gif_texture_t *texture = (golf_gif_texture_t*) ptr;
+
+    texture->filter = SG_FILTER_LINEAR;
+
+    int *delays = NULL;
+    int width, height, num_images, n;
+    stbi_set_flip_vertically_on_load(0);
+    texture->image_data = stbi_load_gif_from_memory(data, data_len, &delays, &width, &height, &num_images, &n, 4);
+    texture->width = width;
+    texture->height = height;
+    texture->num_images = num_images;
+    texture->delays = delays;
+    texture->sg_images = golf_alloc(sizeof(sg_image)*num_images);
+
+    return true;
+}
+
+static bool _golf_gif_texture_unload(void *ptr) {
+    return true;
+}
+
+//
 // TEXTURES
 //
 
@@ -1625,6 +1677,16 @@ typedef struct _data_loader {
 
 static _data_loader_t _loaders[] = {
     {
+        .ext = ".gif",
+        .data_type = GOLF_DATA_GIF_TEXTURE,
+        .data_size = sizeof(golf_gif_texture_t),
+        .finalize_fn = _golf_gif_texture_finalize,
+        .load_fn = _golf_gif_texture_load,
+        .unload_fn = _golf_gif_texture_unload,
+        .import_fn = NULL,
+        .reload_on = true,
+    },
+    {
         .ext = ".png",
         .data_type = GOLF_DATA_TEXTURE,
         .data_size = sizeof(golf_texture_t),
@@ -2119,6 +2181,14 @@ static void *_golf_data_get_ptr(const char *path, golf_data_type_t type) {
     }
     golf_mutex_unlock(&_loaded_data_lock);
     return ptr;
+}
+
+golf_gif_texture_t *golf_data_get_gif_texture(const char *path) {
+    golf_gif_texture_t *texture = _golf_data_get_ptr(path, GOLF_DATA_GIF_TEXTURE);
+    if (!texture) {
+        golf_log_error("Could not find gif texture %s", path);
+    }
+    return texture;
 }
 
 golf_texture_t *golf_data_get_texture(const char *path) {
