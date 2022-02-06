@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(minigolf)
+project(golf)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
@@ -18,6 +18,10 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
 elseif(CMAKE_SYSTEM_NAME STREQUAL Android)
     add_compile_definitions(SOKOL_GLES3)
     add_compile_definitions(GOLF_PLATFORM_ANDROID)
+elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
+    set(CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM RMF5MGUCT2 CACHE INTERNAL "")
+    add_compile_definitions(SOKOL_GLES3)
+    add_compile_definitions(GOLF_PLATFORM_IOS)
 else()
 endif()
 

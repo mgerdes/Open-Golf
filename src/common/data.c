@@ -23,6 +23,11 @@
 #include "common/string.h"
 #include "common/thread.h"
 
+#if GOLF_PLATFORM_ANDROID | GOLF_PLATFORM_IOS
+// CMake builds this file
+#include "common/data_zip.h"
+#endif
+
 typedef enum _file_event_type {
     FILE_CREATED,
     FILE_UPDATED,
@@ -222,6 +227,7 @@ static JSON_Value *_golf_shader_import_bare(const char *base_name, const char *n
 }
 
 static bool _golf_shader_import(const char *path, char *data, int data_len) {
+#if GOLF_PLATFORM_LINUX | GOLF_PLATFORM_WINDOWS
     golf_file_t file = golf_file(path);
     static const char *slangs = "glsl330:glsl300es";
     JSON_Value *val = json_value_init_object();
@@ -277,6 +283,7 @@ static bool _golf_shader_import(const char *path, char *data, int data_len) {
 
     json_value_free(val);
     return true;
+#endif
 }
 
 static bool _golf_shader_finalize(void *ptr) {
@@ -2046,6 +2053,8 @@ void golf_data_init(void) {
 
     assetsys_error_t error = assetsys_mount(_assetsys, "data.zip", buffer, buffer_size, "/data");
     //AAsset_close(asset);
+#elif GOLF_PLATFORM_IOS
+    assetsys_error_t error = assetsys_mount(_assetsys, "data.zip", golf_data_zip, sizeof(golf_data_zip), "/data");
 #else
     assetsys_error_t error = assetsys_mount(_assetsys, "data", NULL, 0, "/data");
 #endif
