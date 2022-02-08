@@ -7,6 +7,7 @@
 #include "common/log.h"
 #include "common/maths.h"
 #include "golf/game.h"
+#include "golf/golf.h"
 #include "golf/ui.h"
 
 #include "golf/shaders/diffuse_color_material.glsl.h"
@@ -25,6 +26,7 @@ typedef struct golf_draw {
 
 static golf_draw_t draw;
 static golf_game_t *game = NULL;
+static golf_t *golf = NULL;
 static golf_graphics_t *graphics = NULL;
 static golf_ui_t *ui = NULL;
 
@@ -144,7 +146,7 @@ static void _golf_renderer_draw_with_material(golf_model_t *model, int start, in
 
 
 static void _draw_level(void) {
-    golf_level_t *level = game->level;
+    golf_level_t *level = golf->level;
 
     for (int i = 0; i < level->entities.length; i++) {
         golf_entity_t *entity = &level->entities.data[i];
@@ -370,6 +372,7 @@ static void _golf_draw_update_create_draw_pass(void) {
 
 void golf_draw_init(void) {
     game = golf_game_get();
+    golf = golf_get();
     graphics = golf_graphics_get();
     ui = golf_ui_get();
 
@@ -379,8 +382,6 @@ void golf_draw_init(void) {
 }
 
 void golf_draw(void) {
-    rmt_BeginCPUSample(Draw, 0);
-
     if (!vec2_equal(draw.game_draw_pass_size, graphics->viewport_size)) {
         draw.game_draw_pass_size = graphics->viewport_size;
         sg_destroy_image(draw.game_draw_pass_image);
@@ -397,7 +398,7 @@ void golf_draw(void) {
             },
         };
         sg_begin_pass(draw.game_draw_pass, &action);
-        if (game->state == GOLF_GAME_STATE_MAIN_MENU) {
+        if (golf->state == GOLF_STATE_MAIN_MENU || golf->state == GOLF_STATE_IN_GAME) {
             _draw_level();
         }
         sg_end_pass();
@@ -426,6 +427,4 @@ void golf_draw(void) {
     }
 
     _draw_ui();
-
-    rmt_EndCPUSample();
 }

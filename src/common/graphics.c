@@ -31,25 +31,6 @@ void golf_graphics_init(void) {
         graphics.window_size = V2(sapp_width(), sapp_width());
         graphics.viewport_pos = V2(0, 0);
         graphics.viewport_size = V2(sapp_width(), sapp_width());
-
-        graphics.cam_azimuth_angle = 0.5f*MF_PI;
-        graphics.cam_inclination_angle = 0;
-        graphics.cam_pos = V3(5, 5, 5);
-        graphics.cam_dir = vec3_normalize(V3(-5, -5, -5));
-        float x = graphics.cam_dir.x;
-        float y = graphics.cam_dir.y;
-        float z = graphics.cam_dir.z;
-        graphics.cam_inclination_angle = acosf(y);
-        graphics.cam_azimuth_angle = atan2f(z, x);
-        if (x < 0) {
-            //graphics.cam_inclination_angle += MF_PI;
-        }
-        float theta = graphics.cam_inclination_angle;
-        float phi = graphics.cam_azimuth_angle;
-        graphics.cam_dir.x = sinf(theta) * cosf(phi);
-        graphics.cam_dir.y = cosf(theta);
-        graphics.cam_dir.z = sinf(theta) * sinf(phi);
-        graphics.cam_up = V3(0, 1, 0);
     }
 
     {
@@ -255,12 +236,6 @@ void golf_graphics_begin_frame(float dt) {
     graphics.window_size = V2((float)sapp_width(), (float)sapp_height());
 
     {
-        float theta = graphics.cam_inclination_angle;
-        float phi = graphics.cam_azimuth_angle;
-        graphics.cam_dir.x = sinf(theta) * cosf(phi);
-        graphics.cam_dir.y = cosf(theta);
-        graphics.cam_dir.z = sinf(theta) * sinf(phi);
-
         float near = 0.1f;
         float far = 150.0f;
         graphics.proj_mat = mat4_perspective_projection(66.0f,
@@ -339,8 +314,6 @@ void golf_graphics_debug_console_tab(void) {
     igText("Cam Pos: <%.3f, %.3f, %.3f>", graphics.cam_pos.x, graphics.cam_pos.y, graphics.cam_pos.z); 
     igText("Cam Dir: <%.3f, %.3f, %.3f>", graphics.cam_dir.x, graphics.cam_dir.y, graphics.cam_dir.z); 
     igText("Cam Up: <%.3f, %.3f, %.3f>", graphics.cam_up.x, graphics.cam_up.y, graphics.cam_up.z); 
-    igText("Cam Inclination: %.3f", graphics.cam_inclination_angle); 
-    igText("Cam Azimuth: %.3f", graphics.cam_azimuth_angle); 
 }
 
 bool golf_graphics_get_shader_desc(const char *path, sg_shader_desc *desc) {

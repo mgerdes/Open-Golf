@@ -1,7 +1,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "remotery/Remotery.h"
 #include "sokol/sokol_app.h"
 #include "sokol/sokol_audio.h"
 #include "sokol/sokol_gfx.h"
@@ -15,12 +14,10 @@
 #include "common/log.h"
 #include "golf/draw.h"
 #include "golf/game.h"
+#include "golf/golf.h"
 #include "golf/ui.h"
 
 static void init(void) {
-    Remotery* rmt;
-    rmt_CreateGlobalInstance(&rmt);
-
     stm_setup();
     sg_setup(&(sg_desc){ 
             .buffer_pool_size = 2048, 
@@ -50,39 +47,27 @@ static void frame(void) {
 
     float dt = (float) stm_sec(stm_laptime(&last_time));
     if (!inited) {
-        rmt_BeginCPUSample(Init, 0);
         golf_data_init();
+        golf_data_load("data/title_screen.static_data", false);
+
         golf_inputs_init();
-        golf_game_init();
-        golf_ui_init();
         golf_graphics_init();
         golf_draw_init();
-        golf_debug_console_init();
+        golf_init();
         inited = true;
-        rmt_EndCPUSample();
     }
 
-    rmt_BeginCPUSample(Update, 0);
-
     golf_data_update(dt);
-
-    //printf("%d %d\n", 
-            //golf_data_get_load_state("data/shaders/pass_through.glsl"),
-            //golf_data_get_load_state("data/textures/circle.png"));
 
     golf_graphics_begin_frame(dt);
     golf_graphics_set_viewport(V2(0, 0), V2(sapp_width(), sapp_height()));
     golf_inputs_begin_frame();
 
-    golf_game_update(dt);
-    golf_ui_update(dt);
-    golf_debug_console_update(dt);
+    golf_update(dt);
     golf_draw();
 
     golf_inputs_end_frame();
     golf_graphics_end_frame();
-
-    rmt_EndCPUSample();
 
     fflush(stdout);
 }
@@ -100,8 +85,8 @@ sapp_desc sokol_main(int argc, char *argv[]) {
             .frame_cb = frame,
             .cleanup_cb = cleanup,
             .event_cb = event,
-            .width = 1280/4,
-            .height = 720/4,
+            .width = 375/2,
+            .height = 667/2,
             .window_title = "Minigolf",
             .enable_clipboard = true,
             .clipboard_size = 1024,

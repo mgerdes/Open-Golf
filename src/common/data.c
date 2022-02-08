@@ -3,7 +3,6 @@
 
 #include <inttypes.h>
 
-#include "remotery/Remotery.h"
 #include "fast_obj/fast_obj.h"
 #include "mattiasgustavsson_libs/assetsys.h"
 #include "parson/parson.h"
@@ -1013,12 +1012,57 @@ static bool _golf_ui_layout_load_entity(JSON_Object *entity_obj, golf_ui_layout_
         entity->gif_texture.texture = golf_data_get_gif_texture(texture_path);
         entity->gif_texture.t = 0;
     }
+    else if (strcmp(type, "aim_circle") == 0) {
+        entity->type = GOLF_UI_AIM_CIRCLE;
+
+        const char *texture_path = json_object_get_string(entity_obj, "texture");
+        float total_time = (float)json_object_get_number(entity_obj, "time");
+        vec2 square_size = golf_json_object_get_vec2(entity_obj, "square_size");
+        int num_squares = (int)json_object_get_number(entity_obj, "num_squares");
+
+        entity->aim_circle.total_time = total_time;
+        entity->aim_circle.texture = golf_data_get_texture(texture_path);
+        entity->aim_circle.square_size = square_size;
+        entity->aim_circle.num_squares = num_squares;
+        entity->aim_circle.t = 0;
+    }
     else {
         golf_log_warning("Unknown ui entity type %s", type);
         return false;
     }
 
     return true;
+}
+
+static void _golf_ui_layout_get_entity_dependency(JSON_Object *entity_obj, vec_golf_file_t *deps) {
+    const char *type = json_object_get_string(entity_obj, "type");
+    if (type && strcmp(type, "pixel_pack_square") == 0) {
+        const char *pixel_pack_path = json_object_get_string(entity_obj, "pixel_pack");
+        if (pixel_pack_path) _golf_data_add_dependency(deps, golf_file(pixel_pack_path));
+    }
+    else if (type && strcmp(type, "text") == 0) {
+        const char *font_path = json_object_get_string(entity_obj, "font");
+        if (font_path) _golf_data_add_dependency(deps, golf_file(font_path));
+    }
+    else if (type && strcmp(type, "gif_texture") == 0) {
+        const char *texture_path = json_object_get_string(entity_obj, "texture");
+        if (texture_path) _golf_data_add_dependency(deps, golf_file(texture_path));
+    }
+    else if (type && strcmp(type, "button") == 0) {
+        JSON_Array *up_entities_arr = json_object_get_array(entity_obj, "up_entities");
+        for (int i = 0; i < (int)json_array_get_count(up_entities_arr); i++) {
+            _golf_ui_layout_get_entity_dependency(json_array_get_object(up_entities_arr, i), deps);
+        }
+
+        JSON_Array *down_entities_arr = json_object_get_array(entity_obj, "down_entities");
+        for (int i = 0; i < (int)json_array_get_count(down_entities_arr); i++) {
+            _golf_ui_layout_get_entity_dependency(json_array_get_object(down_entities_arr, i), deps);
+        }
+    }
+    else if (type && strcmp(type, "aim_circle") == 0) {
+        const char *texture_path = json_object_get_string(entity_obj, "texture");
+        if (texture_path) _golf_data_add_dependency(deps, golf_file(texture_path));
+    }
 }
 
 static bool _golf_ui_layout_load(void *ptr, const char *path, char *data, int data_len, char *meta_data, int meta_data_len) {
@@ -1034,19 +1078,7 @@ static bool _golf_ui_layout_load(void *ptr, const char *path, char *data, int da
     vec_init(&deps, "data");
     for (int i = 0; i < (int)json_array_get_count(entities_arr); i++) {
         JSON_Object *entity_obj = json_array_get_object(entities_arr, i);
-        const char *type = json_object_get_string(entity_obj, "type");
-        if (type && strcmp(type, "pixel_pack_square") == 0) {
-            const char *pixel_pack_path = json_object_get_string(entity_obj, "pixel_pack");
-            if (pixel_pack_path) _golf_data_add_dependency(&deps, golf_file(pixel_pack_path));
-        }
-        else if (type && strcmp(type, "text") == 0) {
-            const char *font_path = json_object_get_string(entity_obj, "font");
-            if (font_path) _golf_data_add_dependency(&deps, golf_file(font_path));
-        }
-        else if (type && strcmp(type, "gif_texture") == 0) {
-            const char *texture_path = json_object_get_string(entity_obj, "texture");
-            if (texture_path) _golf_data_add_dependency(&deps, golf_file(texture_path));
-        }
+        _golf_ui_layout_get_entity_dependency(entity_obj, &deps);
     }
     for (int i = 0; i < deps.length; i++) {
         _golf_data_thread_load_file(deps.data[i]);
@@ -2002,6 +2034,8 @@ static int _golf_data_thread_fn(void *udata) {
             _golf_data_thread_load_file(files_to_load.data[i]);
         }
 
+        golf_thread_timer_wait(&_data_thread_timer, 10000000);
+
         double time_since_last_run = stm_sec(stm_since(last_run_time));
         if (time_since_last_run > 1) {
             bool push_events = true;
@@ -2022,10 +2056,6 @@ void golf_data_turn_off_reload(const char *ext) {
     }
 }
 
-#if GOLF_PLATFORM_ANDROID
-#include <android/native_activity.h>
-#endif
-
 void golf_data_init(void) {
     golf_thread_timer_init(&_main_thread_timer);
     golf_thread_timer_init(&_data_thread_timer);
@@ -2040,20 +2070,7 @@ void golf_data_init(void) {
     golf_mutex_init(&_assetsys_lock);
     _assetsys = assetsys_create(NULL);
     map_init(&_file_time_map, "data");
-#if GOLF_PLATFORM_ANDROID
-    ANativeActivity *native_activity = (ANativeActivity *)sapp_android_get_native_activity();
-    AAssetManager *asset_manager = native_activity->assetManager;
-    AAsset *asset = AAssetManager_open(asset_manager, "data.zip", AASSET_MODE_BUFFER);
-    if (!asset) {
-        golf_log_error("Unable to open data.zip");
-    }
-    const char *buffer = AAsset_getBuffer(asset);
-    size_t buffer_size = AAsset_getLength(asset);
-    golf_log_note("Android data.zip asset size %d", (int)buffer_size);
-
-    assetsys_error_t error = assetsys_mount(_assetsys, "data.zip", buffer, buffer_size, "/data");
-    //AAsset_close(asset);
-#elif GOLF_PLATFORM_IOS
+#if GOLF_PLATFORM_IOS | GOLF_PLATFORM_ANDROID
     assetsys_error_t error = assetsys_mount(_assetsys, "data.zip", golf_data_zip, sizeof(golf_data_zip), "/data");
 #else
     assetsys_error_t error = assetsys_mount(_assetsys, "data", NULL, 0, "/data");
@@ -2071,8 +2088,6 @@ void golf_data_init(void) {
 }
 
 void golf_data_update(float dt) {
-    rmt_BeginCPUSample(DataUpdate, 0);
-
     golf_mutex_lock(&_file_events_lock);  
     for (int i = 0; i < _file_events.length; i++) {
         _file_event_t event = _file_events.data[i];
@@ -2125,6 +2140,9 @@ void golf_data_update(float dt) {
 
                         golf_free(meta_data);
                     }
+                    else {
+                        golf_log_warning("Assetys unable to load file %s", file_to_load.path);
+                    }
                     golf_free(bytes);
                 }
                 break;
@@ -2152,8 +2170,6 @@ void golf_data_update(float dt) {
     }
     _file_events.length = 0;
     golf_mutex_unlock(&_file_events_lock);  
-
-    rmt_EndCPUSample();
 }
 
 void golf_data_load(const char *path, bool load_async) {
@@ -2250,6 +2266,7 @@ golf_pixel_pack_t *golf_data_get_pixel_pack(const char *path) {
 
     golf_pixel_pack_t *pixel_pack = _golf_data_get_ptr(path, GOLF_DATA_PIXEL_PACK);
     if (!pixel_pack) {
+        golf_log_warning("Could not find pixel pack %s", path);
         pixel_pack = _golf_data_get_ptr(fallback, GOLF_DATA_PIXEL_PACK);
         if (!pixel_pack) {
             golf_log_error("Could not find fallback pixel pack");

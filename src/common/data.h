@@ -146,6 +146,7 @@ typedef enum golf_ui_layout_entity_type {
     GOLF_UI_TEXT,
     GOLF_UI_BUTTON,
     GOLF_UI_GIF_TEXTURE,
+    GOLF_UI_AIM_CIRCLE,
 } golf_ui_layout_entity_type;
 
 typedef struct golf_ui_layout_entity golf_ui_layout_entity_t;
@@ -179,6 +180,13 @@ typedef struct golf_ui_layout_entity {
             float t, total_time;
             golf_gif_texture_t *texture;
         } gif_texture;
+
+        struct {
+            float t, total_time;
+            int num_squares;
+            vec2 square_size;
+            golf_texture_t *texture;
+        } aim_circle;
     };
 } golf_ui_layout_entity_t;
 

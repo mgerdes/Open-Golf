@@ -14,5 +14,6 @@
     "data/models/render_image_square.obj",
     "data/models/editor/ball_start.obj",
     "data/textures/fallback.png",
+    "data/textures/colors/white.png",
     "data/textures/loading.gif"
 ]

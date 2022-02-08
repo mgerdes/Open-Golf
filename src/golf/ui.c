@@ -8,10 +8,14 @@
 #include "common/inputs.h"
 #include "common/json.h"
 #include "common/log.h"
+#include "golf/game.h"
+#include "golf/golf.h"
 
 static golf_ui_t ui;
 static golf_inputs_t *inputs; 
 static golf_graphics_t *graphics; 
+static golf_game_t *game; 
+static golf_t *golf; 
 
 static golf_ui_draw_entity_t _golf_ui_draw_entity(sg_image image, vec2 pos, vec2 size, vec2 uv0, vec2 uv1, float is_font, vec4 overlay_color) {
     golf_ui_draw_entity_t entity;
@@ -36,6 +40,8 @@ void golf_ui_init(void) {
 
     inputs = golf_inputs_get();
     graphics = golf_graphics_get();
+    game = golf_game_get();
+    golf = golf_get();
 }
 
 static bool _golf_ui_layout_get_entity(golf_ui_layout_t *layout, const char *name, golf_ui_layout_entity_t *entity) {
@@ -292,20 +298,26 @@ static void _golf_ui_text_name(golf_ui_layout_t *layout, const char *name) {
     _golf_ui_text(layout, *entity);
 }
 
-static void _golf_ui_button_name(golf_ui_layout_t *layout, const char *name) {
+static bool _golf_ui_button_name(golf_ui_layout_t *layout, const char *name) {
     golf_ui_layout_entity_t *entity;
     if (!_golf_ui_layout_get_entity_of_type(layout, name, GOLF_UI_BUTTON, &entity)) {
         golf_log_warning("Could not find button entity %s.", name);
-        return;
+        return false;
     }
 
     float ui_scale = graphics->viewport_size.x / 720.0f;
     vec2 pos = _golf_ui_layout_get_entity_pos(layout, *entity);
     vec2 size = vec2_scale(entity->size, ui_scale);
     vec2 mp = inputs->mouse_pos;
+    vec2 tp = inputs->touch_pos;
     vec_golf_ui_layout_entity_t entities;
-    if (pos.x - 0.5f * size.x <= mp.x && pos.x + 0.5f * size.x >= mp.x &&
-            pos.y - 0.5f * size.y <= mp.y && pos.y + 0.5f * size.y >= mp.y) {
+
+    bool button_down = (pos.x - 0.5f * size.x <= mp.x && pos.x + 0.5f * size.x >= mp.x &&
+            pos.y - 0.5f * size.y <= mp.y && pos.y + 0.5f * size.y >= mp.y) ||
+        ((pos.x - 0.5f * size.x <= tp.x && pos.x + 0.5f * size.x >= tp.x &&
+         pos.y - 0.5f * size.y <= tp.y && pos.y + 0.5f * size.y >= tp.y) && inputs->touch_down);
+
+    if (button_down) {
         entities = entity->button.down_entities;
     }
     else {
@@ -325,6 +337,8 @@ static void _golf_ui_button_name(golf_ui_layout_t *layout, const char *name) {
                 break;
         }
     }
+
+    return button_down && (inputs->mouse_clicked[SAPP_MOUSEBUTTON_LEFT] || inputs->touch_ended);
 }
 
 static void _golf_ui_gif_texture_name(golf_ui_layout_t *layout, const char *name, float dt) {
@@ -349,23 +363,72 @@ static void _golf_ui_gif_texture_name(golf_ui_layout_t *layout, const char *name
     vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_images[frame], pos, size, V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0)));
 }
 
-void golf_ui_update(float dt) {
-    ui.draw_entities.length = 0;
+static void _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name, float dt) {
+    golf_ui_layout_entity_t *entity;
+    if (!_golf_ui_layout_get_entity_of_type(layout, name, GOLF_UI_AIM_CIRCLE, &entity)) {
+        golf_log_warning("Could not find aim circle entity %s.", name);
+        return;
+    }
 
+    float ui_scale = graphics->viewport_size.x / 720.0f;
+    vec2 pos = _golf_ui_layout_get_entity_pos(layout, *entity);
+    vec2 size = vec2_scale(entity->size, ui_scale);
+    vec2 square_size = vec2_scale(entity->aim_circle.square_size, ui_scale);
+    int num_squares = entity->aim_circle.num_squares;
+    golf_texture_t *texture = entity->aim_circle.texture;
+
+    for (int i = 0; i < num_squares; i++) {
+        float theta = 2.0f * MF_PI * i / num_squares;
+        vec2 p = V2(pos.x + size.x * cosf(theta), pos.y + size.y * sinf(theta));
+        vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_image, p, square_size, V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0)));
+    }
+}
+
+static void _golf_ui_title_screen(float dt) {
     golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
-    //_golf_ui_pixel_pack_square_name(layout, "background");
-    //_golf_ui_button_name(layout, "play_button");
-    //_golf_ui_button_name(layout, "courses_button");
     _golf_ui_text_name(layout, "main_text");
     _golf_ui_text_name(layout, "main2_text");
     _golf_ui_gif_texture_name(layout, "loading_icon", dt);
+}
+
+static void _golf_ui_main_menu(float dt) {
+    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
+    _golf_ui_text_name(layout, "main_text");
+    _golf_ui_text_name(layout, "main2_text");
+    if (_golf_ui_button_name(layout, "play_button")) {
+        golf_start_level();
+    }
+    if (_golf_ui_button_name(layout, "courses_button")) {
+    }
+}
+
+static void _golf_ui_in_game(float dt) {
+    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
+    _golf_ui_aim_circle_name(layout, "aim_circle", dt);
+}
+
+void golf_ui_update(float dt) {
+    ui.draw_entities.length = 0;
 
     {
+        golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
         golf_ui_layout_entity_t *entity;
         if (_golf_ui_layout_get_entity_of_type(layout, "fps_text", GOLF_UI_TEXT, &entity)) {
             entity->text.text.len = 0;
             golf_string_appendf(&entity->text.text, "%.1f", graphics->framerate);
             _golf_ui_text_name(layout, "fps_text");
         }
+    }
+
+    switch (golf->state) {
+        case GOLF_STATE_TITLE_SCREEN:
+            _golf_ui_title_screen(dt);
+            break;
+        case GOLF_STATE_MAIN_MENU:
+            _golf_ui_main_menu(dt);
+            break;
+        case GOLF_STATE_IN_GAME:
+            _golf_ui_in_game(dt);
+            break;
     }
 }

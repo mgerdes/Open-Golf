@@ -32,14 +32,20 @@ void golf_inputs_init(void) {
 
 void golf_inputs_begin_frame(void) {
     inputs.mouse_delta = vec2_sub(inputs.mouse_pos, inputs.prev_mouse_pos);
-    inputs.prev_mouse_pos = inputs.mouse_pos;
-    if (inputs.mouse_down) {
+    if (inputs.mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
         inputs.mouse_down_delta = vec2_sub(inputs.mouse_pos, inputs.mouse_down_pos);
         inputs.screen_mouse_down_delta = vec2_sub(inputs.screen_mouse_pos, inputs.screen_mouse_down_pos);
     }
 }
 
 void golf_inputs_end_frame(void) {
+    if (inputs.touch_ended) {
+        inputs.touch_down = false;
+    }
+    inputs.touch_began = false;
+    inputs.touch_ended = false;
+    inputs.prev_mouse_pos = inputs.mouse_pos;
+    inputs.prev_touch_pos = inputs.touch_pos;
     for (int i = 0; i < SAPP_MAX_KEYCODES; i++) {
         if (inputs.button_clicked[i]) {
             inputs.button_clicked[i] = false;
@@ -59,6 +65,25 @@ void golf_inputs_handle_event(const sapp_event *event) {
     inputs.mouse_pos.x = event->mouse_x - graphics->viewport_pos.x;
     inputs.mouse_pos.y = event->mouse_y - graphics->viewport_pos.y;
     _get_world_ray_from_window_pos(inputs.mouse_pos, &inputs.mouse_ray_orig, &inputs.mouse_ray_dir);
+
+    if (event->num_touches > 0) {
+        inputs.touch_pos = V2(event->touches[0].pos_x, event->touches[0].pos_y);
+    }
+
+    if (event->type == SAPP_EVENTTYPE_TOUCHES_BEGAN) {
+        inputs.touch_began = true;
+        inputs.touch_down = true;
+        inputs.touch_down_pos = inputs.touch_pos;
+        inputs.prev_touch_pos = inputs.touch_pos;
+    }
+    else if (event->type == SAPP_EVENTTYPE_TOUCHES_MOVED) {
+    }
+    else if (event->type == SAPP_EVENTTYPE_TOUCHES_ENDED) {
+        inputs.touch_ended = true;
+    }
+    else if (event->type == SAPP_EVENTTYPE_TOUCHES_CANCELLED) {
+        inputs.touch_ended = true;
+    }
 
     if (event->type == SAPP_EVENTTYPE_MOUSE_DOWN ||
             event->type == SAPP_EVENTTYPE_MOUSE_UP ||

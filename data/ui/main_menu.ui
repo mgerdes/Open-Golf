@@ -1,10 +1,21 @@
 {
-	"entities": [
+    "entities": [
+        {
+            "name": "aim_circle",
+            "type": "aim_circle",
+            "anchor": [0.5, 0.5],
+            "pos": [0, 0],
+            "size": [150, 150],
+            "time": 1.0,
+            "texture": "data/textures/colors/white.png",
+            "square_size": [10, 10],
+            "num_squares": 25
+        },
         {
             "name": "loading_icon",
             "type": "gif_texture",
             "texture": "data/textures/loading.gif",
-            "anchor": [0.5, 0.5],
+            "anchor": [0.5, 0.58],
             "pos": [0, 0],
             "size": [300, 300],
             "time": 1.0
@@ -21,24 +32,12 @@
             "color": [1.0, 1.0, 0.0, 1],
             "text": "60.0"
         },
-		{
-			"name": "background",
-			"type": "pixel_pack_square",
-			"pixel_pack": "data/textures/pixel_pack.pixel_pack",
-			"square": "blue_background",
-			"anchor": [0.5, 0.5],
-			"pos": [0, 0],
-			"size": [400, 400],
-			"tile_size": 64,
-			"overlay_color": [0, 0, 0, 0]
-		},
         {
-            "parent": "background",
             "name": "play_button",
             "type": "button",
-            "anchor": [0.5, 0.5],
-            "pos": [0, 40],
-            "size": [150, 55],
+            "anchor": [0.5, 0.45],
+            "pos": [0, 180],
+            "size": [280, 100],
             "up_entities": [
                 {
                     "parent": "play_button",
@@ -47,8 +46,8 @@
                     "square": "blue_button_up",
                     "anchor": [0.5, 0.5],
                     "pos": [0, 0],
-                    "size": [150, 55],
-                    "tile_size": 32,
+                    "size": [280, 100],
+                    "tile_size": 64,
                     "overlay_color": [0, 0, 0, 0]
                 },
                 {
@@ -59,7 +58,7 @@
                     "pos": [0, 2],
                     "horiz_align": 0,
                     "vert_align": 0,
-                    "font_size": 32,
+                    "font_size": 60,
                     "color": [0.3, 0.1, 0.3, 1],
                     "text": "PLAY"
                 }
@@ -72,8 +71,8 @@
                     "square": "blue_button_down",
                     "anchor": [0.5, 0.5],
                     "pos": [0, 0],
-                    "size": [150, 55],
-                    "tile_size": 32,
+                    "size": [280, 100],
+                    "tile_size": 64,
                     "overlay_color": [0, 0, 0, 0]
                 },
                 {
@@ -81,22 +80,21 @@
                     "type": "text",
                     "font": "data/font/Castle-Rock.ttf",
                     "anchor": [0.5, 0.5],
-                    "pos": [0, 5],
+                    "pos": [0, 8],
                     "horiz_align": 0,
                     "vert_align": 0,
-                    "font_size": 32,
+                    "font_size": 60,
                     "color": [0.3, 0.1, 0.3, 1],
                     "text": "PLAY"
                 }
             ]
         },
         {
-            "parent": "background",
             "name": "courses_button",
             "type": "button",
-            "anchor": [0.5, 0.5],
-            "pos": [0, 120],
-            "size": [150, 55],
+            "anchor": [0.5, 0.45],
+            "pos": [0, 300],
+            "size": [280, 100],
             "up_entities": [
                 {
                     "parent": "courses_button",
@@ -105,8 +103,8 @@
                     "square": "blue_button_up",
                     "anchor": [0.5, 0.5],
                     "pos": [0, 0],
-                    "size": [150, 55],
-                    "tile_size": 32,
+                    "size": [280, 100],
+                    "tile_size": 64,
                     "overlay_color": [0, 0, 0, 0]
                 },
                 {
@@ -117,7 +115,7 @@
                     "pos": [0, 2],
                     "horiz_align": 0,
                     "vert_align": 0,
-                    "font_size": 32,
+                    "font_size": 60,
                     "color": [0.3, 0.1, 0.3, 1],
                     "text": "COURSES"
                 }
@@ -130,8 +128,8 @@
                     "square": "blue_button_down",
                     "anchor": [0.5, 0.5],
                     "pos": [0, 0],
-                    "size": [150, 55],
-                    "tile_size": 32,
+                    "size": [280, 100],
+                    "tile_size": 64,
                     "overlay_color": [0, 0, 0, 0]
                 },
                 {
@@ -139,38 +137,38 @@
                     "type": "text",
                     "font": "data/font/Castle-Rock.ttf",
                     "anchor": [0.5, 0.5],
-                    "pos": [0, 5],
+                    "pos": [0, 8],
                     "horiz_align": 0,
                     "vert_align": 0,
-                    "font_size": 32,
+                    "font_size": 60,
                     "color": [0.3, 0.1, 0.3, 1],
                     "text": "COURSES"
                 }
             ]
         },
-		{
-			"name": "main_text",
-			"type": "text",
-			"font": "data/font/Castle-Rock.ttf",
-			"anchor": [0.5, 0.15],
-			"pos": [0, 2],
+        {
+            "name": "main_text",
+            "type": "text",
+            "font": "data/font/Castle-Rock.ttf",
+            "anchor": [0.5, 0.15],
+            "pos": [0, 2],
             "horiz_align": 0,
             "vert_align": 0,
-			"font_size": 128,
-			"color": [0, 0, 0, 1],
-			"text": "OPEN GOLF"
-		},
-		{
-			"name": "main2_text",
-			"type": "text",
-			"font": "data/font/Castle-Rock.ttf",
-			"anchor": [0.5, 0.15],
-			"pos": [2, 0],
+            "font_size": 128,
+            "color": [0, 0, 0, 1],
+            "text": "OPEN GOLF"
+        },
+        {
+            "name": "main2_text",
+            "type": "text",
+            "font": "data/font/Castle-Rock.ttf",
+            "anchor": [0.5, 0.15],
+            "pos": [2, 0],
             "horiz_align": 0,
             "vert_align": 0,
-			"font_size": 128,
-			"color": [0.7, 0.9, 0.7, 1],
-			"text": "OPEN GOLF"
-		}
-	]
+            "font_size": 128,
+            "color": [0.7, 0.9, 0.7, 1],
+            "text": "OPEN GOLF"
+        }
+    ]
 }

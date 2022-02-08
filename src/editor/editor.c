@@ -2584,40 +2584,40 @@ void golf_editor_update(float dt) {
 
     if (!IO->WantCaptureMouse) {
         if (inputs->button_down[SAPP_KEYCODE_LEFT]) {
-            graphics->cam_azimuth_angle -= 1.0f * dt;
+            editor.camera.azimuth_angle -= 1.0f * dt;
         }
         if (inputs->button_down[SAPP_KEYCODE_RIGHT]) {
-            graphics->cam_azimuth_angle += 1.0f * dt;
+            editor.camera.azimuth_angle += 1.0f * dt;
         }
         if (inputs->button_down[SAPP_KEYCODE_UP]) {
-            graphics->cam_inclination_angle -= 1.0f * dt;
+            editor.camera.inclination_angle -= 1.0f * dt;
         }
         if (inputs->button_down[SAPP_KEYCODE_DOWN]) {
-            graphics->cam_inclination_angle += 1.0f * dt;
+            editor.camera.inclination_angle += 1.0f * dt;
         }
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT]) {
-            graphics->cam_azimuth_angle += 0.2f * dt * inputs->mouse_delta.x;
-            graphics->cam_inclination_angle += 0.2f * dt * inputs->mouse_delta.y;
+            editor.camera.azimuth_angle += 0.2f * dt * inputs->mouse_delta.x;
+            editor.camera.inclination_angle += 0.2f * dt * inputs->mouse_delta.y;
         }
     }
 
     float cam_speed = 8.0f;
     if (!IO->WantCaptureKeyboard) {
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_W]) {
-            graphics->cam_pos.x += cam_speed * dt * cosf(graphics->cam_azimuth_angle);
-            graphics->cam_pos.z += cam_speed * dt * sinf(graphics->cam_azimuth_angle);
+            graphics->cam_pos.x += cam_speed * dt * cosf(editor.camera.azimuth_angle);
+            graphics->cam_pos.z += cam_speed * dt * sinf(editor.camera.azimuth_angle);
         }
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_S]) {
-            graphics->cam_pos.x -= cam_speed * dt * cosf(graphics->cam_azimuth_angle);
-            graphics->cam_pos.z -= cam_speed * dt * sinf(graphics->cam_azimuth_angle);
+            graphics->cam_pos.x -= cam_speed * dt * cosf(editor.camera.azimuth_angle);
+            graphics->cam_pos.z -= cam_speed * dt * sinf(editor.camera.azimuth_angle);
         }
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_D]) {
-            graphics->cam_pos.x += cam_speed * dt * cosf(graphics->cam_azimuth_angle + 0.5f * MF_PI);
-            graphics->cam_pos.z += cam_speed * dt * sinf(graphics->cam_azimuth_angle + 0.5f * MF_PI);
+            graphics->cam_pos.x += cam_speed * dt * cosf(editor.camera.azimuth_angle + 0.5f * MF_PI);
+            graphics->cam_pos.z += cam_speed * dt * sinf(editor.camera.azimuth_angle + 0.5f * MF_PI);
         }
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_A]) {
-            graphics->cam_pos.x -= cam_speed * dt * cosf(graphics->cam_azimuth_angle + 0.5f * MF_PI);
-            graphics->cam_pos.z -= cam_speed * dt * sinf(graphics->cam_azimuth_angle + 0.5f * MF_PI);
+            graphics->cam_pos.x -= cam_speed * dt * cosf(editor.camera.azimuth_angle + 0.5f * MF_PI);
+            graphics->cam_pos.z -= cam_speed * dt * sinf(editor.camera.azimuth_angle + 0.5f * MF_PI);
         }
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_Q]) {
             graphics->cam_pos.y -= cam_speed * dt;

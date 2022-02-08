@@ -1,8 +1,20 @@
-#include_directories(SYSTEM ../../src/3rd_party)
-#include_directories(../../src)
-
-set(LIBRARIES
-    remotery)
+file(GLOB data_files "${CMAKE_SOURCE_DIR}/data/*")
+add_custom_target(data_zip
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/data"
+    COMMAND ${CMAKE_COMMAND} -E tar "cvf" "${CMAKE_SOURCE_DIR}/out/data.zip" --format=zip .
+    DEPENDS ${data_files})
+if(CMAKE_SYSTEM_NAME STREQUAL Android OR CMAKE_SYSTEM_NAME STREQUAL iOS)
+    if (CMAKE_HOST_WIN32)
+        add_custom_target(embedded_data_zip_header
+            DEPENDS data_zip
+            COMMAND ${CMAKE_SOURCE_DIR}/tools/cembed/win64/cembed.exe ${CMAKE_SOURCE_DIR}/out/data.zip > ${CMAKE_SOURCE_DIR}/src/common/data_zip.h)
+    elseif(CMAKE_HOST_APPLE)
+        add_custom_target(embedded_data_zip_header
+            DEPENDS data_zip
+            COMMAND ${CMAKE_SOURCE_DIR}/tools/cembed/osx/cembed ${CMAKE_SOURCE_DIR}/out/data.zip > ${CMAKE_SOURCE_DIR}/src/common/data_zip.h)
+    elseif(CMAKE_HOST_UNIX)
+    endif()
+endif()
 
 add_library(common STATIC
     alloc.c
@@ -24,4 +36,6 @@ add_library(common STATIC
     thread.c
     vec.c)
 
-target_link_libraries(common PRIVATE ${LIBRARIES})
+if(CMAKE_SYSTEM_NAME STREQUAL Android OR CMAKE_SYSTEM_NAME STREQUAL iOS)
+    add_dependencies(common embedded_data_zip_header)
+endif()

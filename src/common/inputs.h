@@ -5,6 +5,9 @@
 #include "common/maths.h"
 
 typedef struct golf_inputs {
+    bool touch_began, touch_down, touch_ended;
+    vec2 touch_down_pos, touch_pos, prev_touch_pos;
+
     bool button_down[SAPP_MAX_KEYCODES];
     bool button_clicked[SAPP_MAX_KEYCODES];
     bool mouse_down[SAPP_MAX_MOUSEBUTTONS];

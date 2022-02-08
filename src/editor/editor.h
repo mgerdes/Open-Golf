@@ -88,6 +88,10 @@ typedef struct golf_editor {
     } gi_state;
 
     struct {
+        float azimuth_angle, inclination_angle;
+    } camera;
+
+    struct {
         bool open_popup;
         char search[GOLF_FILE_MAX_PATH];
         golf_data_type_t type;
