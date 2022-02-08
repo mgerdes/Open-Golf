@@ -363,11 +363,11 @@ static void _golf_ui_gif_texture_name(golf_ui_layout_t *layout, const char *name
     vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_images[frame], pos, size, V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0)));
 }
 
-static void _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name, float dt) {
+static bool _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name, float dt) {
     golf_ui_layout_entity_t *entity;
     if (!_golf_ui_layout_get_entity_of_type(layout, name, GOLF_UI_AIM_CIRCLE, &entity)) {
         golf_log_warning("Could not find aim circle entity %s.", name);
-        return;
+        return false;
     }
 
     float ui_scale = graphics->viewport_size.x / 720.0f;
@@ -377,11 +377,26 @@ static void _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name,
     int num_squares = entity->aim_circle.num_squares;
     golf_texture_t *texture = entity->aim_circle.texture;
 
+
     for (int i = 0; i < num_squares; i++) {
         float theta = 2.0f * MF_PI * i / num_squares;
         vec2 p = V2(pos.x + size.x * cosf(theta), pos.y + size.y * sinf(theta));
         vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_image, p, square_size, V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0)));
     }
+
+    vec2 mp = inputs->mouse_pos;
+    vec2 tp = inputs->touch_pos;
+
+    float mp_dx = pos.x - mp.x;
+    float mp_dy = pos.y - mp.y;
+
+    float tp_dx = pos.x - tp.x;
+    float tp_dy = pos.y - tp.y;
+
+    bool in_aim_circle = (mp_dx * mp_dx + mp_dy * mp_dy <= size.x * size.y) ||
+        (tp_dx * tp_dx + tp_dy * tp_dy <= size.x * size.y);
+
+    return in_aim_circle && inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT];
 }
 
 static void _golf_ui_title_screen(float dt) {
@@ -404,7 +419,20 @@ static void _golf_ui_main_menu(float dt) {
 
 static void _golf_ui_in_game(float dt) {
     golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
-    _golf_ui_aim_circle_name(layout, "aim_circle", dt);
+    switch (game->state) {
+        case GOLF_GAME_STATE_MAIN_MENU:
+            break;
+        case GOLF_GAME_STATE_WAITING_FOR_AIM:
+            if (_golf_ui_aim_circle_name(layout, "aim_circle", dt)) {
+                golf_game_start_aiming();
+            }
+            break;
+        case GOLF_GAME_STATE_AIMING:
+            if (!inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
+                golf_game_stop_aiming();
+            }
+            break;
+    }
 }
 
 void golf_ui_update(float dt) {

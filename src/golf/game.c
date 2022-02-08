@@ -111,3 +111,11 @@ void golf_game_start_level(void) {
     graphics->cam_pos = vec3_add(ball_start_pos, cam_delta);
     graphics->cam_dir = vec3_normalize(vec3_sub(ball_start_pos, graphics->cam_pos));
 }
+
+void golf_game_start_aiming(void) {
+    game.state = GOLF_GAME_STATE_AIMING;
+}
+
+void golf_game_stop_aiming(void) {
+    game.state = GOLF_GAME_STATE_WAITING_FOR_AIM;
+}
