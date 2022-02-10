@@ -17,6 +17,7 @@
 #include "golf/shaders/texture_material.glsl.h"
 #include "golf/shaders/ui.glsl.h"
 #include "golf/shaders/render_image.glsl.h"
+#include "golf/shaders/fxaa.glsl.h"
 
 static golf_graphics_t graphics;
 
@@ -47,6 +48,22 @@ void golf_graphics_init(void) {
             },
         };
         graphics.render_image_pipeline = sg_make_pipeline(&pipeline_desc);
+    }
+
+    {
+        golf_shader_t *shader = golf_data_get_shader("data/shaders/fxaa.glsl");
+        sg_pipeline_desc pipeline_desc = {
+            .shader = shader->sg_shader,
+            .layout = {
+                .attrs = {
+                    [ATTR_fxaa_vs_position] 
+                        = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                    [ATTR_fxaa_vs_texture_coord] 
+                        = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
+                },
+            },
+        };
+        graphics.fxaa_pipeline = sg_make_pipeline(&pipeline_desc);
     }
 
     {
@@ -338,6 +355,9 @@ bool golf_graphics_get_shader_desc(const char *path, sg_shader_desc *desc) {
     }
     else if (strcmp(path, "data/shaders/render_image.glsl") == 0) {
         const_shader_desc = render_image_shader_desc(sg_query_backend());
+    }
+    else if (strcmp(path, "data/shaders/fxaa.glsl") == 0) {
+        const_shader_desc = fxaa_shader_desc(sg_query_backend());
     }
     else {
         return false;

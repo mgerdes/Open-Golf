@@ -17,6 +17,7 @@
 #include "golf/shaders/texture_material.glsl.h"
 #include "golf/shaders/ui.glsl.h"
 #include "golf/shaders/render_image.glsl.h"
+#include "golf/shaders/fxaa.glsl.h"
 
 typedef struct golf_draw {
     vec2 game_draw_pass_size;
@@ -414,12 +415,12 @@ void golf_draw(void) {
         sg_begin_default_pass(&action, (int)graphics->viewport_size.x, (int)graphics->viewport_size.y);
         sg_apply_viewportf(graphics->viewport_pos.x, graphics->viewport_pos.y, 
                 graphics->viewport_size.x, graphics->viewport_size.y, true);
-        sg_apply_pipeline(graphics->render_image_pipeline);
+        sg_apply_pipeline(graphics->fxaa_pipeline);
         golf_model_t *square = golf_data_get_model("data/models/render_image_square.obj");
         sg_bindings bindings = {
-            .vertex_buffers[ATTR_render_image_vs_position] = square->sg_positions_buf,
-            .vertex_buffers[ATTR_render_image_vs_texture_coord] = square->sg_texcoords_buf,
-            .fs_images[SLOT_render_image_texture] = draw.game_draw_pass_image,
+            .vertex_buffers[ATTR_fxaa_vs_position] = square->sg_positions_buf,
+            .vertex_buffers[ATTR_fxaa_vs_texture_coord] = square->sg_texcoords_buf,
+            .fs_images[SLOT_fxaa_tex] = draw.game_draw_pass_image,
         };
         sg_apply_bindings(&bindings);
         sg_draw(0, square->positions.length, 1);
