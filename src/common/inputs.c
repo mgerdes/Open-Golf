@@ -28,6 +28,10 @@ golf_inputs_t *golf_inputs_get(void) {
 
 void golf_inputs_init(void) {
     memset(&inputs, 0, sizeof(inputs));
+#if GOLF_PLATFORM_ANDROID | GOLF_PLATFORM_IOS
+    inputs.is_touch = true;
+#else
+#endif
 }
 
 void golf_inputs_begin_frame(void) {

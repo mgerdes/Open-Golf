@@ -14,8 +14,8 @@
         <activity android:name="android.app.NativeActivity"
             android:label="golf"
             android:launchMode="singleTask"
-            android:screenOrientation="fullUser"
-            android:exported="true">
+            android:screenOrientation="portrait"
+            android:exported="true" >
             <meta-data android:name="android.app.lib_name" android:value="golf"/>
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>

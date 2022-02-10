@@ -13,6 +13,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL Android OR CMAKE_SYSTEM_NAME STREQUAL iOS)
             DEPENDS data_zip
             COMMAND ${CMAKE_SOURCE_DIR}/tools/cembed/osx/cembed ${CMAKE_SOURCE_DIR}/out/data.zip > ${CMAKE_SOURCE_DIR}/src/common/data_zip.h)
     elseif(CMAKE_HOST_UNIX)
+        add_custom_target(embedded_data_zip_header
+            DEPENDS data_zip
+            COMMAND ${CMAKE_SOURCE_DIR}/tools/cembed/linux/cembed ${CMAKE_SOURCE_DIR}/out/data.zip > ${CMAKE_SOURCE_DIR}/src/common/data_zip.h)
     endif()
 endif()
 

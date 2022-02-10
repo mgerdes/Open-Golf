@@ -37,6 +37,7 @@ void golf_ui_init(void) {
     memset(&ui, 0, sizeof(ui));
     vec_init(&ui.draw_entities, "ui");
     ui.state = GOLF_UI_MAIN_MENU;
+    ui.touch_velocity = V2(0, 0);
 
     inputs = golf_inputs_get();
     graphics = golf_graphics_get();
@@ -417,26 +418,94 @@ static void _golf_ui_main_menu(float dt) {
     }
 }
 
-static void _golf_ui_in_game(float dt) {
+static void _golf_ui_in_game_waiting_for_aim(float dt) {
     golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
+
+    if (inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT] || inputs->touch_down) {
+        vec2 aim_circle_pos = vec2_scale(graphics->window_size, 0.5f);
+
+        vec2 pos0, pos1;
+        if (inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
+            pos0 = inputs->mouse_pos;
+            pos1 = inputs->prev_mouse_pos;
+        }
+        else
+        {
+            pos0 = inputs->touch_pos;
+            pos1 = inputs->prev_touch_pos;
+        }
+
+        vec2 delta = vec2_sub(pos0, pos1);
+
+        if (pos0.x < aim_circle_pos.x) {
+            game->camera.angle -= 1.5f * (delta.y / graphics->window_size.x);
+        }
+        else {
+            game->camera.angle += 1.5f * (delta.y / graphics->window_size.x);
+        }
+
+        if (pos0.y >= aim_circle_pos.y) {
+            game->camera.angle -= 1.5f * (delta.x / graphics->window_size.x);
+        }
+        else {
+            game->camera.angle += 1.5f * (delta.x / graphics->window_size.x);
+        }
+    }
+    else {
+        vec2 aim_circle_pos = vec2_scale(graphics->window_size, 0.5f);
+
+        vec2 delta = ui.touch_velocity;
+        vec2 pos0 = inputs->touch_pos;
+
+        if (pos0.x < aim_circle_pos.x) {
+            game->camera.angle -= 1.5f * (delta.y / graphics->window_size.x);
+        }
+        else {
+            game->camera.angle += 1.5f * (delta.y / graphics->window_size.x);
+        }
+
+        if (pos0.y >= aim_circle_pos.y) {
+            game->camera.angle -= 1.5f * (delta.x / graphics->window_size.x);
+        }
+        else {
+            game->camera.angle += 1.5f * (delta.x / graphics->window_size.x);
+        }
+    }
+
+    vec3 cam_delta = vec3_rotate_y(V3(2.6f, 1.5f, 0), game->camera.angle);
+    graphics->cam_pos = vec3_add(game->ball_pos, cam_delta);
+    graphics->cam_dir = vec3_normalize(vec3_sub(game->ball_pos, graphics->cam_pos));
+
+    if (_golf_ui_aim_circle_name(layout, "aim_circle", dt)) {
+        golf_game_start_aiming();
+    }
+}
+
+static void _golf_ui_in_game(float dt) {
     switch (game->state) {
         case GOLF_GAME_STATE_MAIN_MENU:
             break;
         case GOLF_GAME_STATE_WAITING_FOR_AIM:
-            if (_golf_ui_aim_circle_name(layout, "aim_circle", dt)) {
-                golf_game_start_aiming();
-            }
+            _golf_ui_in_game_waiting_for_aim(dt);
             break;
         case GOLF_GAME_STATE_AIMING:
-            if (!inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
-                golf_game_stop_aiming();
-            }
+            //if (!inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
+            //golf_game_stop_aiming();
+            //}
             break;
     }
 }
 
 void golf_ui_update(float dt) {
     ui.draw_entities.length = 0;
+
+    if (inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT] || inputs->touch_down) {
+        ui.touch_velocity = vec2_sub(inputs->touch_pos, inputs->prev_touch_pos);
+        //ui.touch_velocity = vec2_sub(inputs->mouse_pos, inputs->prev_mouse_pos);
+    }
+    else {
+        ui.touch_velocity = vec2_scale(ui.touch_velocity, 0.9f);
+    }
 
     {
         golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");

@@ -33,40 +33,6 @@ static void _golf_game_update_state_main_menu(float dt) {
 }
 
 static void _golf_game_update_state_waiting_for_aim(float dt) {
-    if (inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT] || inputs->touch_down) {
-        vec2 aim_circle_pos = vec2_scale(graphics->window_size, 0.5f);
-
-        vec2 pos0, pos1;
-        if (inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
-            pos0 = inputs->mouse_pos;
-            pos1 = inputs->prev_mouse_pos;
-        }
-        else
-        {
-            pos0 = inputs->touch_pos;
-            pos1 = inputs->prev_touch_pos;
-        }
-        
-        vec2 delta = vec2_sub(pos0, pos1);
-
-        if (pos0.x < aim_circle_pos.x) {
-            game.camera.angle -= 1.5f * (delta.y / graphics->window_size.x);
-        }
-        else {
-            game.camera.angle += 1.5f * (delta.y / graphics->window_size.x);
-        }
-
-        if (pos0.y >= aim_circle_pos.y) {
-            game.camera.angle -= 1.5f * (delta.x / graphics->window_size.x);
-        }
-        else {
-            game.camera.angle += 1.5f * (delta.x / graphics->window_size.x);
-        }
-    }
-
-    vec3 cam_delta = vec3_rotate_y(V3(2.6f, 1.5f, 0), game.camera.angle);
-    graphics->cam_pos = vec3_add(game.ball_pos, cam_delta);
-    graphics->cam_dir = vec3_normalize(vec3_sub(game.ball_pos, graphics->cam_pos));
 }
 
 void golf_game_update(float dt) {
