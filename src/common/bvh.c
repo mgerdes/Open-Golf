@@ -1,12 +1,51 @@
 #include "common/bvh.h"
 
 #include <assert.h>
+#include <float.h>
 
-golf_bvh_node_info_t golf_bvh_node_info(int idx, golf_model_t *model, golf_transform_t transform) {
+static void _update_aabb(golf_bvh_aabb_t *aabb, vec3 p) {
+    if (p.x < aabb->min.x) aabb->min.x = p.x;
+    if (p.y < aabb->min.y) aabb->min.y = p.y;
+    if (p.z < aabb->min.z) aabb->min.z = p.z;
+    if (p.x > aabb->max.x) aabb->max.x = p.x;
+    if (p.y > aabb->max.y) aabb->max.y = p.y;
+    if (p.z > aabb->max.z) aabb->max.z = p.z;
+}
+
+golf_bvh_node_info_t golf_bvh_node_info(golf_bvh_t *bvh, int idx, golf_model_t *model, mat4 model_mat) {
     golf_bvh_node_info_t info;
     info.idx = idx;
-    info.model = model;
-    info.transform = transform;
+    info.face_start = bvh->faces.length;
+    info.face_count = model->positions.length / 3;
+    info.pos = V3(0, 0, 0);
+
+    for (int i = 0; i < model->positions.length; i += 3) {
+        vec3 a = vec3_apply_mat4(model->positions.data[i + 0], 1, model_mat);
+        vec3 b = vec3_apply_mat4(model->positions.data[i + 1], 1, model_mat);
+        vec3 c = vec3_apply_mat4(model->positions.data[i + 2], 1, model_mat);
+
+        info.pos = vec3_add(info.pos, a);
+        info.pos = vec3_add(info.pos, b);
+        info.pos = vec3_add(info.pos, c);
+
+        golf_bvh_face_t face;
+        face.a = a;
+        face.b = b;
+        face.c = c;
+        vec_push(&bvh->faces, face);
+
+        if (i == 0) {
+            info.aabb.min = a;
+            info.aabb.max = a;
+        }
+
+        _update_aabb(&info.aabb, a);
+        _update_aabb(&info.aabb, b);
+        _update_aabb(&info.aabb, c);
+    }
+
+    info.pos = vec3_scale(info.pos, 1.0f / model->positions.length);
+
     return info;
 }
 
@@ -15,32 +54,6 @@ static golf_bvh_aabb_t _aabb_combine(golf_bvh_aabb_t a, golf_bvh_aabb_t b) {
     c.min = V3(fminf(a.min.x, b.min.x), fminf(a.min.y, b.min.y), fminf(a.min.z, b.min.z));
     c.max = V3(fmaxf(a.max.x, b.max.x), fmaxf(a.max.y, b.max.y), fmaxf(a.max.z, b.max.z));
     return c;
-}
-
-static golf_bvh_aabb_t _leaf_node_aabb(golf_bvh_node_info_t info) {
-    golf_bvh_aabb_t a;
-
-    golf_model_t *model = info.model;
-    mat4 model_mat = golf_transform_get_model_mat(info.transform);
-    for (int i = 0; i < model->positions.length; i++) {
-        vec3 p = model->positions.data[i];
-        p = vec3_apply_mat4(p, 1, model_mat);
-
-        if (i == 0) {
-            a.min = p;
-            a.max = p;
-        }
-        else {
-            if (p.x < a.min.x) a.min.x = p.x;
-            if (p.y < a.min.y) a.min.y = p.y;
-            if (p.z < a.min.z) a.min.z = p.z;
-            if (p.x > a.max.x) a.max.x = p.x;
-            if (p.y > a.max.y) a.max.y = p.y;
-            if (p.z > a.max.z) a.max.z = p.z;
-        }
-    }
-
-    return a;
 }
 
 static int _alloc_node(golf_bvh_t *bvh) {
@@ -59,7 +72,7 @@ static int _alloc_leaf_node(golf_bvh_t *bvh, golf_bvh_node_info_t info) {
     golf_bvh_node_t *node = _get_node(bvh, idx);
     node->is_leaf = true;
     node->leaf_node_info = info;
-    node->aabb = _leaf_node_aabb(info);
+    node->aabb = info.aabb;
     node->left = -1;
     node->right = -1;
     return idx;
@@ -76,6 +89,7 @@ static int _alloc_inner_node(golf_bvh_t *bvh, int left, int right) {
 }
 
 void golf_bvh_init(golf_bvh_t *bvh) {
+    vec_init(&bvh->faces, "bvh");
     vec_init(&bvh->node_infos, "bvh");
     vec_init(&bvh->nodes, "bvh");
     bvh->parent = -1;
@@ -86,8 +100,8 @@ static vec3 _cmp_axis;
 static int _bvh_node_cmp(const void *a, const void *b) {
     golf_bvh_node_info_t *node_a = (golf_bvh_node_info_t*)a;
     golf_bvh_node_info_t *node_b = (golf_bvh_node_info_t*)b;
-    float dot_a = vec3_dot(_cmp_axis, node_a->transform.position);
-    float dot_b = vec3_dot(_cmp_axis, node_b->transform.position);
+    float dot_a = vec3_dot(_cmp_axis, node_a->pos);
+    float dot_b = vec3_dot(_cmp_axis, node_b->pos);
     if (dot_a > dot_b) {
         return 1;
     }
@@ -125,6 +139,7 @@ static int _golf_bvh_construct(golf_bvh_t *bvh, vec_golf_bvh_node_info_t node_in
 }
 
 void golf_bvh_construct(golf_bvh_t *bvh, vec_golf_bvh_node_info_t node_infos) {
+    bvh->faces.length = 0;
     bvh->nodes.length = 0;
     bvh->parent = _golf_bvh_construct(bvh, node_infos, 0, node_infos.length);
 }
@@ -143,19 +158,26 @@ static bool _golf_bvh_ray_test(golf_bvh_t *bvh, int node_idx, vec3 ro, vec3 rd, 
 
     if (node->is_leaf) {
         golf_bvh_node_info_t info = node->leaf_node_info;
-        golf_model_t *model = info.model;
-        mat4 model_mat = golf_transform_get_model_mat(info.transform);
 
-        float triangle_t;
-        int triangle_idx;
-        if (ray_intersect_triangles_with_transform(ro, rd, model->positions.data, model->positions.length, model_mat, &triangle_t, &triangle_idx)) {
-            *t = triangle_t;
-            *idx = info.idx;
-            return true;
+        *t = FLT_MAX;
+        *idx = -1;
+
+        for (int i = 0; i < info.face_count; i++) {
+            int face_idx = info.face_start + i; 
+            golf_bvh_face_t face = bvh->faces.data[face_idx];
+            vec3 triangle_points[3] = { face.a, face.b, face.c };
+
+            float t0;
+            int idx0;
+            if (ray_intersect_triangles(ro, rd, triangle_points, 3, &t0, &idx0)) {
+                if (t0 < *t) {
+                    *t = t0;
+                    *idx = info.idx;
+                }
+            }
         }
-        else {
-            return false;
-        }
+
+        return *t < FLT_MAX;
     }
     else {
         float t_left;
@@ -209,10 +231,45 @@ static bool _golf_bvh_ball_test(golf_bvh_t *bvh, int node_idx, vec3 bp, float br
 
     if (node->is_leaf) {
         golf_bvh_node_info_t info = node->leaf_node_info;
-        golf_model_t *model = info.model;
-        mat4 model_mat = golf_transform_get_model_mat(info.transform);
 
-        return sphere_intersect_triangles_with_transform(bp, br, model->positions.data, model->positions.length, model_mat, NULL, NULL);
+        bool any_hit = false;
+        for (int i = 0; i < info.face_count; i++) {
+            int face_idx = info.face_start + i;
+            golf_bvh_face_t face = bvh->faces.data[face_idx];
+
+            triangle_contact_type_t type;
+            vec3 cp = closest_point_point_triangle(bp, face.a, face.b, face.c, &type);
+            float dist = vec3_distance(bp, cp);
+            if (dist < br) {
+                golf_ball_contact_t contact;
+                contact.is_ignored = false;
+                contact.position = cp;
+                switch (type) {
+                    case TRIANGLE_CONTACT_FACE:
+                        contact.normal = vec3_normalize(vec3_cross(vec3_sub(face.b, face.a), vec3_sub(face.c, face.a)));
+                        break;
+                    case TRIANGLE_CONTACT_AB:
+                    case TRIANGLE_CONTACT_AC:
+                    case TRIANGLE_CONTACT_BC:
+                    case TRIANGLE_CONTACT_A:
+                    case TRIANGLE_CONTACT_B:
+                    case TRIANGLE_CONTACT_C:
+                        contact.normal = vec3_normalize(vec3_sub(bp, cp));
+                        break;
+                }
+                contact.velocity = V3(0, 0, 0);
+                contact.face = face;
+                contact.type = type;
+
+                if (*num_ball_contacts < max_ball_contacts) {
+                    contacts[*num_ball_contacts] = contact;
+                    *num_ball_contacts = *num_ball_contacts + 1;
+                }
+
+                any_hit = true;
+            }
+        }
+        return any_hit;
     }
     else {
         bool left_test = _golf_bvh_ball_test(bvh, node->left, bp, br, bv, contacts, num_ball_contacts, max_ball_contacts);
@@ -224,5 +281,6 @@ static bool _golf_bvh_ball_test(golf_bvh_t *bvh, int node_idx, vec3 bp, float br
 }
 
 bool golf_bvh_ball_test(golf_bvh_t *bvh, vec3 bp, float br, vec3 bv, golf_ball_contact_t *contacts, int *num_ball_contacts, int max_ball_contacts) {
+    *num_ball_contacts = 0;
     return _golf_bvh_ball_test(bvh, bvh->parent, bp, br, bv, contacts, num_ball_contacts, max_ball_contacts);
 }

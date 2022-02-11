@@ -2495,7 +2495,8 @@ void golf_editor_update(float dt) {
             golf_transform_t *transform = golf_entity_get_transform(entity);
             if (model && transform) {
                 golf_transform_t world_transform = golf_entity_get_world_transform(editor.level, entity);
-                vec_push(&node_infos, golf_bvh_node_info(i, model, world_transform));
+                mat4 model_mat = golf_transform_get_model_mat(world_transform);
+                vec_push(&node_infos, golf_bvh_node_info(&editor.bvh, i, model, model_mat));
             }
         }
 

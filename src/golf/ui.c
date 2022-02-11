@@ -456,7 +456,7 @@ static void _golf_ui_in_game_waiting_for_aim(float dt) {
 
         vec2 delta = vec2_sub(pos0, pos1);
 
-        float angle0 = game->camera.angle;
+        float angle0 = game->cam.angle;
         float angle1 = angle0;
 
         if (pos0.x < aim_circle_pos.x) {
@@ -473,15 +473,15 @@ static void _golf_ui_in_game_waiting_for_aim(float dt) {
             angle1 += 1.5f * (delta.x / graphics->window_size.x);
         }
 
-        game->camera.angle = angle1;
-        game->camera.angle_velocity = (angle1 - angle0) / dt;
+        game->cam.angle = angle1;
+        game->cam.angle_velocity = (angle1 - angle0) / dt;
     }
     else {
-        game->camera.angle += game->camera.angle_velocity * dt;
-        game->camera.angle_velocity *= 0.9f;
+        game->cam.angle += game->cam.angle_velocity * dt;
+        game->cam.angle_velocity *= 0.9f;
     }
 
-    vec3 cam_delta = vec3_rotate_y(V3(2.6f, 1.5f, 0), game->camera.angle);
+    vec3 cam_delta = vec3_rotate_y(V3(2.6f, 1.5f, 0), game->cam.angle);
     graphics->cam_pos = vec3_add(game->ball.pos, cam_delta);
     graphics->cam_dir = vec3_normalize(vec3_sub(game->ball.pos, graphics->cam_pos));
 

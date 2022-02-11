@@ -8,21 +8,22 @@ typedef enum golf_game_state {
     GOLF_GAME_STATE_MAIN_MENU,
     GOLF_GAME_STATE_WAITING_FOR_AIM,
     GOLF_GAME_STATE_AIMING,
+    GOLF_GAME_STATE_WATCHING_BALL,
 } golf_game_state_t;
 
 typedef struct golf_game {
     golf_game_state_t state;
 
-	struct {
-		vec3 pos;
-		float radius;
-	} ball;
+    struct {
+        vec3 pos, vel;
+        float radius;
+    } ball;
 
-	golf_bvh_t bvh;
+    golf_bvh_t bvh;
 
     struct {
         float angle, angle_velocity;
-    } camera;
+    } cam;
 } golf_game_t;
 
 golf_game_t *golf_game_get(void);

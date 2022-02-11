@@ -6,17 +6,25 @@
 #include "common/maths.h"
 #include "common/vec.h"
 
+typedef struct golf_bvh golf_bvh_t;
+
+typedef struct golf_bvh_face {
+    vec3 a, b, c;
+} golf_bvh_face_t;
+typedef vec_t(golf_bvh_face_t) vec_golf_bvh_face_t;
+
 typedef struct golf_bvh_aabb {
     vec3 min, max;
 } golf_bvh_aabb_t;
 
 typedef struct golf_bvh_node_info {
     int idx;
-    golf_model_t *model;
-    golf_transform_t transform;
+    golf_bvh_aabb_t aabb;
+    vec3 pos;
+    int face_start, face_count;
 } golf_bvh_node_info_t;
 typedef vec_t(golf_bvh_node_info_t) vec_golf_bvh_node_info_t;
-golf_bvh_node_info_t golf_bvh_node_info(int idx, golf_model_t *model, golf_transform_t transform);
+golf_bvh_node_info_t golf_bvh_node_info(golf_bvh_t *bvh, int idx, golf_model_t *model, mat4 model_mat);
 
 typedef struct golf_bvh_node golf_bvh_node_t;
 typedef struct golf_bvh_node {
@@ -29,6 +37,7 @@ typedef struct golf_bvh_node {
 typedef vec_t(golf_bvh_node_t) vec_golf_bvh_node_t; 
 
 typedef struct golf_bvh {
+    vec_golf_bvh_face_t faces;
     vec_golf_bvh_node_info_t node_infos;
     vec_golf_bvh_node_t nodes;
     int parent;
@@ -36,8 +45,10 @@ typedef struct golf_bvh {
 
 typedef struct golf_ball_contact {
     bool is_ignored;
+    triangle_contact_type_t type;
     vec3 position, normal, velocity;
     float distance, penetration, resitution, friction, impulse_mag, vel_scale, cull_dot;
+    golf_bvh_face_t face;
 } golf_ball_contact_t;
 
 void golf_bvh_init(golf_bvh_t *bvh);
