@@ -1294,6 +1294,51 @@ bool ray_intersect_aabb(vec3 ro, vec3 rd, vec3 aabb_min, vec3 aabb_max, float *t
     return true;
 }
 
+bool sphere_intersect_aabb(vec3 sp, float sr, vec3 aabb_min, vec3 aabb_max) {
+    vec3 bc = vec3_scale(vec3_add(aabb_min, aabb_max), 0.5f);
+    vec3 bx = V3(1, 0, 0);
+    vec3 by = V3(0, 1, 0);
+    vec3 bz = V3(0, 0, 1);
+    float bex = 0.5f * fabsf(aabb_max.x - aabb_min.x);
+    float bey = 0.5f * fabsf(aabb_max.y - aabb_min.y);
+    float bez = 0.5f * fabsf(aabb_max.z - aabb_min.z);
+    vec3 closest_point = closest_point_point_obb(sp, bc, bx, by, bz, bex, bey, bez);
+    vec3 diff = vec3_sub(closest_point, sp);
+    float distance_squared = vec3_dot(diff, diff);
+    return distance_squared < sr * sr;
+}
+
+bool sphere_intersect_triangles_with_transform(vec3 sp, float sr, vec3 *points, int num_points, mat4 transform, triangle_contact_type_t *type, bool *hit) {
+    bool has_hit = false;
+    for (int i = 0; i < num_points; i += 3) {
+        vec3 tp0 = points[i + 0];
+        vec3 tp1 = points[i + 1];
+        vec3 tp2 = points[i + 2];
+        tp0 = vec3_apply_mat4(tp0, 1.0f, transform);
+        tp1 = vec3_apply_mat4(tp1, 1.0f, transform);
+        tp2 = vec3_apply_mat4(tp2, 1.0f, transform);
+
+        triangle_contact_type_t type0;
+        vec3 cp = closest_point_point_triangle(sp, tp0, tp1, tp2, &type0);
+        vec3 diff = vec3_sub(cp, sp);
+        float dist_sqrd = vec3_dot(diff, diff);
+        bool hit0 = dist_sqrd < sr * sr;
+
+        if (type) {
+            type[i / 3] = type0;
+        }
+
+        if (hit) {
+            hit[i / 3] = hit0;
+        }
+
+        if (hit0) {
+            has_hit = true;
+        }
+    }
+    return has_hit;
+}
+
 void triangles_inside_box(vec3 *triangle_points, int num_triangles, vec3 box_center, vec3 box_half_lengths,
         bool *is_inside) {
     vec3 bc = box_center;
@@ -1436,7 +1481,7 @@ vec3 closest_point_point_circle(vec3 point, vec3 circle_center, vec3 circle_norm
     return vec3_add(circle_center, vec3_scale(vec3_normalize(vec3_subtract(closest_point_in_plane, circle_center)), r));
 }
 
-vec3 closest_point_point_triangle(vec3 p, vec3 a, vec3 b, vec3 c, enum triangle_contact_type *type) {
+vec3 closest_point_point_triangle(vec3 p, vec3 a, vec3 b, vec3 c, triangle_contact_type_t *type) {
     vec3 ab = vec3_subtract(b, a);
     vec3 ac = vec3_subtract(c, a);
     vec3 ap = vec3_subtract(p, a);
@@ -1632,7 +1677,7 @@ bool intersection_moving_sphere_triangle(vec3 sc, float sr, vec3 v, vec3 tp0, ve
         float r = dist > 0.0f ? sr : -sr;
         float t0 = (r - dist) / denom;
         vec3 p0 = vec3_add(vec3_add(sc, vec3_scale(v, t0)), vec3_scale(pn, -r));
-        enum triangle_contact_type type;
+        triangle_contact_type_t type;
         *p = closest_point_point_triangle(p0, tp0, tp1, tp2, &type);
 
         int idx;

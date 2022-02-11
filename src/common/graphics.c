@@ -252,16 +252,6 @@ void golf_graphics_begin_frame(float dt) {
     graphics.framerate = igGetIO()->Framerate;
     graphics.window_size = V2((float)sapp_width(), (float)sapp_height());
 
-    {
-        float near = 0.1f;
-        float far = 150.0f;
-        graphics.proj_mat = mat4_perspective_projection(66.0f,
-                graphics.viewport_size.x / graphics.viewport_size.y, near, far);
-        graphics.view_mat = mat4_look_at(graphics.cam_pos,
-                vec3_add(graphics.cam_pos, graphics.cam_dir), graphics.cam_up);
-        graphics.proj_view_mat = mat4_multiply(graphics.proj_mat, graphics.view_mat);
-    }
-
     sg_pass_action action = {
         .colors[0] = {
             .action = SG_ACTION_CLEAR,
@@ -271,6 +261,16 @@ void golf_graphics_begin_frame(float dt) {
     sg_begin_default_pass(&action, sapp_width(), sapp_height());
     sg_end_pass();
     simgui_new_frame(sapp_width(), sapp_height(), dt);
+}
+
+void golf_graphics_update_proj_view_mat(void) {
+    float near = 0.1f;
+    float far = 150.0f;
+    graphics.proj_mat = mat4_perspective_projection(66.0f,
+            graphics.viewport_size.x / graphics.viewport_size.y, near, far);
+    graphics.view_mat = mat4_look_at(graphics.cam_pos,
+            vec3_add(graphics.cam_pos, graphics.cam_dir), graphics.cam_up);
+    graphics.proj_view_mat = mat4_multiply(graphics.proj_mat, graphics.view_mat);
 }
 
 void golf_graphics_end_frame(void) {

@@ -29,12 +29,20 @@ typedef struct golf_bvh_node {
 typedef vec_t(golf_bvh_node_t) vec_golf_bvh_node_t; 
 
 typedef struct golf_bvh {
+    vec_golf_bvh_node_info_t node_infos;
     vec_golf_bvh_node_t nodes;
     int parent;
 } golf_bvh_t;
 
+typedef struct golf_ball_contact {
+    bool is_ignored;
+    vec3 position, normal, velocity;
+    float distance, penetration, resitution, friction, impulse_mag, vel_scale, cull_dot;
+} golf_ball_contact_t;
+
 void golf_bvh_init(golf_bvh_t *bvh);
 void golf_bvh_construct(golf_bvh_t *bvh, vec_golf_bvh_node_info_t);
 bool golf_bvh_ray_test(golf_bvh_t *bvh, vec3 ro, vec3 rd, float *t, int *idx);
+bool golf_bvh_ball_test(golf_bvh_t *bvh, vec3 ball_pos, float ball_radius, vec3 ball_velocity, golf_ball_contact_t *contacts, int *num_ball_contacts, int max_ball_contacts);
 
 #endif

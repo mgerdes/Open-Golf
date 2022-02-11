@@ -28,6 +28,7 @@ typedef struct golf_graphics {
 golf_graphics_t *golf_graphics_get(void);
 void golf_graphics_init(void);
 void golf_graphics_begin_frame(float dt);
+void golf_graphics_update_proj_view_mat(void);
 void golf_graphics_end_frame(void);
 void golf_graphics_set_viewport(vec2 pos, vec2 size);
 void golf_graphics_set_render_size(vec2 size);

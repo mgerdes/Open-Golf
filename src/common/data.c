@@ -1466,6 +1466,7 @@ static bool _golf_level_load(void *ptr, const char *path, char *data, int data_l
         _golf_data_add_dependency(&deps, golf_file("data/textures/hole_lightmap.png"));
         _golf_data_add_dependency(&deps, golf_file("data/models/hole.obj"));
         _golf_data_add_dependency(&deps, golf_file("data/models/hole-cover.obj"));
+        _golf_data_add_dependency(&deps, golf_file("data/models/sphere.obj"));
         for (int i = 0; i < (int)json_array_get_count(json_materials_arr); i++) {
             JSON_Object *obj = json_array_get_object(json_materials_arr, i);
             const char *type = json_object_get_string(obj, "type");

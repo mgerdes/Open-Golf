@@ -76,6 +76,7 @@ static int _alloc_inner_node(golf_bvh_t *bvh, int left, int right) {
 }
 
 void golf_bvh_init(golf_bvh_t *bvh) {
+    vec_init(&bvh->node_infos, "bvh");
     vec_init(&bvh->nodes, "bvh");
     bvh->parent = -1;
 }
@@ -194,4 +195,34 @@ static bool _golf_bvh_ray_test(golf_bvh_t *bvh, int node_idx, vec3 ro, vec3 rd, 
 
 bool golf_bvh_ray_test(golf_bvh_t *bvh, vec3 ro, vec3 rd, float *t, int *idx) {
     return _golf_bvh_ray_test(bvh, bvh->parent, ro, rd, t, idx);    
+}
+
+static bool _golf_bvh_ball_test(golf_bvh_t *bvh, int node_idx, vec3 bp, float br, vec3 bv, golf_ball_contact_t *contacts, int *num_ball_contacts, int max_ball_contacts) {
+    if (node_idx < 0) {
+        return false;
+    }
+
+    golf_bvh_node_t *node = _get_node(bvh, node_idx);
+    if (!sphere_intersect_aabb(bp, br, node->aabb.min, node->aabb.max)) {
+        return false;
+    }
+
+    if (node->is_leaf) {
+        golf_bvh_node_info_t info = node->leaf_node_info;
+        golf_model_t *model = info.model;
+        mat4 model_mat = golf_transform_get_model_mat(info.transform);
+
+        return sphere_intersect_triangles_with_transform(bp, br, model->positions.data, model->positions.length, model_mat, NULL, NULL);
+    }
+    else {
+        bool left_test = _golf_bvh_ball_test(bvh, node->left, bp, br, bv, contacts, num_ball_contacts, max_ball_contacts);
+        bool right_test = _golf_bvh_ball_test(bvh, node->right, bp, br, bv, contacts, num_ball_contacts, max_ball_contacts);
+        return left_test || right_test;
+    }
+
+    return true;
+}
+
+bool golf_bvh_ball_test(golf_bvh_t *bvh, vec3 bp, float br, vec3 bv, golf_ball_contact_t *contacts, int *num_ball_contacts, int max_ball_contacts) {
+    return _golf_bvh_ball_test(bvh, bvh->parent, bp, br, bv, contacts, num_ball_contacts, max_ball_contacts);
 }

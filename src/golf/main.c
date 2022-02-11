@@ -64,6 +64,8 @@ static void frame(void) {
     golf_inputs_begin_frame();
 
     golf_update(dt);
+
+    golf_graphics_update_proj_view_mat();
     golf_draw();
 
     golf_inputs_end_frame();

@@ -151,7 +151,7 @@ static void _draw_level(void) {
 
     for (int i = 0; i < level->entities.length; i++) {
         golf_entity_t *entity = &level->entities.data[i];
-        if (!entity->active || entity->type == HOLE_ENTITY) continue;
+        if (!entity->active || entity->type == HOLE_ENTITY || entity->type == BALL_START_ENTITY) continue;
 
         golf_model_t *model = golf_entity_get_model(entity);
         if (!model) continue;
@@ -178,14 +178,9 @@ static void _draw_level(void) {
         for (int i = 0; i < model->groups.length; i++) {
             golf_model_group_t group = model->groups.data[i];
             golf_material_t material;
-            if (entity->type == BALL_START_ENTITY) {
-                material = golf_material_texture("", 0, 0, "data/textures/colors/red.png");
-            }
-            else {
-                if (!golf_level_get_material(level, group.material_name, &material)) {
-                    golf_log_warning("Could not find material %s", group.material_name);
-                    material = golf_material_texture("", 0, 0, "data/textures/fallback.png");
-                }
+            if (!golf_level_get_material(level, group.material_name, &material)) {
+                golf_log_warning("Could not find material %s", group.material_name);
+                material = golf_material_texture("", 0, 0, "data/textures/fallback.png");
             }
 
             switch (material.type) {
@@ -224,6 +219,19 @@ static void _draw_level(void) {
                 }
             }
         }
+    }
+
+    {
+        vec3 ball_pos = game->ball.pos;
+        vec3 ball_scale = V3(game->ball.radius, game->ball.radius, game->ball.radius);
+        golf_model_t *model = golf_data_get_model("data/models/sphere.obj");
+        mat4 model_mat = mat4_multiply_n(2,
+                mat4_translation(ball_pos),
+                mat4_scale(ball_scale));
+        golf_material_t material = golf_material_texture("", 0, 0, "data/textures/colors/white.png");
+
+        sg_apply_pipeline(graphics->texture_material_pipeline);
+        _golf_renderer_draw_with_material(model, 0, model->positions.length, model_mat, material, 1);
     }
 
     sg_apply_pipeline(graphics->hole_pass1_pipeline);
@@ -304,6 +312,7 @@ static void _draw_ui(void) {
         golf_ui_draw_entity_t draw = ui->draw_entities.data[i];
         vec3 translate = V3(draw.pos.x, draw.pos.y, 0);
         vec3 scale = V3(0.5f * draw.size.x, 0.5f * draw.size.y, 1);
+        float angle = draw.angle;
 
         golf_model_t *square = golf_data_get_model("data/models/ui_square.obj");
         sg_bindings bindings = {
@@ -314,9 +323,10 @@ static void _draw_ui(void) {
         sg_apply_bindings(&bindings);
 
         ui_vs_params_t vs_params = {
-            .mvp_mat = mat4_transpose(mat4_multiply_n(3,
+            .mvp_mat = mat4_transpose(mat4_multiply_n(4,
                         ui_proj_mat,
                         mat4_translation(translate),
+                        mat4_rotation_z(angle),
                         mat4_scale(scale)))
         };
         sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ui_vs_params,

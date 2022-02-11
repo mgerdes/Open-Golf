@@ -219,21 +219,7 @@ bool rect_2D_contains_point(struct rect_2D rect, vec2 pt);
 
 bool point_inside_box(vec3 p, vec3 box_center, vec3 box_half_lengths);
 
-void ray_intersect_triangles_all(vec3 ro, vec3 rd, vec3 *points, int num_points, mat4 transform, float *t);
-bool ray_intersect_triangles_with_transform(vec3 ro, vec3 rd, vec3 *points, int num_points, mat4 transform, float *t, int *idx);
-bool ray_intersect_triangles(vec3 ro, vec3 rd, vec3 *points, int num_points, float *t, int *idx);
-bool ray_intersect_spheres(vec3 ro, vec3 rd, vec3 *center, float *radius, int num_spheres, float *t, int *idx);
-bool ray_intersect_segments(vec3 ro, vec3 rd, vec3 *p0, vec3 *p1, float *radius, int num_segments, float *t, int *idx);
-bool ray_intersect_planes(vec3 ro, vec3 rd, vec3 *p, vec3 *n, int num_planes, float *t, int *idx);
-bool ray_intersect_aabb(vec3 ro, vec3 rd, vec3 aabb_min, vec3 aabb_max, float *t);
-void triangles_inside_box(vec3 *triangle_points, int num_triangles, vec3 box_center, vec3 box_half_lengths,
-        bool *is_inside);
-void triangles_inside_frustum(vec3 *triangle_points, int num_triangles, vec3 *frustum_corners, bool *is_inside);
-
-vec3 closest_point_point_plane(vec3 point, vec3 plane_point, vec3 plane_normal);
-vec3 closest_point_point_circle(vec3 point, vec3 circle_center, vec3 circle_plane, float circle_radius);
-
-enum triangle_contact_type {
+typedef enum triangle_contact_type {
     TRIANGLE_CONTACT_A,
     TRIANGLE_CONTACT_B,
     TRIANGLE_CONTACT_C,
@@ -241,7 +227,23 @@ enum triangle_contact_type {
     TRIANGLE_CONTACT_AC,
     TRIANGLE_CONTACT_BC,
     TRIANGLE_CONTACT_FACE,
-};
+} triangle_contact_type_t;
+
+void ray_intersect_triangles_all(vec3 ro, vec3 rd, vec3 *points, int num_points, mat4 transform, float *t);
+bool ray_intersect_triangles_with_transform(vec3 ro, vec3 rd, vec3 *points, int num_points, mat4 transform, float *t, int *idx);
+bool ray_intersect_triangles(vec3 ro, vec3 rd, vec3 *points, int num_points, float *t, int *idx);
+bool ray_intersect_spheres(vec3 ro, vec3 rd, vec3 *center, float *radius, int num_spheres, float *t, int *idx);
+bool ray_intersect_segments(vec3 ro, vec3 rd, vec3 *p0, vec3 *p1, float *radius, int num_segments, float *t, int *idx);
+bool ray_intersect_planes(vec3 ro, vec3 rd, vec3 *p, vec3 *n, int num_planes, float *t, int *idx);
+bool ray_intersect_aabb(vec3 ro, vec3 rd, vec3 aabb_min, vec3 aabb_max, float *t);
+bool sphere_intersect_aabb(vec3 sp, float sr, vec3 aabb_min, vec3 aabb_max);
+bool sphere_intersect_triangles_with_transform(vec3 sp, float sr, vec3 *points, int num_points, mat4 transform, triangle_contact_type_t *type, bool *hit);
+void triangles_inside_box(vec3 *triangle_points, int num_triangles, vec3 box_center, vec3 box_half_lengths,
+        bool *is_inside);
+void triangles_inside_frustum(vec3 *triangle_points, int num_triangles, vec3 *frustum_corners, bool *is_inside);
+
+vec3 closest_point_point_plane(vec3 point, vec3 plane_point, vec3 plane_normal);
+vec3 closest_point_point_circle(vec3 point, vec3 circle_center, vec3 circle_plane, float circle_radius);
 
 vec3 closest_point_point_triangle(vec3 p, vec3 a, vec3 b, vec3 c, enum triangle_contact_type *type);
 vec3 closest_point_point_obb(vec3 p, vec3 bc, vec3 bx, vec3 by, vec3 bz, float bex, float bey, float bez);

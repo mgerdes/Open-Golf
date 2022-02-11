@@ -17,11 +17,12 @@ static golf_graphics_t *graphics;
 static golf_game_t *game; 
 static golf_t *golf; 
 
-static golf_ui_draw_entity_t _golf_ui_draw_entity(sg_image image, vec2 pos, vec2 size, vec2 uv0, vec2 uv1, float is_font, vec4 overlay_color) {
+static golf_ui_draw_entity_t _golf_ui_draw_entity(sg_image image, vec2 pos, vec2 size, float angle, vec2 uv0, vec2 uv1, float is_font, vec4 overlay_color) {
     golf_ui_draw_entity_t entity;
     entity.image = image;
     entity.pos = pos;
     entity.size = size;
+    entity.angle = angle;
     entity.uv0 = uv0;
     entity.uv1 = uv1;
     entity.is_font = is_font;
@@ -37,7 +38,6 @@ void golf_ui_init(void) {
     memset(&ui, 0, sizeof(ui));
     vec_init(&ui.draw_entities, "ui");
     ui.state = GOLF_UI_MAIN_MENU;
-    ui.touch_velocity = V2(0, 0);
 
     inputs = golf_inputs_get();
     graphics = golf_graphics_get();
@@ -160,7 +160,8 @@ static void _golf_ui_pixel_pack_square_section(vec2 pos, vec2 size, float tile_s
         return;
     }
 
-    vec_push(&ui.draw_entities, _golf_ui_draw_entity(pixel_pack->texture->sg_image, V2(px, py), V2(sx, sy), uv0, uv1, 0, overlay_color));
+    vec_push(&ui.draw_entities, _golf_ui_draw_entity(pixel_pack->texture->sg_image, V2(px, py), V2(sx, sy), 0,
+                uv0, uv1, 0, overlay_color));
 }
 
 static void _golf_ui_pixel_pack_square(golf_ui_layout_t *layout, golf_ui_layout_entity_t entity) {
@@ -282,7 +283,8 @@ static void _golf_ui_text(golf_ui_layout_t *layout, golf_ui_layout_entity_t enti
 
         vec4 overlay_color = entity.text.color;
 
-        vec_push(&ui.draw_entities, _golf_ui_draw_entity(atlas.sg_image, V2(px, py), V2(sx, sy), uv0, uv1, 1, overlay_color));
+        vec_push(&ui.draw_entities, _golf_ui_draw_entity(atlas.sg_image, V2(px, py), V2(sx, sy), 0,
+                    uv0, uv1, 1, overlay_color));
 
         cur_x += sz_scale * xadvance;
 
@@ -361,10 +363,11 @@ static void _golf_ui_gif_texture_name(golf_ui_layout_t *layout, const char *name
     if (frame < 0) frame = 0;
     if (frame >= texture->num_frames) frame = texture->num_frames - 1;
 
-    vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_images[frame], pos, size, V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0)));
+    vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_images[frame], pos, size, 0,
+                V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0)));
 }
 
-static bool _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name, float dt) {
+static bool _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name, bool draw_aimer, float dt, vec2 *aim_delta) {
     golf_ui_layout_entity_t *entity;
     if (!_golf_ui_layout_get_entity_of_type(layout, name, GOLF_UI_AIM_CIRCLE, &entity)) {
         golf_log_warning("Could not find aim circle entity %s.", name);
@@ -378,11 +381,11 @@ static bool _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name,
     int num_squares = entity->aim_circle.num_squares;
     golf_texture_t *texture = entity->aim_circle.texture;
 
-
     for (int i = 0; i < num_squares; i++) {
         float theta = 2.0f * MF_PI * i / num_squares;
         vec2 p = V2(pos.x + size.x * cosf(theta), pos.y + size.y * sinf(theta));
-        vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_image, p, square_size, V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0)));
+        vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_image, p, square_size, 0, 
+                    V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0)));
     }
 
     vec2 mp = inputs->mouse_pos;
@@ -396,6 +399,22 @@ static bool _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name,
 
     bool in_aim_circle = (mp_dx * mp_dx + mp_dy * mp_dy <= size.x * size.y) ||
         (tp_dx * tp_dx + tp_dy * tp_dy <= size.x * size.y);
+
+    if (draw_aimer) {
+        golf_texture_t *white = golf_data_get_texture("data/textures/colors/white.png");
+        vec2 aimer_pos = vec2_scale(vec2_add(mp, pos), 0.5f);
+        vec2 aimer_size = V2(vec2_distance(mp, pos), 10);
+        vec2 delta = vec2_normalize(vec2_sub(mp, pos));
+        float aimer_angle = acosf(vec2_dot(delta, V2(0, 1)));
+        if (delta.x > 0) aimer_angle *= -1;
+        aimer_angle += 0.5f * MF_PI;
+        vec_push(&ui.draw_entities, _golf_ui_draw_entity(white->sg_image, aimer_pos, aimer_size, aimer_angle,
+                    V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0))); 
+
+        if (aim_delta) {
+            *aim_delta = delta;
+        }
+    }
 
     return in_aim_circle && inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT];
 }
@@ -437,47 +456,51 @@ static void _golf_ui_in_game_waiting_for_aim(float dt) {
 
         vec2 delta = vec2_sub(pos0, pos1);
 
+        float angle0 = game->camera.angle;
+        float angle1 = angle0;
+
         if (pos0.x < aim_circle_pos.x) {
-            game->camera.angle -= 1.5f * (delta.y / graphics->window_size.x);
+            angle1 -= 1.5f * (delta.y / graphics->window_size.x);
         }
         else {
-            game->camera.angle += 1.5f * (delta.y / graphics->window_size.x);
+            angle1 += 1.5f * (delta.y / graphics->window_size.x);
         }
 
         if (pos0.y >= aim_circle_pos.y) {
-            game->camera.angle -= 1.5f * (delta.x / graphics->window_size.x);
+            angle1 -= 1.5f * (delta.x / graphics->window_size.x);
         }
         else {
-            game->camera.angle += 1.5f * (delta.x / graphics->window_size.x);
+            angle1 += 1.5f * (delta.x / graphics->window_size.x);
         }
+
+        game->camera.angle = angle1;
+        game->camera.angle_velocity = (angle1 - angle0) / dt;
     }
     else {
-        vec2 aim_circle_pos = vec2_scale(graphics->window_size, 0.5f);
-
-        vec2 delta = ui.touch_velocity;
-        vec2 pos0 = inputs->touch_pos;
-
-        if (pos0.x < aim_circle_pos.x) {
-            game->camera.angle -= 1.5f * (delta.y / graphics->window_size.x);
-        }
-        else {
-            game->camera.angle += 1.5f * (delta.y / graphics->window_size.x);
-        }
-
-        if (pos0.y >= aim_circle_pos.y) {
-            game->camera.angle -= 1.5f * (delta.x / graphics->window_size.x);
-        }
-        else {
-            game->camera.angle += 1.5f * (delta.x / graphics->window_size.x);
-        }
+        game->camera.angle += game->camera.angle_velocity * dt;
+        game->camera.angle_velocity *= 0.9f;
     }
 
     vec3 cam_delta = vec3_rotate_y(V3(2.6f, 1.5f, 0), game->camera.angle);
-    graphics->cam_pos = vec3_add(game->ball_pos, cam_delta);
-    graphics->cam_dir = vec3_normalize(vec3_sub(game->ball_pos, graphics->cam_pos));
+    graphics->cam_pos = vec3_add(game->ball.pos, cam_delta);
+    graphics->cam_dir = vec3_normalize(vec3_sub(game->ball.pos, graphics->cam_pos));
 
-    if (_golf_ui_aim_circle_name(layout, "aim_circle", dt)) {
+    if (_golf_ui_aim_circle_name(layout, "aim_circle", false, dt, NULL)) {
         golf_game_start_aiming();
+    }
+}
+
+static void _golf_ui_in_game_aiming(float dt) {
+    //if (!inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
+    //golf_game_stop_aiming();
+    //}
+
+    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
+    vec2 aim_delta;
+    _golf_ui_aim_circle_name(layout, "aim_circle", true, dt, &aim_delta);
+
+    if (inputs->mouse_clicked[SAPP_MOUSEBUTTON_LEFT]) {
+        golf_game_hit_ball(aim_delta);
     }
 }
 
@@ -489,23 +512,13 @@ static void _golf_ui_in_game(float dt) {
             _golf_ui_in_game_waiting_for_aim(dt);
             break;
         case GOLF_GAME_STATE_AIMING:
-            //if (!inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
-            //golf_game_stop_aiming();
-            //}
+            _golf_ui_in_game_aiming(dt);
             break;
     }
 }
 
 void golf_ui_update(float dt) {
     ui.draw_entities.length = 0;
-
-    if (inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT] || inputs->touch_down) {
-        ui.touch_velocity = vec2_sub(inputs->touch_pos, inputs->prev_touch_pos);
-        //ui.touch_velocity = vec2_sub(inputs->mouse_pos, inputs->prev_mouse_pos);
-    }
-    else {
-        ui.touch_velocity = vec2_scale(ui.touch_velocity, 0.9f);
-    }
 
     {
         golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");

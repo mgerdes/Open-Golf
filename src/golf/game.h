@@ -1,6 +1,7 @@
 #ifndef _GOLF_GAME_H
 #define _GOLF_GAME_H
 
+#include "common/bvh.h"
 #include "common/level.h"
 
 typedef enum golf_game_state {
@@ -12,10 +13,15 @@ typedef enum golf_game_state {
 typedef struct golf_game {
     golf_game_state_t state;
 
-    vec3 ball_pos;
+	struct {
+		vec3 pos;
+		float radius;
+	} ball;
+
+	golf_bvh_t bvh;
 
     struct {
-        float angle;
+        float angle, angle_velocity;
     } camera;
 } golf_game_t;
 
@@ -24,5 +30,6 @@ void golf_game_init(void);
 void golf_game_update(float dt);
 void golf_game_start_level(void);
 void golf_game_start_aiming(void);
+void golf_game_hit_ball(vec2 aim_delta);
 
 #endif
