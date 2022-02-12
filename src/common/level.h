@@ -114,6 +114,7 @@ typedef struct golf_material {
     char name[GOLF_MAX_NAME_LEN];
     float friction;
     float restitution;
+    float vel_scale;
 
     golf_material_type_t type; 
     union {
@@ -125,10 +126,10 @@ typedef struct golf_material {
     };
 } golf_material_t;
 typedef vec_t(golf_material_t) vec_golf_material_t;
-golf_material_t golf_material_texture(const char *name, float friction, float restitution, const char *texture_path);
-golf_material_t golf_material_diffuse_color(const char *name, float friction, float restitution, vec4 color);
-golf_material_t golf_material_color(const char *name, float friction, float resitution, vec4 color);
-golf_material_t golf_material_environment(const char *name, float friction, float resitution, const char *texture_path);
+golf_material_t golf_material_texture(const char *name, float friction, float restitution, float vel_scale, const char *texture_path);
+golf_material_t golf_material_diffuse_color(const char *name, float friction, float restitution, float vel_scale, vec4 color);
+golf_material_t golf_material_color(const char *name, float friction, float resitution, float vel_scale, vec4 color);
+golf_material_t golf_material_environment(const char *name, float friction, float resitution, float vel_scale, const char *texture_path);
 
 typedef struct golf_transform {
     vec3 position;

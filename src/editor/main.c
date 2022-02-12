@@ -102,8 +102,11 @@ static void frame(void) {
     if (!inited) {
         golf_data_turn_off_reload(".level");
         golf_data_init();
+        golf_data_load("data/editor.static_data", false);
+
         golf_inputs_init();
         golf_graphics_init();
+        golf_draw_init();
         golf_editor_init();
         golf_debug_console_init();
         inited = true;
@@ -122,6 +125,7 @@ static void frame(void) {
     }
 
     {
+        golf_graphics_update_proj_view_mat();
         golf_editor_draw();
     }
 
@@ -145,8 +149,8 @@ sapp_desc sokol_main(int argc, char *argv[]) {
             .frame_cb = frame,
             .cleanup_cb = cleanup,
             .event_cb = event,
-            .width = 1280/4,
-            .height = 720/4,
+            .width = 1280,
+            .height = 720,
             .window_title = "Minigolf Editor",
             .enable_clipboard = true,
             .clipboard_size = 1024,

@@ -260,6 +260,7 @@ static bool _golf_bvh_ball_test(golf_bvh_t *bvh, int node_idx, vec3 bp, float br
                 contact.velocity = V3(0, 0, 0);
                 contact.face = face;
                 contact.type = type;
+                contact.penetration = br - dist;
 
                 if (*num_ball_contacts < max_ball_contacts) {
                     contacts[*num_ball_contacts] = contact;

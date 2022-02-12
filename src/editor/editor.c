@@ -40,6 +40,14 @@ void golf_editor_init(void) {
     memset(&editor, 0, sizeof(editor));
 
     {
+        graphics->cam_pos = V3(5, 5, 5);
+        graphics->cam_dir = vec3_normalize(V3(-1, -1, -1));
+        graphics->cam_up = V3(0, 1, 0);
+        editor.camera.inclination_angle = -2.25f;
+        editor.camera.azimuth_angle = 0.65f;
+    }
+
+    {
         strcpy(editor.level_path, "data/levels/level-1.level");
         editor.level = golf_data_get_level("data/levels/level-1.level");
 
@@ -1928,6 +1936,10 @@ void golf_editor_update(float dt) {
                         }
                     }
 
+                    _golf_editor_undoable_igInputFloat("Friction", &material->friction, "Modify material friction");
+                    _golf_editor_undoable_igInputFloat("Restitution", &material->restitution, "Modify material restitution");
+                    _golf_editor_undoable_igInputFloat("Velocity Scale", &material->vel_scale, "Modify material vel_scale");
+
                     if (igButton("Delete Material", (ImVec2){0, 0})) {
                         _golf_editor_start_action_with_data(&material->active, sizeof(material->active), "Delete material");
                         material->active = false;
@@ -2598,27 +2610,27 @@ void golf_editor_update(float dt) {
         }
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT]) {
             editor.camera.azimuth_angle += 0.2f * dt * inputs->mouse_delta.x;
-            editor.camera.inclination_angle += 0.2f * dt * inputs->mouse_delta.y;
+            editor.camera.inclination_angle -= 0.2f * dt * inputs->mouse_delta.y;
         }
     }
 
     float cam_speed = 8.0f;
     if (!IO->WantCaptureKeyboard) {
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_W]) {
-            graphics->cam_pos.x += cam_speed * dt * cosf(editor.camera.azimuth_angle);
-            graphics->cam_pos.z += cam_speed * dt * sinf(editor.camera.azimuth_angle);
-        }
-        if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_S]) {
             graphics->cam_pos.x -= cam_speed * dt * cosf(editor.camera.azimuth_angle);
             graphics->cam_pos.z -= cam_speed * dt * sinf(editor.camera.azimuth_angle);
         }
-        if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_D]) {
-            graphics->cam_pos.x += cam_speed * dt * cosf(editor.camera.azimuth_angle + 0.5f * MF_PI);
-            graphics->cam_pos.z += cam_speed * dt * sinf(editor.camera.azimuth_angle + 0.5f * MF_PI);
+        if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_S]) {
+            graphics->cam_pos.x += cam_speed * dt * cosf(editor.camera.azimuth_angle);
+            graphics->cam_pos.z += cam_speed * dt * sinf(editor.camera.azimuth_angle);
         }
-        if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_A]) {
+        if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_D]) {
             graphics->cam_pos.x -= cam_speed * dt * cosf(editor.camera.azimuth_angle + 0.5f * MF_PI);
             graphics->cam_pos.z -= cam_speed * dt * sinf(editor.camera.azimuth_angle + 0.5f * MF_PI);
+        }
+        if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_A]) {
+            graphics->cam_pos.x += cam_speed * dt * cosf(editor.camera.azimuth_angle + 0.5f * MF_PI);
+            graphics->cam_pos.z += cam_speed * dt * sinf(editor.camera.azimuth_angle + 0.5f * MF_PI);
         }
         if (inputs->mouse_down[SAPP_MOUSEBUTTON_RIGHT] && inputs->button_down[SAPP_KEYCODE_Q]) {
             graphics->cam_pos.y -= cam_speed * dt;
@@ -2672,6 +2684,14 @@ void golf_editor_update(float dt) {
         if (inputs->button_clicked[SAPP_KEYCODE_DELETE]) {
             _golf_editor_delete_selected_entities();
         }
+    }
+
+    {
+        float theta = editor.camera.inclination_angle;
+        float phi = editor.camera.azimuth_angle;
+        graphics->cam_dir.x = sinf(theta) * cosf(phi);
+        graphics->cam_dir.y = cosf(theta);
+        graphics->cam_dir.z = sinf(theta) * sinf(phi);
     }
 }
 

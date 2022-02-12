@@ -1501,27 +1501,28 @@ static bool _golf_level_load(void *ptr, const char *path, char *data, int data_l
         const char *name = json_object_get_string(obj, "name");
         float friction = (float)json_object_get_number(obj, "friction");
         float restitution = (float)json_object_get_number(obj, "restitution");
+        float vel_scale = (float)json_object_get_number(obj, "vel_scale");
 
         bool valid_material = false;
         golf_material_t material;
         if (type && strcmp(type, "texture") == 0) {
             const char *texture_path = json_object_get_string(obj, "texture");
-            material = golf_material_texture(name, friction, restitution, texture_path);
+            material = golf_material_texture(name, friction, restitution, vel_scale, texture_path);
             valid_material = true;
         }
         else if (type && strcmp(type, "color") == 0) {
             vec4 color = golf_json_object_get_vec4(obj, "color");
-            material = golf_material_color(name, friction, restitution, color);
+            material = golf_material_color(name, friction, restitution, vel_scale, color);
             valid_material = true;
         }
         else if (type && strcmp(type, "diffuse_color") == 0) {
             vec4 color = golf_json_object_get_vec4(obj, "color");
-            material = golf_material_diffuse_color(name, friction, restitution, color);
+            material = golf_material_diffuse_color(name, friction, restitution, vel_scale, color);
             valid_material = true;
         }
         else if (type && strcmp(type, "environment") == 0) {
             const char *texture_path = json_object_get_string(obj, "texture");
-            material = golf_material_environment(name, friction, restitution, texture_path);
+            material = golf_material_environment(name, friction, restitution, vel_scale, texture_path);
             valid_material = true;
         }
 

@@ -144,8 +144,6 @@ static void _golf_renderer_draw_with_material(golf_model_t *model, int start, in
     }
 }
 
-
-
 static void _draw_level(void) {
     golf_level_t *level = golf->level;
 
@@ -180,7 +178,7 @@ static void _draw_level(void) {
             golf_material_t material;
             if (!golf_level_get_material(level, group.material_name, &material)) {
                 golf_log_warning("Could not find material %s", group.material_name);
-                material = golf_material_texture("", 0, 0, "data/textures/fallback.png");
+                material = golf_material_texture("", 0, 0, 0, "data/textures/fallback.png");
             }
 
             switch (material.type) {
@@ -228,7 +226,7 @@ static void _draw_level(void) {
         mat4 model_mat = mat4_multiply_n(2,
                 mat4_translation(ball_pos),
                 mat4_scale(ball_scale));
-        golf_material_t material = golf_material_texture("", 0, 0, "data/textures/colors/white.png");
+        golf_material_t material = golf_material_texture("", 0, 0, 0, "data/textures/colors/white.png");
 
         sg_apply_pipeline(graphics->texture_material_pipeline);
         _golf_renderer_draw_with_material(model, 0, model->positions.length, model_mat, material, 1);
@@ -283,7 +281,7 @@ static void _draw_level(void) {
                 transform.position.y += 0.001f;
                 mat4 model_mat = golf_transform_get_model_mat(transform);
                 golf_model_t *model = golf_data_get_model("data/models/hole.obj");
-                golf_material_t material = golf_material_texture("", 0, 0, "data/textures/hole_lightmap.png");
+                golf_material_t material = golf_material_texture("", 0, 0, 0, "data/textures/hole_lightmap.png");
                 _golf_renderer_draw_with_material(model, 0, model->positions.length, model_mat, material, 1);
                 break;
             }

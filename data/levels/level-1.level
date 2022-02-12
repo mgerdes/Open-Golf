@@ -1,23 +1,85 @@
 {
+    "data_dependencies": [
+        "data\/textures\/hole_lightmap.png",
+        "data\/textures\/wood.jpg",
+        "data\/textures\/ground.png",
+        "data\/textures\/colors\/black.png",
+        "data\/textures\/colors\/light_gray.png",
+        "data\/textures\/colors\/red.png",
+        "data\/textures\/environment\/slab.jpg",
+        "data\/textures\/environment\/grass.jpg",
+        "data\/textures\/environment\/wood.jpg",
+        "data\/textures\/environment\/soil1.jpg",
+        "data\/textures\/environment\/soil1_dark.jpg",
+        "data\/textures\/environment\/water.jpg",
+        "data\/textures\/environment\/wood_dark.jpg",
+        "data\/textures\/environment\/grass_dark.jpg",
+        "data\/models\/flag_red.obj",
+        "data\/models\/nature_kit\/tree_default.obj",
+        "data\/models\/nature_kit\/ground_pathEndClosed.obj",
+        "data\/models\/nature_kit\/ground_pathRocks.obj",
+        "data\/models\/nature_kit\/platform_grass.obj",
+        "data\/models\/nature_kit\/ground_pathSideOpen.obj",
+        "data\/models\/nature_kit\/ground_riverBend.obj",
+        "data\/models\/nature_kit\/ground_grass.obj",
+        "data\/models\/nature_kit\/ground_riverBendBank.obj",
+        "data\/models\/nature_kit\/ground_pathSide.obj",
+        "data\/models\/nature_kit\/bridge_woodNarrow.obj",
+        "data\/models\/nature_kit\/ground_riverEndClosed.obj",
+        "data\/models\/nature_kit\/ground_riverRocks.obj",
+        "data\/models\/nature_kit\/ground_riverStraight.obj",
+        "data\/models\/nature_kit\/fence_simple.obj",
+        "data\/models\/nature_kit\/ground_pathOpen.obj",
+        "data\/models\/nature_kit\/statue_head.obj",
+        "data\/models\/nature_kit\/stone_largeC.obj",
+        "data\/models\/nature_kit\/stone_smallC.obj",
+        "data\/models\/nature_kit\/tree_blocks.obj",
+        "data\/models\/nature_kit\/tree_plateau.obj",
+        "data\/models\/nature_kit\/tree_small.obj",
+        "data\/models\/nature_kit\/tree_tall.obj",
+        "data\/models\/nature_kit\/tree_detailed_dark.obj",
+        "data\/models\/nature_kit\/tree_small_dark.obj",
+        "data\/models\/nature_kit\/tree_tall_dark.obj",
+        "data\/models\/nature_kit\/tree_default_dark.obj",
+        "data\/models\/nature_kit\/tree_blocks_dark.obj",
+        "data\/models\/nature_kit\/tree_plateau_dark.obj",
+        "data\/models\/nature_kit\/tree_oak_dark.obj",
+        "data\/models\/nature_kit\/tree_simple_dark.obj",
+        "data\/models\/nature_kit\/tree_cone_dark.obj",
+        "data\/models\/nature_kit\/stone_largeF.obj",
+        "data\/models\/nature_kit\/stone_largeB.obj",
+        "data\/models\/nature_kit\/stone_largeA.obj",
+        "data\/models\/nature_kit\/stone_largeD.obj",
+        "data\/models\/nature_kit\/stone_smallF.obj",
+        "data\/models\/nature_kit\/stone_smallA.obj",
+        "data\/models\/nature_kit\/stone_smallG.obj",
+        "data\/models\/nature_kit\/stone_smallFlatB.obj",
+        "data\/models\/nature_kit\/stone_smallFlatC.obj",
+        "data\/models\/nature_kit\/stone_smallFlatA.obj",
+        "data\/models\/nature_kit\/stone_smallB.obj"
+    ],
     "materials": [
         {
             "name": "wall-side",
             "friction": 0,
-            "restitution": 0,
+            "restitution": 1,
+            "vel_scale": 0.8,
             "type": "environment",
             "texture": "data\/textures\/wood.jpg"
         },
         {
             "name": "wall-top",
-            "friction": 0,
-            "restitution": 0,
+            "friction": 0.3,
+            "restitution": 0.4,
+            "vel_scale": 1,
             "type": "environment",
             "texture": "data\/textures\/wood.jpg"
         },
         {
             "name": "ground",
-            "friction": 0,
-            "restitution": 0,
+            "friction": 0.3,
+            "restitution": 0.4,
+            "vel_scale": 1,
             "type": "environment",
             "texture": "data\/textures\/ground.png"
         },
@@ -25,6 +87,7 @@
             "name": "cube",
             "friction": 0,
             "restitution": 0,
+            "vel_scale": -1.0737e+08,
             "type": "texture",
             "texture": "data\/textures\/ground.png"
         },
@@ -32,6 +95,7 @@
             "name": "hole",
             "friction": 0,
             "restitution": 0,
+            "vel_scale": -1.0737e+08,
             "type": "texture",
             "texture": "data\/textures\/colors\/black.png"
         },
@@ -39,6 +103,7 @@
             "name": "default",
             "friction": 0,
             "restitution": 0,
+            "vel_scale": 0,
             "type": "environment",
             "texture": "data\/textures\/ground.png"
         },
@@ -46,6 +111,7 @@
             "name": "metal",
             "friction": 0,
             "restitution": 0,
+            "vel_scale": 0,
             "type": "environment",
             "texture": "data\/textures\/colors\/light_gray.png"
         },
@@ -53,6 +119,7 @@
             "name": "border",
             "friction": 0,
             "restitution": 0,
+            "vel_scale": 0,
             "type": "environment",
             "texture": "data\/textures\/colors\/red.png"
         },
@@ -60,6 +127,7 @@
             "name": "stone",
             "friction": 0,
             "restitution": 0,
+            "vel_scale": 0,
             "type": "environment",
             "texture": "data\/textures\/environment\/slab.jpg"
         },
@@ -67,6 +135,7 @@
             "name": "grass",
             "friction": 0,
             "restitution": 0,
+            "vel_scale": 0,
             "type": "environment",
             "texture": "data\/textures\/environment\/grass.jpg"
         },
@@ -74,6 +143,7 @@
             "name": "woodBark",
             "friction": 0,
             "restitution": 0,
+            "vel_scale": 0,
             "type": "environment",
             "texture": "data\/textures\/environment\/wood.jpg"
         },
@@ -81,6 +151,7 @@
             "name": "leafsGreen",
             "friction": 0,
             "restitution": 0,
+            "vel_scale": 0,
             "type": "environment",
             "texture": "data\/textures\/environment\/grass.jpg"
         },
@@ -88,6 +159,7 @@
             "name": "wood",
             "friction": 0,
             "restitution": 0,
+            "vel_scale": 0,
             "type": "environment",
             "texture": "data\/textures\/environment\/wood.jpg"
         },
@@ -95,6 +167,7 @@
             "name": "stoneDark",
             "friction": 0,
             "restitution": 0,
+            "vel_scale": 0,
             "type": "environment",
             "texture": "data\/textures\/environment\/slab.jpg"
         },
@@ -102,6 +175,7 @@
             "name": "dirt",
             "friction": 0,
             "restitution": 0,
+            "vel_scale": 0,
             "type": "environment",
             "texture": "data\/textures\/environment\/soil1.jpg"
         },
@@ -109,6 +183,7 @@
             "name": "woodInner",
             "friction": 0,
             "restitution": 0,
+            "vel_scale": 0,
             "type": "environment",
             "texture": "data\/textures\/environment\/wood.jpg"
         },
@@ -116,6 +191,7 @@
             "name": "dirtDark",
             "friction": 0,
             "restitution": 0,
+            "vel_scale": 0,
             "type": "environment",
             "texture": "data\/textures\/environment\/soil1_dark.jpg"
         },
@@ -123,6 +199,7 @@
             "name": "water",
             "friction": 0,
             "restitution": 0,
+            "vel_scale": 0,
             "type": "environment",
             "texture": "data\/textures\/environment\/water.jpg"
         },
@@ -130,6 +207,7 @@
             "name": "woodDark",
             "friction": 0,
             "restitution": 0,
+            "vel_scale": 0,
             "type": "environment",
             "texture": "data\/textures\/environment\/wood_dark.jpg"
         },
@@ -137,6 +215,7 @@
             "name": "_defaultMat",
             "friction": 0,
             "restitution": 0,
+            "vel_scale": 0,
             "type": "color",
             "color": [1, 0, 0, 1]
         },
@@ -144,6 +223,7 @@
             "name": "woodBarkDark",
             "friction": 0,
             "restitution": 0,
+            "vel_scale": 0,
             "type": "environment",
             "texture": "data\/textures\/environment\/wood_dark.jpg"
         },
@@ -151,6 +231,7 @@
             "name": "leafsDark",
             "friction": 0,
             "restitution": 0,
+            "vel_scale": 0,
             "type": "environment",
             "texture": "data\/textures\/environment\/grass_dark.jpg"
         }
@@ -220,7 +301,7 @@
             "name": "geo",
             "type": "geo",
             "geo": {
-                "p": [2, -0.25, -5, 2, -0.25, 10, -3, -0.25, 10, -3, -0.25, -5, 2, 0, -5, 2, 0, 10, -3, 0, 10, -3, 0, -5, 2.5, 0.25, 10, 2.5, 0.25, -5, -3.5, 0.25, -5, -3.5, 0.25, 10, 2, 0.25, -5.5, -3, 0.25, -5.5, -3, 0.25, 10.5, 2, 0.25, 10.5, 2.5, -1.5, -5, 2.5, -1.5, 10, 2, -1.25, -5.5, -3, -1.25, -5.5, -3.5, -1.5, 10, -3.5, -1.5, -5, -3, -1.25, 10.5, 2, -1.25, 10.5, -3.5, -1.25, 10, -3, -1.25, 10.5, -3, 0.5, 10.5, -3, 0.5, 10, -3.5, 0.5, 10, -3, 0, 10, -3.5, -1.25, 10.5, -3.5, 0.5, 10.5, -3.5, -1.25, -5, -3, 0, -5, -3, 0.5, -5, -3.5, 0.5, -5, -3, -1.25, -5.5, -3, 0.5, -5.5, -3.5, -1.25, -5.5, -3.5, 0.5, -5.5, 2, 0, -5, 2.5, -1.25, -5, 2.5, 0.5, -5, 2, 0.5, -5, 2.5, -1.25, -5.5, 2.5, 0.5, -5.5, 2, -1.25, -5.5, 2, 0.5, -5.5, 2, -1.25, 10.5, 2.5, -1.25, 10.5, 2.5, 0.5, 10.5, 2, 0.5, 10.5, 2.5, -1.25, 10, 2.5, 0.5, 10, 2, 0, 10, 2, 0.5, 10],
+                "p": [2, -0.25, -5, 2, -0.25, 10, -3, -0.25, 10, -3, -0.25, -5, 2, 0, -5, 2, 0, 10, -3, 0, 10, -3, 0, -5, 2.5, 0, 10, 2.5, 0, -5, -3.5, 0, -5, -3.5, 0, 10, 2, 0, -5.5, -3, 0, -5.5, -3, 0, 10.5, 2, 0, 10.5, 2.5, -1.5, -5, 2.5, -1.5, 10, 2, -1.25, -5.5, -3, -1.25, -5.5, -3.5, -1.5, 10, -3.5, -1.5, -5, -3, -1.25, 10.5, 2, -1.25, 10.5, -3.5, -1.25, 10, -3, -1.25, 10.5, -3, 0.5, 10.5, -3, 0.5, 10, -3.5, 0.5, 10, -3, 0, 10, -3.5, -1.25, 10.5, -3.5, 0.5, 10.5, -3.5, -1.25, -5, -3, 0, -5, -3, 0.5, -5, -3.5, 0.5, -5, -3, -1.25, -5.5, -3, 0.5, -5.5, -3.5, -1.25, -5.5, -3.5, 0.5, -5.5, 2, 0, -5, 2.5, -1.25, -5, 2.5, 0.5, -5, 2, 0.5, -5, 2.5, -1.25, -5.5, 2.5, 0.5, -5.5, 2, -1.25, -5.5, 2, 0.5, -5.5, 2, -1.25, 10.5, 2.5, -1.25, 10.5, 2.5, 0.5, 10.5, 2, 0.5, 10.5, 2.5, -1.25, 10, 2.5, 0.5, 10, 2, 0, 10, 2, 0.5, 10],
                 "faces": [
                     {
                         "material_name": "ground",

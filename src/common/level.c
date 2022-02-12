@@ -247,6 +247,7 @@ golf_geo_t golf_geo(vec_golf_geo_point_t points, vec_golf_geo_face_t faces) {
 }
 
 void golf_geo_finalize(golf_geo_t *geo) {
+    geo->model_updated_this_frame = true;
     golf_model_dynamic_finalize(&geo->model);
 }
 
@@ -524,7 +525,7 @@ static void _stbi_write_func(void *context, void *data, int size) {
     vec_pusharr(v, (char*)data, size);
 }
 
-golf_material_t golf_material_texture(const char *name, float friction, float restitution, const char *texture_path) {
+golf_material_t golf_material_texture(const char *name, float friction, float restitution, float vel_scale, const char *texture_path) {
     golf_material_t material;
     material.active = true;
     snprintf(material.name, GOLF_MAX_NAME_LEN, "%s", name);
@@ -536,34 +537,37 @@ golf_material_t golf_material_texture(const char *name, float friction, float re
     return material;
 }
 
-golf_material_t golf_material_diffuse_color(const char *name, float friction, float restitution, vec4 color) {
+golf_material_t golf_material_diffuse_color(const char *name, float friction, float vel_scale, float restitution, vec4 color) {
     golf_material_t material;
     material.active = true;
     snprintf(material.name, GOLF_MAX_NAME_LEN, "%s", name);
     material.friction = friction;
     material.restitution = restitution;
+    material.vel_scale = vel_scale;
     material.type = GOLF_MATERIAL_DIFFUSE_COLOR;
     material.color = color;
     return material;
 }
 
-golf_material_t golf_material_color(const char *name, float friction, float restitution, vec4 color) {
+golf_material_t golf_material_color(const char *name, float friction, float restitution, float vel_scale, vec4 color) {
     golf_material_t material;
     material.active = true;
     snprintf(material.name, GOLF_MAX_NAME_LEN, "%s", name);
     material.friction = friction;
     material.restitution = restitution;
+    material.vel_scale = vel_scale;
     material.type = GOLF_MATERIAL_COLOR;
     material.color = color;
     return material;
 }
 
-golf_material_t golf_material_environment(const char *name, float friction, float restitution, const char *texture_path) {
+golf_material_t golf_material_environment(const char *name, float friction, float restitution, float vel_scale, const char *texture_path) {
     golf_material_t material;
     material.active = true;
     snprintf(material.name, GOLF_MAX_NAME_LEN, "%s", name);
     material.friction = friction;
     material.restitution = restitution;
+    material.vel_scale = vel_scale;
     material.type = GOLF_MATERIAL_ENVIRONMENT;
     snprintf(material.texture_path, GOLF_FILE_MAX_PATH, "%s", texture_path);
     material.texture = golf_data_get_texture(texture_path);
@@ -603,6 +607,7 @@ bool golf_level_save(golf_level_t *level, const char *path) {
         json_object_set_string(json_material_obj, "name", material->name);
         json_object_set_number(json_material_obj, "friction", material->friction);
         json_object_set_number(json_material_obj, "restitution", material->restitution);
+        json_object_set_number(json_material_obj, "vel_scale", material->vel_scale);
 
         switch (material->type) {
             case GOLF_MATERIAL_TEXTURE: {

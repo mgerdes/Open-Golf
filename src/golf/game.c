@@ -94,6 +94,8 @@ void golf_game_update(float dt) {
     }
 
     if (game.state > GOLF_GAME_STATE_MAIN_MENU) {
+        float EPS = 0.001f;
+
         game.bvh.node_infos.length = 0;
         for (int i = 0; i < golf->level->entities.length; i++) {
             golf_entity_t *entity = &golf->level->entities.data[i];
@@ -168,9 +170,9 @@ void golf_game_update(float dt) {
                     vec3 a = processed_vertices[j + 0];
                     vec3 b = processed_vertices[j + 1];
                     vec3 c = processed_vertices[j + 2];
-                    if (vec3_line_segments_on_same_line(a, b, e0, e1, 0.001f) ||
-                            vec3_line_segments_on_same_line(a, c, e0, e1, 0.001f) ||
-                            vec3_line_segments_on_same_line(b, c, e0, e1, 0.001f)) {
+                    if (vec3_line_segments_on_same_line(a, b, e0, e1, EPS) ||
+                            vec3_line_segments_on_same_line(a, c, e0, e1, EPS) ||
+                            vec3_line_segments_on_same_line(b, c, e0, e1, EPS)) {
                         contact->is_ignored = true;
                         break;
                     }
@@ -206,9 +208,9 @@ void golf_game_update(float dt) {
                     vec3 a = processed_vertices[j + 0];
                     vec3 b = processed_vertices[j + 1];
                     vec3 c = processed_vertices[j + 2];
-                    if (vec3_point_on_line_segment(p, a, b, 0.001f) ||
-                            vec3_point_on_line_segment(p, a, c, 0.001f) ||
-                            vec3_point_on_line_segment(p, b, c, 0.001f)) {
+                    if (vec3_point_on_line_segment(p, a, b, EPS) ||
+                            vec3_point_on_line_segment(p, a, c, EPS) ||
+                            vec3_point_on_line_segment(p, b, c, EPS)) {
                         contact->is_ignored = true;
                         break;
                     }
@@ -235,10 +237,28 @@ void golf_game_update(float dt) {
                 continue;
             }
 
-            float imp = -(1 + 1) * vec3_dot(vr, n);
+            float imp = -(1 + 0.4f) * vec3_dot(vr, n);
 
             game.ball.vel = vec3_add(game.ball.vel, vec3_scale(n, imp));
             game.ball.vel = vec3_scale(game.ball.vel, 1);
+
+            vec3 t = vec3_sub(game.ball.vel, vec3_scale(n, vec3_dot(game.ball.vel, n)));
+            if (vec3_length(t) > EPS) {
+                t = vec3_normalize(t);
+
+                float jt = -vec3_dot(vr, t);
+                if (fabsf(jt) > EPS) {
+                    float friction = 0.3f;
+                    if (jt > imp * friction) {
+                        jt = imp * friction;
+                    }
+                    else if (jt < -imp * friction) {
+                        jt = -imp * friction;
+                    }
+
+                    game.ball.vel = vec3_add(game.ball.vel, vec3_scale(t, jt));
+                }
+            }
         }
 
         game.ball.vel = vec3_add(game.ball.vel, V3(0, -9.8 * dt, 0));
