@@ -20,18 +20,6 @@ golf_game_t *golf_game_get(void) {
     return &game;
 }
 
-static void _golf_game_debug_inputs(void) {
-    if (igBegin("Debug Inputs", NULL, ImGuiWindowFlags_None)) {
-        igText("touch_began: %d\n", inputs->frame_touch_began);
-        igText("touch_down: %d\n", inputs->touch_down);
-        igText("touch_ended: %d\n", inputs->frame_touch_ended);
-        igText("cam_angle: %f\n", game.cam.angle);
-        igText("cam_angle_velocity: %f\n", game.cam.angle_velocity);
-        igText("start_cam_angle_velocity: %f\n", game.cam.start_angle_velocity);
-        igEnd();
-    }
-}
-
 static void _golf_game_debug_tab(void) {
     static const char *contact_type_string[] = {
         "Point A", "Point B", "Point C",
@@ -43,7 +31,7 @@ static void _golf_game_debug_tab(void) {
     for (int i = 0; i < game.physics.collision_history.length; i++) {
         golf_collision_data_t *collision = &game.physics.collision_history.data[i]; 
         collision->is_highlighted = false;
-        if (igTreeNodeEx_Ptr((void*)i, ImGuiTreeNodeFlags_None, "Collision %d", i)) {
+        if (igTreeNodeEx_Ptr((void*)(intptr_t)i, ImGuiTreeNodeFlags_None, "Collision %d", i)) {
             collision->is_highlighted = true;
             for (int i = 0; i < collision->num_contacts; i++) {
                 golf_ball_contact_t contact = collision->contacts[i];
@@ -86,11 +74,11 @@ void golf_game_init(void) {
     inputs = golf_inputs_get();
 
     game.state = GOLF_GAME_STATE_MAIN_MENU;
-    game.debug_inputs = false;
     game.cam.angle = 0;
     game.cam.angle_velocity = 0;
 
     game.ball.pos = V3(0, 0, 0);
+    game.ball.draw_pos = V3(0, 0, 0);
     game.ball.vel = V3(0, 0, 0);
     game.ball.radius = 0.12f;
     game.ball.time_going_slow = 0;
@@ -184,30 +172,6 @@ static void _physics_tick(float dt) {
     vec3 bv = game.ball.vel;
     vec3 bp0 = bp;
     vec3 bv0 = bv;
-
-    game.bvh.node_infos.length = 0;
-    for (int i = 0; i < golf->level->entities.length; i++) {
-        golf_entity_t *entity = &golf->level->entities.data[i];
-
-        switch (entity->type) {
-            case MODEL_ENTITY:
-            case GEO_ENTITY: {
-                golf_model_t *model = golf_entity_get_model(entity);
-                golf_transform_t *transform = golf_entity_get_transform(entity);
-                assert(model && transform);
-
-                golf_transform_t world_transform = golf_entity_get_world_transform(golf->level, entity);
-                mat4 model_mat = golf_transform_get_model_mat(world_transform);
-                vec_push(&game.bvh.node_infos, golf_bvh_node_info(&game.bvh, i, model, model_mat, golf->level));
-                break;
-            }
-            case BALL_START_ENTITY:
-            case HOLE_ENTITY:
-            case GROUP_ENTITY:
-                break;
-        }
-    }
-    golf_bvh_construct(&game.bvh, game.bvh.node_infos);
 
     int num_contacts;
     golf_ball_contact_t contacts[MAX_NUM_CONTACTS];
@@ -420,24 +384,28 @@ void golf_game_update(float dt) {
     }
 
     if (game.state > GOLF_GAME_STATE_MAIN_MENU) {
+        float physics_dt = 1.0f/60.0f;
         game.physics.time_behind += dt;
 
-        vec3 bp_prev = game.ball.pos;
-        while (game.physics.time_behind >= 0) {
-            float physics_dt = 1.0f/60.0f;
+        vec3 bp_prev = V3(0, 0, 0);
+        int num_ticks = 0;
+        while (game.physics.time_behind >= 0 && num_ticks < 5) {
+            bp_prev = game.ball.pos;
             _physics_tick(physics_dt);
             game.physics.time_behind -= physics_dt;
+            num_ticks++;
         }
+
+        float alpha = (float)(-game.physics.time_behind / physics_dt);
+        game.ball.draw_pos = vec3_add(vec3_scale(game.ball.pos, 1.0f - alpha), vec3_scale(bp_prev, alpha));
     }
 
     {
         vec3 cam_delta = vec3_rotate_y(V3(2.6f, 1.5f, 0), game.cam.angle);
-        graphics->cam_pos = vec3_add(game.ball.pos, cam_delta);
-        graphics->cam_dir = vec3_normalize(vec3_sub(vec3_add(game.ball.pos, V3(0, 0.3f, 0)), graphics->cam_pos));
-    }
-
-    if (game.debug_inputs) {
-        _golf_game_debug_inputs();
+        vec3 wanted_pos = vec3_add(game.ball.draw_pos, cam_delta);
+        vec3 diff = vec3_sub(wanted_pos, graphics->cam_pos);
+        graphics->cam_pos = vec3_add(graphics->cam_pos, vec3_scale(diff, 0.5f));
+        graphics->cam_dir = vec3_normalize(vec3_sub(vec3_add(game.ball.draw_pos, V3(0, 0.3f, 0)), graphics->cam_pos));
     }
 }
 
@@ -464,10 +432,38 @@ void golf_game_start_level(void) {
         }
     }
 
+    {
+        game.bvh.node_infos.length = 0;
+        for (int i = 0; i < golf->level->entities.length; i++) {
+            golf_entity_t *entity = &golf->level->entities.data[i];
+
+            switch (entity->type) {
+                case MODEL_ENTITY:
+                case GEO_ENTITY: {
+                    golf_model_t *model = golf_entity_get_model(entity);
+                    golf_transform_t *transform = golf_entity_get_transform(entity);
+                    assert(model && transform);
+
+                    golf_transform_t world_transform = golf_entity_get_world_transform(golf->level, entity);
+                    mat4 model_mat = golf_transform_get_model_mat(world_transform);
+                    vec_push(&game.bvh.node_infos, golf_bvh_node_info(&game.bvh, i, model, model_mat, golf->level));
+                    break;
+                }
+                case BALL_START_ENTITY:
+                case HOLE_ENTITY:
+                case GROUP_ENTITY:
+                    break;
+            }
+        }
+        golf_bvh_construct(&game.bvh, game.bvh.node_infos);
+    }
+
     game.ball.pos = ball_start_pos;
+    game.ball.draw_pos = ball_start_pos;
+
     vec3 cam_delta = vec3_rotate_y(V3(2.6f, 1.5f, 0), game.cam.angle);
-    graphics->cam_pos = vec3_add(ball_start_pos, cam_delta);
-    graphics->cam_dir = vec3_normalize(vec3_sub(vec3_add(game.ball.pos, V3(0, 1, 0)), graphics->cam_pos));
+    graphics->cam_pos = vec3_add(game.ball.draw_pos, cam_delta);
+    graphics->cam_dir = vec3_normalize(vec3_sub(vec3_add(game.ball.draw_pos, V3(0, 0.3f, 0)), graphics->cam_pos));
 }
 
 void golf_game_start_aiming(void) {
@@ -484,6 +480,7 @@ void golf_game_hit_ball(vec2 aim_delta) {
     vec3 aim_direction = V3(aim_delta.x, 0, aim_delta.y);
     aim_direction = vec3_normalize(vec3_rotate_y(aim_direction, game.cam.angle - 0.5f * MF_PI));
     game.ball.vel = vec3_scale(aim_direction, 15.0f);
+    game.ball.is_moving = true;
 
     game.physics.collision_history.length = 0;
 }

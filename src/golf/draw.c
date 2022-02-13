@@ -242,7 +242,7 @@ static void _draw_level(void) {
     }
 
     {
-        vec3 ball_pos = game->ball.pos;
+        vec3 ball_pos = game->ball.draw_pos;
         vec3 ball_scale = V3(game->ball.radius, game->ball.radius, game->ball.radius);
         golf_model_t *model = golf_data_get_model("data/models/sphere.obj");
         mat4 model_mat = mat4_multiply_n(2,

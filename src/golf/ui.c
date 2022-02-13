@@ -376,6 +376,7 @@ static bool _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name,
         return false;
     }
 
+    entity->aim_circle.t += dt;
 
     float ui_scale = graphics->viewport_size.x / 720.0f;
     vec2 pos = golf_graphics_world_to_screen(game->ball.pos);
@@ -393,13 +394,18 @@ static bool _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name,
     golf_texture_t *texture = entity->aim_circle.texture;
 
     for (int i = 0; i < num_squares; i++) {
-        float theta = 2.0f * MF_PI * i / num_squares;
+        float a = entity->aim_circle.t / entity->aim_circle.total_time;
+        float theta = 2.0f * MF_PI * i / num_squares + 2.0f * MF_PI * a;
         vec2 p = V2(pos.x + size.x * cosf(theta), pos.y + size.y * sinf(theta));
-        vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_image, p, square_size, 0, 
+
+        float rotation = acosf(sinf(theta));
+        if (cosf(theta) > 0) {
+            rotation *= -1;
+        }
+
+        vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_image, p, square_size, rotation, 
                     V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0)));
     }
-
-
 
     bool in_aim_circle = false;
     if (inputs->is_touch) {
@@ -453,9 +459,7 @@ static void _golf_ui_main_menu(float dt) {
     }
 }
 
-static void _golf_ui_in_game_waiting_for_aim(float dt) {
-    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
-
+static void _golf_ui_camera_controls(float dt) {
     bool is_down;
     if (inputs->is_touch) {
         is_down = inputs->touch_down && !inputs->touch_ended;
@@ -505,20 +509,20 @@ static void _golf_ui_in_game_waiting_for_aim(float dt) {
         game->cam.angle_velocity *= 0.9f;
     }
 
-    //vec3 cam_delta = vec3_rotate_y(V3(2.6f, 1.5f, 0), game->cam.angle);
-    //graphics->cam_pos = vec3_add(game->ball.pos, cam_delta);
-    //graphics->cam_dir = vec3_normalize(vec3_sub(game->ball.pos, graphics->cam_pos));
+}
+
+static void _golf_ui_in_game_waiting_for_aim(float dt) {
+    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
 
     if (_golf_ui_aim_circle_name(layout, "aim_circle", false, dt, NULL)) {
         golf_game_start_aiming();
     }
+    else {
+        _golf_ui_camera_controls(dt);
+    }
 }
 
 static void _golf_ui_in_game_aiming(float dt) {
-    //if (!inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
-    //golf_game_stop_aiming();
-    //}
-
     golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
     vec2 aim_delta;
     _golf_ui_aim_circle_name(layout, "aim_circle", true, dt, &aim_delta);
@@ -535,6 +539,10 @@ static void _golf_ui_in_game_aiming(float dt) {
     }
 }
 
+static void _golf_ui_in_game_watching_ball(float dt) {
+    _golf_ui_camera_controls(dt);
+}
+
 static void _golf_ui_in_game(float dt) {
     switch (game->state) {
         case GOLF_GAME_STATE_MAIN_MENU:
@@ -544,6 +552,9 @@ static void _golf_ui_in_game(float dt) {
             break;
         case GOLF_GAME_STATE_AIMING:
             _golf_ui_in_game_aiming(dt);
+            break;
+        case GOLF_GAME_STATE_WATCHING_BALL:
+            _golf_ui_in_game_watching_ball(dt);
             break;
     }
 }

@@ -12,7 +12,6 @@ typedef struct golf_graphics {
 
     mat4 ui_proj_mat, proj_mat, view_mat, proj_view_mat;
     vec3 cam_pos, cam_dir, cam_up;
-    //float cam_azimuth_angle, cam_inclination_angle;
 
     sg_pipeline render_image_pipeline,
                 diffuse_color_material_pipeline,
