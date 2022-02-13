@@ -10,6 +10,8 @@ typedef struct golf_bvh golf_bvh_t;
 
 typedef struct golf_bvh_face {
     vec3 a, b, c;
+    float restitution, friction, vel_scale;
+    char material_name[GOLF_MAX_NAME_LEN];
 } golf_bvh_face_t;
 typedef vec_t(golf_bvh_face_t) vec_golf_bvh_face_t;
 
@@ -24,7 +26,7 @@ typedef struct golf_bvh_node_info {
     int face_start, face_count;
 } golf_bvh_node_info_t;
 typedef vec_t(golf_bvh_node_info_t) vec_golf_bvh_node_info_t;
-golf_bvh_node_info_t golf_bvh_node_info(golf_bvh_t *bvh, int idx, golf_model_t *model, mat4 model_mat);
+golf_bvh_node_info_t golf_bvh_node_info(golf_bvh_t *bvh, int idx, golf_model_t *model, mat4 model_mat, golf_level_t *level);
 
 typedef struct golf_bvh_node golf_bvh_node_t;
 typedef struct golf_bvh_node {
@@ -47,7 +49,7 @@ typedef struct golf_ball_contact {
     bool is_ignored;
     triangle_contact_type_t type;
     vec3 position, normal, velocity;
-    float distance, penetration, resitution, friction, impulse_mag, vel_scale, cull_dot;
+    float distance, penetration, impulse_mag, cull_dot;
     golf_bvh_face_t face;
 } golf_ball_contact_t;
 

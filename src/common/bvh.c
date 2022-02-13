@@ -3,6 +3,8 @@
 #include <assert.h>
 #include <float.h>
 
+#include "common/log.h"
+
 static void _update_aabb(golf_bvh_aabb_t *aabb, vec3 p) {
     if (p.x < aabb->min.x) aabb->min.x = p.x;
     if (p.y < aabb->min.y) aabb->min.y = p.y;
@@ -12,36 +14,50 @@ static void _update_aabb(golf_bvh_aabb_t *aabb, vec3 p) {
     if (p.z > aabb->max.z) aabb->max.z = p.z;
 }
 
-golf_bvh_node_info_t golf_bvh_node_info(golf_bvh_t *bvh, int idx, golf_model_t *model, mat4 model_mat) {
+golf_bvh_node_info_t golf_bvh_node_info(golf_bvh_t *bvh, int idx, golf_model_t *model, mat4 model_mat, golf_level_t *level) {
     golf_bvh_node_info_t info;
     info.idx = idx;
     info.face_start = bvh->faces.length;
     info.face_count = model->positions.length / 3;
     info.pos = V3(0, 0, 0);
 
-    for (int i = 0; i < model->positions.length; i += 3) {
-        vec3 a = vec3_apply_mat4(model->positions.data[i + 0], 1, model_mat);
-        vec3 b = vec3_apply_mat4(model->positions.data[i + 1], 1, model_mat);
-        vec3 c = vec3_apply_mat4(model->positions.data[i + 2], 1, model_mat);
+    for (int i = 0; i < model->groups.length; i++) {
+        golf_model_group_t group = model->groups.data[i];
 
-        info.pos = vec3_add(info.pos, a);
-        info.pos = vec3_add(info.pos, b);
-        info.pos = vec3_add(info.pos, c);
-
-        golf_bvh_face_t face;
-        face.a = a;
-        face.b = b;
-        face.c = c;
-        vec_push(&bvh->faces, face);
-
-        if (i == 0) {
-            info.aabb.min = a;
-            info.aabb.max = a;
+        golf_material_t material;
+        if (!golf_level_get_material(level, group.material_name, &material)) {
+            golf_log_warning("Could not find material %s", group.material_name);
+            material = golf_material_texture("", 0, 0, 0, "data/textures/fallback.png");
         }
 
-        _update_aabb(&info.aabb, a);
-        _update_aabb(&info.aabb, b);
-        _update_aabb(&info.aabb, c);
+        for (int j = 0; j < group.vertex_count; j += 3) {
+            int v_idx = group.start_vertex + j;
+            vec3 a = vec3_apply_mat4(model->positions.data[v_idx  + 0], 1, model_mat);
+            vec3 b = vec3_apply_mat4(model->positions.data[v_idx  + 1], 1, model_mat);
+            vec3 c = vec3_apply_mat4(model->positions.data[v_idx  + 2], 1, model_mat);
+
+            info.pos = vec3_add(info.pos, a);
+            info.pos = vec3_add(info.pos, b);
+            info.pos = vec3_add(info.pos, c);
+
+            golf_bvh_face_t face;
+            face.a = a;
+            face.b = b;
+            face.c = c;
+            face.restitution = material.restitution;
+            face.friction = material.friction;
+            face.vel_scale = material.vel_scale;
+            vec_push(&bvh->faces, face);
+
+            if (i == 0) {
+                info.aabb.min = a;
+                info.aabb.max = a;
+            }
+
+            _update_aabb(&info.aabb, a);
+            _update_aabb(&info.aabb, b);
+            _update_aabb(&info.aabb, c);
+        }
     }
 
     info.pos = vec3_scale(info.pos, 1.0f / model->positions.length);

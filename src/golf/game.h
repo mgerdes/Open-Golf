@@ -15,7 +15,7 @@ typedef struct golf_game {
     golf_game_state_t state;
 
     struct {
-        vec3 pos, vel;
+        vec3 pos, vel, draw_pos;
         float radius;
     } ball;
 
@@ -24,6 +24,10 @@ typedef struct golf_game {
     struct {
         float angle, angle_velocity;
     } cam;
+
+    struct {
+        float time_behind;
+    } physics;
 } golf_game_t;
 
 golf_game_t *golf_game_get(void);
