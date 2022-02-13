@@ -61,11 +61,11 @@ static void frame(void) {
     golf_data_update(dt);
 
     golf_graphics_begin_frame(dt);
-    golf_graphics_set_viewport(V2(0, 0), V2(sapp_width(), sapp_height()));
     golf_inputs_begin_frame();
 
     golf_update(dt);
 
+    golf_graphics_set_viewport(V2(0, 0), V2(sapp_width(), sapp_height()));
     golf_graphics_update_proj_view_mat();
     golf_draw();
 

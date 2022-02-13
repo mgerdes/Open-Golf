@@ -8,7 +8,7 @@
             "size": [150, 150],
             "time": 1.0,
             "texture": "data/textures/colors/white.png",
-            "square_size": [10, 10],
+            "square_size": [5, 5],
             "num_squares": 25
         },
         {

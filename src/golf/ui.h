@@ -26,6 +26,12 @@ typedef struct golf_ui {
         } main_menu;
     };
 
+    struct {
+        bool is_set;
+        vec2 viewport_size_when_set;
+        float size;
+    } aim_circle;
+
     float scroll_list_y;
     bool scroll_list_moving;
     vec_golf_ui_draw_entity_t draw_entities;

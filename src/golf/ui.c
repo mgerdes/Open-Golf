@@ -38,6 +38,8 @@ void golf_ui_init(void) {
     memset(&ui, 0, sizeof(ui));
     vec_init(&ui.draw_entities, "ui");
     ui.state = GOLF_UI_MAIN_MENU;
+    ui.aim_circle.viewport_size_when_set = V2(-1, -1);
+    ui.aim_circle.size = -1;
 
     inputs = golf_inputs_get();
     graphics = golf_graphics_get();
@@ -374,10 +376,19 @@ static bool _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name,
         return false;
     }
 
+
     float ui_scale = graphics->viewport_size.x / 720.0f;
-    vec2 pos = _golf_ui_layout_get_entity_pos(layout, *entity);
-    vec2 size = vec2_scale(entity->size, ui_scale);
-    vec2 square_size = vec2_scale(entity->aim_circle.square_size, ui_scale);
+    vec2 pos = golf_graphics_world_to_screen(game->ball.pos);
+
+    if (!vec2_equal(graphics->viewport_size, ui.aim_circle.viewport_size_when_set)) {
+        ui.aim_circle.viewport_size_when_set = graphics->viewport_size;
+        vec3 dir = vec3_normalize(vec3_cross(graphics->cam_dir, graphics->cam_up));
+        vec2 pos0 = golf_graphics_world_to_screen(vec3_add(game->ball.pos, vec3_scale(dir, 4 * game->ball.radius)));
+        ui.aim_circle.size = vec2_distance(pos0, pos);
+    }
+
+    vec2 size = V2(ui.aim_circle.size, ui.aim_circle.size);
+    vec2 square_size = entity->aim_circle.square_size;
     int num_squares = entity->aim_circle.num_squares;
     golf_texture_t *texture = entity->aim_circle.texture;
 
