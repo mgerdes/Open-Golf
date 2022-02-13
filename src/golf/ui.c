@@ -424,14 +424,14 @@ static bool _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name,
     if (draw_aimer) {
         vec2 p = inputs->is_touch ? inputs->touch_pos : inputs->mouse_pos;
 
-        golf_texture_t *white = golf_data_get_texture("data/textures/colors/white.png");
+        golf_texture_t *texture = golf_data_get_texture("data/textures/aimer.png");
         vec2 aimer_pos = vec2_scale(vec2_add(p, pos), 0.5f);
-        vec2 aimer_size = V2(vec2_distance(p, pos), 10);
+        vec2 aimer_size = V2(2.0f * 0.5f * ui.aim_circle.size, vec2_distance(p, pos));
         vec2 delta = vec2_normalize(vec2_sub(p, pos));
         float aimer_angle = acosf(vec2_dot(delta, V2(0, 1)));
         if (delta.x > 0) aimer_angle *= -1;
-        aimer_angle += 0.5f * MF_PI;
-        vec_push(&ui.draw_entities, _golf_ui_draw_entity(white->sg_image, aimer_pos, aimer_size, aimer_angle, V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0))); 
+        //aimer_angle += 0.5f * MF_PI;
+        vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_image, aimer_pos, aimer_size, aimer_angle, V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0))); 
 
         if (aim_delta) {
             *aim_delta = delta;
