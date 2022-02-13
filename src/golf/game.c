@@ -420,7 +420,7 @@ void golf_game_update(float dt) {
     {
         vec3 cam_delta = vec3_rotate_y(V3(2.6f, 1.5f, 0), game.cam.angle);
         graphics->cam_pos = vec3_add(game.ball.pos, cam_delta);
-        graphics->cam_dir = vec3_normalize(vec3_sub(game.ball.pos, graphics->cam_pos));
+        graphics->cam_dir = vec3_normalize(vec3_sub(vec3_add(game.ball.pos, V3(0, 0.3f, 0)), graphics->cam_pos));
     }
 }
 
@@ -450,7 +450,7 @@ void golf_game_start_level(void) {
     game.ball.pos = ball_start_pos;
     vec3 cam_delta = vec3_rotate_y(V3(2.6f, 1.5f, 0), game.cam.angle);
     graphics->cam_pos = vec3_add(ball_start_pos, cam_delta);
-    graphics->cam_dir = vec3_normalize(vec3_sub(ball_start_pos, graphics->cam_pos));
+    graphics->cam_dir = vec3_normalize(vec3_sub(vec3_add(game.ball.pos, V3(0, 1, 0)), graphics->cam_pos));
 }
 
 void golf_game_start_aiming(void) {

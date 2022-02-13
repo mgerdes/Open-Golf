@@ -497,9 +497,9 @@ static void _golf_ui_in_game_waiting_for_aim(float dt) {
         game->cam.angle_velocity *= 0.9f;
     }
 
-    vec3 cam_delta = vec3_rotate_y(V3(2.6f, 1.5f, 0), game->cam.angle);
-    graphics->cam_pos = vec3_add(game->ball.pos, cam_delta);
-    graphics->cam_dir = vec3_normalize(vec3_sub(game->ball.pos, graphics->cam_pos));
+    //vec3 cam_delta = vec3_rotate_y(V3(2.6f, 1.5f, 0), game->cam.angle);
+    //graphics->cam_pos = vec3_add(game->ball.pos, cam_delta);
+    //graphics->cam_dir = vec3_normalize(vec3_sub(game->ball.pos, graphics->cam_pos));
 
     if (_golf_ui_aim_circle_name(layout, "aim_circle", false, dt, NULL)) {
         golf_game_start_aiming();
