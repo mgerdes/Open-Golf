@@ -24,6 +24,8 @@ typedef enum golf_game_state {
 typedef struct golf_game {
     golf_game_state_t state;
 
+    bool debug_inputs;
+
     struct {
         vec3 pos, vel, draw_pos;
         float time_going_slow, radius;
@@ -33,7 +35,7 @@ typedef struct golf_game {
     golf_bvh_t bvh;
 
     struct {
-        float angle, angle_velocity;
+        float angle, start_angle_velocity, angle_velocity;
     } cam;
 
     struct {

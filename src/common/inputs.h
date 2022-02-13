@@ -6,6 +6,8 @@
 
 typedef struct golf_inputs {
     bool is_touch;
+
+    int frame_num, frame_touch_began, frame_touch_ended;
     bool touch_began, touch_down, touch_ended;
     vec2 touch_down_pos, touch_pos, prev_touch_pos;
     bool button_down[SAPP_MAX_KEYCODES];

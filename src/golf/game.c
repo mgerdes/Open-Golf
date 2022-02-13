@@ -20,6 +20,18 @@ golf_game_t *golf_game_get(void) {
     return &game;
 }
 
+static void _golf_game_debug_inputs(void) {
+    if (igBegin("Debug Inputs", NULL, ImGuiWindowFlags_None)) {
+        igText("touch_began: %d\n", inputs->frame_touch_began);
+        igText("touch_down: %d\n", inputs->touch_down);
+        igText("touch_ended: %d\n", inputs->frame_touch_ended);
+        igText("cam_angle: %f\n", game.cam.angle);
+        igText("cam_angle_velocity: %f\n", game.cam.angle_velocity);
+        igText("start_cam_angle_velocity: %f\n", game.cam.start_angle_velocity);
+        igEnd();
+    }
+}
+
 static void _golf_game_debug_tab(void) {
     static const char *contact_type_string[] = {
         "Point A", "Point B", "Point C",
@@ -74,6 +86,7 @@ void golf_game_init(void) {
     inputs = golf_inputs_get();
 
     game.state = GOLF_GAME_STATE_MAIN_MENU;
+    game.debug_inputs = false;
     game.cam.angle = 0;
     game.cam.angle_velocity = 0;
 
@@ -421,6 +434,10 @@ void golf_game_update(float dt) {
         vec3 cam_delta = vec3_rotate_y(V3(2.6f, 1.5f, 0), game.cam.angle);
         graphics->cam_pos = vec3_add(game.ball.pos, cam_delta);
         graphics->cam_dir = vec3_normalize(vec3_sub(vec3_add(game.ball.pos, V3(0, 0.3f, 0)), graphics->cam_pos));
+    }
+
+    if (game.debug_inputs) {
+        _golf_game_debug_inputs();
     }
 }
 

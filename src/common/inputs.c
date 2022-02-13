@@ -2,6 +2,9 @@
 
 #include <string.h>
 
+#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
+#include "cimgui/cimgui.h"
+
 #include "common/graphics.h"
 #include "common/maths.h"
 
@@ -44,6 +47,7 @@ void golf_inputs_begin_frame(void) {
 }
 
 void golf_inputs_end_frame(void) {
+    inputs.frame_num++;
     if (inputs.touch_ended) {
         inputs.touch_down = false;
     }
@@ -71,22 +75,28 @@ void golf_inputs_handle_event(const sapp_event *event) {
     inputs.mouse_pos.y = event->mouse_y - graphics->viewport_pos.y;
     _get_world_ray_from_window_pos(inputs.mouse_pos, &inputs.mouse_ray_orig, &inputs.mouse_ray_dir);
 
-    if (event->num_touches > 0) {
-        inputs.touch_pos = V2(event->touches[0].pos_x, event->touches[0].pos_y);
-    }
 
     if (event->type == SAPP_EVENTTYPE_TOUCHES_BEGAN) {
+        if (event->num_touches > 0) {
+            inputs.touch_pos = V2(event->touches[0].pos_x, event->touches[0].pos_y);
+        }
+        inputs.frame_touch_began = inputs.frame_num;
         inputs.touch_began = true;
         inputs.touch_down = true;
         inputs.touch_down_pos = inputs.touch_pos;
         inputs.prev_touch_pos = inputs.touch_pos;
     }
     else if (event->type == SAPP_EVENTTYPE_TOUCHES_MOVED) {
+        if (event->num_touches > 0) {
+            inputs.touch_pos = V2(event->touches[0].pos_x, event->touches[0].pos_y);
+        }
     }
     else if (event->type == SAPP_EVENTTYPE_TOUCHES_ENDED) {
+        inputs.frame_touch_ended = inputs.frame_num;
         inputs.touch_ended = true;
     }
     else if (event->type == SAPP_EVENTTYPE_TOUCHES_CANCELLED) {
+        inputs.frame_touch_ended = inputs.frame_num;
         inputs.touch_ended = true;
     }
 

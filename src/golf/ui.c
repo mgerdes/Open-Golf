@@ -456,7 +456,14 @@ static void _golf_ui_main_menu(float dt) {
 static void _golf_ui_in_game_waiting_for_aim(float dt) {
     golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
 
-    if (inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT] || inputs->touch_down) {
+    bool is_down;
+    if (inputs->is_touch) {
+        is_down = inputs->touch_down && !inputs->touch_ended;
+    }
+    else {
+        is_down = inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT];
+    }
+    if (is_down) {
         vec2 aim_circle_pos = vec2_scale(graphics->window_size, 0.5f);
 
         vec2 pos0, pos1;
@@ -491,6 +498,7 @@ static void _golf_ui_in_game_waiting_for_aim(float dt) {
 
         game->cam.angle = angle1;
         game->cam.angle_velocity = (angle1 - angle0) / dt;
+        game->cam.start_angle_velocity = game->cam.angle_velocity;
     }
     else {
         game->cam.angle += game->cam.angle_velocity * dt;
