@@ -16,5 +16,7 @@
     "data/models/editor/ball_start.obj",
     "data/textures/fallback.png",
     "data/textures/colors/white.png",
+    "data/textures/colors/red.png",
+    "data/textures/colors/yellow.png",
     "data/textures/loading.gif"
 ]

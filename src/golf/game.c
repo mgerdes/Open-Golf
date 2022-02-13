@@ -21,9 +21,48 @@ golf_game_t *golf_game_get(void) {
 }
 
 static void _golf_game_debug_tab(void) {
-    for (int i = 0; i < game.physics.contact_history.length; i++) {
-        golf_ball_contact_t contact = game.physics.contact_history.data[i]; 
-        igText("Contact %d", i); 
+    static const char *contact_type_string[] = {
+        "Point A", "Point B", "Point C",
+        "Edge AB", "Edge AC", "Edge BC",
+        "Face",
+    };
+
+    igCheckbox("Debug draw collisions", &game.physics.debug_draw_collisions);
+    for (int i = 0; i < game.physics.collision_history.length; i++) {
+        golf_collision_data_t *collision = &game.physics.collision_history.data[i]; 
+        collision->is_highlighted = false;
+        if (igTreeNodeEx_Ptr((void*)i, ImGuiTreeNodeFlags_None, "Collision %d", i)) {
+            collision->is_highlighted = true;
+            for (int i = 0; i < collision->num_contacts; i++) {
+                golf_ball_contact_t contact = collision->contacts[i];
+                igText("Contact %d", i);
+                igText("    Type: %s", contact_type_string[contact.type]);
+                igText("    Ignored: %d", contact.is_ignored);
+                igText("    Penetration: %0.2f", contact.penetration);
+                igText("    Impulse Magnitude: %0.2f", contact.impulse_mag);
+                igText("    Impulse: <%0.2f, %0.2f, %0.2f>", 
+                        contact.impulse.x, contact.impulse.y, contact.impulse.z);
+                igText("    Restitution: %0.2f", contact.face.restitution); 
+                igText("    Velocity Scale: %0.2f", contact.face.vel_scale);
+                igText("    Start Speed: %0.2f", vec3_length(contact.v0));
+                igText("    End Speed: %0.2f", vec3_length(contact.v1));
+                igText("    Start Velocity: <%0.2f, %0.2f, %0.2f>", 
+                        contact.v0.x, contact.v0.y, contact.v0.z);
+                igText("    End Velocity: <%0.2f, %0.2f, %0.2f>", 
+                        contact.v1.x, contact.v1.y, contact.v1.z);
+                igText("    Cull Dot: %0.2f", contact.cull_dot);
+                igText("    Position: <%0.2f, %0.2f, %0.2f>",
+                        contact.position.x, contact.position.y, contact.position.z);
+                igText("    Normal: <%0.2f, %0.2f, %0.2f>",
+                        contact.normal.x, contact.normal.y, contact.normal.z);
+                igText("    Triangle Normal: <%0.2f, %0.2f, %0.2f>",
+                        contact.triangle_normal.x, contact.triangle_normal.y, contact.triangle_normal.z);
+            }
+            igTreePop();
+        }
+        if (igIsItemHovered(ImGuiHoveredFlags_None)) {
+            collision->is_highlighted = true;
+        }
     }
 }
 
@@ -45,7 +84,8 @@ void golf_game_init(void) {
     game.ball.is_moving = true;
 
     game.physics.time_behind = 0;
-    vec_init(&game.physics.contact_history, "physics");
+    game.physics.debug_draw_collisions = false;
+    vec_init(&game.physics.collision_history, "physics");
 
     golf_bvh_init(&game.bvh);
 
@@ -96,6 +136,33 @@ static void _golf_game_update_state_watching_ball(float dt) {
     }
 }
 
+int _ball_contact_cmp(const void *a, const void *b) {
+    const golf_ball_contact_t *bc0 = (golf_ball_contact_t*)a;
+    const golf_ball_contact_t *bc1 = (golf_ball_contact_t*)b;
+
+    if (bc1->distance > bc0->distance) {
+        return -1;
+    }
+    else if (bc1->distance < bc0->distance) {
+        return 1;
+    }
+    else if (bc1->face.vel_scale > bc0->face.vel_scale) {
+        return 1;
+    }
+    else if (bc1->face.vel_scale < bc0->face.vel_scale) {
+        return -1;
+    }
+    else if (bc1->face.restitution > bc0->face.restitution) {
+        return -1;
+    }
+    else if (bc1->face.restitution < bc0->face.restitution) {
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
+
 static void _physics_tick(float dt) {
     float EPS = 0.001f;
 
@@ -130,13 +197,14 @@ static void _physics_tick(float dt) {
     golf_bvh_construct(&game.bvh, game.bvh.node_infos);
 
     int num_contacts;
-    golf_ball_contact_t contacts[8];
-    golf_bvh_ball_test(&game.bvh, bp, br, bv, contacts, &num_contacts, 8);
+    golf_ball_contact_t contacts[MAX_NUM_CONTACTS];
+    golf_bvh_ball_test(&game.bvh, bp, br, bv, contacts, &num_contacts, MAX_NUM_CONTACTS);
+    qsort(contacts, num_contacts, sizeof(golf_ball_contact_t), _ball_contact_cmp);
 
     // Filter out the contacts
     {
         int num_processed_vertices = 0;
-        vec3 processed_vertices[9 * 8];
+        vec3 processed_vertices[9 * MAX_NUM_CONTACTS];
 
         // All face contacts are used
         for (int i = 0; i < num_contacts; i++) {
@@ -168,11 +236,11 @@ static void _physics_tick(float dt) {
             }
             else if (contact->type == TRIANGLE_CONTACT_AC) {
                 e0 = contact->face.a;
-                e0 = contact->face.c;
+                e1 = contact->face.c;
             }
             else if (contact->type == TRIANGLE_CONTACT_BC) {
                 e0 = contact->face.b;
-                e0 = contact->face.c;
+                e1 = contact->face.c;
             }
 
             for (int j = 0; j < num_processed_vertices; j += 3) {
@@ -240,8 +308,8 @@ static void _physics_tick(float dt) {
 
         vec3 n = contact->normal;
         vec3 vr = vec3_sub(bv, contact->velocity);
-        float cull_dot = vec3_dot(n, vec3_normalize(vr));
-        if (cull_dot > 0.01f) {
+        contact->cull_dot = vec3_dot(n, vec3_normalize(vr));
+        if (contact->cull_dot > 0.01f) {
             contact->is_ignored = true;
             continue;
         }
@@ -292,11 +360,15 @@ static void _physics_tick(float dt) {
         bp = vec3_add(bp, correction);
     }
 
-    if (game.ball.is_moving) {
+    if (game.ball.is_moving && num_contacts > 0) {
+        golf_collision_data_t collision;
+        collision.num_contacts = num_contacts;
         for (int i = 0; i < num_contacts; i++) {
-            golf_ball_contact_t contact = contacts[i];
-            vec_push(&game.physics.contact_history, contact);
+            collision.contacts[i] = contacts[i];
         }
+        collision.ball_pos = bp0;
+        collision.is_highlighted = false;
+        vec_push(&game.physics.collision_history, collision);
     }
 
     if (vec3_length(bv) < 0.5f) {
@@ -396,5 +468,5 @@ void golf_game_hit_ball(vec2 aim_delta) {
     aim_direction = vec3_normalize(vec3_rotate_y(aim_direction, game.cam.angle - 0.5f * MF_PI));
     game.ball.vel = vec3_scale(aim_direction, 15.0f);
 
-    game.physics.contact_history.length = 0;
+    game.physics.collision_history.length = 0;
 }

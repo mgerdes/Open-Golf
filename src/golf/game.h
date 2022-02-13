@@ -4,6 +4,16 @@
 #include "common/bvh.h"
 #include "common/level.h"
 
+#define MAX_NUM_CONTACTS 8
+
+typedef struct golf_collision_data {
+    bool is_highlighted;
+    vec3 ball_pos;
+    int num_contacts;
+    golf_ball_contact_t contacts[MAX_NUM_CONTACTS]; 
+} golf_collision_data_t;
+typedef vec_t(golf_collision_data_t) vec_golf_collision_data_t;
+
 typedef enum golf_game_state {
     GOLF_GAME_STATE_MAIN_MENU,
     GOLF_GAME_STATE_WAITING_FOR_AIM,
@@ -28,7 +38,9 @@ typedef struct golf_game {
 
     struct {
         float time_behind;
-        vec_golf_ball_contact_t contact_history; 
+
+        bool debug_draw_collisions;
+        vec_golf_collision_data_t collision_history; 
     } physics;
 } golf_game_t;
 

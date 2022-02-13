@@ -219,6 +219,28 @@ static void _draw_level(void) {
         }
     }
 
+    if (game->physics.debug_draw_collisions) {
+        sg_apply_pipeline(graphics->texture_material_pipeline);
+        for (int i = 0; i < game->physics.collision_history.length; i++) {
+            golf_collision_data_t collision = game->physics.collision_history.data[i];
+
+            vec3 pos = collision.ball_pos;
+            vec3 scale = V3(0.01f, 0.01f, 0.01f);
+            golf_model_t *model = golf_data_get_model("data/models/sphere.obj");
+            mat4 model_mat = mat4_multiply_n(2, mat4_translation(pos), mat4_scale(scale));
+
+            golf_material_t material;
+            if (collision.is_highlighted) {
+                material = golf_material_texture("", 0, 0, 0, "data/textures/colors/yellow.png");
+            }
+            else {
+                material = golf_material_texture("", 0, 0, 0, "data/textures/colors/red.png");
+            }
+
+            _golf_renderer_draw_with_material(model, 0, model->positions.length, model_mat, material, 1);
+        }
+    }
+
     {
         vec3 ball_pos = game->ball.pos;
         vec3 ball_scale = V3(game->ball.radius, game->ball.radius, game->ball.radius);
