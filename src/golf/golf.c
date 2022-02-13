@@ -18,7 +18,6 @@ void golf_init(void) {
 
     golf_game_init();
     golf_ui_init();
-    golf_debug_console_init();
 }
 
 void golf_update(float dt) {

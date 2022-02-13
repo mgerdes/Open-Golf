@@ -260,9 +260,10 @@ static bool _golf_bvh_ball_test(golf_bvh_t *bvh, int node_idx, vec3 bp, float br
                 golf_ball_contact_t contact;
                 contact.is_ignored = false;
                 contact.position = cp;
+                contact.triangle_normal = vec3_normalize(vec3_cross(vec3_sub(face.b, face.a), vec3_sub(face.c, face.a)));
                 switch (type) {
                     case TRIANGLE_CONTACT_FACE:
-                        contact.normal = vec3_normalize(vec3_cross(vec3_sub(face.b, face.a), vec3_sub(face.c, face.a)));
+                        contact.normal = contact.triangle_normal;
                         break;
                     case TRIANGLE_CONTACT_AB:
                     case TRIANGLE_CONTACT_AC:

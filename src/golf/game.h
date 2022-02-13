@@ -28,6 +28,7 @@ typedef struct golf_game {
 
     struct {
         float time_behind;
+        vec_golf_ball_contact_t contact_history; 
     } physics;
 } golf_game_t;
 

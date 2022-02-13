@@ -50,6 +50,7 @@ static void frame(void) {
         golf_data_init();
         golf_data_load("data/title_screen.static_data", false);
 
+        golf_debug_console_init();
         golf_inputs_init();
         golf_graphics_init();
         golf_draw_init();

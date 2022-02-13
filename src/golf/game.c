@@ -2,9 +2,13 @@
 
 #include <assert.h>
 
-#include "common/log.h"
+#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
+#include "cimgui/cimgui.h"
+
+#include "common/debug_console.h"
 #include "common/graphics.h"
 #include "common/inputs.h"
+#include "common/log.h"
 #include "golf/golf.h"
 
 static golf_game_t game;
@@ -14,6 +18,13 @@ static golf_inputs_t *inputs;
 
 golf_game_t *golf_game_get(void) {
     return &game;
+}
+
+static void _golf_game_debug_tab(void) {
+    for (int i = 0; i < game.physics.contact_history.length; i++) {
+        golf_ball_contact_t contact = game.physics.contact_history.data[i]; 
+        igText("Contact %d", i); 
+    }
 }
 
 void golf_game_init(void) {
@@ -34,12 +45,15 @@ void golf_game_init(void) {
     game.ball.is_moving = true;
 
     game.physics.time_behind = 0;
+    vec_init(&game.physics.contact_history, "physics");
 
     golf_bvh_init(&game.bvh);
 
     graphics->cam_pos = V3(5, 5, 5);
     graphics->cam_dir = vec3_normalize(V3(-5, -5, -5));
     graphics->cam_up = V3(0, 1, 0);
+
+    golf_debug_console_add_tab("Game", _golf_game_debug_tab);
 }
 
 static void _golf_game_update_state_main_menu(float dt) {
@@ -85,6 +99,12 @@ static void _golf_game_update_state_watching_ball(float dt) {
 static void _physics_tick(float dt) {
     float EPS = 0.001f;
 
+    vec3 bp = game.ball.pos;
+    float br = game.ball.radius;
+    vec3 bv = game.ball.vel;
+    vec3 bp0 = bp;
+    vec3 bv0 = bv;
+
     game.bvh.node_infos.length = 0;
     for (int i = 0; i < golf->level->entities.length; i++) {
         golf_entity_t *entity = &golf->level->entities.data[i];
@@ -111,7 +131,7 @@ static void _physics_tick(float dt) {
 
     int num_contacts;
     golf_ball_contact_t contacts[8];
-    golf_bvh_ball_test(&game.bvh, game.ball.pos, game.ball.radius, game.ball.vel, contacts, &num_contacts, 8);
+    golf_bvh_ball_test(&game.bvh, bp, br, bv, contacts, &num_contacts, 8);
 
     // Filter out the contacts
     {
@@ -219,24 +239,30 @@ static void _physics_tick(float dt) {
         }
 
         vec3 n = contact->normal;
-        vec3 vr = vec3_sub(game.ball.vel, contact->velocity);
-        float cull_dot = vec3_dot(vec3_normalize(vr), n);
+        vec3 vr = vec3_sub(bv, contact->velocity);
+        float cull_dot = vec3_dot(n, vec3_normalize(vr));
         if (cull_dot > 0.01f) {
             contact->is_ignored = true;
             continue;
         }
 
-        float imp = -(1 + contact->face.restitution) * vec3_dot(vr, n);
+        float e = contact->face.restitution;
+        float v_scale = contact->face.vel_scale;
+        float imp = -(1 + e) * vec3_dot(vr, n);
 
-        game.ball.vel = vec3_add(game.ball.vel, vec3_scale(n, imp));
-        game.ball.vel = vec3_scale(game.ball.vel, contact->face.vel_scale);
+        contact->impulse_mag = imp; 
+        contact->impulse = vec3_scale(n, imp);
+        contact->v0 = bv0;
 
-        vec3 t = vec3_sub(game.ball.vel, vec3_scale(n, vec3_dot(game.ball.vel, n)));
-        if (vec3_length(t) > EPS) {
+        bv = vec3_add(bv, contact->impulse);
+        bv = vec3_scale(bv, v_scale);
+
+        vec3 t = vec3_sub(bv, vec3_scale(n, vec3_dot(bv, n)));
+        if (vec3_length(t) > 0.0001f) {
             t = vec3_normalize(t);
 
             float jt = -vec3_dot(vr, t);
-            if (fabsf(jt) > EPS) {
+            if (fabsf(jt) > 0.0001f) {
                 float friction = contact->face.friction;
                 if (jt > imp * friction) {
                     jt = imp * friction;
@@ -245,13 +271,15 @@ static void _physics_tick(float dt) {
                     jt = -imp * friction;
                 }
 
-                game.ball.vel = vec3_add(game.ball.vel, vec3_scale(t, jt));
+                bv = vec3_add(bv, vec3_scale(t, jt));
             }
         }
+
+        contact->v1 = bv;
     }
 
-    game.ball.vel = vec3_add(game.ball.vel, V3(0, -9.8f * dt, 0));
-    game.ball.pos = vec3_add(game.ball.pos, vec3_scale(game.ball.vel, dt));
+    bv = vec3_add(bv, V3(0, -9.8f * dt, 0));
+    bp = vec3_add(bp, vec3_scale(bv, dt));
 
     for (int i = 0; i < num_contacts; i++) {
         golf_ball_contact_t *contact = &contacts[i];
@@ -261,28 +289,33 @@ static void _physics_tick(float dt) {
 
         float pen = fmaxf(contact->penetration, 0);
         vec3 correction = vec3_scale(contact->normal, pen * 0.5f);
-        game.ball.pos = vec3_add(game.ball.pos, correction);
+        bp = vec3_add(bp, correction);
     }
 
-    if (vec3_length(game.ball.vel) < 0.5f) {
+    if (game.ball.is_moving) {
+        for (int i = 0; i < num_contacts; i++) {
+            golf_ball_contact_t contact = contacts[i];
+            vec_push(&game.physics.contact_history, contact);
+        }
+    }
+
+    if (vec3_length(bv) < 0.5f) {
         game.ball.time_going_slow += dt;
     }
     else {
         game.ball.time_going_slow = 0.0f;
     }
 
-    if (!game.ball.is_moving && vec3_length(game.ball.vel) > 0.5f) {
+    if (!game.ball.is_moving && vec3_length(bv) > 0.5f) {
         game.ball.is_moving = true;
     }
     if (game.ball.is_moving) {
+        game.ball.pos = bp;
+        game.ball.vel = bv;
         if (game.ball.time_going_slow > 0.5f) {
             game.ball.is_moving = false;
         }
     }
-    else {
-        game.ball.vel = V3(0, 0, 0);
-    }
-
 }
 
 void golf_game_update(float dt) {
@@ -362,4 +395,6 @@ void golf_game_hit_ball(vec2 aim_delta) {
     vec3 aim_direction = V3(aim_delta.x, 0, aim_delta.y);
     aim_direction = vec3_normalize(vec3_rotate_y(aim_direction, game.cam.angle - 0.5f * MF_PI));
     game.ball.vel = vec3_scale(aim_direction, 15.0f);
+
+    game.physics.contact_history.length = 0;
 }
