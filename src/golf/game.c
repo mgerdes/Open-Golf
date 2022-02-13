@@ -29,7 +29,9 @@ void golf_game_init(void) {
 
     game.ball.pos = V3(0, 0, 0);
     game.ball.vel = V3(0, 0, 0);
-    game.ball.radius = 0.14f;
+    game.ball.radius = 0.12f;
+    game.ball.time_going_slow = 0;
+    game.ball.is_moving = true;
 
     game.physics.time_behind = 0;
 
@@ -75,6 +77,9 @@ static void _golf_game_update_state_aiming(float dt) {
 }
 
 static void _golf_game_update_state_watching_ball(float dt) {
+    if (!game.ball.is_moving) {
+        game.state = GOLF_GAME_STATE_WAITING_FOR_AIM;
+    }
 }
 
 static void _physics_tick(float dt) {
@@ -245,6 +250,9 @@ static void _physics_tick(float dt) {
         }
     }
 
+    game.ball.vel = vec3_add(game.ball.vel, V3(0, -9.8f * dt, 0));
+    game.ball.pos = vec3_add(game.ball.pos, vec3_scale(game.ball.vel, dt));
+
     for (int i = 0; i < num_contacts; i++) {
         golf_ball_contact_t *contact = &contacts[i];
         if (contact->is_ignored) {
@@ -256,8 +264,25 @@ static void _physics_tick(float dt) {
         game.ball.pos = vec3_add(game.ball.pos, correction);
     }
 
-    game.ball.vel = vec3_add(game.ball.vel, V3(0, -9.8 * dt, 0));
-    game.ball.pos = vec3_add(game.ball.pos, vec3_scale(game.ball.vel, dt));
+    if (vec3_length(game.ball.vel) < 0.5f) {
+        game.ball.time_going_slow += dt;
+    }
+    else {
+        game.ball.time_going_slow = 0.0f;
+    }
+
+    if (!game.ball.is_moving && vec3_length(game.ball.vel) > 0.5f) {
+        game.ball.is_moving = true;
+    }
+    if (game.ball.is_moving) {
+        if (game.ball.time_going_slow > 0.5f) {
+            game.ball.is_moving = false;
+        }
+    }
+    else {
+        game.ball.vel = V3(0, 0, 0);
+    }
+
 }
 
 void golf_game_update(float dt) {
@@ -336,5 +361,5 @@ void golf_game_hit_ball(vec2 aim_delta) {
 
     vec3 aim_direction = V3(aim_delta.x, 0, aim_delta.y);
     aim_direction = vec3_normalize(vec3_rotate_y(aim_direction, game.cam.angle - 0.5f * MF_PI));
-    game.ball.vel = vec3_scale(aim_direction, 5.0f);
+    game.ball.vel = vec3_scale(aim_direction, 15.0f);
 }

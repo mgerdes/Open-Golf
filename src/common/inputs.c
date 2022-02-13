@@ -31,6 +31,7 @@ void golf_inputs_init(void) {
 #if GOLF_PLATFORM_ANDROID | GOLF_PLATFORM_IOS
     inputs.is_touch = true;
 #else
+    inputs.is_touch = false;
 #endif
 }
 

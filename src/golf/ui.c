@@ -388,35 +388,40 @@ static bool _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name,
                     V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0)));
     }
 
-    vec2 mp = inputs->mouse_pos;
-    vec2 tp = inputs->touch_pos;
 
-    float mp_dx = pos.x - mp.x;
-    float mp_dy = pos.y - mp.y;
 
-    float tp_dx = pos.x - tp.x;
-    float tp_dy = pos.y - tp.y;
-
-    bool in_aim_circle = (mp_dx * mp_dx + mp_dy * mp_dy <= size.x * size.y) ||
-        (tp_dx * tp_dx + tp_dy * tp_dy <= size.x * size.y);
+    bool in_aim_circle = false;
+    if (inputs->is_touch) {
+        vec2 tp = inputs->touch_pos;
+        float tp_dx = pos.x - tp.x;
+        float tp_dy = pos.y - tp.y;
+        in_aim_circle = (tp_dx * tp_dx + tp_dy * tp_dy <= size.x * size.y);
+    }
+    else {
+        vec2 mp = inputs->mouse_pos;
+        float mp_dx = pos.x - mp.x;
+        float mp_dy = pos.y - mp.y;
+        in_aim_circle = (mp_dx * mp_dx + mp_dy * mp_dy <= size.x * size.y);
+    }
 
     if (draw_aimer) {
+        vec2 p = inputs->is_touch ? inputs->touch_pos : inputs->mouse_pos;
+
         golf_texture_t *white = golf_data_get_texture("data/textures/colors/white.png");
-        vec2 aimer_pos = vec2_scale(vec2_add(mp, pos), 0.5f);
-        vec2 aimer_size = V2(vec2_distance(mp, pos), 10);
-        vec2 delta = vec2_normalize(vec2_sub(mp, pos));
+        vec2 aimer_pos = vec2_scale(vec2_add(p, pos), 0.5f);
+        vec2 aimer_size = V2(vec2_distance(p, pos), 10);
+        vec2 delta = vec2_normalize(vec2_sub(p, pos));
         float aimer_angle = acosf(vec2_dot(delta, V2(0, 1)));
         if (delta.x > 0) aimer_angle *= -1;
         aimer_angle += 0.5f * MF_PI;
-        vec_push(&ui.draw_entities, _golf_ui_draw_entity(white->sg_image, aimer_pos, aimer_size, aimer_angle,
-                    V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0))); 
+        vec_push(&ui.draw_entities, _golf_ui_draw_entity(white->sg_image, aimer_pos, aimer_size, aimer_angle, V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0))); 
 
         if (aim_delta) {
             *aim_delta = delta;
         }
     }
 
-    return in_aim_circle && inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT];
+    return in_aim_circle && (inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT] || inputs->touch_down);
 }
 
 static void _golf_ui_title_screen(float dt) {
@@ -444,14 +449,14 @@ static void _golf_ui_in_game_waiting_for_aim(float dt) {
         vec2 aim_circle_pos = vec2_scale(graphics->window_size, 0.5f);
 
         vec2 pos0, pos1;
-        if (inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
-            pos0 = inputs->mouse_pos;
-            pos1 = inputs->prev_mouse_pos;
+        if (inputs->is_touch) {
+            pos0 = inputs->touch_pos;
+            pos1 = inputs->prev_touch_pos;
         }
         else
         {
-            pos0 = inputs->touch_pos;
-            pos1 = inputs->prev_touch_pos;
+            pos0 = inputs->mouse_pos;
+            pos1 = inputs->prev_mouse_pos;
         }
 
         vec2 delta = vec2_sub(pos0, pos1);
@@ -499,7 +504,14 @@ static void _golf_ui_in_game_aiming(float dt) {
     vec2 aim_delta;
     _golf_ui_aim_circle_name(layout, "aim_circle", true, dt, &aim_delta);
 
-    if (inputs->mouse_clicked[SAPP_MOUSEBUTTON_LEFT]) {
+    bool hit_ball = false;
+    if (inputs->is_touch) {
+        hit_ball = !inputs->touch_down;
+    }
+    else {
+        hit_ball = inputs->mouse_clicked[SAPP_MOUSEBUTTON_LEFT];
+    }
+    if (hit_ball) {
         golf_game_hit_ball(aim_delta);
     }
 }

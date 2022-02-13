@@ -11,7 +11,6 @@ typedef struct golf_bvh golf_bvh_t;
 typedef struct golf_bvh_face {
     vec3 a, b, c;
     float restitution, friction, vel_scale;
-    char material_name[GOLF_MAX_NAME_LEN];
 } golf_bvh_face_t;
 typedef vec_t(golf_bvh_face_t) vec_golf_bvh_face_t;
 

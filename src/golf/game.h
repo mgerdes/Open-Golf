@@ -16,7 +16,8 @@ typedef struct golf_game {
 
     struct {
         vec3 pos, vel, draw_pos;
-        float radius;
+        float time_going_slow, radius;
+        bool is_moving;
     } ball;
 
     golf_bvh_t bvh;
