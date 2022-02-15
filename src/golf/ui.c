@@ -15,9 +15,10 @@ static golf_ui_t ui;
 static golf_inputs_t *inputs; 
 static golf_graphics_t *graphics; 
 static golf_game_t *game; 
+static golf_config_t *game_cfg; 
 static golf_t *golf; 
 
-static golf_ui_draw_entity_t _golf_ui_draw_entity(sg_image image, vec2 pos, vec2 size, float angle, vec2 uv0, vec2 uv1, float is_font, vec4 overlay_color) {
+static golf_ui_draw_entity_t _golf_ui_draw_entity(sg_image image, vec2 pos, vec2 size, float angle, vec2 uv0, vec2 uv1, float is_font, vec4 overlay_color, float alpha) {
     golf_ui_draw_entity_t entity;
     entity.image = image;
     entity.pos = pos;
@@ -27,6 +28,7 @@ static golf_ui_draw_entity_t _golf_ui_draw_entity(sg_image image, vec2 pos, vec2
     entity.uv1 = uv1;
     entity.is_font = is_font;
     entity.overlay_color = overlay_color;
+    entity.alpha = alpha;
     return entity;
 }
 
@@ -44,6 +46,7 @@ void golf_ui_init(void) {
     inputs = golf_inputs_get();
     graphics = golf_graphics_get();
     game = golf_game_get();
+    game_cfg = golf_data_get_config("data/config/game.cfg");
     golf = golf_get();
 }
 
@@ -163,7 +166,7 @@ static void _golf_ui_pixel_pack_square_section(vec2 pos, vec2 size, float tile_s
     }
 
     vec_push(&ui.draw_entities, _golf_ui_draw_entity(pixel_pack->texture->sg_image, V2(px, py), V2(sx, sy), 0,
-                uv0, uv1, 0, overlay_color));
+                uv0, uv1, 0, overlay_color, 1));
 }
 
 static void _golf_ui_pixel_pack_square(golf_ui_layout_t *layout, golf_ui_layout_entity_t entity) {
@@ -286,7 +289,7 @@ static void _golf_ui_text(golf_ui_layout_t *layout, golf_ui_layout_entity_t enti
         vec4 overlay_color = entity.text.color;
 
         vec_push(&ui.draw_entities, _golf_ui_draw_entity(atlas.sg_image, V2(px, py), V2(sx, sy), 0,
-                    uv0, uv1, 1, overlay_color));
+                    uv0, uv1, 1, overlay_color, 1));
 
         cur_x += sz_scale * xadvance;
 
@@ -366,7 +369,7 @@ static void _golf_ui_gif_texture_name(golf_ui_layout_t *layout, const char *name
     if (frame >= texture->num_frames) frame = texture->num_frames - 1;
 
     vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_images[frame], pos, size, 0,
-                V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0)));
+                V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0), 1));
 }
 
 static bool _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name, bool draw_aimer, float dt, vec2 *aim_delta) {
@@ -378,25 +381,92 @@ static bool _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name,
 
     entity->aim_circle.t += dt;
 
-    float ui_scale = graphics->viewport_size.x / 720.0f;
+    float ui_scale = graphics->viewport_size.y / 1280.0f;
     vec2 pos = golf_graphics_world_to_screen(game->ball.pos);
 
     if (!vec2_equal(graphics->viewport_size, ui.aim_circle.viewport_size_when_set)) {
         ui.aim_circle.viewport_size_when_set = graphics->viewport_size;
         vec3 dir = vec3_normalize(vec3_cross(graphics->cam_dir, graphics->cam_up));
-        vec2 pos0 = golf_graphics_world_to_screen(vec3_add(game->ball.pos, vec3_scale(dir, 4 * game->ball.radius)));
+        vec2 pos0 = golf_graphics_world_to_screen(vec3_add(game->ball.pos, vec3_scale(dir, 2 * game->ball.radius)));
         ui.aim_circle.size = vec2_distance(pos0, pos);
     }
 
     vec2 size = V2(ui.aim_circle.size, ui.aim_circle.size);
-    vec2 square_size = entity->aim_circle.square_size;
+    vec2 square_size = vec2_scale(entity->aim_circle.square_size, ui_scale);
     int num_squares = entity->aim_circle.num_squares;
     golf_texture_t *texture = entity->aim_circle.texture;
+
+    float circle_scale = 1;
+    if (draw_aimer) {
+        vec2 p = inputs->is_touch ? inputs->touch_pos : inputs->mouse_pos;
+        float aimer_length = vec2_distance(p, pos);
+
+        golf_texture_t *texture = golf_data_get_texture("data/textures/aimer.png");
+        vec2 aimer_pos = vec2_scale(vec2_add(p, pos), 0.5f);
+        vec2 aimer_size = V2(2 * ui.aim_circle.size, aimer_length);
+        vec2 delta = vec2_normalize(vec2_sub(p, pos));
+        float aimer_angle = acosf(vec2_dot(delta, V2(0, 1)));
+        if (delta.x > 0) aimer_angle *= -1;
+
+        float vert_scale = (1280.0f / graphics->viewport_size.y);
+        aimer_length = aimer_length * vert_scale;
+
+        float min_length = golf_config_get_num(game_cfg, "aim_min_length");
+        float max_length = golf_config_get_num(game_cfg, "aim_max_length");
+        if (aimer_length > max_length) {
+            aimer_size.y = max_length / vert_scale; 
+            aimer_pos = vec2_add(pos, vec2_scale(delta, 0.5f * aimer_size.y));
+        }
+
+        vec4 wanted_color = V4(0, 0, 0, 1);
+        float power = (aimer_size.y * vert_scale - min_length) / (max_length - min_length);
+        if (power < golf_config_get_num(game_cfg, "aim_green_power")) {
+            wanted_color = golf_config_get_vec4(game_cfg, "aim_green_color");
+        }
+        else if (power < golf_config_get_num(game_cfg, "aim_yellow_power")) {
+            wanted_color = golf_config_get_vec4(game_cfg, "aim_yellow_color");
+        }
+        else if (power < golf_config_get_num(game_cfg, "aim_red_power")) {
+            wanted_color = golf_config_get_vec4(game_cfg, "aim_red_color");
+        }
+        else {
+            wanted_color = golf_config_get_vec4(game_cfg, "aim_dark_red_color");
+        }
+        vec4 color = ui.aim_circle.aimer_color;
+        color = vec4_add(color, vec4_scale(vec4_sub(wanted_color, color), 0.05f));
+        ui.aim_circle.aimer_color = color;
+        float alpha = aimer_length / min_length;
+        if (alpha > 1) alpha = 1;
+        circle_scale = 1 - alpha;
+
+        vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_image, aimer_pos, aimer_size, aimer_angle, V2(0, 0), V2(1, 1), 0, color, alpha)); 
+
+        if (aim_delta) {
+            *aim_delta = delta;
+        }
+
+        float min_angle = golf_config_get_num(game_cfg, "aim_rotate_min_angle");
+        float max_angle = golf_config_get_num(game_cfg, "aim_rotate_max_angle");
+        float rotate_speed = golf_config_get_num(game_cfg, "aim_rotate_speed");
+        if (aimer_angle > min_angle) {
+            float a = 1.0f - (max_angle - aimer_angle) / (max_angle - min_angle);
+            if (a > 1) a = 1;
+            game->cam.angle -= rotate_speed * a * dt;
+        }
+        if (aimer_angle < -min_angle) {
+            float a = 1.0f + (-max_angle - aimer_angle) / (max_angle - min_angle);
+            if (a > 1) a = 1;
+            game->cam.angle += rotate_speed * a * dt;
+        }
+    }
 
     for (int i = 0; i < num_squares; i++) {
         float a = entity->aim_circle.t / entity->aim_circle.total_time;
         float theta = 2.0f * MF_PI * i / num_squares + 2.0f * MF_PI * a;
-        vec2 p = V2(pos.x + size.x * cosf(theta), pos.y + size.y * sinf(theta));
+
+        float min_scale = CFG_NUM(game_cfg, "aim_circle_min_scale");
+        float s = min_scale + (1 - min_scale) * circle_scale;
+        vec2 p = V2(pos.x + s * size.x * cosf(theta), pos.y + s * size.y * sinf(theta));
 
         float rotation = acosf(sinf(theta));
         if (cosf(theta) > 0) {
@@ -404,7 +474,7 @@ static bool _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name,
         }
 
         vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_image, p, square_size, rotation, 
-                    V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0)));
+                    V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0), circle_scale));
     }
 
     bool in_aim_circle = false;
@@ -419,23 +489,6 @@ static bool _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name,
         float mp_dx = pos.x - mp.x;
         float mp_dy = pos.y - mp.y;
         in_aim_circle = (mp_dx * mp_dx + mp_dy * mp_dy <= size.x * size.y);
-    }
-
-    if (draw_aimer) {
-        vec2 p = inputs->is_touch ? inputs->touch_pos : inputs->mouse_pos;
-
-        golf_texture_t *texture = golf_data_get_texture("data/textures/aimer.png");
-        vec2 aimer_pos = vec2_scale(vec2_add(p, pos), 0.5f);
-        vec2 aimer_size = V2(2.0f * 0.5f * ui.aim_circle.size, vec2_distance(p, pos));
-        vec2 delta = vec2_normalize(vec2_sub(p, pos));
-        float aimer_angle = acosf(vec2_dot(delta, V2(0, 1)));
-        if (delta.x > 0) aimer_angle *= -1;
-        //aimer_angle += 0.5f * MF_PI;
-        vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_image, aimer_pos, aimer_size, aimer_angle, V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0))); 
-
-        if (aim_delta) {
-            *aim_delta = delta;
-        }
     }
 
     return in_aim_circle && (inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT] || inputs->touch_down);
@@ -515,6 +568,7 @@ static void _golf_ui_in_game_waiting_for_aim(float dt) {
     golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
 
     if (_golf_ui_aim_circle_name(layout, "aim_circle", false, dt, NULL)) {
+        ui.aim_circle.aimer_color = golf_config_get_vec4(game_cfg, "aim_green_color");
         golf_game_start_aiming();
     }
     else {
@@ -527,6 +581,7 @@ static void _golf_ui_in_game_aiming(float dt) {
     vec2 aim_delta;
     _golf_ui_aim_circle_name(layout, "aim_circle", true, dt, &aim_delta);
 
+    game->aim_line.aim_delta = aim_delta;
     bool hit_ball = false;
     if (inputs->is_touch) {
         hit_ball = !inputs->touch_down;

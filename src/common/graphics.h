@@ -21,7 +21,8 @@ typedef struct golf_graphics {
                 ui_pipeline,
                 hole_pass1_pipeline,
                 hole_pass2_pipeline,
-                fxaa_pipeline;
+                fxaa_pipeline,
+                aim_line_pipeline;
 } golf_graphics_t;
 
 golf_graphics_t *golf_graphics_get(void);

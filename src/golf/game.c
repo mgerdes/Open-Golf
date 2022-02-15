@@ -5,6 +5,7 @@
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "cimgui/cimgui.h"
 
+#include "common/data.h"
 #include "common/debug_console.h"
 #include "common/graphics.h"
 #include "common/inputs.h"
@@ -15,6 +16,7 @@ static golf_game_t game;
 static golf_t *golf;
 static golf_graphics_t *graphics;
 static golf_inputs_t *inputs;
+static golf_config_t *game_cfg;
 
 golf_game_t *golf_game_get(void) {
     return &game;
@@ -72,6 +74,7 @@ void golf_game_init(void) {
     golf = golf_get();
     graphics = golf_graphics_get();
     inputs = golf_inputs_get();
+    game_cfg = golf_data_get_config("data/config/game.cfg");
 
     game.state = GOLF_GAME_STATE_MAIN_MENU;
     game.cam.angle = 0;
@@ -89,6 +92,10 @@ void golf_game_init(void) {
     vec_init(&game.physics.collision_history, "physics");
 
     golf_bvh_init(&game.bvh);
+
+    game.aim_line.aim_delta = V2(0, 0);
+    game.aim_line.offset = V2(0, 0);
+    game.aim_line.num_points = 0;
 
     graphics->cam_pos = V3(5, 5, 5);
     graphics->cam_dir = vec3_normalize(V3(-5, -5, -5));
@@ -129,6 +136,39 @@ static void _golf_game_update_state_waiting_for_aim(float dt) {
 }
 
 static void _golf_game_update_state_aiming(float dt) {
+    vec3 aim_direction = V3(game.aim_line.aim_delta.x, 0, game.aim_line.aim_delta.y);
+    aim_direction = vec3_normalize(vec3_rotate_y(aim_direction, game.cam.angle - 0.5f * MF_PI));
+
+    // Create aim line
+    {
+        game.aim_line.offset.x += -3 * dt;
+        game.aim_line.num_points = 0;
+        vec3 cur_point = game.ball.pos;
+        vec3 cur_dir = aim_direction;
+        float max_length = 4;
+        float t = 0;
+        while (true) {
+            if (game.aim_line.num_points == MAX_AIM_LINE_POINTS) break;
+            int idx = game.aim_line.num_points++;
+            game.aim_line.points[idx] = cur_point;
+            if (t >= max_length) break;
+
+            golf_bvh_face_t hit_face;
+            float hit_t;
+            int hit_idx;
+            if (golf_bvh_ray_test(&game.bvh, cur_point, cur_dir, &hit_t, &hit_idx, &hit_face)) {
+                vec3 normal = vec3_normalize(vec3_cross(vec3_sub(hit_face.b, hit_face.a), vec3_sub(hit_face.c, hit_face.a)));
+                cur_point = vec3_add(cur_point, vec3_scale(cur_dir, hit_t));
+                cur_point = vec3_add(cur_point, vec3_scale(cur_dir, -0.095f));
+                cur_dir = vec3_reflect_with_restitution(cur_dir, normal, 1);
+                t += hit_t;
+            }
+            else {
+                cur_point = vec3_add(cur_point, vec3_scale(cur_dir, max_length - t));
+                t = max_length;
+            }
+        }
+    }
 }
 
 static void _golf_game_update_state_watching_ball(float dt) {
@@ -286,7 +326,7 @@ static void _physics_tick(float dt) {
         vec3 n = contact->normal;
         vec3 vr = vec3_sub(bv, contact->velocity);
         contact->cull_dot = vec3_dot(n, vec3_normalize(vr));
-        if (contact->cull_dot > 0.01f) {
+        if (contact->cull_dot > EPS) {
             contact->is_ignored = true;
             continue;
         }
@@ -303,11 +343,11 @@ static void _physics_tick(float dt) {
         bv = vec3_scale(bv, v_scale);
 
         vec3 t = vec3_sub(bv, vec3_scale(n, vec3_dot(bv, n)));
-        if (vec3_length(t) > 0.0001f) {
+        if (vec3_length(t) > EPS) {
             t = vec3_normalize(t);
 
             float jt = -vec3_dot(vr, t);
-            if (fabsf(jt) > 0.0001f) {
+            if (fabsf(jt) > EPS) {
                 float friction = contact->face.friction;
                 if (jt > imp * friction) {
                     jt = imp * friction;
@@ -323,7 +363,8 @@ static void _physics_tick(float dt) {
         contact->v1 = bv;
     }
 
-    bv = vec3_add(bv, V3(0, -9.8f * dt, 0));
+    float gravity = -9.8f;
+    bv = vec3_add(bv, V3(0, gravity * dt, 0));
     bp = vec3_add(bp, vec3_scale(bv, dt));
 
     for (int i = 0; i < num_contacts; i++) {
@@ -387,13 +428,16 @@ void golf_game_update(float dt) {
         float physics_dt = 1.0f/60.0f;
         game.physics.time_behind += dt;
 
-        vec3 bp_prev = V3(0, 0, 0);
+        vec3 bp_prev = game.ball.pos;
         int num_ticks = 0;
         while (game.physics.time_behind >= 0 && num_ticks < 5) {
             bp_prev = game.ball.pos;
             _physics_tick(physics_dt);
             game.physics.time_behind -= physics_dt;
             num_ticks++;
+        }
+        while (game.physics.time_behind >= 0) {
+            game.physics.time_behind -= physics_dt;
         }
 
         float alpha = (float)(-game.physics.time_behind / physics_dt);

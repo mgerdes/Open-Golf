@@ -5,6 +5,7 @@
 #include "common/level.h"
 
 #define MAX_NUM_CONTACTS 8
+#define MAX_AIM_LINE_POINTS 5
 
 typedef struct golf_collision_data {
     bool is_highlighted;
@@ -44,6 +45,13 @@ typedef struct golf_game {
         bool debug_draw_collisions;
         vec_golf_collision_data_t collision_history; 
     } physics;
+
+    struct {
+        vec2 aim_delta;
+        vec2 offset;
+        int num_points;
+        vec3 points[MAX_AIM_LINE_POINTS];
+    } aim_line;
 } golf_game_t;
 
 golf_game_t *golf_game_get(void);

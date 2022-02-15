@@ -18,6 +18,7 @@
 #include "golf/shaders/ui.glsl.h"
 #include "golf/shaders/render_image.glsl.h"
 #include "golf/shaders/fxaa.glsl.h"
+#include "golf/shaders/aim_line.glsl.h"
 
 typedef struct golf_draw {
     vec2 game_draw_pass_size;
@@ -241,6 +242,70 @@ static void _draw_level(void) {
         }
     }
 
+    if (game->state == GOLF_GAME_STATE_AIMING) {
+        sg_apply_pipeline(graphics->aim_line_pipeline);
+
+        golf_model_t *square = golf_data_get_model("data/models/ui_square.obj");
+        sg_bindings bindings = {
+            .vertex_buffers[0] = square->sg_positions_buf,
+            .vertex_buffers[1] = square->sg_texcoords_buf,
+            .fs_images[SLOT_aim_line_image] = golf_data_get_texture("data/textures/arrow.png")->sg_image,
+        };
+        sg_apply_bindings(&bindings);
+
+        float total_length = 0;
+        for (int i = 0; i < game->aim_line.num_points - 1; i++) {
+            vec3 p0 = game->aim_line.points[i];
+            vec3 p1 = game->aim_line.points[i + 1];
+            total_length += vec3_distance(p1, p0);
+        }
+
+        vec2 offset = game->aim_line.offset;
+        float len0 = 0;
+        float len1 = 0;
+        for (int i = 0; i < game->aim_line.num_points - 1; i++) {
+            vec3 p0 = game->aim_line.points[i];
+            vec3 p1 = game->aim_line.points[i + 1];
+            vec3 dir = vec3_normalize(vec3_sub(p1, p0));
+            float len = vec3_distance(p1, p0);
+            vec2 dir2 = vec2_normalize(V2(dir.x, dir.z));
+            len0 = len1;
+            len1 += len;
+
+            float z_rotation = asinf(dir.y);
+            float y_rotation = acosf(dir2.x);
+            if (dir2.y > 0) y_rotation *= -1;
+            mat4 model_mat = mat4_multiply_n(6,
+                    mat4_translation(p0),
+                    mat4_rotation_y(y_rotation),
+                    mat4_rotation_z(z_rotation),
+                    mat4_scale(V3(0.5f * len, 1.0f, 0.1f)),
+                    mat4_translation(V3(1, 0, 0)),
+                    mat4_rotation_x(0.5f * MF_PI));
+
+            aim_line_vs_params_t vs_params = {
+                .mvp_mat = mat4_transpose(mat4_multiply(graphics->proj_view_mat, model_mat)),
+            };
+            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_aim_line_vs_params, 
+                    &(sg_range) { &vs_params, sizeof(vs_params) });
+
+            aim_line_fs_params_t fs_params = {
+                .color = V4(1.0f, 1.0f, 1.0f, 1.0f),
+                .texture_coord_offset = offset,
+                .texture_coord_scale = V2(4.0f * len, 1.0f),
+                .length0 = len0,
+                .length1 = len1,
+                .total_length = total_length,
+            };
+            sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_aim_line_fs_params, 
+                    &(sg_range) { &fs_params, sizeof(fs_params) });
+
+            sg_draw(0, square->positions.length, 1);
+
+            offset.x += 4.0f * len;
+        }
+    }
+
     {
         vec3 ball_pos = game->ball.draw_pos;
         vec3 ball_scale = V3(game->ball.radius, game->ball.radius, game->ball.radius);
@@ -359,6 +424,7 @@ static void _draw_ui(void) {
             .tex_dy = draw.uv1.y - draw.uv0.y,
             .is_font = draw.is_font,
             .color = draw.overlay_color,
+            .alpha = draw.alpha,
         };
         sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ui_fs_params,
                 &(sg_range) { &fs_params, sizeof(fs_params) });

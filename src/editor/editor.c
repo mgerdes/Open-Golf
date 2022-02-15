@@ -2517,7 +2517,7 @@ void golf_editor_update(float dt) {
             editor.hovered_idx = -1;
             float t = FLT_MAX;
             int idx = -1;
-            if (golf_bvh_ray_test(&editor.bvh, inputs->mouse_ray_orig, inputs->mouse_ray_dir, &t, &idx)) {
+            if (golf_bvh_ray_test(&editor.bvh, inputs->mouse_ray_orig, inputs->mouse_ray_dir, &t, &idx, NULL)) {
                 editor.hovered_idx = idx;
             }
         }

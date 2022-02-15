@@ -8,8 +8,8 @@
             "size": [150, 150],
             "time": 20.0,
             "texture": "data/textures/colors/white.png",
-            "square_size": [10, 5],
-            "num_squares": 25
+            "square_size": [15, 7.5],
+            "num_squares": 20
         },
         {
             "name": "loading_icon",

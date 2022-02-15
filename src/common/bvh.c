@@ -160,7 +160,7 @@ void golf_bvh_construct(golf_bvh_t *bvh, vec_golf_bvh_node_info_t node_infos) {
     bvh->parent = _golf_bvh_construct(bvh, node_infos, 0, node_infos.length);
 }
 
-static bool _golf_bvh_ray_test(golf_bvh_t *bvh, int node_idx, vec3 ro, vec3 rd, float *t, int *idx) {
+static bool _golf_bvh_ray_test(golf_bvh_t *bvh, int node_idx, vec3 ro, vec3 rd, float *t, int *idx, golf_bvh_face_t *face) {
     if (node_idx < 0) {
         return false;
     }
@@ -180,13 +180,16 @@ static bool _golf_bvh_ray_test(golf_bvh_t *bvh, int node_idx, vec3 ro, vec3 rd, 
 
         for (int i = 0; i < info.face_count; i++) {
             int face_idx = info.face_start + i; 
-            golf_bvh_face_t face = bvh->faces.data[face_idx];
-            vec3 triangle_points[3] = { face.a, face.b, face.c };
+            golf_bvh_face_t hit_face = bvh->faces.data[face_idx];
+            vec3 triangle_points[3] = { hit_face.a, hit_face.b, hit_face.c };
 
             float t0;
             int idx0;
             if (ray_intersect_triangles(ro, rd, triangle_points, 3, &t0, &idx0)) {
                 if (t0 < *t) {
+                    if (face) {
+                        *face = hit_face;
+                    }
                     *t = t0;
                     *idx = info.idx;
                 }
@@ -198,31 +201,37 @@ static bool _golf_bvh_ray_test(golf_bvh_t *bvh, int node_idx, vec3 ro, vec3 rd, 
     else {
         float t_left;
         int idx_left;
-        bool left_test = _golf_bvh_ray_test(bvh, node->left, ro, rd, &t_left, &idx_left);
+        golf_bvh_face_t left_face;
+        bool left_test = _golf_bvh_ray_test(bvh, node->left, ro, rd, &t_left, &idx_left, &left_face);
 
         float t_right;
         int idx_right;
-        bool right_test = _golf_bvh_ray_test(bvh, node->right, ro, rd, &t_right, &idx_right);
+        golf_bvh_face_t right_face;
+        bool right_test = _golf_bvh_ray_test(bvh, node->right, ro, rd, &t_right, &idx_right, &right_face);
 
         if (left_test && right_test) {
             if (t_left < t_right) {
                 *t = t_left;
                 *idx = idx_left;
+                *face = left_face;
             }
             else {
                 *t = t_right;
                 *idx = idx_right;
+                *face = right_face;
             }
             return true;
         }
         else if (left_test && !right_test) {
             *t = t_left;
             *idx = idx_left;
+            *face = left_face;
             return true;
         }
         else if (!left_test && right_test) {
             *t = t_right;
             *idx = idx_right;
+            *face = right_face;
             return true;
         }
         else {
@@ -231,8 +240,8 @@ static bool _golf_bvh_ray_test(golf_bvh_t *bvh, int node_idx, vec3 ro, vec3 rd, 
     }
 }
 
-bool golf_bvh_ray_test(golf_bvh_t *bvh, vec3 ro, vec3 rd, float *t, int *idx) {
-    return _golf_bvh_ray_test(bvh, bvh->parent, ro, rd, t, idx);    
+bool golf_bvh_ray_test(golf_bvh_t *bvh, vec3 ro, vec3 rd, float *t, int *idx, golf_bvh_face_t *face) {
+    return _golf_bvh_ray_test(bvh, bvh->parent, ro, rd, t, idx, face);    
 }
 
 static bool _golf_bvh_ball_test(golf_bvh_t *bvh, int node_idx, vec3 bp, float br, vec3 bv, golf_ball_contact_t *contacts, int *num_ball_contacts, int max_ball_contacts) {

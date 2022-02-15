@@ -9,7 +9,7 @@
 typedef struct golf_ui_draw_entity {
     sg_image image;
     vec2 pos, size, uv0, uv1;
-    float angle, is_font;
+    float angle, is_font, alpha;
     vec4 overlay_color;
 } golf_ui_draw_entity_t;
 typedef vec_t(golf_ui_draw_entity_t) vec_golf_ui_draw_entity_t;
@@ -27,6 +27,7 @@ typedef struct golf_ui {
     };
 
     struct {
+        vec4 aimer_color;
         bool is_set;
         vec2 viewport_size_when_set;
         float size;
