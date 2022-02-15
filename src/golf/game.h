@@ -47,6 +47,7 @@ typedef struct golf_game {
     } physics;
 
     struct {
+        float power;
         vec2 aim_delta;
         vec2 offset;
         int num_points;

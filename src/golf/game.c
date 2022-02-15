@@ -93,6 +93,7 @@ void golf_game_init(void) {
 
     golf_bvh_init(&game.bvh);
 
+    game.aim_line.power = 0;
     game.aim_line.aim_delta = V2(0, 0);
     game.aim_line.offset = V2(0, 0);
     game.aim_line.num_points = 0;
@@ -145,7 +146,9 @@ static void _golf_game_update_state_aiming(float dt) {
         game.aim_line.num_points = 0;
         vec3 cur_point = game.ball.pos;
         vec3 cur_dir = aim_direction;
-        float max_length = 4;
+        float min_length = CFG_NUM(game_cfg, "aim_line_min_length");
+        float max_length = CFG_NUM(game_cfg, "aim_line_max_length");
+        max_length = min_length + game.aim_line.power * (max_length - min_length);
         float t = 0;
         while (true) {
             if (game.aim_line.num_points == MAX_AIM_LINE_POINTS) break;
@@ -157,6 +160,11 @@ static void _golf_game_update_state_aiming(float dt) {
             float hit_t;
             int hit_idx;
             if (golf_bvh_ray_test(&game.bvh, cur_point, cur_dir, &hit_t, &hit_idx, &hit_face)) {
+                if (t + hit_t > max_length) {
+                    hit_t = max_length - t;
+                    t = max_length;
+                }
+                
                 vec3 normal = vec3_normalize(vec3_cross(vec3_sub(hit_face.b, hit_face.a), vec3_sub(hit_face.c, hit_face.a)));
                 cur_point = vec3_add(cur_point, vec3_scale(cur_dir, hit_t));
                 cur_point = vec3_add(cur_point, vec3_scale(cur_dir, -0.095f));

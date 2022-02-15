@@ -242,7 +242,7 @@ static void _draw_level(void) {
         }
     }
 
-    if (game->state == GOLF_GAME_STATE_AIMING) {
+    if (game->state == GOLF_GAME_STATE_AIMING && game->aim_line.power > 0) {
         sg_apply_pipeline(graphics->aim_line_pipeline);
 
         golf_model_t *square = golf_data_get_model("data/models/ui_square.obj");

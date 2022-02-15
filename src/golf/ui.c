@@ -417,6 +417,7 @@ static bool _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name,
             aimer_size.y = max_length / vert_scale; 
             aimer_pos = vec2_add(pos, vec2_scale(delta, 0.5f * aimer_size.y));
         }
+        game->aim_line.power = (aimer_length - min_length) / (max_length - min_length);
 
         vec4 wanted_color = V4(0, 0, 0, 1);
         float power = (aimer_size.y * vert_scale - min_length) / (max_length - min_length);
