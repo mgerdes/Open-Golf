@@ -312,9 +312,10 @@ static void _draw_level(void) {
         vec3 ball_pos = game->ball.draw_pos;
         vec3 ball_scale = V3(game->ball.radius, game->ball.radius, game->ball.radius);
         golf_model_t *model = golf_data_get_model("data/models/golf_ball.obj");
-        mat4 model_mat = mat4_multiply_n(2,
+        mat4 model_mat = mat4_multiply_n(3,
                 mat4_translation(ball_pos),
-                mat4_scale(ball_scale));
+                mat4_scale(ball_scale),
+                mat4_from_quat(game->ball.orientation));
         golf_texture_t *texture = golf_data_get_texture("data/textures/golf_ball_normal_map.jpg");
         vec4 color = V4(1, 1, 1, 1);
 

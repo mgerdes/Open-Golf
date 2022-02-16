@@ -84,8 +84,11 @@ void golf_game_init(void) {
     game.ball.pos = V3(0, 0, 0);
     game.ball.draw_pos = V3(0, 0, 0);
     game.ball.vel = V3(0, 0, 0);
+    game.ball.rot_vec = V3(0, 0, 0);
+    game.ball.orientation = QUAT(0, 0, 0, 1);
     game.ball.radius = 0.12f;
     game.ball.time_going_slow = 0;
+    game.ball.rot_vel = 0;
     game.ball.is_moving = true;
     game.ball.is_in_hole = false;
 
@@ -424,6 +427,9 @@ static void _physics_tick(float dt) {
         bv = vec3_add(bv, contact->impulse);
         bv = vec3_scale(bv, v_scale);
 
+        game.ball.rot_vel = vec3_length(bv) / (MF_PI * game.ball.radius);
+        game.ball.rot_vec = vec3_normalize(vec3_cross(n, bv));
+
         vec3 t = vec3_sub(bv, vec3_scale(n, vec3_dot(bv, n)));
         if (vec3_length(t) > EPS) {
             t = vec3_normalize(t);
@@ -484,6 +490,10 @@ static void _physics_tick(float dt) {
     if (game.ball.is_moving) {
         game.ball.pos = bp;
         game.ball.vel = bv;
+        game.ball.rot_vel = game.ball.rot_vel - dt * game.ball.rot_vel * CFG_NUM(game_cfg, "physics_ball_rot_scale");
+        game.ball.orientation = quat_multiply(
+                quat_create_from_axis_angle(game.ball.rot_vec, game.ball.rot_vel * dt),
+                game.ball.orientation);
         if (game.ball.time_going_slow > 0.5f) {
             game.ball.is_moving = false;
         }
