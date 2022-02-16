@@ -8,6 +8,7 @@
     "data/shaders/texture_material.glsl",
     "data/shaders/render_image.glsl",
     "data/shaders/fxaa.glsl",
+    "data/shaders/aim_line.glsl",
     "data/shaders/ui.glsl",
     "data/ui/main_menu.ui",
     "data/models/ui_square.obj",

@@ -49,9 +49,12 @@ typedef struct golf_ball_contact {
     triangle_contact_type_t type;
     vec3 position, normal, velocity, v0, v1, triangle_normal, impulse;
     float distance, penetration, impulse_mag, cull_dot;
-    golf_bvh_face_t face;
+    vec3 triangle_a, triangle_b, triangle_c;
+    float restitution, friction, vel_scale;
 } golf_ball_contact_t;
 typedef vec_t(golf_ball_contact_t) vec_golf_ball_contact_t;
+
+golf_ball_contact_t golf_ball_contact(vec3 a, vec3 b, vec3 c, vec3 bp, float br, vec3 cp, float dist, float restitution, float friction, float vel_scale, triangle_contact_type_t type);
 
 void golf_bvh_init(golf_bvh_t *bvh);
 void golf_bvh_construct(golf_bvh_t *bvh, vec_golf_bvh_node_info_t);

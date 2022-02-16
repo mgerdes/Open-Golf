@@ -104,6 +104,36 @@ static int _alloc_inner_node(golf_bvh_t *bvh, int left, int right) {
     return idx;
 }
 
+golf_ball_contact_t golf_ball_contact(vec3 a, vec3 b, vec3 c, vec3 bp, float br, vec3 cp, float dist, float restitution, float friction, float vel_scale, triangle_contact_type_t type)  {
+    golf_ball_contact_t contact;
+    contact.is_ignored = false;
+    contact.position = cp;
+    contact.triangle_normal = vec3_normalize(vec3_cross(vec3_sub(b, a), vec3_sub(c, a)));
+    switch (type) {
+        case TRIANGLE_CONTACT_FACE:
+            contact.normal = contact.triangle_normal;
+            break;
+        case TRIANGLE_CONTACT_AB:
+        case TRIANGLE_CONTACT_AC:
+        case TRIANGLE_CONTACT_BC:
+        case TRIANGLE_CONTACT_A:
+        case TRIANGLE_CONTACT_B:
+        case TRIANGLE_CONTACT_C:
+            contact.normal = vec3_normalize(vec3_sub(bp, cp));
+            break;
+    }
+    contact.velocity = V3(0, 0, 0);
+    contact.triangle_a = a;
+    contact.triangle_b = b;
+    contact.triangle_c = c;
+    contact.restitution = restitution;
+    contact.friction = friction;
+    contact.vel_scale = vel_scale;
+    contact.type = type;
+    contact.penetration = br - dist;
+    return contact;
+}
+
 void golf_bvh_init(golf_bvh_t *bvh) {
     vec_init(&bvh->faces, "bvh");
     vec_init(&bvh->node_infos, "bvh");
@@ -213,25 +243,25 @@ static bool _golf_bvh_ray_test(golf_bvh_t *bvh, int node_idx, vec3 ro, vec3 rd, 
             if (t_left < t_right) {
                 *t = t_left;
                 *idx = idx_left;
-                *face = left_face;
+                if (face) *face = left_face;
             }
             else {
                 *t = t_right;
                 *idx = idx_right;
-                *face = right_face;
+                if (face) *face = right_face;
             }
             return true;
         }
         else if (left_test && !right_test) {
             *t = t_left;
             *idx = idx_left;
-            *face = left_face;
+            if (face) *face = left_face;
             return true;
         }
         else if (!left_test && right_test) {
             *t = t_right;
             *idx = idx_right;
-            *face = right_face;
+            if (face) *face = right_face;
             return true;
         }
         else {
@@ -266,29 +296,8 @@ static bool _golf_bvh_ball_test(golf_bvh_t *bvh, int node_idx, vec3 bp, float br
             vec3 cp = closest_point_point_triangle(bp, face.a, face.b, face.c, &type);
             float dist = vec3_distance(bp, cp);
             if (dist < br) {
-                golf_ball_contact_t contact;
-                contact.is_ignored = false;
-                contact.position = cp;
-                contact.triangle_normal = vec3_normalize(vec3_cross(vec3_sub(face.b, face.a), vec3_sub(face.c, face.a)));
-                switch (type) {
-                    case TRIANGLE_CONTACT_FACE:
-                        contact.normal = contact.triangle_normal;
-                        break;
-                    case TRIANGLE_CONTACT_AB:
-                    case TRIANGLE_CONTACT_AC:
-                    case TRIANGLE_CONTACT_BC:
-                    case TRIANGLE_CONTACT_A:
-                    case TRIANGLE_CONTACT_B:
-                    case TRIANGLE_CONTACT_C:
-                        contact.normal = vec3_normalize(vec3_sub(bp, cp));
-                        break;
-                }
-                contact.velocity = V3(0, 0, 0);
-                contact.face = face;
-                contact.type = type;
-                contact.penetration = br - dist;
-
                 if (*num_ball_contacts < max_ball_contacts) {
+                    golf_ball_contact_t contact = golf_ball_contact(face.a, face.b, face.c, bp, br, cp, dist, face.restitution, face.friction, face.vel_scale, type);
                     contacts[*num_ball_contacts] = contact;
                     *num_ball_contacts = *num_ball_contacts + 1;
                 }

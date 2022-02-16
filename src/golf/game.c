@@ -44,8 +44,8 @@ static void _golf_game_debug_tab(void) {
                 igText("    Impulse Magnitude: %0.2f", contact.impulse_mag);
                 igText("    Impulse: <%0.2f, %0.2f, %0.2f>", 
                         contact.impulse.x, contact.impulse.y, contact.impulse.z);
-                igText("    Restitution: %0.2f", contact.face.restitution); 
-                igText("    Velocity Scale: %0.2f", contact.face.vel_scale);
+                igText("    Restitution: %0.2f", contact.restitution); 
+                igText("    Velocity Scale: %0.2f", contact.vel_scale);
                 igText("    Start Speed: %0.2f", vec3_length(contact.v0));
                 igText("    End Speed: %0.2f", vec3_length(contact.v1));
                 igText("    Start Velocity: <%0.2f, %0.2f, %0.2f>", 
@@ -195,16 +195,16 @@ int _ball_contact_cmp(const void *a, const void *b) {
     else if (bc1->distance < bc0->distance) {
         return 1;
     }
-    else if (bc1->face.vel_scale > bc0->face.vel_scale) {
+    else if (bc1->vel_scale > bc0->vel_scale) {
         return 1;
     }
-    else if (bc1->face.vel_scale < bc0->face.vel_scale) {
+    else if (bc1->vel_scale < bc0->vel_scale) {
         return -1;
     }
-    else if (bc1->face.restitution > bc0->face.restitution) {
+    else if (bc1->restitution > bc0->restitution) {
         return -1;
     }
-    else if (bc1->face.restitution < bc0->face.restitution) {
+    else if (bc1->restitution < bc0->restitution) {
         return 1;
     }
     else {
@@ -218,12 +218,65 @@ static void _physics_tick(float dt) {
     vec3 bp = game.ball.pos;
     float br = game.ball.radius;
     vec3 bv = game.ball.vel;
+    float bs = vec3_length(bv);
     vec3 bp0 = bp;
     vec3 bv0 = bv;
 
-    int num_contacts;
+    golf_entity_t *close_hole = NULL;
+    for (int i = 0; i < golf->level->entities.length; i++) {
+        golf_entity_t *entity = &golf->level->entities.data[i];
+        if (entity->type == HOLE_ENTITY) {
+            vec3 hp = entity->hole.transform.position;
+            vec3 hs = entity->hole.transform.scale;
+            if (vec3_distance(hp, bp) <= hs.x) {
+                close_hole = entity;
+                break;
+            }
+        }
+    }
+
+    int num_contacts = 0;
     golf_ball_contact_t contacts[MAX_NUM_CONTACTS];
-    golf_bvh_ball_test(&game.bvh, bp, br, bv, contacts, &num_contacts, MAX_NUM_CONTACTS);
+    if (close_hole) {
+        golf_model_t *model = golf_entity_get_model(close_hole);
+        golf_transform_t transform = golf_entity_get_world_transform(golf->level, close_hole);
+        mat4 model_mat = golf_transform_get_model_mat(transform);
+        for (int i = 0; i < model->positions.length; i += 3) {
+            vec3 a = vec3_apply_mat4(model->positions.data[i + 0], 1, model_mat);
+            vec3 b = vec3_apply_mat4(model->positions.data[i + 1], 1, model_mat);
+            vec3 c = vec3_apply_mat4(model->positions.data[i + 2], 1, model_mat);
+            triangle_contact_type_t type;
+            vec3 cp = closest_point_point_triangle(bp, a, b, c, &type);
+            float dist = vec3_distance(bp, cp);
+            if (dist < br) {
+                float restitution, friction, vel_scale;
+                if (type == TRIANGLE_CONTACT_AB || type == TRIANGLE_CONTACT_AC || type == TRIANGLE_CONTACT_BC) {
+                    restitution = 0.4f;
+                    if (bs > 2) {
+                        friction = 1;
+                        vel_scale = 0.95f;
+                    }
+                    else {
+                        friction = 0;
+                        vel_scale = 1;
+                    }
+                }
+                else {
+                    restitution = 0.5f;
+                    friction = 0.5f;
+                    vel_scale = 1;
+                }
+                if (num_contacts < MAX_NUM_CONTACTS) {
+                    golf_ball_contact_t contact = golf_ball_contact(a, b, c, bp, br, cp, dist, restitution, friction, vel_scale, type);
+                    contacts[num_contacts] = contact;
+                    num_contacts = num_contacts + 1;
+                }
+            }
+        }
+    }
+    else {
+        golf_bvh_ball_test(&game.bvh, bp, br, bv, contacts, &num_contacts, MAX_NUM_CONTACTS);
+    }
     qsort(contacts, num_contacts, sizeof(golf_ball_contact_t), _ball_contact_cmp);
 
     // Filter out the contacts
@@ -238,9 +291,9 @@ static void _physics_tick(float dt) {
                 continue;
             }
 
-            processed_vertices[num_processed_vertices++] = contact->face.a;
-            processed_vertices[num_processed_vertices++] = contact->face.b;
-            processed_vertices[num_processed_vertices++] = contact->face.c;
+            processed_vertices[num_processed_vertices++] = contact->triangle_a;
+            processed_vertices[num_processed_vertices++] = contact->triangle_b;
+            processed_vertices[num_processed_vertices++] = contact->triangle_c;
         }
 
         // Remove unecessary edge contacts
@@ -256,16 +309,16 @@ static void _physics_tick(float dt) {
             vec3 e0 = V3(0, 0, 0);
             vec3 e1 = V3(0, 0, 0);
             if (contact->type == TRIANGLE_CONTACT_AB) {
-                e0 = contact->face.a;
-                e1 = contact->face.b;
+                e0 = contact->triangle_a;
+                e1 = contact->triangle_b;
             }
             else if (contact->type == TRIANGLE_CONTACT_AC) {
-                e0 = contact->face.a;
-                e1 = contact->face.c;
+                e0 = contact->triangle_a;
+                e1 = contact->triangle_c;
             }
             else if (contact->type == TRIANGLE_CONTACT_BC) {
-                e0 = contact->face.b;
-                e1 = contact->face.c;
+                e0 = contact->triangle_b;
+                e1 = contact->triangle_c;
             }
 
             for (int j = 0; j < num_processed_vertices; j += 3) {
@@ -280,9 +333,9 @@ static void _physics_tick(float dt) {
                 }
             }
 
-            processed_vertices[num_processed_vertices++] = contact->face.a;
-            processed_vertices[num_processed_vertices++] = contact->face.b;
-            processed_vertices[num_processed_vertices++] = contact->face.c;
+            processed_vertices[num_processed_vertices++] = contact->triangle_a;
+            processed_vertices[num_processed_vertices++] = contact->triangle_b;
+            processed_vertices[num_processed_vertices++] = contact->triangle_c;
         }
 
         // Remove uncessary point contacts
@@ -297,13 +350,13 @@ static void _physics_tick(float dt) {
 
             vec3 p = V3(0, 0, 0);
             if (contact->type == TRIANGLE_CONTACT_A) {
-                p = contact->face.a;
+                p = contact->triangle_a;
             }
             else if (contact->type == TRIANGLE_CONTACT_B) {
-                p = contact->face.b;
+                p = contact->triangle_b;
             }
             else if (contact->type == TRIANGLE_CONTACT_C) {
-                p = contact->face.c;
+                p = contact->triangle_c;
             }
 
             for (int j = 0; j < num_processed_vertices; j++) {
@@ -318,9 +371,9 @@ static void _physics_tick(float dt) {
                 }
             }
 
-            processed_vertices[num_processed_vertices++] = contact->face.a;
-            processed_vertices[num_processed_vertices++] = contact->face.b;
-            processed_vertices[num_processed_vertices++] = contact->face.c;
+            processed_vertices[num_processed_vertices++] = contact->triangle_a;
+            processed_vertices[num_processed_vertices++] = contact->triangle_b;
+            processed_vertices[num_processed_vertices++] = contact->triangle_c;
         }
     }
 
@@ -339,8 +392,8 @@ static void _physics_tick(float dt) {
             continue;
         }
 
-        float e = contact->face.restitution;
-        float v_scale = contact->face.vel_scale;
+        float e = contact->restitution;
+        float v_scale = contact->vel_scale;
         float imp = -(1 + e) * vec3_dot(vr, n);
 
         contact->impulse_mag = imp; 
@@ -356,7 +409,7 @@ static void _physics_tick(float dt) {
 
             float jt = -vec3_dot(vr, t);
             if (fabsf(jt) > EPS) {
-                float friction = contact->face.friction;
+                float friction = contact->friction;
                 if (jt > imp * friction) {
                     jt = imp * friction;
                 }
@@ -433,7 +486,7 @@ void golf_game_update(float dt) {
     }
 
     if (game.state > GOLF_GAME_STATE_MAIN_MENU) {
-        float physics_dt = 1.0f/60.0f;
+        float physics_dt = 1.0f/120.0f;
         game.physics.time_behind += dt;
 
         vec3 bp_prev = game.ball.pos;
@@ -531,7 +584,35 @@ void golf_game_hit_ball(vec2 aim_delta) {
 
     vec3 aim_direction = V3(aim_delta.x, 0, aim_delta.y);
     aim_direction = vec3_normalize(vec3_rotate_y(aim_direction, game.cam.angle - 0.5f * MF_PI));
-    game.ball.vel = vec3_scale(aim_direction, 15.0f);
+
+    float green_power = CFG_NUM(game_cfg, "aim_green_power");
+    float yellow_power = CFG_NUM(game_cfg, "aim_yellow_power");
+    float red_power = CFG_NUM(game_cfg, "aim_red_power");
+    float green_speed = CFG_NUM(game_cfg, "aim_green_speed");
+    float yellow_speed = CFG_NUM(game_cfg, "aim_yellow_speed");
+    float red_speed = CFG_NUM(game_cfg, "aim_red_speed");
+    float dark_red_speed = CFG_NUM(game_cfg, "aim_dark_red_speed");
+    float start_speed = 0;
+    float p = game.aim_line.power;
+    if (p < green_power) {
+        float a = p / green_power;
+        start_speed = green_speed + (yellow_speed - green_speed) * a;
+    }
+    else if (p < yellow_power) {
+        float a = (p - green_power) / (yellow_power - green_power);
+        start_speed = yellow_speed + (red_speed - yellow_speed) * a;
+    }
+    else if (p < red_power) {
+        float a = (p - yellow_power) / (red_power - yellow_power);
+        start_speed = red_speed + (dark_red_speed - red_speed) * a;
+    }
+    else {
+        float a = (p - red_power) / (1 - red_power);
+        start_speed = dark_red_speed;
+    }
+    printf("%f - %f\n", p, start_speed);
+
+    game.ball.vel = vec3_scale(aim_direction, start_speed);
     game.ball.is_moving = true;
 
     game.physics.collision_history.length = 0;
