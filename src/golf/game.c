@@ -1,6 +1,7 @@
 #include "golf/game.h"
 
 #include <assert.h>
+#include <float.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "cimgui/cimgui.h"
@@ -222,15 +223,21 @@ static void _physics_tick(float dt) {
     vec3 bp0 = bp;
     vec3 bv0 = bv;
 
+    float dist_to_hole = FLT_MAX;
+    vec3 dir_to_hole = V3(0, 0, 0);
     golf_entity_t *close_hole = NULL;
     for (int i = 0; i < golf->level->entities.length; i++) {
         golf_entity_t *entity = &golf->level->entities.data[i];
         if (entity->type == HOLE_ENTITY) {
             vec3 hp = entity->hole.transform.position;
             vec3 hs = entity->hole.transform.scale;
-            if (vec3_distance(hp, bp) <= hs.x) {
+            float dist = vec3_distance(hp, bp);
+            if (dist <= hs.x) {
                 close_hole = entity;
-                break;
+            }
+            if (dist < dist_to_hole) {
+                dist_to_hole = dist;
+                dir_to_hole = vec3_normalize(vec3_sub(hp, bp));
             }
         }
     }
@@ -278,6 +285,12 @@ static void _physics_tick(float dt) {
         golf_bvh_ball_test(&game.bvh, bp, br, bv, contacts, &num_contacts, MAX_NUM_CONTACTS);
     }
     qsort(contacts, num_contacts, sizeof(golf_ball_contact_t), _ball_contact_cmp);
+
+    // Apply a force to pull the ball towards the hole
+    if (dist_to_hole < CFG_NUM(game_cfg, "physics_hole_force_distance") && num_contacts > 0) {
+        float hole_force = CFG_NUM(game_cfg, "physics_hole_force");
+        bv = vec3_add(bv, vec3_scale(dir_to_hole, hole_force));
+    }
 
     // Filter out the contacts
     {
@@ -610,7 +623,6 @@ void golf_game_hit_ball(vec2 aim_delta) {
         float a = (p - red_power) / (1 - red_power);
         start_speed = dark_red_speed;
     }
-    printf("%f - %f\n", p, start_speed);
 
     game.ball.vel = vec3_scale(aim_direction, start_speed);
     game.ball.is_moving = true;
