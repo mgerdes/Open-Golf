@@ -30,6 +30,7 @@ void main() {
 
 @fs environment_material_fs
 uniform environment_material_fs_params {
+    vec4 ball_position;
     float lightmap_texture_a;
     float uv_scale;
 };
@@ -48,9 +49,18 @@ out vec4 g_frag_color;
 void main() {
     float gi0 = (1 - lightmap_texture_a) * texture(environment_material_lightmap_texture0, frag_lightmap_uv).x; 
     float gi1 = lightmap_texture_a * texture(environment_material_lightmap_texture1, frag_lightmap_uv).x; 
+    float gi = (gi0 + gi1);
+    float dist_to_ball = distance(frag_position.xz, ball_position.xz);
+    if (dist_to_ball < 0.14 && frag_position.y < ball_position.y) {
+        float scale = (0.14 - dist_to_ball) / 0.14;   
+        gi -= scale * scale * 0.8;
+    }
+    gi = max(gi, 0);
+
     vec3 color = texture(environment_material_texture, uv_scale * frag_texturecoord).xyz; 
     color = color + 0.001 * (frag_normal.xyz + frag_position.xyz);
-    g_frag_color = vec4((gi0 + gi1) * color, 1.0);
+
+    g_frag_color = vec4(gi * color, 1.0);
     //g_frag_color *= 0.001;
     //g_frag_color += vec4(frag_lightmap_uv, 0.0, 1.0);
 }

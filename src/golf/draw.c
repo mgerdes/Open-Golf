@@ -33,7 +33,7 @@ static golf_t *golf = NULL;
 static golf_graphics_t *graphics = NULL;
 static golf_ui_t *ui = NULL;
 
-static void _golf_renderer_draw_environment_material(golf_model_t *model, int start, int count, mat4 model_mat, golf_material_t material, golf_lightmap_image_t *lightmap_image, golf_lightmap_section_t *lightmap_section, bool movement_repeats, float uv_scale, bool gi_on) {
+static void _golf_renderer_draw_environment_material(golf_model_t *model, int start, int count, mat4 model_mat, golf_material_t material, golf_lightmap_image_t *lightmap_image, golf_lightmap_section_t *lightmap_section, bool movement_repeats, float uv_scale, bool gi_on, vec3 ball_position) {
     environment_material_vs_params_t vs_params = {
         .proj_view_mat = mat4_transpose(graphics->proj_view_mat),
         .model_mat = mat4_transpose(model_mat),
@@ -69,6 +69,7 @@ static void _golf_renderer_draw_environment_material(golf_model_t *model, int st
     }
 
     environment_material_fs_params_t fs_params = {
+        .ball_position = V4(ball_position.x, ball_position.y, ball_position.z, 0),
         .lightmap_texture_a = lightmap_t,
         .uv_scale = uv_scale,
     };
@@ -214,7 +215,7 @@ static void _draw_level(void) {
                     if (movement) {
                         movement_repeats = movement->repeats;
                     }
-                    _golf_renderer_draw_environment_material(model, group.start_vertex, group.vertex_count, model_mat, material, &lightmap_image, lightmap_section, movement_repeats, uv_scale, true);
+                    _golf_renderer_draw_environment_material(model, group.start_vertex, group.vertex_count, model_mat, material, &lightmap_image, lightmap_section, movement_repeats, uv_scale, true, game->ball.draw_pos);
                     break;
                 }
             }
