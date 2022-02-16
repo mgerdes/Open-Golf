@@ -570,6 +570,10 @@ static bool _golf_model_import(const char *path, char *data, int data_len) {
                 vec2 t2 = vec2_create_from_array(&m->texcoords[2 * m2.t]);
                 vec3 n2 = vec3_create_from_array(&m->normals[3 * m2.n]);
 
+                vec3_print(n0);
+                vec3_print(n1);
+                vec3_print(n2);
+
                 vec_push(&model_material->vertices, p0.x);
                 vec_push(&model_material->vertices, p0.y);
                 vec_push(&model_material->vertices, p0.z);

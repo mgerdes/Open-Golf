@@ -19,6 +19,7 @@
 #include "golf/shaders/render_image.glsl.h"
 #include "golf/shaders/fxaa.glsl.h"
 #include "golf/shaders/aim_line.glsl.h"
+#include "golf/shaders/ball.glsl.h"
 
 typedef struct golf_draw {
     vec2 game_draw_pass_size;
@@ -309,14 +310,37 @@ static void _draw_level(void) {
     {
         vec3 ball_pos = game->ball.draw_pos;
         vec3 ball_scale = V3(game->ball.radius, game->ball.radius, game->ball.radius);
-        golf_model_t *model = golf_data_get_model("data/models/sphere.obj");
+        golf_model_t *model = golf_data_get_model("data/models/golf_ball.obj");
         mat4 model_mat = mat4_multiply_n(2,
                 mat4_translation(ball_pos),
                 mat4_scale(ball_scale));
-        golf_material_t material = golf_material_texture("", 0, 0, 0, "data/textures/colors/white.png");
+        golf_texture_t *texture = golf_data_get_texture("data/textures/golf_ball_normal_map.jpg");
+        vec4 color = V4(1, 1, 1, 1);
 
-        sg_apply_pipeline(graphics->texture_material_pipeline);
-        _golf_renderer_draw_with_material(model, 0, model->positions.length, model_mat, material, 1);
+        sg_apply_pipeline(graphics->ball_pipeline);
+
+        sg_bindings bindings = {
+            .vertex_buffers[0] = model->sg_positions_buf,
+            .vertex_buffers[1] = model->sg_normals_buf,
+            .vertex_buffers[2] = model->sg_texcoords_buf,
+            .fs_images[SLOT_ball_normal_map] = texture->sg_image,
+        };
+        sg_apply_bindings(&bindings);
+
+        ball_vs_params_t vs_params = {
+            .proj_view_mat = mat4_transpose(graphics->proj_view_mat),
+            .model_mat = mat4_transpose(model_mat),
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_ball_vs_params, 
+                &(sg_range) { &vs_params, sizeof(vs_params) });
+
+        ball_fs_params_t fs_params = {
+            .color = color,
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_ball_fs_params, 
+                &(sg_range) { &fs_params, sizeof(fs_params) });
+
+        sg_draw(0, model->positions.length, 1);
     }
 
     sg_apply_pipeline(graphics->hole_pass1_pipeline);

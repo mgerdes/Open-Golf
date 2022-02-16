@@ -87,6 +87,7 @@ void golf_game_init(void) {
     game.ball.radius = 0.12f;
     game.ball.time_going_slow = 0;
     game.ball.is_moving = true;
+    game.ball.is_in_hole = false;
 
     game.physics.time_behind = 0;
     game.physics.debug_draw_collisions = false;
@@ -181,7 +182,12 @@ static void _golf_game_update_state_aiming(float dt) {
 }
 
 static void _golf_game_update_state_watching_ball(float dt) {
-    if (!game.ball.is_moving) {
+    if (game.ball.is_in_hole) {
+        game.ball.pos = game.ball.start_pos;
+        game.ball.vel = V3(0, 0, 0);
+        game.ball.is_in_hole = false;
+    }
+    else if (!game.ball.is_moving) {
         game.state = GOLF_GAME_STATE_WAITING_FOR_AIM;
     }
 }
@@ -225,6 +231,7 @@ static void _physics_tick(float dt) {
 
     float dist_to_hole = FLT_MAX;
     vec3 dir_to_hole = V3(0, 0, 0);
+    vec3 hole_pos = V3(0, 0, 0);
     golf_entity_t *close_hole = NULL;
     for (int i = 0; i < golf->level->entities.length; i++) {
         golf_entity_t *entity = &golf->level->entities.data[i];
@@ -238,6 +245,7 @@ static void _physics_tick(float dt) {
             if (dist < dist_to_hole) {
                 dist_to_hole = dist;
                 dir_to_hole = vec3_normalize(vec3_sub(hp, bp));
+                hole_pos = hp;
             }
         }
     }
@@ -480,6 +488,14 @@ static void _physics_tick(float dt) {
             game.ball.is_moving = false;
         }
     }
+
+    {
+        // Check to see if the ball ended up in the hole
+        vec3 p = vec3_add(hole_pos, CFG_VEC3(game_cfg, "physics_in_hole_delta"));
+        if (vec3_distance(p, bp) < CFG_NUM(game_cfg, "physics_in_hole_radius")) {
+            game.ball.is_in_hole = true;
+        }
+    }
 }
 
 void golf_game_update(float dt) {
@@ -576,6 +592,7 @@ void golf_game_start_level(void) {
         golf_bvh_construct(&game.bvh, game.bvh.node_infos);
     }
 
+    game.ball.start_pos = ball_start_pos;
     game.ball.pos = ball_start_pos;
     game.ball.draw_pos = ball_start_pos;
 

@@ -19,6 +19,7 @@
 #include "golf/shaders/render_image.glsl.h"
 #include "golf/shaders/fxaa.glsl.h"
 #include "golf/shaders/aim_line.glsl.h"
+#include "golf/shaders/ball.glsl.h"
 
 static golf_graphics_t graphics;
 
@@ -274,6 +275,25 @@ void golf_graphics_init(void) {
         };
         graphics.aim_line_pipeline = sg_make_pipeline(&pipeline_desc);
     }
+
+    {
+        golf_shader_t *shader = golf_data_get_shader("data/shaders/ball.glsl");
+        sg_pipeline_desc pipeline_desc = {
+            .shader = shader->sg_shader,
+            .layout = {
+                .attrs = {
+                    [ATTR_ball_vs_position] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                    [ATTR_ball_vs_normal] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 1 },
+                    [ATTR_ball_vs_texture_coord] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 2 },
+                },
+            },
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = true,
+            },
+        };
+        graphics.ball_pipeline = sg_make_pipeline(&pipeline_desc);
+    }
 }
 
 void golf_graphics_begin_frame(float dt) {
@@ -389,6 +409,9 @@ bool golf_graphics_get_shader_desc(const char *path, sg_shader_desc *desc) {
     }
     else if (strcmp(path, "data/shaders/aim_line.glsl") == 0) {
         const_shader_desc = aim_line_shader_desc(sg_query_backend());
+    }
+    else if (strcmp(path, "data/shaders/ball.glsl") == 0) {
+        const_shader_desc = ball_shader_desc(sg_query_backend());
     }
     else {
         return false;

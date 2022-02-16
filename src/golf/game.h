@@ -28,9 +28,9 @@ typedef struct golf_game {
     bool debug_inputs;
 
     struct {
-        vec3 pos, vel, draw_pos;
+        vec3 start_pos, pos, vel, draw_pos;
         float time_going_slow, radius;
-        bool is_moving;
+        bool is_moving, is_in_hole;
     } ball;
 
     golf_bvh_t bvh;
