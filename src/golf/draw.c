@@ -45,9 +45,9 @@ static void _golf_renderer_draw_environment_material(golf_model_t *model, int st
     int sample0 = 0;
     int sample1 = 0;
     float lightmap_t = 0;
-    if (lightmap_image->time_length > 0) {
+    if (lightmap_image->time_length > 0 && lightmap_image->num_samples > 1) {
         float t = lightmap_image->cur_time / lightmap_image->time_length;
-        if (movement_repeats) {
+        if (true) {
             t = 2 * t;
             if (t > 1) {
                 t = 2 - t;
@@ -60,12 +60,12 @@ static void _golf_renderer_draw_environment_material(golf_model_t *model, int st
                 sample1 = i;
                 break;
             }
-
-            float lightmap_t0 = sample0 / ((float) num_samples - 1);
-            float lightmap_t1 = sample1 / ((float) num_samples - 1);
-            lightmap_t = (t - lightmap_t0) / (lightmap_t1 - lightmap_t0);
-            lightmap_t = golf_clampf(lightmap_t, 0, 1);
         }
+
+        float lightmap_t0 = sample0 / ((float) num_samples - 1);
+        float lightmap_t1 = sample1 / ((float) num_samples - 1);
+        lightmap_t = (t - lightmap_t0) / (lightmap_t1 - lightmap_t0);
+        lightmap_t = golf_clampf(lightmap_t, 0, 1);
     }
 
     environment_material_fs_params_t fs_params = {

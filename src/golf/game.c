@@ -96,7 +96,8 @@ void golf_game_init(void) {
     game.physics.debug_draw_collisions = false;
     vec_init(&game.physics.collision_history, "physics");
 
-    golf_bvh_init(&game.bvh);
+    golf_bvh_init(&game.physics.static_bvh);
+    golf_bvh_init(&game.physics.dynamic_bvh);
 
     game.aim_line.power = 0;
     game.aim_line.aim_delta = V2(0, 0);
@@ -161,10 +162,29 @@ static void _golf_game_update_state_aiming(float dt) {
             game.aim_line.points[idx] = cur_point;
             if (t >= max_length) break;
 
+            golf_bvh_face_t static_hit_face;
+            float static_hit_t = FLT_MAX;
+            int static_hit_idx;
+            golf_bvh_ray_test(&game.physics.static_bvh, cur_point, cur_dir, &static_hit_t, &static_hit_idx, &static_hit_face);
+
+            golf_bvh_face_t dynamic_hit_face;
+            float dynamic_hit_t = FLT_MAX;
+            int dynamic_hit_idx;
+            golf_bvh_ray_test(&game.physics.dynamic_bvh, cur_point, cur_dir, &dynamic_hit_t, &dynamic_hit_idx, &dynamic_hit_face);
+
             golf_bvh_face_t hit_face;
-            float hit_t;
-            int hit_idx;
-            if (golf_bvh_ray_test(&game.bvh, cur_point, cur_dir, &hit_t, &hit_idx, &hit_face)) {
+            float hit_t = FLT_MAX;
+
+            if (static_hit_t < dynamic_hit_t) {
+                hit_face = static_hit_face;
+                hit_t = static_hit_t;
+            }
+            else if (dynamic_hit_t < static_hit_t) {
+                hit_face = dynamic_hit_face;
+                hit_t = dynamic_hit_t;
+            }
+
+            if (hit_t < FLT_MAX) {
                 if (t + hit_t > max_length) {
                     hit_t = max_length - t;
                     t = max_length;
@@ -253,6 +273,36 @@ static void _physics_tick(float dt) {
         }
     }
 
+    // Create the BVH for entities that move
+    {
+        golf_bvh_t *bvh = &game.physics.dynamic_bvh;
+        bvh->node_infos.length = 0;
+        for (int i = 0; i < golf->level->entities.length; i++) {
+            golf_entity_t *entity = &golf->level->entities.data[i];
+
+            switch (entity->type) {
+                case MODEL_ENTITY:
+                case GEO_ENTITY: {
+                    golf_model_t *model = golf_entity_get_model(entity);
+                    golf_transform_t *transform = golf_entity_get_transform(entity);
+                    assert(model && transform);
+
+                    golf_movement_t *movement = golf_entity_get_movement(entity);
+                    if (movement && movement->type != GOLF_MOVEMENT_NONE) {
+                        golf_transform_t world_transform = golf_entity_get_world_transform(golf->level, entity);
+                        vec_push(&bvh->node_infos, golf_bvh_node_info(bvh, i, model, world_transform, movement, golf->level));
+                    }
+                    break;
+                }
+                case BALL_START_ENTITY:
+                case HOLE_ENTITY:
+                case GROUP_ENTITY:
+                    break;
+            }
+        }
+        golf_bvh_construct(bvh, bvh->node_infos);
+    }
+
     int num_contacts = 0;
     golf_ball_contact_t contacts[MAX_NUM_CONTACTS];
     if (close_hole) {
@@ -285,7 +335,8 @@ static void _physics_tick(float dt) {
                     vel_scale = 1;
                 }
                 if (num_contacts < MAX_NUM_CONTACTS) {
-                    golf_ball_contact_t contact = golf_ball_contact(a, b, c, bp, br, cp, dist, restitution, friction, vel_scale, type);
+                    vec3 vel = V3(0, 0, 0);
+                    golf_ball_contact_t contact = golf_ball_contact(a, b, c, vel, bp, br, cp, dist, restitution, friction, vel_scale, type);
                     contacts[num_contacts] = contact;
                     num_contacts = num_contacts + 1;
                 }
@@ -293,7 +344,8 @@ static void _physics_tick(float dt) {
         }
     }
     else {
-        golf_bvh_ball_test(&game.bvh, bp, br, bv, contacts, &num_contacts, MAX_NUM_CONTACTS);
+        golf_bvh_ball_test(&game.physics.static_bvh, bp, br, bv, contacts, &num_contacts, MAX_NUM_CONTACTS);
+        golf_bvh_ball_test(&game.physics.dynamic_bvh, bp, br, bv, contacts, &num_contacts, MAX_NUM_CONTACTS);
     }
     qsort(contacts, num_contacts, sizeof(golf_ball_contact_t), _ball_contact_cmp);
 
@@ -525,23 +577,46 @@ void golf_game_update(float dt) {
     }
 
     if (game.state > GOLF_GAME_STATE_MAIN_MENU) {
-        float physics_dt = 1.0f/120.0f;
-        game.physics.time_behind += dt;
+        {
+            float physics_dt = 1.0f/120.0f;
+            game.physics.time_behind += dt;
 
-        vec3 bp_prev = game.ball.pos;
-        int num_ticks = 0;
-        while (game.physics.time_behind >= 0 && num_ticks < 5) {
-            bp_prev = game.ball.pos;
-            _physics_tick(physics_dt);
-            game.physics.time_behind -= physics_dt;
-            num_ticks++;
-        }
-        while (game.physics.time_behind >= 0) {
-            game.physics.time_behind -= physics_dt;
+            vec3 bp_prev = game.ball.pos;
+            int num_ticks = 0;
+            while (game.physics.time_behind >= 0 && num_ticks < 5) {
+                bp_prev = game.ball.pos;
+                _physics_tick(physics_dt);
+                game.physics.time_behind -= physics_dt;
+                num_ticks++;
+            }
+            while (game.physics.time_behind >= 0) {
+                game.physics.time_behind -= physics_dt;
+            }
+
+            float alpha = (float)(-game.physics.time_behind / physics_dt);
+            game.ball.draw_pos = vec3_add(vec3_scale(game.ball.pos, 1.0f - alpha), vec3_scale(bp_prev, alpha));
         }
 
-        float alpha = (float)(-game.physics.time_behind / physics_dt);
-        game.ball.draw_pos = vec3_add(vec3_scale(game.ball.pos, 1.0f - alpha), vec3_scale(bp_prev, alpha));
+        for (int i = 0; i < golf->level->lightmap_images.length; i++) {
+            golf_lightmap_image_t *lightmap = &golf->level->lightmap_images.data[i];
+            if (!lightmap->active) continue;
+
+            lightmap->cur_time += dt;
+            if (lightmap->cur_time >= lightmap->time_length) {
+                lightmap->cur_time = lightmap->cur_time - lightmap->time_length;
+            }
+        }
+
+        for (int i = 0; i < golf->level->entities.length; i++) {
+            golf_entity_t *entity = &golf->level->entities.data[i];
+            golf_movement_t *movement = golf_entity_get_movement(entity);
+            if (movement) {
+                movement->t += dt;
+                if (movement->t >= movement->length) {
+                    movement->t = movement->t - movement->length;
+                }
+            }
+        }
     }
 
     {
@@ -576,8 +651,10 @@ void golf_game_start_level(void) {
         }
     }
 
+    // Create the BVH for entities that are not moving
     {
-        game.bvh.node_infos.length = 0;
+        golf_bvh_t *bvh = &game.physics.static_bvh;
+        bvh->node_infos.length = 0;
         for (int i = 0; i < golf->level->entities.length; i++) {
             golf_entity_t *entity = &golf->level->entities.data[i];
 
@@ -588,9 +665,11 @@ void golf_game_start_level(void) {
                     golf_transform_t *transform = golf_entity_get_transform(entity);
                     assert(model && transform);
 
-                    golf_transform_t world_transform = golf_entity_get_world_transform(golf->level, entity);
-                    mat4 model_mat = golf_transform_get_model_mat(world_transform);
-                    vec_push(&game.bvh.node_infos, golf_bvh_node_info(&game.bvh, i, model, model_mat, golf->level));
+                    golf_movement_t *movement = golf_entity_get_movement(entity);
+                    if (!movement || movement->type == GOLF_MOVEMENT_NONE) {
+                        golf_transform_t world_transform = golf_entity_get_world_transform(golf->level, entity);
+                        vec_push(&bvh->node_infos, golf_bvh_node_info(bvh, i, model, world_transform, NULL, golf->level));
+                    }
                     break;
                 }
                 case BALL_START_ENTITY:
@@ -599,7 +678,7 @@ void golf_game_start_level(void) {
                     break;
             }
         }
-        golf_bvh_construct(&game.bvh, game.bvh.node_infos);
+        golf_bvh_construct(bvh, bvh->node_infos);
     }
 
     game.ball.start_pos = ball_start_pos;

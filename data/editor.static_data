@@ -10,6 +10,7 @@
     "data/shaders/fxaa.glsl",
     "data/shaders/aim_line.glsl",
     "data/shaders/ui.glsl",
+    "data/shaders/ball.glsl",
     "data/ui/main_menu.ui",
     "data/models/ui_square.obj",
     "data/models/cube.obj",

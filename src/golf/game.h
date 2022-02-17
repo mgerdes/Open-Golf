@@ -34,15 +34,13 @@ typedef struct golf_game {
         bool is_moving, is_in_hole;
     } ball;
 
-    golf_bvh_t bvh;
-
     struct {
         float angle, start_angle_velocity, angle_velocity;
     } cam;
 
     struct {
+        golf_bvh_t static_bvh, dynamic_bvh;
         float time_behind;
-
         bool debug_draw_collisions;
         vec_golf_collision_data_t collision_history; 
     } physics;
