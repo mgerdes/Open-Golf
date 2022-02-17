@@ -613,6 +613,7 @@ void golf_game_start_level(void) {
 
 void golf_game_start_aiming(void) {
     game.state = GOLF_GAME_STATE_AIMING;
+    game.aim_line.num_points = 0;
 }
 
 void golf_game_stop_aiming(void) {
