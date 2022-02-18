@@ -21,6 +21,7 @@ typedef struct golf_gi_entity {
     vec_vec2_t lightmap_uvs;
     int resolution, image_width, image_height;
     float time_length;
+    bool repeats;
     int num_samples;
     float **image_data;
     int *gl_tex;

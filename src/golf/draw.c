@@ -47,13 +47,12 @@ static void _golf_renderer_draw_environment_material(golf_model_t *model, int st
     float lightmap_t = 0;
     if (lightmap_image->time_length > 0 && lightmap_image->num_samples > 1) {
         float t = lightmap_image->cur_time / lightmap_image->time_length;
-        if (true) {
-            t = 2 * t;
-            if (t > 1) {
-                t = 2 - t;
+        if (lightmap_image->repeats) {
+            t = 2.0f * t;
+            if (t > 1.0f) {
+                t = 2.0f - t;
             }
         }
-
         for (int i = 1; i < num_samples; i++) {
             if (t < i / ((float) (num_samples - 1))) {
                 sample0 = i - 1;

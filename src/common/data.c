@@ -1537,6 +1537,7 @@ static bool _golf_level_load(void *ptr, const char *path, char *data, int data_l
         const char *name = json_object_get_string(obj, "name");
         int resolution = (int)json_object_get_number(obj, "resolution");
         float time_length = (float)json_object_get_number(obj, "time_length");
+        bool repeats = (bool)json_object_get_boolean(obj, "repeats");
 
         int width, height, c;
         JSON_Array *datas_arr = json_object_get_array(obj, "datas");
@@ -1553,7 +1554,7 @@ static bool _golf_level_load(void *ptr, const char *path, char *data, int data_l
 
         sg_image *sg_images = golf_alloc(sizeof(sg_image) * num_samples);
 
-        vec_push(&level->lightmap_images, golf_lightmap_image(name, resolution, width, height, time_length, num_samples, image_datas, sg_images));
+        vec_push(&level->lightmap_images, golf_lightmap_image(name, resolution, width, height, time_length, repeats, num_samples, image_datas, sg_images));
     }
 
     for (int i = 0; i < (int)json_array_get_count(json_entities_arr); i++) {

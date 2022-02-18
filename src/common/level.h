@@ -86,12 +86,13 @@ typedef struct golf_lightmap_image {
     int resolution;
     int width, height;
     float cur_time, time_length;
+    bool repeats;
     int num_samples, edited_num_samples;
     unsigned char **data;
     sg_image *sg_image;
 } golf_lightmap_image_t;
 typedef vec_t(golf_lightmap_image_t) vec_golf_lightmap_image_t;
-golf_lightmap_image_t golf_lightmap_image(const char *name, int resolution, int width, int height, float time_length, int num_samples, unsigned char **data, sg_image *sg_image);
+golf_lightmap_image_t golf_lightmap_image(const char *name, int resolution, int width, int height, float time_length, bool repeats, int num_samples, unsigned char **data, sg_image *sg_image);
 void golf_lightmap_image_finalize(golf_lightmap_image_t *lightmap);
 
 typedef struct golf_lightmap_section {

@@ -1993,6 +1993,7 @@ void golf_editor_update(float dt) {
                         }
                     }
 
+                    _golf_editor_undoable_igCheckbox("Repeats", &lightmap_image->repeats, "Modify lightmap repeats");
                     _golf_editor_undoable_igInputFloat("Time Length", &lightmap_image->time_length, "Modify lightmap time length");
 
                     igInputInt("Num Samples", &lightmap_image->edited_num_samples, 0, 0, ImGuiInputTextFlags_None);
@@ -2039,6 +2040,7 @@ void golf_editor_update(float dt) {
                     int width = lightmap_image->width;
                     int height = lightmap_image->height;
                     float time_length = lightmap_image->time_length;
+                    bool repeats = lightmap_image->repeats;
                     int num_samples = lightmap_image->edited_num_samples;
                     unsigned char **data = golf_alloc(sizeof(unsigned char*) * num_samples);
                     for (int i = 0; i < num_samples; i++) {
@@ -2051,7 +2053,7 @@ void golf_editor_update(float dt) {
 
                     sg_image *sg_images = golf_alloc(sizeof(sg_image) * num_samples);
 
-                    *lightmap_image = golf_lightmap_image(name, resolution, width, height, time_length, num_samples, data, sg_images);
+                    *lightmap_image = golf_lightmap_image(name, resolution, width, height, time_length, repeats, num_samples, data, sg_images);
                     golf_lightmap_image_finalize(lightmap_image);
 
                     _golf_editor_queue_commit_action();
@@ -2066,7 +2068,7 @@ void golf_editor_update(float dt) {
                 image_data[0] = golf_alloc(sizeof(unsigned char) * 1);
                 image_data[0][0] = 0xFF;
                 sg_image *sg_images = golf_alloc(sizeof(sg_image) * 1);
-                golf_lightmap_image_t new_lightmap_image = golf_lightmap_image("new", 256, 1, 1, 1, 1, image_data, sg_images);
+                golf_lightmap_image_t new_lightmap_image = golf_lightmap_image("new", 256, 1, 1, 1, false, 1, image_data, sg_images);
                 golf_lightmap_image_finalize(&new_lightmap_image);
                 _vec_push_and_fix_actions(&editor.level->lightmap_images, new_lightmap_image, NULL);
 
@@ -2542,6 +2544,7 @@ void golf_editor_update(float dt) {
                 int w = gi_entity->image_width;
                 int h = gi_entity->image_height;
                 float time_length = gi_entity->time_length;
+                bool repeats = gi_entity->repeats;
                 int num_samples = gi_entity->num_samples;
                 unsigned char **data = golf_alloc(sizeof(unsigned char*) * num_samples);
                 for (int s = 0; s < num_samples; s++) {
@@ -2559,7 +2562,7 @@ void golf_editor_update(float dt) {
                 char name[GOLF_MAX_NAME_LEN];
                 snprintf(name, GOLF_MAX_NAME_LEN, "%s", lightmap_image->name);
                 _golf_editor_action_push_data(&action, lightmap_image, sizeof(golf_lightmap_image_t));
-                *lightmap_image = golf_lightmap_image(name, res, w, h, time_length, num_samples, data, sg_images);
+                *lightmap_image = golf_lightmap_image(name, res, w, h, time_length, repeats, num_samples, data, sg_images);
                 golf_lightmap_image_finalize(lightmap_image);
 
                 for (int i = 0; i < gi_entity->gi_lightmap_sections.length; i++) {

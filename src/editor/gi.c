@@ -259,7 +259,7 @@ static int _gi_run(void *user_data) {
                             a = ((float) s) / (entity->num_samples - 1);
                         }
                         movement.t = a * entity->time_length;
-                        if (movement.repeats) {
+                        if (entity->repeats) {
                             movement.t = 0.5f * movement.t;
                         }
                         transform = golf_transform_apply_movement(transform, movement);
@@ -402,6 +402,7 @@ void golf_gi_start_lightmap(golf_gi_t *gi, golf_lightmap_image_t *lightmap_image
     vec_init(&entity.gi_lightmap_sections, "gi");
 
     entity.time_length = lightmap_image->time_length;
+    entity.repeats = lightmap_image->repeats;
     entity.num_samples = lightmap_image->num_samples;
     entity.resolution = lightmap_image->resolution;
     entity.image_width = lightmap_image->width;

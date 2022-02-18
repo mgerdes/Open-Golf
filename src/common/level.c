@@ -459,7 +459,7 @@ golf_movement_t golf_movement_spinner(float length) {
     return movement;
 }
 
-golf_lightmap_image_t golf_lightmap_image(const char *name, int resolution, int width, int height, float time_length, int num_samples, unsigned char **data, sg_image *sg_image) {
+golf_lightmap_image_t golf_lightmap_image(const char *name, int resolution, int width, int height, float time_length, bool repeats, int num_samples, unsigned char **data, sg_image *sg_image) {
     golf_lightmap_image_t lightmap;
     lightmap.active = true;
     snprintf(lightmap.name, GOLF_MAX_NAME_LEN, "%s", name);
@@ -468,6 +468,7 @@ golf_lightmap_image_t golf_lightmap_image(const char *name, int resolution, int 
     lightmap.height = height;
     lightmap.cur_time = 0;
     lightmap.time_length = time_length;
+    lightmap.repeats = repeats;
     lightmap.edited_num_samples = num_samples;
     lightmap.num_samples = num_samples;
     lightmap.data = data;
