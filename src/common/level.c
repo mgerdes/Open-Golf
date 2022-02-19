@@ -436,7 +436,7 @@ golf_movement_t golf_movement_none(void) {
     golf_movement_t movement;
     movement.type = GOLF_MOVEMENT_NONE;
     movement.repeats = false;
-    movement.t = 0;
+    movement.t0 = 0;
     movement.length = 0;
     return movement;
 }
@@ -445,8 +445,7 @@ golf_movement_t golf_movement_linear(float t0, vec3 p0, vec3 p1, float length) {
     golf_movement_t movement;
     movement.type = GOLF_MOVEMENT_LINEAR;
     movement.repeats = true;
-    movement.t0 = 0;
-    movement.t = 0;
+    movement.t0 = t0;
     movement.length = length;
     movement.linear.p0 = p0;
     movement.linear.p1 = p1;
@@ -458,7 +457,6 @@ golf_movement_t golf_movement_spinner(float t0, float length) {
     movement.type = GOLF_MOVEMENT_SPINNER;
     movement.repeats = false;
     movement.t0 = t0;
-    movement.t = 0;
     movement.length = length;
     return movement;
 }
@@ -470,7 +468,6 @@ golf_lightmap_image_t golf_lightmap_image(const char *name, int resolution, int 
     lightmap.resolution = resolution;
     lightmap.width = width;
     lightmap.height = height;
-    lightmap.cur_time = 0;
     lightmap.time_length = time_length;
     lightmap.repeats = repeats;
     lightmap.edited_num_samples = num_samples;
@@ -776,9 +773,9 @@ mat4 golf_transform_get_model_mat(golf_transform_t transform) {
             mat4_scale(transform.scale));
 }
 
-golf_transform_t golf_transform_apply_movement(golf_transform_t transform, golf_movement_t movement) {
+golf_transform_t golf_transform_apply_movement(golf_transform_t transform, golf_movement_t movement, float t) {
     float l = movement.length;
-    float t = fmodf(movement.t0 + movement.t, l);
+    t = fmodf(movement.t0 + t, l);
     golf_transform_t new_transform = transform;
     switch (movement.type) {
         case GOLF_MOVEMENT_NONE:
@@ -1067,20 +1064,19 @@ golf_geo_t *golf_entity_get_geo(golf_entity_t *entity) {
     return NULL;
 }
 
-vec3 golf_entity_get_velocity(golf_level_t *level, golf_entity_t *entity, vec3 world_point) {
+vec3 golf_entity_get_velocity(golf_level_t *level, golf_entity_t *entity, float t, vec3 world_point) {
     float dt = 0.001f;
     golf_movement_t *movement = golf_entity_get_movement(entity);
     if (!movement) {
         return V3(0, 0, 0);
     }
 
-    golf_movement_t movement0 = *movement;
-    golf_movement_t movement1 = movement0;
-    movement1.t += dt;
+    float t0 = t;
+    float t1 = t + dt;
 
     golf_transform_t world_transform = golf_entity_get_world_transform(level, entity);
-    golf_transform_t transform0 = golf_transform_apply_movement(world_transform, movement0);
-    golf_transform_t transform1 = golf_transform_apply_movement(world_transform, movement1);
+    golf_transform_t transform0 = golf_transform_apply_movement(world_transform, *movement, t0);
+    golf_transform_t transform1 = golf_transform_apply_movement(world_transform, *movement, t1);
     mat4 model_mat0 = golf_transform_get_model_mat(transform0);
     mat4 model_mat1 = golf_transform_get_model_mat(transform1);
     vec3 local_point = vec3_apply_mat4(world_point, 1, mat4_inverse(model_mat0));

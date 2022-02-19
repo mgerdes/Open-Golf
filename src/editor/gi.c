@@ -258,11 +258,12 @@ static int _gi_run(void *user_data) {
                         if (entity->num_samples > 1) {
                             a = ((float) s) / (entity->num_samples - 1);
                         }
-                        movement.t = a * entity->time_length;
+
+                        float t = a * entity->time_length;
                         if (entity->repeats) {
-                            movement.t = 0.5f * movement.t;
+                            t = 0.5f * t;
                         }
-                        transform = golf_transform_apply_movement(transform, movement);
+                        transform = golf_transform_apply_movement(transform, movement, t);
                         mat4 model_mat = golf_transform_get_model_mat(transform);
                         for (int i = 0; i < section->positions.length; i++) {
                             vec3 p = section->positions.data[i];

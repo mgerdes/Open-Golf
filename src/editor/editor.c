@@ -98,6 +98,8 @@ void golf_editor_init(void) {
         editor.renderer.gi_on = true;
     }
 
+    editor.t = 0;
+
     editor.open_save_as_popup = false;
     vec_init(&editor.copied_entities, "editor");
 }
@@ -844,7 +846,6 @@ static void _golf_editor_edit_movement(golf_movement_t *movement) {
             _golf_editor_commit_action();
             movement->type = movement_type_after;
 
-            movement->t = 0;
             movement->length = 1;
             switch (movement->type) {
                 case GOLF_MOVEMENT_NONE:
@@ -1208,6 +1209,8 @@ static void _golf_editor_entities_tab(void) {
 }
 
 void golf_editor_update(float dt) {
+    editor.t += dt;
+
     golf_config_t *editor_cfg = golf_data_get_config("data/config/editor.cfg");
     ImGuiIO *IO = igGetIO();
     ImGuiViewport* viewport = igGetMainViewport();
@@ -2337,30 +2340,12 @@ void golf_editor_update(float dt) {
         golf_entity_t *entity = &editor.level->entities.data[i];
         if (!entity->active) continue;
 
-        golf_movement_t *movement = golf_entity_get_movement(entity);
-        if (movement) {
-            movement->t += dt;
-            if (movement->t >= movement->length) {
-                movement->t = movement->t - movement->length;
-            }
-        }
-
         golf_geo_t *geo = golf_entity_get_geo(entity);
         if (geo) {
             if (!geo->model_updated_this_frame) {
                 golf_geo_update_model(geo);
             }
             geo->model_updated_this_frame = false;
-        }
-    }
-
-    for (int i = 0; i < editor.level->lightmap_images.length; i++) {
-        golf_lightmap_image_t *lightmap = &editor.level->lightmap_images.data[i];
-        if (!lightmap->active) continue;
-
-        lightmap->cur_time += dt;
-        if (lightmap->cur_time >= lightmap->time_length) {
-            lightmap->cur_time = lightmap->cur_time - lightmap->time_length;
         }
     }
 
@@ -2510,7 +2495,7 @@ void golf_editor_update(float dt) {
             golf_model_t *model = golf_entity_get_model(entity);
             golf_transform_t *transform = golf_entity_get_transform(entity);
             if (model && transform) {
-                vec_push(&node_infos, golf_bvh_node_info(&editor.bvh, i, editor.level, entity));
+                vec_push(&node_infos, golf_bvh_node_info(&editor.bvh, i, editor.level, entity, editor.t));
             }
         }
 

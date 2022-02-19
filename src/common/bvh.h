@@ -9,6 +9,7 @@
 typedef struct golf_bvh golf_bvh_t;
 
 typedef struct golf_bvh_face {
+    float t;
     golf_level_t *level;
     golf_entity_t *entity;
     vec3 a, b, c;
@@ -27,7 +28,7 @@ typedef struct golf_bvh_node_info {
     int face_start, face_count;
 } golf_bvh_node_info_t;
 typedef vec_t(golf_bvh_node_info_t) vec_golf_bvh_node_info_t;
-golf_bvh_node_info_t golf_bvh_node_info(golf_bvh_t *bvh, int idx, golf_level_t *level, golf_entity_t *entity);
+golf_bvh_node_info_t golf_bvh_node_info(golf_bvh_t *bvh, int idx, golf_level_t *level, golf_entity_t *entity, float t);
 
 typedef struct golf_bvh_node golf_bvh_node_t;
 typedef struct golf_bvh_node {

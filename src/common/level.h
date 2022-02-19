@@ -69,7 +69,7 @@ typedef enum golf_movement_type {
 typedef struct golf_movement {
     golf_movement_type_t type;  
     bool repeats;
-    float t0, t, length;
+    float t0, length;
     union {
         struct {
             vec3 p0, p1;
@@ -85,7 +85,7 @@ typedef struct golf_lightmap_image {
     char name[GOLF_MAX_NAME_LEN];
     int resolution;
     int width, height;
-    float cur_time, time_length;
+    float time_length;
     bool repeats;
     int num_samples, edited_num_samples;
     unsigned char **data;
@@ -140,7 +140,7 @@ typedef struct golf_transform {
 typedef vec_t(golf_transform_t) vec_golf_transform_t;
 golf_transform_t golf_transform(vec3 position, vec3 scale, quat rotation);
 mat4 golf_transform_get_model_mat(golf_transform_t transform);
-golf_transform_t golf_transform_apply_movement(golf_transform_t transform, golf_movement_t movement);
+golf_transform_t golf_transform_apply_movement(golf_transform_t transform, golf_movement_t movement, float t);
 golf_transform_t golf_transform_apply_transform(golf_transform_t transform, golf_transform_t movement);
 
 typedef struct golf_ball_start_entity {
@@ -207,7 +207,7 @@ golf_transform_t golf_entity_get_world_transform(golf_level_t *level, golf_entit
 golf_lightmap_section_t *golf_entity_get_lightmap_section(golf_entity_t *entity);
 golf_model_t *golf_entity_get_model(golf_entity_t *entity);
 golf_geo_t *golf_entity_get_geo(golf_entity_t *entity);
-vec3 golf_entity_get_velocity(golf_level_t *level, golf_entity_t *entity, vec3 world_point);
+vec3 golf_entity_get_velocity(golf_level_t *level, golf_entity_t *entity, float t, vec3 world_point);
 
 typedef struct golf_level {
     vec_golf_lightmap_image_t lightmap_images;

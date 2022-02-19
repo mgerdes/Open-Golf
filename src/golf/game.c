@@ -108,6 +108,8 @@ void golf_game_init(void) {
     graphics->cam_dir = vec3_normalize(V3(-5, -5, -5));
     graphics->cam_up = V3(0, 1, 0);
 
+    game.t = 0;
+
     golf_debug_console_add_tab("Game", _golf_game_debug_tab);
 }
 
@@ -285,7 +287,7 @@ static void _physics_tick(float dt) {
                 case GEO_ENTITY: {
                     golf_movement_t *movement = golf_entity_get_movement(entity);
                     if (movement && movement->type != GOLF_MOVEMENT_NONE) {
-                        vec_push(&bvh->node_infos, golf_bvh_node_info(bvh, i, golf->level, entity));
+                        vec_push(&bvh->node_infos, golf_bvh_node_info(bvh, i, golf->level, entity, game.t));
                     }
                     break;
                 }
@@ -556,6 +558,8 @@ static void _physics_tick(float dt) {
 }
 
 void golf_game_update(float dt) {
+    game.t += dt;
+
     switch (game.state) {
         case GOLF_GAME_STATE_MAIN_MENU:
             _golf_game_update_state_main_menu(dt);
@@ -590,27 +594,6 @@ void golf_game_update(float dt) {
 
             float alpha = (float)(-game.physics.time_behind / physics_dt);
             game.ball.draw_pos = vec3_add(vec3_scale(game.ball.pos, 1.0f - alpha), vec3_scale(bp_prev, alpha));
-        }
-
-        for (int i = 0; i < golf->level->lightmap_images.length; i++) {
-            golf_lightmap_image_t *lightmap = &golf->level->lightmap_images.data[i];
-            if (!lightmap->active) continue;
-
-            lightmap->cur_time += dt;
-            if (lightmap->cur_time >= lightmap->time_length) {
-                lightmap->cur_time = lightmap->cur_time - lightmap->time_length;
-            }
-        }
-
-        for (int i = 0; i < golf->level->entities.length; i++) {
-            golf_entity_t *entity = &golf->level->entities.data[i];
-            golf_movement_t *movement = golf_entity_get_movement(entity);
-            if (movement) {
-                movement->t += dt;
-                if (movement->t >= movement->length) {
-                    movement->t = movement->t - movement->length;
-                }
-            }
         }
     }
 
@@ -658,7 +641,7 @@ void golf_game_start_level(void) {
                 case GEO_ENTITY: {
                     golf_movement_t *movement = golf_entity_get_movement(entity);
                     if (!movement || movement->type == GOLF_MOVEMENT_NONE) {
-                        vec_push(&bvh->node_infos, golf_bvh_node_info(bvh, i, golf->level, entity));
+                        vec_push(&bvh->node_infos, golf_bvh_node_info(bvh, i, golf->level, entity, game.t));
                     }
                     break;
                 }

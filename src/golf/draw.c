@@ -46,7 +46,7 @@ static void _golf_renderer_draw_environment_material(golf_model_t *model, int st
     int sample1 = 0;
     float lightmap_t = 0;
     if (lightmap_image->time_length > 0 && lightmap_image->num_samples > 1) {
-        float t = lightmap_image->cur_time / lightmap_image->time_length;
+        float t = fmodf(game->t, lightmap_image->time_length) / lightmap_image->time_length;
         if (lightmap_image->repeats) {
             t = 2.0f * t;
             if (t > 1.0f) {
@@ -168,7 +168,7 @@ static void _draw_level(void) {
         mat4 model_mat;
         golf_movement_t *movement = golf_entity_get_movement(entity);
         if (movement) {
-            golf_transform_t moved_transform = golf_transform_apply_movement(world_transform, *movement);
+            golf_transform_t moved_transform = golf_transform_apply_movement(world_transform, *movement, game->t);
             model_mat = golf_transform_get_model_mat(moved_transform);
         }
         else {

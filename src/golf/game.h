@@ -52,6 +52,8 @@ typedef struct golf_game {
         int num_points;
         vec3 points[MAX_AIM_LINE_POINTS];
     } aim_line;
+
+    float t;
 } golf_game_t;
 
 golf_game_t *golf_game_get(void);
