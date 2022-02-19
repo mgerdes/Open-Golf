@@ -1308,14 +1308,16 @@ static void _golf_json_object_get_movement(JSON_Object *obj, const char *name, g
         *movement = golf_movement_none();
     }
     else if (type && strcmp(type, "linear") == 0) {
+        float t0 = (float)json_object_get_number(movement_obj, "t0");
         float length = (float)json_object_get_number(movement_obj, "length");
         vec3 p0 = golf_json_object_get_vec3(movement_obj, "p0");
         vec3 p1 = golf_json_object_get_vec3(movement_obj, "p1");
-        *movement = golf_movement_linear(p0, p1, length);
+        *movement = golf_movement_linear(t0, p0, p1, length);
     }
     else if (type && strcmp(type, "spinner") == 0) {
+        float t0 = (float)json_object_get_number(movement_obj, "t0");
         float length = (float)json_object_get_number(movement_obj, "length");
-        *movement = golf_movement_spinner(length);
+        *movement = golf_movement_spinner(t0, length);
     }
     else {
         golf_log_warning("Invalid type for movement");

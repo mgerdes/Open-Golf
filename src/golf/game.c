@@ -283,14 +283,9 @@ static void _physics_tick(float dt) {
             switch (entity->type) {
                 case MODEL_ENTITY:
                 case GEO_ENTITY: {
-                    golf_model_t *model = golf_entity_get_model(entity);
-                    golf_transform_t *transform = golf_entity_get_transform(entity);
-                    assert(model && transform);
-
                     golf_movement_t *movement = golf_entity_get_movement(entity);
                     if (movement && movement->type != GOLF_MOVEMENT_NONE) {
-                        golf_transform_t world_transform = golf_entity_get_world_transform(golf->level, entity);
-                        vec_push(&bvh->node_infos, golf_bvh_node_info(bvh, i, model, world_transform, movement, golf->level));
+                        vec_push(&bvh->node_infos, golf_bvh_node_info(bvh, i, golf->level, entity));
                     }
                     break;
                 }
@@ -661,14 +656,9 @@ void golf_game_start_level(void) {
             switch (entity->type) {
                 case MODEL_ENTITY:
                 case GEO_ENTITY: {
-                    golf_model_t *model = golf_entity_get_model(entity);
-                    golf_transform_t *transform = golf_entity_get_transform(entity);
-                    assert(model && transform);
-
                     golf_movement_t *movement = golf_entity_get_movement(entity);
                     if (!movement || movement->type == GOLF_MOVEMENT_NONE) {
-                        golf_transform_t world_transform = golf_entity_get_world_transform(golf->level, entity);
-                        vec_push(&bvh->node_infos, golf_bvh_node_info(bvh, i, model, world_transform, NULL, golf->level));
+                        vec_push(&bvh->node_infos, golf_bvh_node_info(bvh, i, golf->level, entity));
                     }
                     break;
                 }

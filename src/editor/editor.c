@@ -863,11 +863,13 @@ static void _golf_editor_edit_movement(golf_movement_t *movement) {
                 break;
             case GOLF_MOVEMENT_LINEAR: {
                 _golf_editor_undoable_igInputFloat("Length", (float*)&movement->length, "Modify movement length");
+                _golf_editor_undoable_igInputFloat("T0", (float*)&movement->t0, "Modify movement t0");
                 _golf_editor_undoable_igInputFloat3("P0", (float*)&movement->linear.p0, "Modify linear movement p0");
                 _golf_editor_undoable_igInputFloat3("P1", (float*)&movement->linear.p1, "Modify linear movement p1");
                 break;
             }
             case GOLF_MOVEMENT_SPINNER: {
+                _golf_editor_undoable_igInputFloat("T0", (float*)&movement->t0, "Modify movement t0");
                 _golf_editor_undoable_igInputFloat("Length", (float*)&movement->length, "Modify movement length");
                 break;
             }
@@ -2508,8 +2510,7 @@ void golf_editor_update(float dt) {
             golf_model_t *model = golf_entity_get_model(entity);
             golf_transform_t *transform = golf_entity_get_transform(entity);
             if (model && transform) {
-                golf_transform_t world_transform = golf_entity_get_world_transform(editor.level, entity);
-                vec_push(&node_infos, golf_bvh_node_info(&editor.bvh, i, model, world_transform, NULL, editor.level));
+                vec_push(&node_infos, golf_bvh_node_info(&editor.bvh, i, editor.level, entity));
             }
         }
 

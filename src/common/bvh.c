@@ -14,7 +14,11 @@ static void _update_aabb(golf_bvh_aabb_t *aabb, vec3 p) {
     if (p.z > aabb->max.z) aabb->max.z = p.z;
 }
 
-golf_bvh_node_info_t golf_bvh_node_info(golf_bvh_t *bvh, int idx, golf_model_t *model, golf_transform_t transform, golf_movement_t *movement, golf_level_t *level) {
+golf_bvh_node_info_t golf_bvh_node_info(golf_bvh_t *bvh, int idx, golf_level_t *level, golf_entity_t *entity) {
+    golf_model_t *model = golf_entity_get_model(entity);
+    golf_transform_t transform = golf_entity_get_world_transform(level, entity);
+    golf_movement_t *movement = golf_entity_get_movement(entity);
+
     golf_bvh_node_info_t info;
     info.idx = idx;
     info.face_start = bvh->faces.length;
@@ -52,26 +56,8 @@ golf_bvh_node_info_t golf_bvh_node_info(golf_bvh_t *bvh, int idx, golf_model_t *
             face.restitution = material.restitution;
             face.friction = material.friction;
             face.vel_scale = material.vel_scale;
-            if (movement) {
-                // Get the position of the face a small time ago to estimate the face's velocity
-                float small_dt = 0.01f;
-                golf_movement_t prev_movement = *movement;
-                prev_movement.t -= small_dt;
-                golf_transform_t prev_moved_transform = transform;
-                prev_moved_transform = golf_transform_apply_movement(prev_moved_transform, prev_movement);
-                mat4 prev_model_mat = golf_transform_get_model_mat(prev_moved_transform);
-
-                vec3 prev_a = vec3_apply_mat4(model->positions.data[v_idx + 0], 1, prev_model_mat);
-                vec3 prev_b = vec3_apply_mat4(model->positions.data[v_idx + 1], 1, prev_model_mat);
-                vec3 prev_c = vec3_apply_mat4(model->positions.data[v_idx + 2], 1, prev_model_mat);
-
-                vec3 avg_pos = vec3_scale(vec3_add(a, vec3_add(b, c)), 1.0f / 3.0f);
-                vec3 prev_avg_pos = vec3_scale(vec3_add(prev_a, vec3_add(prev_b, prev_c)), 1.0f / 3.0f);
-                face.vel = vec3_scale(vec3_sub(avg_pos, prev_avg_pos), 1.0f / small_dt);
-            }
-            else {
-                face.vel = V3(0, 0, 0);
-            }
+            face.level = level;
+            face.entity = entity;
             vec_push(&bvh->faces, face);
 
             if (i == 0) {
@@ -322,7 +308,8 @@ static bool _golf_bvh_ball_test(golf_bvh_t *bvh, int node_idx, vec3 bp, float br
             float dist = vec3_distance(bp, cp);
             if (dist < br) {
                 if (*num_ball_contacts < max_ball_contacts) {
-                    golf_ball_contact_t contact = golf_ball_contact(face.a, face.b, face.c, face.vel, bp, br, cp, dist, face.restitution, face.friction, face.vel_scale, type);
+                    vec3 vel = golf_entity_get_velocity(face.level, face.entity, cp);
+                    golf_ball_contact_t contact = golf_ball_contact(face.a, face.b, face.c, vel, bp, br, cp, dist, face.restitution, face.friction, face.vel_scale, type);
                     contacts[*num_ball_contacts] = contact;
                     *num_ball_contacts = *num_ball_contacts + 1;
                 }

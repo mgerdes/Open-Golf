@@ -69,7 +69,7 @@ typedef enum golf_movement_type {
 typedef struct golf_movement {
     golf_movement_type_t type;  
     bool repeats;
-    float t, length;
+    float t0, t, length;
     union {
         struct {
             vec3 p0, p1;
@@ -77,8 +77,8 @@ typedef struct golf_movement {
     };
 } golf_movement_t;
 golf_movement_t golf_movement_none(void);
-golf_movement_t golf_movement_linear(vec3 p0, vec3 p1, float length);
-golf_movement_t golf_movement_spinner(float length);
+golf_movement_t golf_movement_linear(float t0, vec3 p0, vec3 p1, float length);
+golf_movement_t golf_movement_spinner(float t0, float length);
 
 typedef struct golf_lightmap_image {
     bool active;
@@ -207,6 +207,7 @@ golf_transform_t golf_entity_get_world_transform(golf_level_t *level, golf_entit
 golf_lightmap_section_t *golf_entity_get_lightmap_section(golf_entity_t *entity);
 golf_model_t *golf_entity_get_model(golf_entity_t *entity);
 golf_geo_t *golf_entity_get_geo(golf_entity_t *entity);
+vec3 golf_entity_get_velocity(golf_level_t *level, golf_entity_t *entity, vec3 world_point);
 
 typedef struct golf_level {
     vec_golf_lightmap_image_t lightmap_images;

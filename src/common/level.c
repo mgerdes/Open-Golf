@@ -272,6 +272,7 @@ static void _golf_json_object_set_movement(JSON_Object *obj, const char *name, g
         }
         case GOLF_MOVEMENT_LINEAR: {
             json_object_set_string(movement_obj, "type", "linear");
+            json_object_set_number(movement_obj, "t0", movement->t0);
             json_object_set_number(movement_obj, "length", movement->length);
             golf_json_object_set_vec3(movement_obj, "p0", movement->linear.p0);
             golf_json_object_set_vec3(movement_obj, "p1", movement->linear.p1);
@@ -279,6 +280,7 @@ static void _golf_json_object_set_movement(JSON_Object *obj, const char *name, g
         }
         case GOLF_MOVEMENT_SPINNER: {
             json_object_set_string(movement_obj, "type", "spinner");
+            json_object_set_number(movement_obj, "t0", movement->t0);
             json_object_set_number(movement_obj, "length", movement->length);
             break;
         }
@@ -439,10 +441,11 @@ golf_movement_t golf_movement_none(void) {
     return movement;
 }
 
-golf_movement_t golf_movement_linear(vec3 p0, vec3 p1, float length) {
+golf_movement_t golf_movement_linear(float t0, vec3 p0, vec3 p1, float length) {
     golf_movement_t movement;
     movement.type = GOLF_MOVEMENT_LINEAR;
     movement.repeats = true;
+    movement.t0 = 0;
     movement.t = 0;
     movement.length = length;
     movement.linear.p0 = p0;
@@ -450,10 +453,11 @@ golf_movement_t golf_movement_linear(vec3 p0, vec3 p1, float length) {
     return movement;
 }
 
-golf_movement_t golf_movement_spinner(float length) {
+golf_movement_t golf_movement_spinner(float t0, float length) {
     golf_movement_t movement;
     movement.type = GOLF_MOVEMENT_SPINNER;
     movement.repeats = false;
+    movement.t0 = t0;
     movement.t = 0;
     movement.length = length;
     return movement;
@@ -650,6 +654,7 @@ bool golf_level_save(golf_level_t *level, const char *path) {
         json_object_set_number(json_lightmap_image_obj, "resolution", lightmap_image->resolution);
         json_object_set_number(json_lightmap_image_obj, "time_length", lightmap_image->time_length);
         json_object_set_number(json_lightmap_image_obj, "num_samples", lightmap_image->num_samples);
+        json_object_set_boolean(json_lightmap_image_obj, "repeats", lightmap_image->repeats);
 
         JSON_Value *datas_val = json_value_init_array();
         JSON_Array *datas_arr = json_value_get_array(datas_val);
@@ -772,8 +777,8 @@ mat4 golf_transform_get_model_mat(golf_transform_t transform) {
 }
 
 golf_transform_t golf_transform_apply_movement(golf_transform_t transform, golf_movement_t movement) {
-    float t = movement.t;
     float l = movement.length;
+    float t = fmodf(movement.t0 + movement.t, l);
     golf_transform_t new_transform = transform;
     switch (movement.type) {
         case GOLF_MOVEMENT_NONE:
@@ -1060,4 +1065,27 @@ golf_geo_t *golf_entity_get_geo(golf_entity_t *entity) {
         }
     }
     return NULL;
+}
+
+vec3 golf_entity_get_velocity(golf_level_t *level, golf_entity_t *entity, vec3 world_point) {
+    float dt = 0.001f;
+    golf_movement_t *movement = golf_entity_get_movement(entity);
+    if (!movement) {
+        return V3(0, 0, 0);
+    }
+
+    golf_movement_t movement0 = *movement;
+    golf_movement_t movement1 = movement0;
+    movement1.t += dt;
+
+    golf_transform_t world_transform = golf_entity_get_world_transform(level, entity);
+    golf_transform_t transform0 = golf_transform_apply_movement(world_transform, movement0);
+    golf_transform_t transform1 = golf_transform_apply_movement(world_transform, movement1);
+    mat4 model_mat0 = golf_transform_get_model_mat(transform0);
+    mat4 model_mat1 = golf_transform_get_model_mat(transform1);
+    vec3 local_point = vec3_apply_mat4(world_point, 1, mat4_inverse(model_mat0));
+    vec3 world_point1 = vec3_apply_mat4(local_point, 1, model_mat1);
+
+    vec3 velocity = vec3_scale(vec3_sub(world_point1, world_point), 1 / dt);
+    return velocity;
 }
