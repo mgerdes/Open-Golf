@@ -11,6 +11,7 @@
     "data/shaders/aim_line.glsl",
     "data/shaders/ui.glsl",
     "data/shaders/ball.glsl",
+    "data/shaders/editor_water.glsl",
     "data/ui/main_menu.ui",
     "data/models/ui_square.obj",
     "data/models/cube.obj",
@@ -18,5 +19,7 @@
     "data/models/editor/ball_start.obj",
     "data/textures/fallback.png",
     "data/textures/colors/white.png",
+    "data/textures/water_noise_1.png",
+    "data/textures/water_noise_2.png",
     "data/textures/loading.gif"
 ]

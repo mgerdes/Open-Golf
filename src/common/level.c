@@ -44,6 +44,7 @@ golf_geo_face_t golf_geo_face(const char *material_name, vec_int_t idx, golf_geo
     face.uvs = uvs;
     face.uv_gen_type = uv_gen_type;
     face.start_vertex_in_model = 0;
+    face.water_dir = V3(0, 0, 0);
     return face;
 }
 
@@ -712,6 +713,10 @@ bool golf_level_save(golf_level_t *level, const char *path) {
                 json_object_set_string(json_entity_obj, "type", "group");
                 break;
             }
+            case WATER_ENTITY: {
+                json_object_set_string(json_entity_obj, "type", "water");
+                break;
+            }
         }
 
         golf_geo_t *geo = golf_entity_get_geo(entity);
@@ -871,7 +876,7 @@ golf_entity_t golf_entity_geo(const char *name, golf_transform_t transform, golf
     return entity;
 }
 
-golf_entity_t golf_entity_water(const char *name, golf_transform_t transform, golf_geo_t geo, golf_lightmap_section_t lightmap_section){
+golf_entity_t golf_entity_water(const char *name, golf_transform_t transform, golf_geo_t geo, golf_lightmap_section_t lightmap_section) {
     golf_entity_t entity;
     entity.active = true;
     entity.parent_idx = -1;
@@ -958,6 +963,7 @@ golf_movement_t *golf_entity_get_movement(golf_entity_t *entity) {
             return &entity->geo.movement;
         }
         case BALL_START_ENTITY: 
+        case WATER_ENTITY: 
         case HOLE_ENTITY: 
         case GROUP_ENTITY: {
             return NULL;
@@ -979,6 +985,9 @@ golf_transform_t *golf_entity_get_transform(golf_entity_t *entity) {
         }
         case GEO_ENTITY: {
             return &entity->geo.transform;
+        }
+        case WATER_ENTITY: {
+            return &entity->water.transform;
         }
         case GROUP_ENTITY: {
             return &entity->group.transform;
@@ -1027,6 +1036,9 @@ golf_lightmap_section_t *golf_entity_get_lightmap_section(golf_entity_t *entity)
         case GEO_ENTITY: {
             return &entity->geo.lightmap_section;
         }
+        case WATER_ENTITY: {
+            return &entity->water.lightmap_section;
+        }
         case HOLE_ENTITY:
         case BALL_START_ENTITY:
         case GROUP_ENTITY: {
@@ -1050,6 +1062,9 @@ golf_model_t *golf_entity_get_model(golf_entity_t *entity) {
         case GEO_ENTITY: {
             return &entity->geo.geo.model;
         }
+        case WATER_ENTITY: {
+            return &entity->water.geo.model;
+        }
         case GROUP_ENTITY: {
             return NULL;
         }
@@ -1067,6 +1082,9 @@ golf_geo_t *golf_entity_get_geo(golf_entity_t *entity) {
         }
         case GEO_ENTITY: {
             return &entity->geo.geo;
+        }
+        case WATER_ENTITY: {
+            return &entity->water.geo;
         }
     }
     return NULL;

@@ -1687,6 +1687,20 @@ static bool _golf_level_load(void *ptr, const char *path, char *data, int data_l
 
             valid_entity = true;
         }
+        else if (type && strcmp(type, "water") == 0) {
+            golf_transform_t transform;
+            _golf_json_object_get_transform(obj, "transform", &transform);
+
+            golf_geo_t geo;
+            _golf_json_object_get_geo(obj, "geo", &geo);
+
+            golf_lightmap_section_t lightmap_section;
+            _golf_json_object_get_lightmap_section(obj, "lightmap_section", &lightmap_section);
+
+            entity = golf_entity_water(name, transform, geo, lightmap_section);
+
+            valid_entity = true;
+        }
         entity.parent_idx = parent_idx;
 
         if (valid_entity) {

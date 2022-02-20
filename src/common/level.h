@@ -37,6 +37,7 @@ typedef struct golf_geo_face {
     golf_geo_face_uv_gen_type_t uv_gen_type;
     vec_vec2_t uvs;
     int start_vertex_in_model;
+    vec3 water_dir;
 } golf_geo_face_t;
 typedef vec_t(golf_geo_face_t) vec_golf_geo_face_t;
 typedef vec_t(golf_geo_face_t*) vec_golf_geo_face_ptr_t;
@@ -207,6 +208,7 @@ golf_entity_t golf_entity_model(const char *name, golf_transform_t transform, co
 golf_entity_t golf_entity_hole(const char *name, golf_transform_t transform);
 golf_entity_t golf_entity_ball_start(const char *name, golf_transform_t transform);
 golf_entity_t golf_entity_geo(const char *name, golf_transform_t transform, golf_movement_t movement, golf_geo_t geo, golf_lightmap_section_t lightmap_section);
+golf_entity_t golf_entity_water(const char *name, golf_transform_t transform, golf_geo_t geo, golf_lightmap_section_t lightmap_section);
 golf_entity_t golf_entity_group(const char *name, golf_transform_t transform);
 golf_entity_t golf_entity_make_copy(golf_entity_t *entity);
 golf_movement_t *golf_entity_get_movement(golf_entity_t *entity);
