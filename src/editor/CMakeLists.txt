@@ -35,7 +35,7 @@ add_executable(editor
 target_link_libraries(editor PRIVATE ${EDITOR_LIBRARIES})
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
-  target_compile_options(editor PRIVATE /W4 /WX)
+  target_compile_options(editor PRIVATE /W3)
 else()
   target_compile_options(editor PRIVATE -Wall -Wextra -Wpedantic)
 endif()

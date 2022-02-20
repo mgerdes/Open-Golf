@@ -86,7 +86,7 @@ unsigned char * golf_base64_encode(const unsigned char *src, int len,
 
     *pos = '\0';
     if (out_len)
-        *out_len = pos - out;
+        *out_len = (int)(pos - out);
     return out;
 }
 
@@ -157,6 +157,6 @@ unsigned char * golf_base64_decode(const unsigned char *src, int len,
         }
     }
 
-    *out_len = pos - out;
+    *out_len = (int)(pos - out);
     return out;
 }

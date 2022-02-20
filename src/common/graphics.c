@@ -31,9 +31,9 @@ void golf_graphics_init(void) {
     memset(&graphics, 0, sizeof(graphics));
 
     {
-        graphics.window_size = V2(sapp_width(), sapp_width());
+        graphics.window_size = V2((float)sapp_width(), (float)sapp_width());
         graphics.viewport_pos = V2(0, 0);
-        graphics.viewport_size = V2(sapp_width(), sapp_width());
+        graphics.viewport_size = V2((float)sapp_width(), (float)sapp_width());
     }
 
     {

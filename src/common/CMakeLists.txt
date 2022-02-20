@@ -41,7 +41,7 @@ add_library(common STATIC
 
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
-  target_compile_options(common PRIVATE /W4 /WX)
+  target_compile_options(common PRIVATE /W3)
 else()
   target_compile_options(common PRIVATE -Wall -Wextra -Wpedantic)
 endif()

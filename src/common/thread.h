@@ -5,7 +5,7 @@
 
 typedef void* golf_thread_t;
 
-#if GOLF_THREAD_WINDOWS
+#if GOLF_PLATFORM_WINDOWS
 
 typedef int golf_thread_result_t;
 #define GOLF_THREAD_RESULT_SUCCESS 1

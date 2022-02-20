@@ -106,10 +106,10 @@ void golf_debug_print_allocations(void) {
         }
         else {
             if (info->category) {
-                map_set(&category_size, info->category, info->size);
+                map_set(&category_size, info->category, (int)info->size);
             }
             else {
-                map_set(&category_size, "null", info->size);
+                map_set(&category_size, "null", (int)info->size);
             }
         }
     }

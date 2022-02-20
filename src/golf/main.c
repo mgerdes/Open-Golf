@@ -65,7 +65,7 @@ static void frame(void) {
 
     golf_update(dt);
 
-    golf_graphics_set_viewport(V2(0, 0), V2(sapp_width(), sapp_height()));
+    golf_graphics_set_viewport(V2(0, 0), V2((float)sapp_width(), (float)sapp_height()));
     golf_graphics_update_proj_view_mat();
     golf_draw();
 
