@@ -290,6 +290,7 @@ static void _physics_tick(float dt) {
 
             switch (entity->type) {
                 case MODEL_ENTITY:
+                case WATER_ENTITY:
                 case GEO_ENTITY: {
                     golf_movement_t *movement = golf_entity_get_movement(entity);
                     if (movement && movement->type != GOLF_MOVEMENT_NONE) {
@@ -339,7 +340,7 @@ static void _physics_tick(float dt) {
                 }
                 if (num_contacts < MAX_NUM_CONTACTS) {
                     vec3 vel = V3(0, 0, 0);
-                    golf_ball_contact_t contact = golf_ball_contact(a, b, c, vel, bp, br, cp, dist, restitution, friction, vel_scale, type);
+                    golf_ball_contact_t contact = golf_ball_contact(a, b, c, vel, bp, br, cp, dist, restitution, friction, vel_scale, type, false, V3(0, 0, 0));
                     contacts[num_contacts] = contact;
                     num_contacts = num_contacts + 1;
                 }
@@ -461,6 +462,9 @@ static void _physics_tick(float dt) {
         if (contact->is_ignored) {
             continue;
         }
+        if (contact->is_water) {
+            continue;
+        }
 
         vec3 n = contact->normal;
         vec3 vr = vec3_sub(bv, contact->velocity);
@@ -514,10 +518,27 @@ static void _physics_tick(float dt) {
         if (contact->is_ignored) {
             continue;
         }
+        if (contact->is_water) {
+            continue;
+        }
 
         float pen = fmaxf(contact->penetration, 0);
         vec3 correction = vec3_scale(contact->normal, pen * 0.5f);
         bp = vec3_add(bp, correction);
+    }
+
+    for (int i = 0; i < num_contacts; i++) {
+        golf_ball_contact_t *contact = &contacts[i];
+        if (contact->is_ignored) {
+            continue;
+        }
+        if (!contact->is_water) {
+            continue;
+        }
+
+        vec3 water_dir = V3(1, 0, 0);
+        vec3 water_vel = vec3_scale(water_dir, CFG_NUM(game_cfg, "physics_water_max_speed"));
+        bv = vec3_add(bv, vec3_scale(vec3_sub(water_vel, bv), CFG_NUM(game_cfg, "physics_water_speed") * dt));
     }
 
     if (game.ball.is_moving && num_contacts > 0) {
@@ -640,6 +661,7 @@ void golf_game_start_level(void) {
 
             switch (entity->type) {
                 case MODEL_ENTITY:
+                case WATER_ENTITY:
                 case GEO_ENTITY: {
                     golf_movement_t *movement = golf_entity_get_movement(entity);
                     if (!movement || movement->type == GOLF_MOVEMENT_NONE) {

@@ -59,6 +59,7 @@ golf_bvh_node_info_t golf_bvh_node_info(golf_bvh_t *bvh, int idx, golf_level_t *
             face.level = level;
             face.entity = entity;
             face.t = t;
+            //face.water_dir = model->water_dir.data[j / 3];
             vec_push(&bvh->faces, face);
 
             if (i == 0) {
@@ -116,8 +117,9 @@ static int _alloc_inner_node(golf_bvh_t *bvh, int left, int right) {
     return idx;
 }
 
-golf_ball_contact_t golf_ball_contact(vec3 a, vec3 b, vec3 c, vec3 vel, vec3 bp, float br, vec3 cp, float dist, float restitution, float friction, float vel_scale, triangle_contact_type_t type)  {
+golf_ball_contact_t golf_ball_contact(vec3 a, vec3 b, vec3 c, vec3 vel, vec3 bp, float br, vec3 cp, float dist, float restitution, float friction, float vel_scale, triangle_contact_type_t type, bool is_water, vec3 water_dir) {
     golf_ball_contact_t contact;
+    contact.is_water = is_water;
     contact.is_ignored = false;
     contact.position = cp;
     contact.triangle_normal = vec3_normalize(vec3_cross(vec3_sub(b, a), vec3_sub(c, a)));
@@ -310,7 +312,9 @@ static bool _golf_bvh_ball_test(golf_bvh_t *bvh, int node_idx, vec3 bp, float br
             if (dist < br) {
                 if (*num_ball_contacts < max_ball_contacts) {
                     vec3 vel = golf_entity_get_velocity(face.level, face.entity, face.t, cp);
-                    golf_ball_contact_t contact = golf_ball_contact(face.a, face.b, face.c, vel, bp, br, cp, dist, face.restitution, face.friction, face.vel_scale, type);
+                    bool is_water = face.entity->type == WATER_ENTITY;
+                    vec3 water_dir = face.water_dir;
+                    golf_ball_contact_t contact = golf_ball_contact(face.a, face.b, face.c, vel, bp, br, cp, dist, face.restitution, face.friction, face.vel_scale, type, is_water, water_dir);
                     contacts[*num_ball_contacts] = contact;
                     *num_ball_contacts = *num_ball_contacts + 1;
                 }

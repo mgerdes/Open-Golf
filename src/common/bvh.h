@@ -13,6 +13,7 @@ typedef struct golf_bvh_face {
     golf_level_t *level;
     golf_entity_t *entity;
     vec3 a, b, c;
+    vec3 water_dir;
     float restitution, friction, vel_scale;
 } golf_bvh_face_t;
 typedef vec_t(golf_bvh_face_t) vec_golf_bvh_face_t;
@@ -48,16 +49,16 @@ typedef struct golf_bvh {
 } golf_bvh_t;
 
 typedef struct golf_ball_contact {
-    bool is_ignored;
+    bool is_ignored, is_water;
     triangle_contact_type_t type;
-    vec3 position, normal, velocity, v0, v1, triangle_normal, impulse;
+    vec3 position, normal, velocity, v0, v1, triangle_normal, impulse, water_dir;
     float distance, penetration, impulse_mag, cull_dot;
     vec3 triangle_a, triangle_b, triangle_c;
     float restitution, friction, vel_scale;
 } golf_ball_contact_t;
 typedef vec_t(golf_ball_contact_t) vec_golf_ball_contact_t;
 
-golf_ball_contact_t golf_ball_contact(vec3 a, vec3 b, vec3 c, vec3 vel, vec3 bp, float br, vec3 cp, float dist, float restitution, float friction, float vel_scale, triangle_contact_type_t type);
+golf_ball_contact_t golf_ball_contact(vec3 a, vec3 b, vec3 c, vec3 vel, vec3 bp, float br, vec3 cp, float dist, float restitution, float friction, float vel_scale, triangle_contact_type_t type, bool is_water, vec3 water_dir);
 
 void golf_bvh_init(golf_bvh_t *bvh);
 void golf_bvh_construct(golf_bvh_t *bvh, vec_golf_bvh_node_info_t);
