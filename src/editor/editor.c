@@ -506,7 +506,7 @@ static void _golf_editor_duplicate_selected_entities(void) {
                     vec_init(&uvs_copy, "face");
                     vec_pusharr(&uvs_copy, face.uvs.data, face.uvs.length);
 
-                    golf_geo_face_t new_face = golf_geo_face(face.material_name, face.idx.length, idx_copy, face.uv_gen_type, uvs_copy);
+                    golf_geo_face_t new_face = golf_geo_face(face.material_name, idx_copy, face.uv_gen_type, uvs_copy);
                     for (int i = 0; i < face.idx.length; i++) {
                         int idx = face.idx.data[i];
 
@@ -900,7 +900,6 @@ static void _golf_editor_geo_tab(void) {
     }
     if (num_points_selected >= 3) {
         if (igButton("Create Face", (ImVec2){0, 0}) || inputs->button_clicked[SAPP_KEYCODE_C]) {
-            int n = num_points_selected;
             vec_int_t idxs;
             vec_init(&idxs, "face");
             vec_vec2_t uvs;
@@ -913,7 +912,7 @@ static void _golf_editor_geo_tab(void) {
                 }
             }
             golf_geo_face_uv_gen_type_t uv_gen_type = GOLF_GEO_FACE_UV_GEN_MANUAL;
-            golf_geo_face_t face = golf_geo_face("default", n, idxs, uv_gen_type, uvs);
+            golf_geo_face_t face = golf_geo_face("default", idxs, uv_gen_type, uvs);
             _vec_push_and_fix_actions(&geo->faces, face, NULL);
 
             golf_geo_face_t *new_face = &vec_last(&geo->faces);

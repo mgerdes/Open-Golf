@@ -12,6 +12,7 @@
 #include "sokol/sokol_app.h"
 #include "sokol/sokol_time.h"
 #include "common/base64.h"
+#include "common/common.h"
 #include "common/file.h"
 #include "common/graphics.h"
 #include "common/json.h"
@@ -101,6 +102,10 @@ static bool _golf_gif_texture_finalize(void *ptr) {
 }
 
 static bool _golf_gif_texture_load(void *ptr, const char *path, char *data, int data_len, char *meta_data, int meta_data_len) {
+    GOLF_UNUSED(path);
+    GOLF_UNUSED(meta_data);
+    GOLF_UNUSED(meta_data_len);
+
     golf_gif_texture_t *texture = (golf_gif_texture_t*) ptr;
 
     texture->filter = SG_FILTER_LINEAR;
@@ -108,7 +113,7 @@ static bool _golf_gif_texture_load(void *ptr, const char *path, char *data, int 
     int *delays = NULL;
     int width, height, num_frames, n;
     stbi_set_flip_vertically_on_load(0);
-    texture->image_data = stbi_load_gif_from_memory(data, data_len, &delays, &width, &height, &num_frames, &n, 4);
+    texture->image_data = stbi_load_gif_from_memory((unsigned char*)data, data_len, &delays, &width, &height, &num_frames, &n, 4);
     texture->width = width;
     texture->height = height;
     texture->num_frames = num_frames;
@@ -119,6 +124,7 @@ static bool _golf_gif_texture_load(void *ptr, const char *path, char *data, int 
 }
 
 static bool _golf_gif_texture_unload(void *ptr) {
+    GOLF_UNUSED(ptr);
     return true;
 }
 
@@ -148,6 +154,11 @@ static bool _golf_texture_finalize(void *ptr) {
 }
 
 static bool _golf_texture_load(void *ptr, const char *path, char *data, int data_len, char *meta_data, int meta_data_len) {
+    GOLF_UNUSED(path);
+    GOLF_UNUSED(data_len);
+    GOLF_UNUSED(meta_data);
+    GOLF_UNUSED(meta_data_len);
+
     golf_texture_t *texture = (golf_texture_t*) ptr;
 
     JSON_Value *meta_val = json_parse_string(meta_data);
@@ -226,6 +237,9 @@ static JSON_Value *_golf_shader_import_bare(const char *base_name, const char *n
 }
 
 static bool _golf_shader_import(const char *path, char *data, int data_len) {
+    GOLF_UNUSED(data);
+    GOLF_UNUSED(data_len);
+
 #if GOLF_PLATFORM_LINUX | GOLF_PLATFORM_WINDOWS
     golf_file_t file = golf_file(path);
     static const char *slangs = "glsl330:glsl300es";
@@ -296,6 +310,11 @@ static bool _golf_shader_finalize(void *ptr) {
 }
 
 static bool _golf_shader_load(void *ptr, const char *path, char *data, int data_len, char *meta_data, int meta_data_len) {
+    GOLF_UNUSED(path);
+    GOLF_UNUSED(data_len);
+    GOLF_UNUSED(meta_data);
+    GOLF_UNUSED(meta_data_len);
+
     golf_shader_t *shader = (golf_shader_t*) ptr;
 
     sg_shader_desc shader_desc;
@@ -394,6 +413,9 @@ static JSON_Value *_golf_font_atlas_import(const char *file_data, int font_size,
 }
 
 static bool _golf_font_import(const char *path, char *data, int data_len) {
+    GOLF_UNUSED(path);
+    GOLF_UNUSED(data_len);
+
     JSON_Value *val = json_value_init_object();
     JSON_Object *obj = json_value_get_object(val);
 
@@ -480,6 +502,11 @@ static void _golf_font_load_atlas(JSON_Object *atlas_obj, golf_font_atlas_t *atl
 }
 
 static bool _golf_font_load(void *ptr, const char *path, char *data, int data_len, char *meta_data, int meta_data_len) {
+    GOLF_UNUSED(path);
+    GOLF_UNUSED(data_len);
+    GOLF_UNUSED(meta_data);
+    GOLF_UNUSED(meta_data_len);
+
     golf_font_t *font = (golf_font_t*) ptr;
     JSON_Value *val = json_parse_string(data);
     JSON_Object *obj = json_value_get_object(val);
@@ -687,9 +714,13 @@ static void *_fast_obj_file_open(const char *path, void *user_data) {
 }
 
 static void _fast_obj_file_close(void *file, void *user_data) {
+    GOLF_UNUSED(file);
+    GOLF_UNUSED(user_data);
 }
 
 static size_t _fast_obj_file_read(void *file, void *dst, size_t bytes, void *user_data) {
+    GOLF_UNUSED(file);
+
     _fast_obj_user_data_t *data = (_fast_obj_user_data_t*)user_data;
     if (data->data_pos + (int)bytes >= data->data_len) {
         bytes = (size_t)(data->data_len - data->data_pos);
@@ -701,11 +732,18 @@ static size_t _fast_obj_file_read(void *file, void *dst, size_t bytes, void *use
 }
 
 static unsigned long _fast_obj_file_size(void *file, void *user_data) {
+    GOLF_UNUSED(file);
+
     _fast_obj_user_data_t *data = (_fast_obj_user_data_t*)user_data;
     return (unsigned long)data->data_len;
 }
 
 static bool _golf_model_load(void *ptr, const char *path, char *data, int data_len, char *meta_data, int meta_data_len) {
+    GOLF_UNUSED(path);
+    GOLF_UNUSED(data_len);
+    GOLF_UNUSED(meta_data);
+    GOLF_UNUSED(meta_data_len);
+
     fastObjCallbacks callbacks;
     callbacks.file_open = _fast_obj_file_open;
     callbacks.file_close = _fast_obj_file_close;
@@ -862,6 +900,11 @@ static void _golf_pixel_pack_pos_to_uvs(golf_pixel_pack_t *pp, int tex_w, int te
 }
 
 static bool _golf_pixel_pack_load(void *ptr, const char *path, char *data, int data_len, char *meta_data, int meta_data_len) {
+    GOLF_UNUSED(path);
+    GOLF_UNUSED(data_len);
+    GOLF_UNUSED(meta_data);
+    GOLF_UNUSED(meta_data_len);
+
     golf_pixel_pack_t *pixel_pack = (golf_pixel_pack_t*) ptr;
     JSON_Value *val = json_parse_string(data);
     JSON_Object *obj = json_value_get_object(val);
@@ -1064,6 +1107,11 @@ static void _golf_ui_layout_get_entity_dependency(JSON_Object *entity_obj, vec_g
 }
 
 static bool _golf_ui_layout_load(void *ptr, const char *path, char *data, int data_len, char *meta_data, int meta_data_len) {
+    GOLF_UNUSED(path);
+    GOLF_UNUSED(data_len);
+    GOLF_UNUSED(meta_data);
+    GOLF_UNUSED(meta_data_len);
+
     golf_ui_layout_t *layout = (golf_ui_layout_t*) ptr;
     vec_init(&layout->entities, "ui_layout");
 
@@ -1100,6 +1148,8 @@ static bool _golf_ui_layout_load(void *ptr, const char *path, char *data, int da
 static void _golf_ui_layout_unload_entity(golf_ui_layout_entity_t *entity) {
     switch (entity->type) {
         case GOLF_UI_PIXEL_PACK_SQUARE:
+        case GOLF_UI_GIF_TEXTURE:
+        case GOLF_UI_AIM_CIRCLE:
             break;
         case GOLF_UI_TEXT:
             golf_string_deinit(&entity->text.text);
@@ -1132,6 +1182,11 @@ static bool _golf_ui_layout_unload(void *ptr) {
 //
 
 static bool _golf_config_load(void *ptr, const char *path, char *data, int data_len, char *meta_data, int meta_data_len) {
+    GOLF_UNUSED(path);
+    GOLF_UNUSED(data_len);
+    GOLF_UNUSED(meta_data);
+    GOLF_UNUSED(meta_data_len);
+
     golf_config_t *config = (golf_config_t*) ptr;
     JSON_Value *val = json_parse_string(data);
     JSON_Object *obj = json_value_get_object(val);
@@ -1366,7 +1421,7 @@ static void _golf_json_object_get_geo(JSON_Object *obj, const char *name, golf_g
             }
         }
 
-        vec_push(&faces, golf_geo_face(material_name, idxs_count, idxs, uv_gen_type, uvs));
+        vec_push(&faces, golf_geo_face(material_name, idxs, uv_gen_type, uvs));
     }
 
     /*
@@ -1446,6 +1501,11 @@ static bool _golf_level_finalize(void *ptr) {
 }
 
 static bool _golf_level_load(void *ptr, const char *path, char *data, int data_len, char *meta_data, int meta_data_len) {
+    GOLF_UNUSED(path);
+    GOLF_UNUSED(data_len);
+    GOLF_UNUSED(meta_data);
+    GOLF_UNUSED(meta_data_len);
+
     golf_level_t *level = (golf_level_t*) ptr;
 
     vec_init(&level->materials, "level");
@@ -1638,10 +1698,16 @@ static bool _golf_level_load(void *ptr, const char *path, char *data, int data_l
 }
 
 static bool _golf_level_unload(void *ptr) {
+    GOLF_UNUSED(ptr);
     return true;
 }
 
 static bool _golf_static_data_load(void *ptr, const char *path, char *data, int data_len, char *meta_data, int meta_data_len) {
+    GOLF_UNUSED(path);
+    GOLF_UNUSED(data_len);
+    GOLF_UNUSED(meta_data);
+    GOLF_UNUSED(meta_data_len);
+
     golf_static_data_t *static_data = (golf_static_data_t*) ptr;
     JSON_Value *val = json_parse_string(data);
     JSON_Array *arr = json_value_get_array(val);
@@ -1674,6 +1740,7 @@ static bool _golf_static_data_load(void *ptr, const char *path, char *data, int 
 }
 
 static bool _golf_static_data_unload(void *ptr) {
+    GOLF_UNUSED(ptr);
     /*
     golf_static_data_t *static_data = (golf_static_data_t*) ptr;
     for (int i = 0; i < static_data->data_paths.length; i++) {
@@ -1687,6 +1754,9 @@ static bool _golf_static_data_unload(void *ptr) {
 }
 
 static bool _golf_script_data_load(void *ptr, const char *path, char *data, int data_len, char *meta_data, int meta_data_len) {
+    GOLF_UNUSED(meta_data);
+    GOLF_UNUSED(meta_data_len);
+
     golf_script_t *script = (golf_script_t*) ptr;
     return golf_script_load(script, path, data, data_len);
 }
@@ -2018,7 +2088,9 @@ static void _golf_data_thread_load_file(golf_file_t file) {
     golf_free(data);
 }
 
-static int _golf_data_thread_fn(void *udata) {
+static golf_thread_result_t _golf_data_thread_fn(void *udata) {
+    GOLF_UNUSED(udata);
+
     vec_golf_file_t files_to_load;
     vec_init(&files_to_load, "data_thread");
     uint64_t last_run_time = stm_now();
@@ -2046,7 +2118,7 @@ static int _golf_data_thread_fn(void *udata) {
             last_run_time = stm_now();
         }
     }
-    return 0;
+    return GOLF_THREAD_RESULT_SUCCESS;
 }
 
 void golf_data_turn_off_reload(const char *ext) {
@@ -2091,6 +2163,8 @@ void golf_data_init(void) {
 }
 
 void golf_data_update(float dt) {
+    GOLF_UNUSED(dt);
+
     golf_mutex_lock(&_file_events_lock);  
     for (int i = 0; i < _file_events.length; i++) {
         _file_event_t event = _file_events.data[i];

@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#include "common/common.h"
 #include "common/file.h"
 #include "common/log.h"
 #include "common/maths.h"
@@ -593,6 +594,7 @@ static void gs_debug_print_expr(gs_expr_t *expr) {
 }
 
 static gs_stmt_t *gs_stmt_if_new(gs_parser_t *parser, gs_token_t token, vec_gs_expr_t conds, vec_gs_stmt_t stmts, gs_stmt_t *else_stmt) {
+    GOLF_UNUSED(token);
     gs_stmt_t *stmt = gs_parser_alloc(parser, sizeof(gs_stmt_t));
     stmt->type = GS_STMT_IF;
     stmt->if_stmt.num_conds = conds.length;
@@ -605,6 +607,7 @@ static gs_stmt_t *gs_stmt_if_new(gs_parser_t *parser, gs_token_t token, vec_gs_e
 }
 
 static gs_stmt_t *gs_stmt_for_new(gs_parser_t *parser, gs_token_t token, gs_val_type decl_type, gs_token_t decl_symbol, gs_expr_t *init, gs_expr_t *cond, gs_expr_t *inc, gs_stmt_t *body) {
+    GOLF_UNUSED(token);
     gs_stmt_t *stmt = gs_parser_alloc(parser, sizeof(gs_stmt_t));
     stmt->type = GS_STMT_FOR;
     stmt->for_stmt.decl_type = decl_type;
@@ -617,6 +620,7 @@ static gs_stmt_t *gs_stmt_for_new(gs_parser_t *parser, gs_token_t token, gs_val_
 }
 
 static gs_stmt_t *gs_stmt_return_new(gs_parser_t *parser, gs_token_t token, gs_expr_t *expr) {
+    GOLF_UNUSED(token);
     gs_stmt_t *stmt = gs_parser_alloc(parser, sizeof(gs_stmt_t));
     stmt->type = GS_STMT_RETURN;
     stmt->return_stmt.expr = expr;
@@ -624,6 +628,7 @@ static gs_stmt_t *gs_stmt_return_new(gs_parser_t *parser, gs_token_t token, gs_e
 }
 
 static gs_stmt_t *gs_stmt_block_new(gs_parser_t *parser, gs_token_t token, vec_gs_stmt_t stmts) {
+    GOLF_UNUSED(token);
     gs_stmt_t *stmt = gs_parser_alloc(parser, sizeof(gs_stmt_t));
     stmt->type = GS_STMT_BLOCK;
     stmt->block_stmt.num_stmts = stmts.length;
@@ -633,6 +638,7 @@ static gs_stmt_t *gs_stmt_block_new(gs_parser_t *parser, gs_token_t token, vec_g
 }
 
 static gs_stmt_t *gs_stmt_expr_new(gs_parser_t *parser, gs_token_t token, gs_expr_t *expr) {
+    GOLF_UNUSED(token);
     gs_stmt_t *stmt = gs_parser_alloc(parser, sizeof(gs_stmt_t));
     stmt->type = GS_STMT_EXPR;
     stmt->expr = expr;
@@ -1114,10 +1120,12 @@ cleanup:
 }
 
 static gs_val_t gs_eval_expr_int(gs_eval_t *eval, gs_expr_t *expr) {
+    GOLF_UNUSED(eval);
     return gs_val_int(expr->int_val);
 }
 
 static gs_val_t gs_eval_expr_float(gs_eval_t *eval, gs_expr_t *expr) {
+    GOLF_UNUSED(eval);
     return gs_val_float(expr->float_val);
 }
 
@@ -1335,6 +1343,8 @@ cleanup:
 }
 
 static gs_val_t gs_eval_cast(gs_eval_t *eval, gs_val_t val, gs_val_type type) {
+    GOLF_UNUSED(eval);
+
     if (val.type == type) {
         return val;
     }
@@ -1439,6 +1449,8 @@ static void gs_debug_print_val(gs_val_t val) {
 }
 
 static gs_val_t gs_eval_binary_op_add(gs_eval_t *eval, gs_val_t left, gs_val_t right) {
+    GOLF_UNUSED(eval);
+
     if (left.type == GS_VAL_INT && right.type == GS_VAL_INT) {
         return gs_val_int(gs_val_to_int(left) + gs_val_to_int(right));
     }
@@ -1458,6 +1470,8 @@ static gs_val_t gs_eval_binary_op_add(gs_eval_t *eval, gs_val_t left, gs_val_t r
 }
 
 static gs_val_t gs_eval_binary_op_sub(gs_eval_t *eval, gs_val_t left, gs_val_t right) {
+    GOLF_UNUSED(eval);
+
     if (left.type == GS_VAL_INT && right.type == GS_VAL_INT) {
         return gs_val_int(gs_val_to_int(left) - gs_val_to_int(right));
     }
@@ -1477,6 +1491,8 @@ static gs_val_t gs_eval_binary_op_sub(gs_eval_t *eval, gs_val_t left, gs_val_t r
 }
 
 static gs_val_t gs_eval_binary_op_mul(gs_eval_t *eval, gs_val_t left, gs_val_t right) {
+    GOLF_UNUSED(eval);
+
     if (left.type == GS_VAL_INT && right.type == GS_VAL_INT) {
         return gs_val_int(gs_val_to_int(left) * gs_val_to_int(right));
     }
@@ -1502,6 +1518,8 @@ static gs_val_t gs_eval_binary_op_mul(gs_eval_t *eval, gs_val_t left, gs_val_t r
 }
 
 static gs_val_t gs_eval_binary_op_div(gs_eval_t *eval, gs_val_t left, gs_val_t right) {
+    GOLF_UNUSED(eval);
+
     if (left.type == GS_VAL_INT && right.type == GS_VAL_INT) {
         return gs_val_int(gs_val_to_int(left) / gs_val_to_int(right));
     }
@@ -1521,6 +1539,8 @@ static gs_val_t gs_eval_binary_op_div(gs_eval_t *eval, gs_val_t left, gs_val_t r
 }
 
 static gs_val_t gs_eval_binary_op_lt(gs_eval_t *eval, gs_val_t left, gs_val_t right) {
+    GOLF_UNUSED(eval);
+
     if (left.type == GS_VAL_INT && right.type == GS_VAL_INT) {
         return gs_val_bool(gs_val_to_int(left) < gs_val_to_int(right));
     }
@@ -1534,6 +1554,8 @@ static gs_val_t gs_eval_binary_op_lt(gs_eval_t *eval, gs_val_t left, gs_val_t ri
 }
 
 static gs_val_t gs_eval_binary_op_gt(gs_eval_t *eval, gs_val_t left, gs_val_t right) {
+    GOLF_UNUSED(eval);
+
     if (left.type == GS_VAL_INT && right.type == GS_VAL_INT) {
         return gs_val_bool(gs_val_to_int(left) > gs_val_to_int(right));
     }
@@ -1547,6 +1569,8 @@ static gs_val_t gs_eval_binary_op_gt(gs_eval_t *eval, gs_val_t left, gs_val_t ri
 }
 
 static gs_val_t gs_eval_binary_op_lte(gs_eval_t *eval, gs_val_t left, gs_val_t right) {
+    GOLF_UNUSED(eval);
+
     if (left.type == GS_VAL_INT && right.type == GS_VAL_INT) {
         return gs_val_bool(gs_val_to_int(left) <= gs_val_to_int(right));
     }
@@ -1560,6 +1584,8 @@ static gs_val_t gs_eval_binary_op_lte(gs_eval_t *eval, gs_val_t left, gs_val_t r
 }
 
 static gs_val_t gs_eval_binary_op_gte(gs_eval_t *eval, gs_val_t left, gs_val_t right) {
+    GOLF_UNUSED(eval);
+
     if (left.type == GS_VAL_INT && right.type == GS_VAL_INT) {
         return gs_val_bool(gs_val_to_int(left) >= gs_val_to_int(right));
     }
@@ -1573,6 +1599,8 @@ static gs_val_t gs_eval_binary_op_gte(gs_eval_t *eval, gs_val_t left, gs_val_t r
 }
 
 static gs_val_t gs_eval_binary_op_eq(gs_eval_t *eval, gs_val_t left, gs_val_t right) {
+    GOLF_UNUSED(eval);
+
     if (left.type == GS_VAL_INT && right.type == GS_VAL_INT) {
         return gs_val_bool(gs_val_to_int(left) == gs_val_to_int(right));
     }
@@ -1690,6 +1718,8 @@ static void gs_c_fn_print_val(gs_val_t val) {
 }
 
 static gs_val_t gs_c_fn_print(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
+    GOLF_UNUSED(eval);
+
     for (int i = 0; i < num_vals; i++) {
         gs_c_fn_print_val(vals[i]);
     }
@@ -2679,6 +2709,8 @@ golf_script_store_t *golf_script_store_get(void) {
 }
 
 bool golf_script_load(golf_script_t *script, const char *path, const char *data, int data_len) {
+    GOLF_UNUSED(data_len);
+
     vec_push(&_gs_store.scripts, script);
 
     snprintf(script->path, GOLF_FILE_MAX_PATH, "%s", path);

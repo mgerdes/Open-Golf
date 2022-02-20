@@ -33,7 +33,7 @@ static golf_t *golf = NULL;
 static golf_graphics_t *graphics = NULL;
 static golf_ui_t *ui = NULL;
 
-static void _golf_renderer_draw_environment_material(golf_model_t *model, int start, int count, mat4 model_mat, golf_material_t material, golf_lightmap_image_t *lightmap_image, golf_lightmap_section_t *lightmap_section, bool movement_repeats, float uv_scale, bool gi_on, vec3 ball_position) {
+static void _golf_renderer_draw_environment_material(golf_model_t *model, int start, int count, mat4 model_mat, golf_material_t material, golf_lightmap_image_t *lightmap_image, golf_lightmap_section_t *lightmap_section, float uv_scale, bool gi_on, vec3 ball_position) {
     environment_material_vs_params_t vs_params = {
         .proj_view_mat = mat4_transpose(graphics->proj_view_mat),
         .model_mat = mat4_transpose(model_mat),
@@ -95,7 +95,7 @@ static void _golf_renderer_draw_environment_material(golf_model_t *model, int st
 }
 
 
-static void _golf_renderer_draw_with_material(golf_model_t *model, int start, int count, mat4 model_mat, golf_material_t material, float uv_scale) {
+static void _golf_renderer_draw_with_material(golf_model_t *model, int start, int count, mat4 model_mat, golf_material_t material) {
     switch (material.type) {
         case GOLF_MATERIAL_TEXTURE: {
             texture_material_vs_params_t vs_params = {
@@ -186,7 +186,7 @@ static void _draw_level(void) {
             switch (material.type) {
                 case GOLF_MATERIAL_TEXTURE: {
                     sg_apply_pipeline(graphics->texture_material_pipeline);
-                    _golf_renderer_draw_with_material(model, group.start_vertex, group.vertex_count, model_mat, material, 1);
+                    _golf_renderer_draw_with_material(model, group.start_vertex, group.vertex_count, model_mat, material);
                     break;
                 }
                 case GOLF_MATERIAL_COLOR: {
@@ -210,11 +210,7 @@ static void _draw_level(void) {
 
                     sg_apply_pipeline(graphics->environment_material_pipeline);
 
-                    bool movement_repeats = false;
-                    if (movement) {
-                        movement_repeats = movement->repeats;
-                    }
-                    _golf_renderer_draw_environment_material(model, group.start_vertex, group.vertex_count, model_mat, material, &lightmap_image, lightmap_section, movement_repeats, uv_scale, true, game->ball.draw_pos);
+                    _golf_renderer_draw_environment_material(model, group.start_vertex, group.vertex_count, model_mat, material, &lightmap_image, lightmap_section, uv_scale, true, game->ball.draw_pos);
                     break;
                 }
             }
@@ -239,7 +235,7 @@ static void _draw_level(void) {
                 material = golf_material_texture("", 0, 0, 0, "data/textures/colors/red.png");
             }
 
-            _golf_renderer_draw_with_material(model, 0, model->positions.length, model_mat, material, 1);
+            _golf_renderer_draw_with_material(model, 0, model->positions.length, model_mat, material);
         }
     }
 
@@ -394,7 +390,7 @@ static void _draw_level(void) {
                 mat4 model_mat = golf_transform_get_model_mat(transform);
                 golf_model_t *model = golf_data_get_model("data/models/hole.obj");
                 golf_material_t material = golf_material_texture("", 0, 0, 0, "data/textures/hole_lightmap.png");
-                _golf_renderer_draw_with_material(model, 0, model->positions.length, model_mat, material, 1);
+                _golf_renderer_draw_with_material(model, 0, model->positions.length, model_mat, material);
                 break;
             }
         }

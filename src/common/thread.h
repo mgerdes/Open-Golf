@@ -5,7 +5,21 @@
 
 typedef void* golf_thread_t;
 
-golf_thread_t golf_thread_create(int (*proc)(void*), void *user_data, const char *name);
+#if GOLF_THREAD_WINDOWS
+
+typedef int golf_thread_result_t;
+#define GOLF_THREAD_RESULT_SUCCESS 1
+
+#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID 
+
+typedef void* golf_thread_result_t;
+#define GOLF_THREAD_RESULT_SUCCESS ((void*)(uintptr_t)1)
+
+#else
+#error Unknown platform
+#endif
+
+golf_thread_t golf_thread_create(golf_thread_result_t (*proc)(void*), void *user_data, const char *name);
 void golf_thread_destroy(golf_thread_t thread);
 int golf_thread_join(golf_thread_t thread);
 

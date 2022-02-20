@@ -4,6 +4,7 @@
 #include "cimgui/cimgui.h"
 
 #include "common/data.h"
+#include "common/common.h"
 #include "common/graphics.h"
 #include "common/inputs.h"
 #include "common/maths.h"
@@ -34,6 +35,8 @@ static void _debug_console_main_tab(void) {
 }
 
 void golf_debug_console_update(float dt) {
+    GOLF_UNUSED(dt);
+
     static bool debug_console_open = false;
     if (inputs->button_clicked[SAPP_KEYCODE_GRAVE_ACCENT]) {
         debug_console_open = !debug_console_open;

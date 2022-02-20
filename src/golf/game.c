@@ -6,6 +6,7 @@
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "cimgui/cimgui.h"
 
+#include "common/common.h"
 #include "common/data.h"
 #include "common/debug_console.h"
 #include "common/graphics.h"
@@ -114,9 +115,12 @@ void golf_game_init(void) {
 }
 
 static void _golf_game_update_state_main_menu(float dt) {
+    GOLF_UNUSED(dt);
 }
 
 static void _golf_game_update_state_waiting_for_aim(float dt) {
+    GOLF_UNUSED(dt);
+
     if (inputs->button_down[SAPP_KEYCODE_W]) {
         vec3 dir = vec3_normalize(V3(graphics->cam_dir.x, 0, graphics->cam_dir.z));
         game.ball.pos = vec3_add(game.ball.pos, vec3_scale(dir, 0.1f));
@@ -207,6 +211,8 @@ static void _golf_game_update_state_aiming(float dt) {
 }
 
 static void _golf_game_update_state_watching_ball(float dt) {
+    GOLF_UNUSED(dt);
+
     if (game.ball.is_in_hole) {
         game.ball.pos = game.ball.start_pos;
         game.ball.vel = V3(0, 0, 0);
@@ -450,7 +456,6 @@ static void _physics_tick(float dt) {
         }
     }
 
-    int contact_num = 0;
     for (int i = 0; i < num_contacts; i++) {
         golf_ball_contact_t *contact = &contacts[i];
         if (contact->is_ignored) {
@@ -616,15 +621,12 @@ void golf_game_start_level(void) {
         golf_entity_t *entity = &level->entities.data[i];
         switch (entity->type) {
             case MODEL_ENTITY:
+            case HOLE_ENTITY:
+            case GEO_ENTITY:
+            case GROUP_ENTITY:
                 break;
             case BALL_START_ENTITY:
                 ball_start_pos = entity->ball_start.transform.position;
-                break;
-            case HOLE_ENTITY:
-                break;
-            case GEO_ENTITY:
-                break;
-            case GROUP_ENTITY:
                 break;
         }
     }
@@ -700,7 +702,6 @@ void golf_game_hit_ball(vec2 aim_delta) {
         start_speed = red_speed + (dark_red_speed - red_speed) * a;
     }
     else {
-        float a = (p - red_power) / (1 - red_power);
         start_speed = dark_red_speed;
     }
 

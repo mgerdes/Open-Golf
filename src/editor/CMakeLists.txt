@@ -33,3 +33,9 @@ add_executable(editor
     gizmo.c
     main.c)
 target_link_libraries(editor PRIVATE ${EDITOR_LIBRARIES})
+
+if(CMAKE_SYSTEM_NAME STREQUAL Windows)
+  target_compile_options(editor PRIVATE /W4 /WX)
+else()
+  target_compile_options(editor PRIVATE -Wall -Wextra -Wpedantic)
+endif()

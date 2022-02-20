@@ -7,6 +7,7 @@
 #include "sokol/sokol_glue.h"
 #include "sokol/sokol_imgui.h"
 #include "sokol/sokol_time.h"
+#include "common/common.h"
 #include "common/data.h"
 #include "common/debug_console.h"
 #include "common/graphics.h"
@@ -43,7 +44,6 @@ static void frame(void) {
 
     static bool inited = false;
     static uint64_t last_time = 0;
-    static float time_since_import = 0.0f;
 
     float dt = (float) stm_sec(stm_laptime(&last_time));
     if (!inited) {
@@ -81,6 +81,9 @@ static void event(const sapp_event *event) {
 }
 
 sapp_desc sokol_main(int argc, char *argv[]) {
+    GOLF_UNUSED(argc);
+    GOLF_UNUSED(argv);
+
     golf_alloc_init();
     golf_log_init();
     return (sapp_desc){

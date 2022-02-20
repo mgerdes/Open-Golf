@@ -65,7 +65,7 @@ static GLuint _load_shader(GLenum type, const char *source) {
     return shader;
 }
 
-static int _gi_run(void *user_data) {
+static golf_thread_result_t _gi_run(void *user_data) {
     golf_gi_t *gi = (golf_gi_t*)user_data;
 
     bool init = glfwInit();
@@ -379,7 +379,8 @@ static int _gi_run(void *user_data) {
     glfwTerminate();
 
     _gi_set_is_running(gi, false);
-    return 0;
+
+    return GOLF_THREAD_RESULT_SUCCESS;
 }
 
 void golf_gi_start(golf_gi_t *gi) {

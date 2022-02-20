@@ -1,4 +1,5 @@
 #include "common/thread.h"
+#include "common/common.h"
 
 #if GOLF_PLATFORM_WINDOWS
 
@@ -42,7 +43,7 @@ typedef struct tagTHREADNAME_INFO
 #error Unknown platform
 #endif
 
-golf_thread_t golf_thread_create(int (*proc)(void*), void *user_data, const char *name) {
+golf_thread_t golf_thread_create(golf_thread_result_t (*proc)(void*), void *user_data, const char *name) {
 #if GOLF_PLATFORM_WINDOWS
 
     DWORD thread_id;
@@ -70,9 +71,10 @@ golf_thread_t golf_thread_create(int (*proc)(void*), void *user_data, const char
     return (golf_thread_t) handle;
 
 #elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID 
+    GOLF_UNUSED(name);
 
     pthread_t thread;
-    if( 0 != pthread_create( &thread, NULL, ( void* (*)( void * ) ) proc, user_data ) )
+    if( 0 != pthread_create( &thread, NULL, proc, user_data ) )
         return NULL;
 
     return (golf_thread_t) thread;
@@ -84,9 +86,11 @@ golf_thread_t golf_thread_create(int (*proc)(void*), void *user_data, const char
 }
 
 void golf_thread_destroy(golf_thread_t thread) {
+    GOLF_UNUSED(thread);
 }
 
 int golf_thread_join(golf_thread_t thread) {
+    GOLF_UNUSED(thread);
     return 0;
 }
 
@@ -171,6 +175,7 @@ void golf_thread_timer_init(golf_thread_timer_t* timer) {
     *(HANDLE*)timer = CreateWaitableTimer( NULL, TRUE, NULL );
 
 #elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID
+    GOLF_UNUSED(timer);
 
     // Nothing
 
@@ -189,6 +194,7 @@ void golf_thread_timer_deinit(golf_thread_timer_t* timer) {
         timeEndPeriod( tc.wPeriodMin );
 
 #elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID
+    GOLF_UNUSED(timer);
 
     // Nothing
 
@@ -207,6 +213,7 @@ void golf_thread_timer_wait(golf_thread_timer_t* timer, uint64_t nanoseconds) {
     WaitForSingleObject( *(HANDLE*)timer, INFINITE ); 
 
 #elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID
+    GOLF_UNUSED(timer);
 
     struct timespec rem;
     struct timespec req;

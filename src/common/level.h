@@ -40,7 +40,7 @@ typedef struct golf_geo_face {
 } golf_geo_face_t;
 typedef vec_t(golf_geo_face_t) vec_golf_geo_face_t;
 typedef vec_t(golf_geo_face_t*) vec_golf_geo_face_ptr_t;
-golf_geo_face_t golf_geo_face(const char *material_name, int n, vec_int_t idx, golf_geo_face_uv_gen_type_t uv_gen_type, vec_vec2_t uvs);
+golf_geo_face_t golf_geo_face(const char *material_name, vec_int_t idx, golf_geo_face_uv_gen_type_t uv_gen_type, vec_vec2_t uvs);
 
 typedef struct golf_geo_point {
     bool active;
@@ -168,6 +168,12 @@ typedef struct golf_geo_entity {
     golf_geo_t geo;
 } golf_geo_entity_t;
 
+typedef struct golf_water_entity {
+    golf_lightmap_section_t lightmap_section;
+    golf_transform_t transform;
+    golf_geo_t geo;
+} golf_water_entity_t;
+
 typedef struct golf_entity golf_entity_t;
 typedef vec_t(golf_entity_t) vec_golf_entity_t;
 typedef struct golf_group_entity {
@@ -179,6 +185,7 @@ typedef enum golf_entity_type {
     BALL_START_ENTITY,
     HOLE_ENTITY,
     GEO_ENTITY,
+    WATER_ENTITY,
     GROUP_ENTITY,
 } golf_entity_type_t;
 
@@ -192,6 +199,7 @@ typedef struct golf_entity {
         golf_ball_start_entity_t ball_start;
         golf_hole_entity_t hole;
         golf_geo_entity_t geo;
+        golf_water_entity_t water;
         golf_group_entity_t group;
     };
 } golf_entity_t;

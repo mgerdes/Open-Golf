@@ -3,6 +3,7 @@
 #include <assert.h>
 #include "parson/parson.h"
 #include "common/alloc.h"
+#include "common/common.h"
 #include "common/data.h"
 #include "common/graphics.h"
 #include "common/inputs.h"
@@ -195,6 +196,7 @@ static void _golf_ui_pixel_pack_square(golf_ui_layout_t *layout, golf_ui_layout_
     _golf_ui_pixel_pack_square_section(pos, size, tile_size, overlay_color, pixel_pack, pixel_pack_square, 1, 1);
 }
 
+/*
 static void _golf_ui_pixel_pack_square_name(golf_ui_layout_t *layout, const char *name) {
     golf_ui_layout_entity_t *entity;
     if (!_golf_ui_layout_get_entity_of_type(layout, name, GOLF_UI_PIXEL_PACK_SQUARE, &entity)) {
@@ -204,6 +206,7 @@ static void _golf_ui_pixel_pack_square_name(golf_ui_layout_t *layout, const char
 
     _golf_ui_pixel_pack_square(layout, *entity);
 }
+*/
 
 static void _golf_ui_text(golf_ui_layout_t *layout, golf_ui_layout_entity_t entity) {
     golf_font_t *font = entity.text.font;
@@ -336,6 +339,8 @@ static bool _golf_ui_button_name(golf_ui_layout_t *layout, const char *name) {
         golf_ui_layout_entity_t entity = entities.data[i]; 
         switch (entity.type) {
             case GOLF_UI_BUTTON:
+            case GOLF_UI_GIF_TEXTURE:
+            case GOLF_UI_AIM_CIRCLE:
                 break;
             case GOLF_UI_TEXT:
                 _golf_ui_text(layout, entity);
@@ -503,6 +508,8 @@ static void _golf_ui_title_screen(float dt) {
 }
 
 static void _golf_ui_main_menu(float dt) {
+    GOLF_UNUSED(dt);
+
     golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
     _golf_ui_text_name(layout, "main_text");
     _golf_ui_text_name(layout, "main2_text");
@@ -629,6 +636,8 @@ void golf_ui_update(float dt) {
     }
 
     switch (golf->state) {
+        case GOLF_STATE_LOADING_LEVEL:
+            break;
         case GOLF_STATE_TITLE_SCREEN:
             _golf_ui_title_screen(dt);
             break;

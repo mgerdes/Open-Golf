@@ -5,6 +5,7 @@
 #include "stb/stb_image.h"
 #include "stb/stb_image_write.h"
 #include "common/alloc.h"
+#include "common/common.h"
 #include "common/json.h"
 #include "common/log.h"
 
@@ -35,7 +36,7 @@ bool golf_geo_generator_data_get_arg(golf_geo_generator_data_t *data, const char
     return false;
 }
 
-golf_geo_face_t golf_geo_face(const char *material_name, int n, vec_int_t idx, golf_geo_face_uv_gen_type_t uv_gen_type, vec_vec2_t uvs) {
+golf_geo_face_t golf_geo_face(const char *material_name, vec_int_t idx, golf_geo_face_uv_gen_type_t uv_gen_type, vec_vec2_t uvs) {
     golf_geo_face_t face;
     face.active = true;
     snprintf(face.material_name, GOLF_MAX_NAME_LEN, "%s", material_name);
@@ -479,7 +480,7 @@ golf_lightmap_image_t golf_lightmap_image(const char *name, int resolution, int 
 
 void golf_lightmap_image_finalize(golf_lightmap_image_t *lightmap) {
     for (int s = 0; s < lightmap->num_samples; s++) {
-        char *sg_image_data = golf_alloc(4 * lightmap->width * lightmap->height);
+        unsigned char *sg_image_data = golf_alloc(4 * lightmap->width * lightmap->height);
         for (int i = 0; i < 4 * lightmap->width * lightmap->height; i += 4) {
             sg_image_data[i + 0] = lightmap->data[s][i / 4];
             sg_image_data[i + 1] = lightmap->data[s][i / 4];
@@ -533,6 +534,7 @@ golf_material_t golf_material_texture(const char *name, float friction, float re
     snprintf(material.name, GOLF_MAX_NAME_LEN, "%s", name);
     material.friction = friction;
     material.restitution = restitution;
+    material.vel_scale = vel_scale;
     material.type = GOLF_MATERIAL_TEXTURE;
     snprintf(material.texture_path, GOLF_FILE_MAX_PATH, "%s", texture_path);
     material.texture = golf_data_get_texture(texture_path);
@@ -763,6 +765,7 @@ bool golf_level_save(golf_level_t *level, const char *path) {
 }
 
 bool golf_level_unload(golf_level_t *level) {
+    GOLF_UNUSED(level);
     return false;
 }
 
@@ -875,6 +878,18 @@ golf_entity_t golf_entity_geo(const char *name, golf_transform_t transform, golf
     return entity;
 }
 
+golf_entity_t golf_entity_water(const char *name, golf_transform_t transform, golf_geo_t geo, golf_lightmap_section_t lightmap_section){
+    golf_entity_t entity;
+    entity.active = true;
+    entity.parent_idx = -1;
+    entity.type = WATER_ENTITY;
+    snprintf(entity.name, GOLF_MAX_NAME_LEN, "%s", name);
+    entity.water.transform = transform;
+    entity.water.geo = geo;
+    entity.water.lightmap_section = lightmap_section;
+    return entity;
+}
+
 golf_entity_t golf_entity_group(const char *name, golf_transform_t transform) {
     golf_entity_t entity;
     entity.active = true;
@@ -922,7 +937,7 @@ golf_entity_t golf_entity_make_copy(golf_entity_t *entity) {
             vec_init(&uvs_copy, "face");
             vec_pusharr(&uvs_copy, face.uvs.data, face.uvs.length);
 
-            golf_geo_face_t face_copy = golf_geo_face(face.material_name, face.idx.length, idx_copy, face.uv_gen_type, uvs_copy);
+            golf_geo_face_t face_copy = golf_geo_face(face.material_name, idx_copy, face.uv_gen_type, uvs_copy);
             vec_push(&faces_copy, face_copy);
         }
 

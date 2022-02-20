@@ -39,6 +39,13 @@ add_library(common STATIC
     thread.c
     vec.c)
 
+
+if(CMAKE_SYSTEM_NAME STREQUAL Windows)
+  target_compile_options(common PRIVATE /W4 /WX)
+else()
+  target_compile_options(common PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
 if(CMAKE_SYSTEM_NAME STREQUAL Android OR CMAKE_SYSTEM_NAME STREQUAL iOS)
     add_dependencies(common embedded_data_zip_header)
 endif()
