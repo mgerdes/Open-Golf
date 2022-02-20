@@ -1343,14 +1343,18 @@ static void _golf_json_object_get_lightmap_section(JSON_Object *obj, const char 
     JSON_Object *section_obj = json_object_get_object(obj, name);
 
     const char *lightmap_name = json_object_get_string(section_obj, "lightmap_name");
-    JSON_Array *uvs_arr = json_object_get_array(section_obj, "uvs");
+
+    float *uvs_arr;
+    int uvs_arr_len;
+    golf_json_object_get_float_array(section_obj, "uvs", &uvs_arr, &uvs_arr_len);
+
     vec_vec2_t uvs;
     vec_init(&uvs, "level");
-    for (int i = 0; i < (int)json_array_get_count(uvs_arr); i += 2) {
-        float x = (float)json_array_get_number(uvs_arr, i + 0);
-        float y = (float)json_array_get_number(uvs_arr, i + 1);
-        vec_push(&uvs, V2(x, y));
+    for (int i = 0; i < uvs_arr_len; i += 2) {
+        vec_push(&uvs, V2(uvs_arr[i], uvs_arr[i + 1]));
     }
+
+    golf_free(uvs_arr);
 
     *lightmap_section = golf_lightmap_section(lightmap_name, uvs);
 }

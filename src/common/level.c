@@ -421,15 +421,8 @@ static void _golf_json_object_set_lightmap_section(JSON_Object *obj, const char 
     JSON_Value *lightmap_section_val = json_value_init_object();
     JSON_Object *lightmap_section_obj = json_value_get_object(lightmap_section_val);
 
-    JSON_Value *uvs_val = json_value_init_array();
-    JSON_Array *uvs_arr = json_value_get_array(uvs_val);
-    for (int i = 0; i < lightmap_section->uvs.length; i++) {
-        json_array_append_number(uvs_arr, lightmap_section->uvs.data[i].x);
-        json_array_append_number(uvs_arr, lightmap_section->uvs.data[i].y);
-    }
-
     json_object_set_string(lightmap_section_obj, "lightmap_name", lightmap_section->lightmap_name);
-    json_object_set_value(lightmap_section_obj, "uvs", uvs_val);
+    golf_json_object_set_float_array(lightmap_section_obj, "uvs", (float*)lightmap_section->uvs.data, 2 * lightmap_section->uvs.length, 0, 1); 
     json_object_set_value(obj, name, lightmap_section_val);
 }
 

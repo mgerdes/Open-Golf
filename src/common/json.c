@@ -3,6 +3,7 @@
 #include "common/alloc.h"
 #include "common/base64.h"
 #include "common/log.h"
+#include "common/vec.h"
 
 static void *_parson_malloc(size_t size) {
     return golf_alloc_tracked(size, "parson");
@@ -126,4 +127,35 @@ void golf_json_object_set_quat(JSON_Object *obj, const char *name, quat q) {
     json_array_append_number(arr, q.z);
     json_array_append_number(arr, q.w);
     json_object_set_value(obj, name, val);
+}
+
+#define PRECISION 100000
+
+void golf_json_object_get_float_array(JSON_Object *obj, const char *name, float **arr, int *n) {
+    unsigned char *data; 
+    int data_len;
+    golf_json_object_get_data(obj, name, &data, &data_len);
+
+    int *arr_i = (int*)data;
+    *n = data_len / 4;
+    *arr = golf_alloc(sizeof(float) * (*n));
+    for (int i = 0; i < *n; i++) {
+        (*arr)[i] = (float)(arr_i[i] / (float)PRECISION);
+    }
+}
+
+void golf_json_object_set_float_array(JSON_Object *obj, const char *name, float *arr, int n, float min, float max) {
+    vec_char_t data;
+    vec_init(&data, "json");
+
+    for (int i = 0; i < n; i++) {
+        float v = (arr[i] - min) / (max - min);
+        if (v < min || v > max) golf_log_warning("Number too big");
+        int v_i = (int)(v * (float)PRECISION);
+        vec_pusharr(&data, (unsigned char *)&v_i, sizeof(v_i));
+    }
+
+    golf_json_object_set_data(obj, name, (unsigned char*)data.data, data.length);
+
+    vec_deinit(&data);
 }

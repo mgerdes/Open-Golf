@@ -25,4 +25,7 @@ void golf_json_object_set_vec4(JSON_Object *obj, const char *name, vec4 v);
 quat golf_json_object_get_quat(JSON_Object *obj, const char *name);
 void golf_json_object_set_quat(JSON_Object *obj, const char *name, quat q);
 
+void golf_json_object_get_float_array(JSON_Object *obj, const char *name, float **v, int *n);
+void golf_json_object_set_float_array(JSON_Object *obj, const char *name, float *arr, int n, float min, float max);
+
 #endif 
