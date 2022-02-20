@@ -1173,32 +1173,75 @@ static void _golf_editor_entities_tab(void) {
         _golf_editor_commit_entity_create_action();
     }
 
-    /*
     if (igButton("Create Geo Entity", (ImVec2){0, 0})) {
-        golf_geo_t geo;
-        golf_geo_init_cube(&geo);
-        golf_geo_update_model(&geo);
+        vec_golf_geo_point_t points;
+        vec_init(&points, "editor");
+        vec_push(&points, golf_geo_point(V3(0, 0, 0)));
+        vec_push(&points, golf_geo_point(V3(1, 0, 0)));
+        vec_push(&points, golf_geo_point(V3(1, 0, 1)));
+        vec_push(&points, golf_geo_point(V3(0, 0, 1)));
+        vec_push(&points, golf_geo_point(V3(0, 1, 0)));
+        vec_push(&points, golf_geo_point(V3(1, 1, 0)));
+        vec_push(&points, golf_geo_point(V3(1, 1, 1)));
+        vec_push(&points, golf_geo_point(V3(0, 1, 1)));
+
+        golf_geo_face_uv_gen_type_t uv_gen_type = GOLF_GEO_FACE_UV_GEN_MANUAL;
+        vec_golf_geo_face_t faces;
+        vec_init(&faces, "editor");
+
+        vec_int_t idx0;
+        vec_pusharr(&idx0, ((int[]){0, 1, 2, 3}), 4);
+        vec_vec2_t uvs0;
+        vec_pusharr(&uvs0, ((vec2[]){{0, 0}, {0, 0}, {0, 0}, {0, 0}}), 4);
+        vec_push(&faces, golf_geo_face("default", idx0, uv_gen_type, uvs0));
+
+        vec_int_t idx1;
+        vec_pusharr(&idx1, ((int[]){7, 6, 5, 4}), 4);
+        vec_vec2_t uvs1;
+        vec_pusharr(&uvs1, ((vec2[]){{0, 0}, {0, 0}, {0, 0}, {0, 0}}), 4);
+        vec_push(&faces, golf_geo_face("default", idx1, uv_gen_type, uvs1));
+
+        vec_int_t idx2;
+        vec_pusharr(&idx2, ((int[]){7, 4, 0, 3}), 4);
+        vec_vec2_t uvs2;
+        vec_pusharr(&uvs2, ((vec2[]){{0, 0}, {0, 0}, {0, 0}, {0, 0}}), 4);
+        vec_push(&faces, golf_geo_face("default", idx2, uv_gen_type, uvs2));
+
+        vec_int_t idx3;
+        vec_pusharr(&idx3, ((int[]){5, 6, 2, 1}), 4);
+        vec_vec2_t uvs3;
+        vec_pusharr(&uvs3, ((vec2[]){{0, 0}, {0, 0}, {0, 0}, {0, 0}}), 4);
+        vec_push(&faces, golf_geo_face("default", idx3, uv_gen_type, uvs3));
+
+        vec_int_t idx4;
+        vec_pusharr(&idx4, ((int[]){4, 5, 1, 0}), 4);
+        vec_vec2_t uvs4;
+        vec_pusharr(&uvs4, ((vec2[]){{0, 0}, {0, 0}, {0, 0}, {0, 0}}), 4);
+        vec_push(&faces, golf_geo_face("default", idx4, uv_gen_type, uvs4));
+
+        vec_int_t idx5;
+        vec_pusharr(&idx5, ((int[]){6, 7, 3, 2}), 4);
+        vec_vec2_t uvs5;
+        vec_pusharr(&uvs5, ((vec2[]){{0, 0}, {0, 0}, {0, 0}, {0, 0}}), 4);
+        vec_push(&faces, golf_geo_face("default", idx5, uv_gen_type, uvs5));
+
+        golf_geo_t geo = golf_geo(points, faces);
+        golf_geo_finalize(&geo);
+
         golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
         golf_movement_t movement = golf_movement_none();
 
-        golf_lightmap_section_t lightmap_section;
-        {
-            golf_model_t *model = &geo.model;
-            vec_vec2_t uvs;
-            vec_init(&uvs, "editor");
-            for (int i = 0; i < model->positions.length; i++) {
-                vec_push(&uvs, V2(0, 0));
-            }
-
-            golf_lightmap_section_init(&lightmap_section, "main", uvs);
-            vec_deinit(&uvs);
+        vec_vec2_t uvs;
+        vec_init(&uvs, "editor");
+        for (int i = 0; i < geo.model.positions.length; i++) {
+            vec_push(&uvs, V2(0, 0));
         }
+        golf_lightmap_section_t lightmap_section = golf_lightmap_section("main", uvs);
 
         golf_entity_t entity = golf_entity_geo("geo", transform, movement, geo, lightmap_section);
         _vec_push_and_fix_actions(&editor.level->entities, entity, NULL);
         _golf_editor_commit_entity_create_action();
     }
-    */
     
     if (igButton("Create Group Entity", (ImVec2){0, 0})) {
         golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
