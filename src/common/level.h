@@ -41,7 +41,7 @@ typedef struct golf_geo_face {
 } golf_geo_face_t;
 typedef vec_t(golf_geo_face_t) vec_golf_geo_face_t;
 typedef vec_t(golf_geo_face_t*) vec_golf_geo_face_ptr_t;
-golf_geo_face_t golf_geo_face(const char *material_name, vec_int_t idx, golf_geo_face_uv_gen_type_t uv_gen_type, vec_vec2_t uvs);
+golf_geo_face_t golf_geo_face(const char *material_name, vec_int_t idx, golf_geo_face_uv_gen_type_t uv_gen_type, vec_vec2_t uvs, vec3 water_dir);
 
 typedef struct golf_geo_point {
     bool active;
@@ -54,10 +54,11 @@ typedef struct golf_geo {
     golf_geo_generator_data_t generator_data;
     vec_golf_geo_point_t points;
     vec_golf_geo_face_t faces;
+    bool is_water;
     bool model_updated_this_frame;
     golf_model_t model;
 } golf_geo_t;
-golf_geo_t golf_geo(vec_golf_geo_point_t points, vec_golf_geo_face_t faces);
+golf_geo_t golf_geo(vec_golf_geo_point_t points, vec_golf_geo_face_t faces, bool is_water);
 void golf_geo_finalize(golf_geo_t *geo);
 void golf_geo_update_model(golf_geo_t *geo);
 

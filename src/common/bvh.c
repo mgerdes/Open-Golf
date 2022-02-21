@@ -59,7 +59,12 @@ golf_bvh_node_info_t golf_bvh_node_info(golf_bvh_t *bvh, int idx, golf_level_t *
             face.level = level;
             face.entity = entity;
             face.t = t;
-            //face.water_dir = model->water_dir.data[j / 3];
+            if (model->is_water) {
+                face.water_dir = vec3_apply_mat4(model->water_dir.data[j / 3], 0, model_mat);
+            }
+            else {
+                face.water_dir = V3(0, 0, 0);
+            }
             vec_push(&bvh->faces, face);
 
             if (i == 0) {
@@ -145,6 +150,7 @@ golf_ball_contact_t golf_ball_contact(vec3 a, vec3 b, vec3 c, vec3 vel, vec3 bp,
     contact.vel_scale = vel_scale;
     contact.type = type;
     contact.penetration = br - dist;
+    contact.water_dir = water_dir;
     return contact;
 }
 

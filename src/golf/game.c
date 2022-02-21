@@ -536,7 +536,7 @@ static void _physics_tick(float dt) {
             continue;
         }
 
-        vec3 water_dir = V3(1, 0, 0);
+        vec3 water_dir = contact->water_dir;
         vec3 water_vel = vec3_scale(water_dir, CFG_NUM(game_cfg, "physics_water_max_speed"));
         bv = vec3_add(bv, vec3_scale(vec3_sub(water_vel, bv), CFG_NUM(game_cfg, "physics_water_speed") * dt));
     }

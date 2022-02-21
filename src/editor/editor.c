@@ -506,7 +506,7 @@ static void _golf_editor_duplicate_selected_entities(void) {
                     vec_init(&uvs_copy, "face");
                     vec_pusharr(&uvs_copy, face.uvs.data, face.uvs.length);
 
-                    golf_geo_face_t new_face = golf_geo_face(face.material_name, idx_copy, face.uv_gen_type, uvs_copy);
+                    golf_geo_face_t new_face = golf_geo_face(face.material_name, idx_copy, face.uv_gen_type, uvs_copy, face.water_dir);
                     for (int i = 0; i < face.idx.length; i++) {
                         int idx = face.idx.data[i];
 
@@ -912,7 +912,7 @@ static void _golf_editor_geo_tab(void) {
                 }
             }
             golf_geo_face_uv_gen_type_t uv_gen_type = GOLF_GEO_FACE_UV_GEN_MANUAL;
-            golf_geo_face_t face = golf_geo_face("default", idxs, uv_gen_type, uvs);
+            golf_geo_face_t face = golf_geo_face("default", idxs, uv_gen_type, uvs, V3(0, 0, 0));
             _vec_push_and_fix_actions(&geo->faces, face, NULL);
 
             golf_geo_face_t *new_face = &vec_last(&geo->faces);
@@ -1196,7 +1196,7 @@ static void _golf_editor_entities_tab(void) {
         vec_vec2_t uvs0;
         vec_init(&uvs0, "editor");
         vec_pusharr(&uvs0, ((vec2[]){{0, 0}, {0, 0}, {0, 0}, {0, 0}}), 4);
-        vec_push(&faces, golf_geo_face("default", idx0, uv_gen_type, uvs0));
+        vec_push(&faces, golf_geo_face("default", idx0, uv_gen_type, uvs0, V3(0, 0, 0)));
 
         vec_int_t idx1;
         vec_init(&idx1, "editor");
@@ -1204,7 +1204,7 @@ static void _golf_editor_entities_tab(void) {
         vec_vec2_t uvs1;
         vec_init(&uvs1, "editor");
         vec_pusharr(&uvs1, ((vec2[]){{0, 0}, {0, 0}, {0, 0}, {0, 0}}), 4);
-        vec_push(&faces, golf_geo_face("default", idx1, uv_gen_type, uvs1));
+        vec_push(&faces, golf_geo_face("default", idx1, uv_gen_type, uvs1, V3(0, 0, 0)));
 
         vec_int_t idx2;
         vec_init(&idx2, "editor");
@@ -1212,7 +1212,7 @@ static void _golf_editor_entities_tab(void) {
         vec_vec2_t uvs2;
         vec_init(&uvs2, "editor");
         vec_pusharr(&uvs2, ((vec2[]){{0, 0}, {0, 0}, {0, 0}, {0, 0}}), 4);
-        vec_push(&faces, golf_geo_face("default", idx2, uv_gen_type, uvs2));
+        vec_push(&faces, golf_geo_face("default", idx2, uv_gen_type, uvs2, V3(0, 0, 0)));
 
         vec_int_t idx3;
         vec_init(&idx3, "editor");
@@ -1220,7 +1220,7 @@ static void _golf_editor_entities_tab(void) {
         vec_vec2_t uvs3;
         vec_init(&uvs3, "editor");
         vec_pusharr(&uvs3, ((vec2[]){{0, 0}, {0, 0}, {0, 0}, {0, 0}}), 4);
-        vec_push(&faces, golf_geo_face("default", idx3, uv_gen_type, uvs3));
+        vec_push(&faces, golf_geo_face("default", idx3, uv_gen_type, uvs3, V3(0, 0, 0)));
 
         vec_int_t idx4;
         vec_init(&idx4, "editor");
@@ -1228,7 +1228,7 @@ static void _golf_editor_entities_tab(void) {
         vec_vec2_t uvs4;
         vec_init(&uvs4, "editor");
         vec_pusharr(&uvs4, ((vec2[]){{0, 0}, {0, 0}, {0, 0}, {0, 0}}), 4);
-        vec_push(&faces, golf_geo_face("default", idx4, uv_gen_type, uvs4));
+        vec_push(&faces, golf_geo_face("default", idx4, uv_gen_type, uvs4, V3(0, 0, 0)));
 
         vec_int_t idx5;
         vec_init(&idx5, "editor");
@@ -1236,9 +1236,9 @@ static void _golf_editor_entities_tab(void) {
         vec_vec2_t uvs5;
         vec_init(&uvs5, "editor");
         vec_pusharr(&uvs5, ((vec2[]){{0, 0}, {0, 0}, {0, 0}, {0, 0}}), 4);
-        vec_push(&faces, golf_geo_face("default", idx5, uv_gen_type, uvs5));
+        vec_push(&faces, golf_geo_face("default", idx5, uv_gen_type, uvs5, V3(0, 0, 0)));
 
-        golf_geo_t geo = golf_geo(points, faces);
+        golf_geo_t geo = golf_geo(points, faces, false);
         golf_geo_finalize(&geo);
 
         golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
@@ -1275,9 +1275,9 @@ static void _golf_editor_entities_tab(void) {
         vec_vec2_t uvs0;
         vec_init(&uvs0, "editor");
         vec_pusharr(&uvs0, ((vec2[]){{0, 0}, {1, 0}, {1, 1}, {0, 1}}), 4);
-        vec_push(&faces, golf_geo_face("default", idx0, uv_gen_type, uvs0));
+        vec_push(&faces, golf_geo_face("default", idx0, uv_gen_type, uvs0, V3(0, 0, 1)));
 
-        golf_geo_t geo = golf_geo(points, faces);
+        golf_geo_t geo = golf_geo(points, faces, true);
         golf_geo_finalize(&geo);
 
         golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
@@ -2214,6 +2214,10 @@ void golf_editor_update(float dt) {
                             }
                             _golf_editor_start_action(action);
                             _golf_editor_commit_action();
+                        }
+
+                        if (geo->is_water) {
+                            _golf_editor_undoable_igInputFloat3("Water Dir", (float*)&face->water_dir, "Modify face water_dir");
                         }
 
                         igText("Num points: %d", face->idx.length);

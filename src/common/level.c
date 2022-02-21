@@ -36,7 +36,7 @@ bool golf_geo_generator_data_get_arg(golf_geo_generator_data_t *data, const char
     return false;
 }
 
-golf_geo_face_t golf_geo_face(const char *material_name, vec_int_t idx, golf_geo_face_uv_gen_type_t uv_gen_type, vec_vec2_t uvs) {
+golf_geo_face_t golf_geo_face(const char *material_name, vec_int_t idx, golf_geo_face_uv_gen_type_t uv_gen_type, vec_vec2_t uvs, vec3 water_dir) {
     golf_geo_face_t face;
     face.active = true;
     snprintf(face.material_name, GOLF_MAX_NAME_LEN, "%s", material_name);
@@ -44,7 +44,7 @@ golf_geo_face_t golf_geo_face(const char *material_name, vec_int_t idx, golf_geo
     face.uvs = uvs;
     face.uv_gen_type = uv_gen_type;
     face.start_vertex_in_model = 0;
-    face.water_dir = V3(0, 0, 0);
+    face.water_dir = water_dir;
     return face;
 }
 
@@ -120,7 +120,7 @@ static void _golf_geo_face_guess_wall_dir(vec3 p0, vec3 p1, vec3 p2, vec3 *long_
     }
 }
 
-static void _golf_geo_generate_model_data(golf_geo_t *geo, vec_golf_group_t *groups, vec_vec3_t *positions, vec_vec3_t *normals, vec_vec2_t *texcoords) {
+static void _golf_geo_generate_model_data(golf_geo_t *geo, vec_golf_group_t *groups, vec_vec3_t *positions, vec_vec3_t *normals, vec_vec2_t *texcoords, bool is_water, vec_vec3_t *water_dir) {
     groups->length = 0;
     positions->length = 0;
     normals->length = 0;
@@ -217,6 +217,9 @@ static void _golf_geo_generate_model_data(golf_geo_t *geo, vec_golf_group_t *gro
                 vec_push(texcoords, tc0);
                 vec_push(texcoords, tc1);
                 vec_push(texcoords, tc2);
+                if (is_water) {
+                    vec_push(water_dir, face->water_dir);
+                }
                 group_count += 3;
             }
         }
@@ -227,12 +230,13 @@ static void _golf_geo_generate_model_data(golf_geo_t *geo, vec_golf_group_t *gro
     }
 }
 
-golf_geo_t golf_geo(vec_golf_geo_point_t points, vec_golf_geo_face_t faces) {
+golf_geo_t golf_geo(vec_golf_geo_point_t points, vec_golf_geo_face_t faces, bool is_water) {
     golf_geo_t geo;
     golf_geo_generator_data_init(&geo.generator_data);
     geo.points = points;
     geo.faces = faces;
     geo.model_updated_this_frame = false;
+    geo.is_water = is_water;
 
     vec_golf_group_t groups;
     vec_init(&groups, "geo");
@@ -242,9 +246,16 @@ golf_geo_t golf_geo(vec_golf_geo_point_t points, vec_golf_geo_face_t faces) {
     vec_init(&normals, "normals");
     vec_vec2_t texcoords;
     vec_init(&texcoords, "texcoords");
-    _golf_geo_generate_model_data(&geo, &groups, &positions, &normals, &texcoords);
+    vec_vec3_t water_dir;
+    vec_init(&water_dir, "water_dir");
+    _golf_geo_generate_model_data(&geo, &groups, &positions, &normals, &texcoords, is_water, &water_dir);
 
-    geo.model = golf_model_dynamic(groups, positions, normals, texcoords);
+    if (is_water) {
+        geo.model = golf_model_dynamic_water(groups, positions, normals, texcoords, water_dir);
+    }
+    else {
+        geo.model = golf_model_dynamic(groups, positions, normals, texcoords);
+    }
     return geo;
 }
 
@@ -259,7 +270,7 @@ void golf_geo_update_model(golf_geo_t *geo) {
     }
     geo->model_updated_this_frame = true;
 
-    _golf_geo_generate_model_data(geo, &geo->model.groups, &geo->model.positions, &geo->model.normals, &geo->model.texcoords);
+    _golf_geo_generate_model_data(geo, &geo->model.groups, &geo->model.positions, &geo->model.normals, &geo->model.texcoords, geo->is_water, &geo->model.water_dir);
     golf_model_dynamic_update_sg_buf(&geo->model);
 }
 
@@ -346,6 +357,7 @@ static void _golf_json_object_set_geo(JSON_Object *obj, const char *name, golf_g
         const char *uv_gen_type_str = golf_geo_uv_gen_type_strings()[face.uv_gen_type];
         json_object_set_string(face_obj, "uv_gen_type", uv_gen_type_str);
         json_array_append_value(faces_arr, face_val);
+        golf_json_object_set_vec3(face_obj, "water_dir", face.water_dir);
     }
     json_object_set_value(geo_obj, "faces", faces_val);
 
@@ -935,11 +947,11 @@ golf_entity_t golf_entity_make_copy(golf_entity_t *entity) {
             vec_init(&uvs_copy, "face");
             vec_pusharr(&uvs_copy, face.uvs.data, face.uvs.length);
 
-            golf_geo_face_t face_copy = golf_geo_face(face.material_name, idx_copy, face.uv_gen_type, uvs_copy);
+            golf_geo_face_t face_copy = golf_geo_face(face.material_name, idx_copy, face.uv_gen_type, uvs_copy, face.water_dir);
             vec_push(&faces_copy, face_copy);
         }
 
-        *geo_copy = golf_geo(points_copy, faces_copy);
+        *geo_copy = golf_geo(points_copy, faces_copy, geo->is_water);
         golf_geo_finalize(geo_copy);
         /*
         geo_copy->generator_data.script = geo->generator_data.script;

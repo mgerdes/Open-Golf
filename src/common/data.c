@@ -563,6 +563,19 @@ golf_model_t golf_model_dynamic(vec_golf_group_t groups, vec_vec3_t positions, v
     model.positions = positions;
     model.normals = normals;
     model.texcoords = texcoords;
+    model.is_water = false;
+    model.sg_size = 0;
+    return model;
+}
+
+golf_model_t golf_model_dynamic_water(vec_golf_group_t groups, vec_vec3_t positions, vec_vec3_t normals, vec_vec2_t texcoords, vec_vec3_t water_dir) {
+    golf_model_t model;
+    model.groups = groups;
+    model.positions = positions;
+    model.normals = normals;
+    model.texcoords = texcoords;
+    model.is_water = true;
+    model.water_dir = water_dir;
     model.sg_size = 0;
     return model;
 }
@@ -836,6 +849,7 @@ static bool _golf_model_load(void *ptr, const char *path, char *data, int data_l
     }
 
     golf_model_t *model = (golf_model_t*) ptr;
+    model->is_water = false;
     vec_init(&model->groups, "data");
     vec_init(&model->positions, "data");
     vec_init(&model->normals, "data");
@@ -1384,7 +1398,7 @@ static void _golf_json_object_get_movement(JSON_Object *obj, const char *name, g
     }
 }
 
-static void _golf_json_object_get_geo(JSON_Object *obj, const char *name, golf_geo_t *geo) {
+static void _golf_json_object_get_geo(JSON_Object *obj, const char *name, golf_geo_t *geo, bool is_water) {
     JSON_Object *geo_obj = json_object_get_object(obj, name);
 
     vec_golf_geo_point_t points;
@@ -1424,8 +1438,9 @@ static void _golf_json_object_get_geo(JSON_Object *obj, const char *name, golf_g
                 uv_gen_type = i;
             }
         }
+        vec3 water_dir = golf_json_object_get_vec3(face_obj, "water_dir");
 
-        vec_push(&faces, golf_geo_face(material_name, idxs, uv_gen_type, uvs));
+        vec_push(&faces, golf_geo_face(material_name, idxs, uv_gen_type, uvs, water_dir));
     }
 
     /*
@@ -1480,7 +1495,7 @@ static void _golf_json_object_get_geo(JSON_Object *obj, const char *name, golf_g
     }
     */
 
-    *geo = golf_geo(points, faces);
+    *geo = golf_geo(points, faces, is_water);
 }
 
 static bool _golf_level_finalize(void *ptr) {
@@ -1671,7 +1686,7 @@ static bool _golf_level_load(void *ptr, const char *path, char *data, int data_l
             _golf_json_object_get_movement(obj, "movement", &movement);
 
             golf_geo_t geo;
-            _golf_json_object_get_geo(obj, "geo", &geo);
+            _golf_json_object_get_geo(obj, "geo", &geo, false);
 
             golf_lightmap_section_t lightmap_section;
             _golf_json_object_get_lightmap_section(obj, "lightmap_section", &lightmap_section);
@@ -1692,7 +1707,7 @@ static bool _golf_level_load(void *ptr, const char *path, char *data, int data_l
             _golf_json_object_get_transform(obj, "transform", &transform);
 
             golf_geo_t geo;
-            _golf_json_object_get_geo(obj, "geo", &geo);
+            _golf_json_object_get_geo(obj, "geo", &geo, true);
 
             golf_lightmap_section_t lightmap_section;
             _golf_json_object_get_lightmap_section(obj, "lightmap_section", &lightmap_section);

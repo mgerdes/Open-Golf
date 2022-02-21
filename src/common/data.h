@@ -60,11 +60,15 @@ typedef struct golf_model {
     vec_vec3_t normals;
     vec_vec2_t texcoords;
 
+    bool is_water;
+    vec_vec3_t water_dir;
+
     int sg_size;
     sg_buffer sg_positions_buf, sg_normals_buf, sg_texcoords_buf;
 } golf_model_t;
 typedef vec_t(golf_model_t) vec_golf_model_t;
 golf_model_t golf_model_dynamic(vec_golf_group_t groups, vec_vec3_t positions, vec_vec3_t normals, vec_vec2_t texcoords);
+golf_model_t golf_model_dynamic_water(vec_golf_group_t groups, vec_vec3_t positions, vec_vec3_t normals, vec_vec2_t texcoords, vec_vec3_t water_dir);
 void golf_model_dynamic_finalize(golf_model_t *model);
 void golf_model_dynamic_update_sg_buf(golf_model_t *model);
 //void golf_model_init(golf_model_t *model, int size);
