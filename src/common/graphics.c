@@ -21,6 +21,7 @@
 #include "golf/shaders/aim_line.glsl.h"
 #include "golf/shaders/ball.glsl.h"
 #include "golf/shaders/editor_water.glsl.h"
+#include "golf/shaders/water.glsl.h"
 
 static golf_graphics_t graphics;
 
@@ -324,6 +325,50 @@ void golf_graphics_init(void) {
         };
         graphics.editor_water_pipeline = sg_make_pipeline(&pipeline_desc);
     }
+
+    {
+        golf_shader_t *shader = golf_data_get_shader("data/shaders/water.glsl");
+        sg_pipeline_desc pipeline_desc = {
+            .shader = shader->sg_shader,
+            .layout = {
+                .attrs = {
+                    [ATTR_water_vs_position] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                    [ATTR_water_vs_texture_coord] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
+                    [ATTR_water_vs_lightmap_uv] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 2 },
+                },
+            },
+            .depth = {
+                .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                .write_enabled = true,
+            },
+            .stencil = {
+                .front = {
+                    .fail_op = SG_STENCILOP_KEEP,
+                    .depth_fail_op = SG_STENCILOP_REPLACE,
+                    .pass_op = SG_STENCILOP_REPLACE,
+                    .compare = SG_COMPAREFUNC_ALWAYS,
+                },
+                .back = {
+                    .fail_op = SG_STENCILOP_KEEP,
+                    .depth_fail_op = SG_STENCILOP_REPLACE,
+                    .pass_op = SG_STENCILOP_REPLACE,
+                    .compare = SG_COMPAREFUNC_ALWAYS,
+                },
+                .enabled = true,
+                .write_mask = 255,
+                .read_mask = 255,
+                .ref = 255,
+            },
+            .colors[0] = {
+                .blend = {
+                    .enabled = true,
+                    .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                    .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                },
+            }
+        };
+        graphics.water_pipeline = sg_make_pipeline(&pipeline_desc);
+    }
 }
 
 void golf_graphics_begin_frame(float dt) {
@@ -445,6 +490,9 @@ bool golf_graphics_get_shader_desc(const char *path, sg_shader_desc *desc) {
     }
     else if (strcmp(path, "data/shaders/editor_water.glsl") == 0) {
         const_shader_desc = editor_water_shader_desc(sg_query_backend());
+    }
+    else if (strcmp(path, "data/shaders/water.glsl") == 0) {
+        const_shader_desc = water_shader_desc(sg_query_backend());
     }
     else {
         return false;

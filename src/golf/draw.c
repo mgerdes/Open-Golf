@@ -20,6 +20,7 @@
 #include "golf/shaders/fxaa.glsl.h"
 #include "golf/shaders/aim_line.glsl.h"
 #include "golf/shaders/ball.glsl.h"
+#include "golf/shaders/water.glsl.h"
 
 typedef struct golf_draw {
     vec2 game_draw_pass_size;
@@ -151,7 +152,7 @@ static void _draw_level(void) {
 
     for (int i = 0; i < level->entities.length; i++) {
         golf_entity_t *entity = &level->entities.data[i];
-        if (!entity->active || entity->type == HOLE_ENTITY || entity->type == BALL_START_ENTITY) continue;
+        if (!entity->active || entity->type == HOLE_ENTITY || entity->type == BALL_START_ENTITY || entity->type == WATER_ENTITY) continue;
 
         golf_model_t *model = golf_entity_get_model(entity);
         if (!model) continue;
@@ -215,6 +216,45 @@ static void _draw_level(void) {
                 }
             }
         }
+    }
+
+    sg_apply_pipeline(graphics->water_pipeline);
+    for (int i = 0; i < level->entities.length; i++) {
+        golf_entity_t *entity = &level->entities.data[i];
+        if (entity->type != WATER_ENTITY) continue;
+
+        golf_model_t *model = golf_entity_get_model(entity);
+        golf_transform_t world_transform = golf_entity_get_world_transform(level, entity);
+        mat4 model_mat = golf_transform_get_model_mat(world_transform);
+        golf_texture_t *lightmap_tex = golf_data_get_texture("data/textures/colors/white.png");
+        golf_texture_t *noise_tex0 = golf_data_get_texture("data/textures/water_noise_1.png");
+        golf_texture_t *noise_tex1 = golf_data_get_texture("data/textures/water_noise_2.png");
+        golf_lightmap_section_t *lightmap_section = golf_entity_get_lightmap_section(entity);
+
+        sg_bindings bindings = {
+            .vertex_buffers[0] = model->sg_positions_buf,
+            .vertex_buffers[1] = model->sg_texcoords_buf,
+            .vertex_buffers[2] = lightmap_section->sg_uvs_buf,
+            .fs_images[SLOT_water_lightmap_tex] = lightmap_tex->sg_image,
+            .fs_images[SLOT_water_noise_tex0] = noise_tex0->sg_image,
+            .fs_images[SLOT_water_noise_tex1] = noise_tex1->sg_image,
+        };
+        sg_apply_bindings(&bindings);
+
+        water_vs_params_t vs_params = {
+            .model_mat = mat4_transpose(model_mat),
+            .proj_view_mat = mat4_transpose(graphics->proj_view_mat),
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_water_vs_params,
+                &(sg_range) { &vs_params, sizeof(vs_params) });
+
+        water_fs_params_t fs_params = {
+            .t = game->t,
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_water_fs_params,
+                &(sg_range) { &fs_params, sizeof(fs_params) });
+
+        sg_draw(0, model->positions.length, 1);
     }
 
     if (game->physics.debug_draw_collisions) {

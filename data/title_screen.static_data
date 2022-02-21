@@ -13,6 +13,7 @@
     "data/shaders/aim_line.glsl",
     "data/shaders/ball.glsl",
     "data/shaders/editor_water.glsl",
+    "data/shaders/water.glsl",
     "data/ui/main_menu.ui",
     "data/models/ui_square.obj",
     "data/models/cube.obj",

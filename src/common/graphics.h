@@ -24,7 +24,8 @@ typedef struct golf_graphics {
                 fxaa_pipeline,
                 aim_line_pipeline,
                 ball_pipeline,
-                editor_water_pipeline;
+                editor_water_pipeline,
+                water_pipeline;
 } golf_graphics_t;
 
 golf_graphics_t *golf_graphics_get(void);
