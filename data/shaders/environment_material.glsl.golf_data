@@ -28,18 +28,18 @@
                     "members": [
                         {
                             "name": "ball_position",
-                            "offset": 16,
-                            "size": 0
-                        },
-                        {
-                            "name": "lightmap_texture_a",
-                            "offset": 4,
+                            "offset": 0,
                             "size": 16
                         },
                         {
+                            "name": "lightmap_texture_a",
+                            "offset": 16,
+                            "size": 4
+                        },
+                        {
                             "name": "uv_scale",
-                            "offset": 4,
-                            "size": 20
+                            "offset": 20,
+                            "size": 4
                         }
                     ]
                 }
@@ -87,8 +87,8 @@
                     "members": [
                         {
                             "name": "model_mat",
-                            "offset": 64,
-                            "size": 0
+                            "offset": 0,
+                            "size": 64
                         },
                         {
                             "name": "proj_view_mat",
@@ -129,18 +129,18 @@
                     "members": [
                         {
                             "name": "ball_position",
-                            "offset": 16,
-                            "size": 0
-                        },
-                        {
-                            "name": "lightmap_texture_a",
-                            "offset": 4,
+                            "offset": 0,
                             "size": 16
                         },
                         {
+                            "name": "lightmap_texture_a",
+                            "offset": 16,
+                            "size": 4
+                        },
+                        {
                             "name": "uv_scale",
-                            "offset": 4,
-                            "size": 20
+                            "offset": 20,
+                            "size": 4
                         }
                     ]
                 }
@@ -188,8 +188,8 @@
                     "members": [
                         {
                             "name": "model_mat",
-                            "offset": 64,
-                            "size": 0
+                            "offset": 0,
+                            "size": 64
                         },
                         {
                             "name": "proj_view_mat",

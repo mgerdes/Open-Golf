@@ -16,38 +16,38 @@
                     "members": [
                         {
                             "name": "color",
-                            "offset": 16,
-                            "size": 0
-                        },
-                        {
-                            "name": "alpha",
-                            "offset": 4,
+                            "offset": 0,
                             "size": 16
                         },
                         {
+                            "name": "alpha",
+                            "offset": 16,
+                            "size": 4
+                        },
+                        {
                             "name": "tex_x",
-                            "offset": 4,
-                            "size": 20
+                            "offset": 20,
+                            "size": 4
                         },
                         {
                             "name": "tex_y",
-                            "offset": 4,
-                            "size": 24
+                            "offset": 24,
+                            "size": 4
                         },
                         {
                             "name": "tex_dx",
-                            "offset": 4,
-                            "size": 28
+                            "offset": 28,
+                            "size": 4
                         },
                         {
                             "name": "tex_dy",
-                            "offset": 4,
-                            "size": 32
+                            "offset": 32,
+                            "size": 4
                         },
                         {
                             "name": "is_font",
-                            "offset": 4,
-                            "size": 36
+                            "offset": 36,
+                            "size": 4
                         }
                     ]
                 }
@@ -79,8 +79,8 @@
                     "members": [
                         {
                             "name": "mvp_mat",
-                            "offset": 64,
-                            "size": 0
+                            "offset": 0,
+                            "size": 64
                         }
                     ]
                 }
@@ -104,38 +104,38 @@
                     "members": [
                         {
                             "name": "color",
-                            "offset": 16,
-                            "size": 0
-                        },
-                        {
-                            "name": "alpha",
-                            "offset": 4,
+                            "offset": 0,
                             "size": 16
                         },
                         {
+                            "name": "alpha",
+                            "offset": 16,
+                            "size": 4
+                        },
+                        {
                             "name": "tex_x",
-                            "offset": 4,
-                            "size": 20
+                            "offset": 20,
+                            "size": 4
                         },
                         {
                             "name": "tex_y",
-                            "offset": 4,
-                            "size": 24
+                            "offset": 24,
+                            "size": 4
                         },
                         {
                             "name": "tex_dx",
-                            "offset": 4,
-                            "size": 28
+                            "offset": 28,
+                            "size": 4
                         },
                         {
                             "name": "tex_dy",
-                            "offset": 4,
-                            "size": 32
+                            "offset": 32,
+                            "size": 4
                         },
                         {
                             "name": "is_font",
-                            "offset": 4,
-                            "size": 36
+                            "offset": 36,
+                            "size": 4
                         }
                     ]
                 }
@@ -167,8 +167,8 @@
                     "members": [
                         {
                             "name": "mvp_mat",
-                            "offset": 64,
-                            "size": 0
+                            "offset": 0,
+                            "size": 64
                         }
                     ]
                 }

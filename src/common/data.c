@@ -248,8 +248,8 @@ static void _golf_shader_input_get_uniforms(JSON_Array *uniforms_arr, JSON_Value
             int size = (int)json_object_get_number(member_obj, "size");
 
             json_object_set_string(my_member_obj, "name", name);
-            json_object_set_number(my_member_obj, "offset", size);
-            json_object_set_number(my_member_obj, "size", offset);
+            json_object_set_number(my_member_obj, "offset", offset);
+            json_object_set_number(my_member_obj, "size", size);
             json_array_append_value(my_members_arr, my_member_val);
         }
 

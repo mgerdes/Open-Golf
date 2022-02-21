@@ -16,33 +16,33 @@
                     "members": [
                         {
                             "name": "color",
-                            "offset": 16,
-                            "size": 0
-                        },
-                        {
-                            "name": "texture_coord_offset",
-                            "offset": 8,
+                            "offset": 0,
                             "size": 16
                         },
                         {
+                            "name": "texture_coord_offset",
+                            "offset": 16,
+                            "size": 8
+                        },
+                        {
                             "name": "texture_coord_scale",
-                            "offset": 8,
-                            "size": 24
+                            "offset": 24,
+                            "size": 8
                         },
                         {
                             "name": "length0",
-                            "offset": 4,
-                            "size": 32
+                            "offset": 32,
+                            "size": 4
                         },
                         {
                             "name": "length1",
-                            "offset": 4,
-                            "size": 36
+                            "offset": 36,
+                            "size": 4
                         },
                         {
                             "name": "total_length",
-                            "offset": 4,
-                            "size": 40
+                            "offset": 40,
+                            "size": 4
                         }
                     ]
                 }
@@ -74,8 +74,8 @@
                     "members": [
                         {
                             "name": "mvp_mat",
-                            "offset": 64,
-                            "size": 0
+                            "offset": 0,
+                            "size": 64
                         }
                     ]
                 }
@@ -99,33 +99,33 @@
                     "members": [
                         {
                             "name": "color",
-                            "offset": 16,
-                            "size": 0
-                        },
-                        {
-                            "name": "texture_coord_offset",
-                            "offset": 8,
+                            "offset": 0,
                             "size": 16
                         },
                         {
+                            "name": "texture_coord_offset",
+                            "offset": 16,
+                            "size": 8
+                        },
+                        {
                             "name": "texture_coord_scale",
-                            "offset": 8,
-                            "size": 24
+                            "offset": 24,
+                            "size": 8
                         },
                         {
                             "name": "length0",
-                            "offset": 4,
-                            "size": 32
+                            "offset": 32,
+                            "size": 4
                         },
                         {
                             "name": "length1",
-                            "offset": 4,
-                            "size": 36
+                            "offset": 36,
+                            "size": 4
                         },
                         {
                             "name": "total_length",
-                            "offset": 4,
-                            "size": 40
+                            "offset": 40,
+                            "size": 4
                         }
                     ]
                 }
@@ -157,8 +157,8 @@
                     "members": [
                         {
                             "name": "mvp_mat",
-                            "offset": 64,
-                            "size": 0
+                            "offset": 0,
+                            "size": 64
                         }
                     ]
                 }

@@ -11,8 +11,8 @@
                     "members": [
                         {
                             "name": "color",
-                            "offset": 16,
-                            "size": 0
+                            "offset": 0,
+                            "size": 16
                         }
                     ]
                 }
@@ -35,8 +35,8 @@
                     "members": [
                         {
                             "name": "mvp_mat",
-                            "offset": 64,
-                            "size": 0
+                            "offset": 0,
+                            "size": 64
                         }
                     ]
                 }
@@ -55,8 +55,8 @@
                     "members": [
                         {
                             "name": "color",
-                            "offset": 16,
-                            "size": 0
+                            "offset": 0,
+                            "size": 16
                         }
                     ]
                 }
@@ -79,8 +79,8 @@
                     "members": [
                         {
                             "name": "mvp_mat",
-                            "offset": 64,
-                            "size": 0
+                            "offset": 0,
+                            "size": 64
                         }
                     ]
                 }

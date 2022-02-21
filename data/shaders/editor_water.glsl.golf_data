@@ -20,8 +20,8 @@
                     "members": [
                         {
                             "name": "draw_type",
-                            "offset": 4,
-                            "size": 0
+                            "offset": 0,
+                            "size": 4
                         },
                         {
                             "name": "t",
@@ -70,8 +70,8 @@
                     "members": [
                         {
                             "name": "proj_view_mat",
-                            "offset": 64,
-                            "size": 0
+                            "offset": 0,
+                            "size": 64
                         },
                         {
                             "name": "model_mat",
@@ -104,8 +104,8 @@
                     "members": [
                         {
                             "name": "draw_type",
-                            "offset": 4,
-                            "size": 0
+                            "offset": 0,
+                            "size": 4
                         },
                         {
                             "name": "t",
@@ -154,8 +154,8 @@
                     "members": [
                         {
                             "name": "proj_view_mat",
-                            "offset": 64,
-                            "size": 0
+                            "offset": 0,
+                            "size": 64
                         },
                         {
                             "name": "model_mat",

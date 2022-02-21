@@ -48,8 +48,8 @@
                     "members": [
                         {
                             "name": "model_mat",
-                            "offset": 64,
-                            "size": 0
+                            "offset": 0,
+                            "size": 64
                         },
                         {
                             "name": "proj_view_mat",
@@ -110,8 +110,8 @@
                     "members": [
                         {
                             "name": "model_mat",
-                            "offset": 64,
-                            "size": 0
+                            "offset": 0,
+                            "size": 64
                         },
                         {
                             "name": "proj_view_mat",

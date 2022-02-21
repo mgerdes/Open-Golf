@@ -16,8 +16,8 @@
                     "members": [
                         {
                             "name": "color",
-                            "offset": 12,
-                            "size": 0
+                            "offset": 0,
+                            "size": 12
                         }
                     ]
                 }
@@ -44,8 +44,8 @@
                     "members": [
                         {
                             "name": "proj_view_mat",
-                            "offset": 64,
-                            "size": 0
+                            "offset": 0,
+                            "size": 64
                         },
                         {
                             "name": "model_mat",
@@ -74,8 +74,8 @@
                     "members": [
                         {
                             "name": "color",
-                            "offset": 12,
-                            "size": 0
+                            "offset": 0,
+                            "size": 12
                         }
                     ]
                 }
@@ -102,8 +102,8 @@
                     "members": [
                         {
                             "name": "proj_view_mat",
-                            "offset": 64,
-                            "size": 0
+                            "offset": 0,
+                            "size": 64
                         },
                         {
                             "name": "model_mat",

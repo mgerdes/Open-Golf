@@ -22,8 +22,8 @@
                     "members": [
                         {
                             "name": "mvp_mat",
-                            "offset": 64,
-                            "size": 0
+                            "offset": 0,
+                            "size": 64
                         }
                     ]
                 }
@@ -53,8 +53,8 @@
                     "members": [
                         {
                             "name": "mvp_mat",
-                            "offset": 64,
-                            "size": 0
+                            "offset": 0,
+                            "size": 64
                         }
                     ]
                 }
