@@ -25,7 +25,7 @@
             ]
         },
         "vs": {
-            "source": "#version 330\n\nlayout(std140) uniform texture_material_vs_params\n{\n    mat4 model_mat;\n    mat4 proj_view_mat;\n} _14;\n\nout vec3 frag_position;\nlayout(location = 0) in vec3 position;\nout vec2 frag_texturecoord;\nlayout(location = 1) in vec2 texturecoord;\nout vec3 frag_normal;\nlayout(location = 2) in vec3 normal;\n\nvoid main()\n{\n    frag_position = (_14.model_mat * vec4(position, 1.0)).xyz;\n    frag_texturecoord = texturecoord;\n    frag_normal = normal;\n    gl_Position = (_14.proj_view_mat * _14.model_mat) * vec4(position, 1.0);\n}\n\n",
+            "source": "#version 330\n\nuniform vec4 texture_material_vs_params[8];\nout vec3 frag_position;\nlayout(location = 0) in vec3 position;\nout vec2 frag_texturecoord;\nlayout(location = 1) in vec2 texturecoord;\nout vec3 frag_normal;\nlayout(location = 2) in vec3 normal;\n\nvoid main()\n{\n    frag_position = (mat4(texture_material_vs_params[0], texture_material_vs_params[1], texture_material_vs_params[2], texture_material_vs_params[3]) * vec4(position, 1.0)).xyz;\n    frag_texturecoord = texturecoord;\n    frag_normal = normal;\n    gl_Position = (mat4(texture_material_vs_params[4], texture_material_vs_params[5], texture_material_vs_params[6], texture_material_vs_params[7]) * mat4(texture_material_vs_params[0], texture_material_vs_params[1], texture_material_vs_params[2], texture_material_vs_params[3])) * vec4(position, 1.0);\n}\n\n",
             "inputs": [
                 {
                     "name": "position",
@@ -43,7 +43,7 @@
             "uniforms": [
                 {
                     "name": "texture_material_vs_params",
-                    "size": 128,
+                    "size": 144,
                     "binding": 0,
                     "members": [
                         {
@@ -87,7 +87,7 @@
             ]
         },
         "vs": {
-            "source": "#version 300 es\n\nlayout(std140) uniform texture_material_vs_params\n{\n    mat4 model_mat;\n    mat4 proj_view_mat;\n} _14;\n\nout vec3 frag_position;\nlayout(location = 0) in vec3 position;\nout vec2 frag_texturecoord;\nlayout(location = 1) in vec2 texturecoord;\nout vec3 frag_normal;\nlayout(location = 2) in vec3 normal;\n\nvoid main()\n{\n    frag_position = (_14.model_mat * vec4(position, 1.0)).xyz;\n    frag_texturecoord = texturecoord;\n    frag_normal = normal;\n    gl_Position = (_14.proj_view_mat * _14.model_mat) * vec4(position, 1.0);\n}\n\n",
+            "source": "#version 300 es\n\nuniform vec4 texture_material_vs_params[8];\nout vec3 frag_position;\nlayout(location = 0) in vec3 position;\nout vec2 frag_texturecoord;\nlayout(location = 1) in vec2 texturecoord;\nout vec3 frag_normal;\nlayout(location = 2) in vec3 normal;\n\nvoid main()\n{\n    frag_position = (mat4(texture_material_vs_params[0], texture_material_vs_params[1], texture_material_vs_params[2], texture_material_vs_params[3]) * vec4(position, 1.0)).xyz;\n    frag_texturecoord = texturecoord;\n    frag_normal = normal;\n    gl_Position = (mat4(texture_material_vs_params[4], texture_material_vs_params[5], texture_material_vs_params[6], texture_material_vs_params[7]) * mat4(texture_material_vs_params[0], texture_material_vs_params[1], texture_material_vs_params[2], texture_material_vs_params[3])) * vec4(position, 1.0);\n}\n\n",
             "inputs": [
                 {
                     "name": "position",
@@ -105,7 +105,7 @@
             "uniforms": [
                 {
                     "name": "texture_material_vs_params",
-                    "size": 128,
+                    "size": 144,
                     "binding": 0,
                     "members": [
                         {

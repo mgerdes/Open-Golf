@@ -71,14 +71,58 @@ golf_model_t golf_model_dynamic(vec_golf_group_t groups, vec_vec3_t positions, v
 golf_model_t golf_model_dynamic_water(vec_golf_group_t groups, vec_vec3_t positions, vec_vec3_t normals, vec_vec2_t texcoords, vec_vec3_t water_dir);
 void golf_model_dynamic_finalize(golf_model_t *model);
 void golf_model_dynamic_update_sg_buf(golf_model_t *model);
-//void golf_model_init(golf_model_t *model, int size);
-//void golf_model_update_buf(golf_model_t *model);
+
+typedef struct golf_shader_input {
+    char name[GOLF_MAX_NAME_LEN];
+    int location;
+} golf_shader_input_t;
+typedef vec_t(golf_shader_input_t) vec_golf_shader_input_t;
+
+typedef struct golf_shader_uniform_member {
+    char name[GOLF_MAX_NAME_LEN];
+    int offset, size;
+} golf_shader_uniform_member_t;
+typedef vec_t(golf_shader_uniform_member_t) vec_golf_shader_uniform_member_t;
+
+typedef struct golf_shader_uniform {
+    char name[GOLF_MAX_NAME_LEN];
+    int size, binding;
+    char *data;
+    vec_golf_shader_uniform_member_t members;
+} golf_shader_uniform_t;
+typedef vec_t(golf_shader_uniform_t) vec_golf_shader_uniform_t;
+
+typedef struct golf_shader_texture {
+    char name[GOLF_MAX_NAME_LEN];
+    int binding;
+} golf_shader_texture_t;
+typedef vec_t(golf_shader_texture_t) vec_golf_shader_texture_t;
+
+typedef struct golf_shader_pipeline {
+    char name[GOLF_MAX_NAME_LEN];
+    sg_pipeline sg_pipeline;
+} golf_shader_pipeline_t;
+typedef vec_t(golf_shader_pipeline_t) vec_golf_shader_pipeline_t;
 
 typedef struct golf_shader {
-    char *fs, *vs;
-    sg_shader_desc shader_desc;
+    golf_file_t file;
+    char *fs_source, *vs_source;
+
+    vec_golf_shader_input_t fs_inputs, vs_inputs;
+    vec_golf_shader_uniform_t fs_uniforms, vs_uniforms;
+    vec_golf_shader_texture_t fs_textures;
+    vec_golf_shader_pipeline_t pipelines;
+
     sg_shader sg_shader;
 } golf_shader_t;
+
+void golf_shader_uniform_set_float(golf_shader_uniform_t *uniform, const char *name, float f);
+void golf_shader_uniform_set_vec2(golf_shader_uniform_t *uniform, const char *name, vec2 v);
+void golf_shader_uniform_set_vec4(golf_shader_uniform_t *uniform, const char *name, vec4 v);
+void golf_shader_uniform_set_mat4(golf_shader_uniform_t *uniform, const char *name, mat4 m);
+golf_shader_uniform_t *golf_shader_get_vs_uniform(golf_shader_t *shader, const char *name);
+golf_shader_uniform_t *golf_shader_get_fs_uniform(golf_shader_t *shader, const char *name);
+golf_shader_pipeline_t *golf_shader_get_pipeline(golf_shader_t *shader, const char *name);
 
 typedef struct golf_pixel_pack_icon {
     vec2 uv0, uv1;

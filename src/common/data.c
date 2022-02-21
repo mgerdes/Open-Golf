@@ -217,7 +217,7 @@ static void _golf_shader_import_get_inputs(JSON_Array *inputs_arr, JSON_Value **
     }
 }
 
-static void _golf_shader_input_get_uniforms(JSON_Array *uniforms_arr, JSON_Value **my_uniforms_val) {
+static void _golf_shader_import_get_uniforms(JSON_Array *uniforms_arr, JSON_Value **my_uniforms_val) {
     *my_uniforms_val = json_value_init_array();
     JSON_Array *my_uniforms_arr = json_value_get_array(*my_uniforms_val);
 
@@ -228,6 +228,7 @@ static void _golf_shader_input_get_uniforms(JSON_Array *uniforms_arr, JSON_Value
         JSON_Object *uniform_obj = json_array_get_object(uniforms_arr, i);
         const char *name = json_object_get_string(uniform_obj, "name");
         int size = (int)json_object_get_number(uniform_obj, "block_size");
+        size = size + (16 - size % 16);
         int binding = (int)json_object_get_number(uniform_obj, "binding");
 
         json_object_set_string(my_uniform_obj, "name", name);
@@ -284,9 +285,9 @@ static void _golf_shader_import_get_shader(const char *file_path, const char *la
         golf_string_t cmd;
         golf_string_init(&cmd, "data", "");
 #if GOLF_PLATFORM_LINUX
-        golf_string_appendf(&cmd, "tools/glslcc/linux/glslcc %s -S -o out/temp/temp.glsl -l %s -p %s -r", file_path, lang, profile);
+        golf_string_appendf(&cmd, "tools/glslcc/linux/glslcc %s -S -F -o out/temp/temp.glsl -l %s -p %s -r", file_path, lang, profile);
 #elif GOLF_PLATFORM_WINDOWS
-        //golf_string_appendf(&cmd, "tools\\sokol-tools\\win32\\sokol-shdc --input %s --output src/golf/shaders/%s.h --slang %s", file.path, file.name, slangs);
+        golf_string_appendf(&cmd, "tools\\glslcc\\win64\\glslcc %s -S -F -o out/temp/temp.glsl -l %s -p %s -r", file_path, lang, profile);
 #elif GOLF_PLATFORM_MACOS
 #endif
         system(cmd.cstr);
@@ -316,7 +317,7 @@ static void _golf_shader_import_get_shader(const char *file_path, const char *la
 
         JSON_Value *my_uniforms_val;
         JSON_Array *uniforms_arr = json_object_dotget_array(fs_obj, "fs.uniform_buffers");
-        _golf_shader_input_get_uniforms(uniforms_arr, &my_uniforms_val);
+        _golf_shader_import_get_uniforms(uniforms_arr, &my_uniforms_val);
         json_object_set_value(my_fs_obj, "uniforms", my_uniforms_val);
 
         JSON_Value *my_textures_val;
@@ -350,7 +351,7 @@ static void _golf_shader_import_get_shader(const char *file_path, const char *la
 
         JSON_Value *my_uniforms_val;
         JSON_Array *uniforms_arr = json_object_dotget_array(vs_obj, "vs.uniform_buffers");
-        _golf_shader_input_get_uniforms(uniforms_arr, &my_uniforms_val);
+        _golf_shader_import_get_uniforms(uniforms_arr, &my_uniforms_val);
         json_object_set_value(my_vs_obj, "uniforms", my_uniforms_val);
 
         json_object_set_value(my_obj, "vs", my_vs_val);
@@ -388,11 +389,567 @@ static bool _golf_shader_import(const char *path, char *data, int data_len) {
 
 static bool _golf_shader_finalize(void *ptr) {
     golf_shader_t *shader = (golf_shader_t*) ptr;
-    shader->sg_shader = sg_make_shader(&shader->shader_desc);
-    golf_free(shader->fs);
-    shader->fs = NULL;
-    golf_free(shader->vs);
-    shader->vs = NULL;
+
+    sg_shader_desc desc = { 0 };
+    for (int i = 0; i < shader->vs_inputs.length; i++) {
+        golf_shader_input_t *input = &shader->vs_inputs.data[i];
+        desc.attrs[input->location].name = input->name;
+    }
+
+    desc.vs.source = shader->vs_source;
+    desc.vs.entry = "main";
+    for (int i = 0; i < shader->vs_uniforms.length; i++) {
+        golf_shader_uniform_t *uniform = &shader->vs_uniforms.data[i];
+        desc.vs.uniform_blocks[uniform->binding].size = uniform->size;
+        uniform->data = golf_alloc(uniform->size);
+        memset(uniform->data, 0, uniform->size);
+
+        desc.vs.uniform_blocks[uniform->binding].uniforms[0].name = uniform->name;
+        desc.vs.uniform_blocks[uniform->binding].uniforms[0].type = SG_UNIFORMTYPE_FLOAT4;
+        desc.vs.uniform_blocks[uniform->binding].uniforms[0].array_count = uniform->size / 16;
+    }
+
+    desc.fs.source = shader->fs_source;
+    desc.fs.entry = "main";
+    for (int i = 0; i < shader->fs_uniforms.length; i++) {
+        golf_shader_uniform_t *uniform = &shader->fs_uniforms.data[i];
+        desc.fs.uniform_blocks[uniform->binding].size = uniform->size;
+        uniform->data = golf_alloc(uniform->size);
+        memset(uniform->data, 0, uniform->size);
+
+        desc.fs.uniform_blocks[uniform->binding].uniforms[0].name = uniform->name;
+        desc.fs.uniform_blocks[uniform->binding].uniforms[0].type = SG_UNIFORMTYPE_FLOAT4;
+        desc.fs.uniform_blocks[uniform->binding].uniforms[0].array_count = uniform->size / 16;
+    }
+    for (int i = 0; i < shader->fs_textures.length; i++) {
+        golf_shader_texture_t *texture = &shader->fs_textures.data[i];
+        desc.fs.images[texture->binding].name = texture->name;
+        desc.fs.images[texture->binding].image_type = SG_IMAGETYPE_2D;
+        desc.fs.images[texture->binding].sampler_type = SG_SAMPLERTYPE_FLOAT;
+    }
+
+    if (strcmp(shader->file.path, "data/shaders/ui.glsl") == 0) {
+        float testing = 100;
+        testing = 100 + 100;
+    }
+
+    shader->sg_shader = sg_make_shader(&desc);
+
+    vec_init(&shader->pipelines, "data.shader");
+    if (strcmp(shader->file.path, "data/shaders/ui.glsl") == 0) {
+        {
+            sg_pipeline_desc desc = {
+                .shader = shader->sg_shader,
+                .layout = {
+                    .attrs = {
+                        [0] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                        [1] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
+                    },
+                },
+                .depth = {
+                    .compare = SG_COMPAREFUNC_ALWAYS
+                },
+                .colors[0] = {
+                    .blend = {
+                        .enabled = true,
+                        .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                        .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                    },
+                },
+            };
+
+            golf_shader_pipeline_t pipeline;
+            snprintf(pipeline.name, GOLF_MAX_NAME_LEN, "%s", "ui");
+            pipeline.sg_pipeline = sg_make_pipeline(&desc);
+            vec_push(&shader->pipelines, pipeline);
+        }
+    }
+    else if (strcmp(shader->file.path, "data/shaders/render_image.glsl") == 0) {
+        {
+            sg_pipeline_desc desc = {
+                .shader = shader->sg_shader,
+                .layout = {
+                    .attrs = {
+                        [0] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                        [1] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
+                    },
+                },
+            };
+
+            golf_shader_pipeline_t pipeline;
+            snprintf(pipeline.name, GOLF_MAX_NAME_LEN, "%s", "render_image");
+            pipeline.sg_pipeline = sg_make_pipeline(&desc);
+            vec_push(&shader->pipelines, pipeline);
+        }
+    }
+    else if (strcmp(shader->file.path, "data/shaders/fxaa.glsl") == 0) {
+        {
+            sg_pipeline_desc desc = {
+                .shader = shader->sg_shader,
+                .layout = {
+                    .attrs = {
+                        [0] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                        [1] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
+                    },
+                },
+            };
+
+            golf_shader_pipeline_t pipeline;
+            snprintf(pipeline.name, GOLF_MAX_NAME_LEN, "%s", "fxaa");
+            pipeline.sg_pipeline = sg_make_pipeline(&desc);
+            vec_push(&shader->pipelines, pipeline);
+        }
+    }
+    else if (strcmp(shader->file.path, "data/shaders/diffuse_color_material.glsl") == 0) {
+        {
+            sg_pipeline_desc desc = {
+                .shader = shader->sg_shader,
+                .layout = {
+                    .attrs = {
+                        [0] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                        [1] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 1 },
+                    },
+                },
+                .depth = {
+                    .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                    .write_enabled = true,
+                },
+            };
+
+            golf_shader_pipeline_t pipeline;
+            snprintf(pipeline.name, GOLF_MAX_NAME_LEN, "%s", "diffuse_color_material");
+            pipeline.sg_pipeline = sg_make_pipeline(&desc);
+            vec_push(&shader->pipelines, pipeline);
+        }
+    }
+    else if (strcmp(shader->file.path, "data/shaders/environment_material.glsl") == 0) {
+        {
+            sg_pipeline_desc desc = {
+                .shader = shader->sg_shader,
+                .layout = {
+                    .attrs = {
+                        [0] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                        [1] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
+                        [2] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 2 },
+                        [3] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 3 },
+                    },
+                },
+                .depth = {
+                    .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                    .write_enabled = true,
+                },
+            };
+
+            golf_shader_pipeline_t pipeline;
+            snprintf(pipeline.name, GOLF_MAX_NAME_LEN, "%s", "environment_material");
+            pipeline.sg_pipeline = sg_make_pipeline(&desc);
+            vec_push(&shader->pipelines, pipeline);
+        }
+    }
+    else if (strcmp(shader->file.path, "data/shaders/solid_color_material.glsl") == 0) {
+        {
+            sg_pipeline_desc desc = {
+                .shader = shader->sg_shader,
+                .layout = {
+                    .attrs = {
+                        [0] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                    },
+                },
+                .depth = {
+                    .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                    .write_enabled = true,
+                },
+                .colors[0] = {
+                    .blend = {
+                        .enabled = true,
+                        .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                        .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                    }
+                }
+            };
+
+            golf_shader_pipeline_t pipeline;
+            snprintf(pipeline.name, GOLF_MAX_NAME_LEN, "%s", "solid_color_material");
+            pipeline.sg_pipeline = sg_make_pipeline(&desc);
+            vec_push(&shader->pipelines, pipeline);
+        }
+    }
+    else if (strcmp(shader->file.path, "data/shaders/texture_material.glsl") == 0) {
+        {
+            sg_pipeline_desc desc = {
+                .shader = shader->sg_shader,
+                .layout = {
+                    .attrs = {
+                        [0] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                        [1] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
+                        [2] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 2 },
+                    },
+                },
+                .depth = {
+                    .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                    .write_enabled = true,
+                },
+            };
+
+            golf_shader_pipeline_t pipeline;
+            snprintf(pipeline.name, GOLF_MAX_NAME_LEN, "%s", "texture_material");
+            pipeline.sg_pipeline = sg_make_pipeline(&desc);
+            vec_push(&shader->pipelines, pipeline);
+        }
+
+        {
+            sg_pipeline_desc desc = {
+                .shader = shader->sg_shader,
+                .layout = {
+                    .attrs = {
+                        [0] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                        [1] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
+                        [2] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 2 },
+                    },
+                },
+                .stencil = {
+                    .enabled = true,
+                    .front = {
+                        .compare = SG_COMPAREFUNC_EQUAL,
+                    },
+                    .back = {
+                        .compare = SG_COMPAREFUNC_EQUAL,
+                    },
+                    .read_mask = 255,
+                    .ref = 255,
+                },
+            };
+
+            golf_shader_pipeline_t pipeline;
+            snprintf(pipeline.name, GOLF_MAX_NAME_LEN, "%s", "hole_pass_2");
+            pipeline.sg_pipeline = sg_make_pipeline(&desc);
+            vec_push(&shader->pipelines, pipeline);
+        }
+    }
+    else if (strcmp(shader->file.path, "data/shaders/pass_through.glsl") == 0) {
+        {
+            sg_pipeline_desc desc = {
+                .shader = shader->sg_shader,
+                .layout = {
+                    .attrs = {
+                        [0] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                    },
+                },
+                .depth = {
+                    .compare = SG_COMPAREFUNC_LESS_EQUAL
+                },
+                .stencil = {
+                    .enabled = true,
+                    .front = {
+                        .compare = SG_COMPAREFUNC_ALWAYS,
+                        .depth_fail_op = SG_STENCILOP_KEEP,
+                        .pass_op = SG_STENCILOP_REPLACE,
+                    },
+                    .back = {
+                        .compare = SG_COMPAREFUNC_ALWAYS,
+                        .depth_fail_op = SG_STENCILOP_KEEP,
+                        .pass_op = SG_STENCILOP_REPLACE,
+                    },
+                    .write_mask = 255,
+                    .ref = 255,
+                },
+                .colors[0] = {
+                    .write_mask = SG_COLORMASK_NONE,
+                },
+            };
+
+            golf_shader_pipeline_t pipeline;
+            snprintf(pipeline.name, GOLF_MAX_NAME_LEN, "%s", "hole_pass_1");
+            pipeline.sg_pipeline = sg_make_pipeline(&desc);
+            vec_push(&shader->pipelines, pipeline);
+        }
+    }
+    else if (strcmp(shader->file.path, "data/shaders/aim_line.glsl") == 0) {
+        {
+            sg_pipeline_desc desc = {
+                .shader = shader->sg_shader,
+                .layout = {
+                    .attrs = {
+                        [0] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                        [1] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
+                    },
+                },
+                .depth = {
+                    .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                    .write_enabled = false,
+                },
+                .colors[0] = {
+                    .blend = {
+                        .enabled = true,
+                        .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                        .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                    }
+                }
+            };
+
+            golf_shader_pipeline_t pipeline;
+            snprintf(pipeline.name, GOLF_MAX_NAME_LEN, "%s", "aim_line");
+            pipeline.sg_pipeline = sg_make_pipeline(&desc);
+            vec_push(&shader->pipelines, pipeline);
+        }
+    }
+    else if (strcmp(shader->file.path, "data/shaders/ball.glsl") == 0) {
+        {
+            sg_pipeline_desc desc = {
+                .shader = shader->sg_shader,
+                .layout = {
+                    .attrs = {
+                        [0] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                        [1] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 1 },
+                        [2] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 2 },
+                    },
+                },
+                .depth = {
+                    .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                    .write_enabled = true,
+                },
+            };
+
+            golf_shader_pipeline_t pipeline;
+            snprintf(pipeline.name, GOLF_MAX_NAME_LEN, "%s", "ball");
+            pipeline.sg_pipeline = sg_make_pipeline(&desc);
+            vec_push(&shader->pipelines, pipeline);
+        }
+    }
+    else if (strcmp(shader->file.path, "data/shaders/editor_water.glsl") == 0) {
+        {
+            sg_pipeline_desc desc = {
+                .shader = shader->sg_shader,
+                .layout = {
+                    .attrs = {
+                        [0] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                        [1] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
+                        [2] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 2 },
+                    },
+                },
+                .depth = {
+                    .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                    .write_enabled = true,
+                },
+                .colors[0] = {
+                    .blend = {
+                        .enabled = true,
+                        .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                        .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                    }
+                }
+            };
+
+            golf_shader_pipeline_t pipeline;
+            snprintf(pipeline.name, GOLF_MAX_NAME_LEN, "%s", "editor_water");
+            pipeline.sg_pipeline = sg_make_pipeline(&desc);
+            vec_push(&shader->pipelines, pipeline);
+        }
+    }
+    else if (strcmp(shader->file.path, "data/shaders/water.glsl") == 0) {
+        {
+            sg_pipeline_desc desc = {
+                .shader = shader->sg_shader,
+                .layout = {
+                    .attrs = {
+                        [0] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                        [1] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
+                        [2] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 2 },
+                    },
+                },
+                .depth = {
+                    .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                    .write_enabled = true,
+                },
+                .stencil = {
+                    .front = {
+                        .fail_op = SG_STENCILOP_KEEP,
+                        .depth_fail_op = SG_STENCILOP_REPLACE,
+                        .pass_op = SG_STENCILOP_REPLACE,
+                        .compare = SG_COMPAREFUNC_ALWAYS,
+                    },
+                    .back = {
+                        .fail_op = SG_STENCILOP_KEEP,
+                        .depth_fail_op = SG_STENCILOP_REPLACE,
+                        .pass_op = SG_STENCILOP_REPLACE,
+                        .compare = SG_COMPAREFUNC_ALWAYS,
+                    },
+                    .enabled = true,
+                    .write_mask = 255,
+                    .read_mask = 255,
+                    .ref = 255,
+                },
+                .colors[0] = {
+                    .blend = {
+                        .enabled = true,
+                        .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                        .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                    },
+                }
+            };
+
+            golf_shader_pipeline_t pipeline;
+            snprintf(pipeline.name, GOLF_MAX_NAME_LEN, "%s", "water");
+            pipeline.sg_pipeline = sg_make_pipeline(&desc);
+            vec_push(&shader->pipelines, pipeline);
+        }
+    }
+    else {
+        golf_log_warning("No pipelines created for shader: %s", shader->file.path);
+    }
+
+    return true;
+}
+
+void golf_shader_uniform_set_float(golf_shader_uniform_t *uniform, const char *name, float f) {
+    golf_shader_uniform_member_t *member = NULL;
+    for (int i = 0; i < uniform->members.length; i++) {
+        if ((strcmp(uniform->members.data[i].name, name) == 0) && uniform->members.data[i].size == 4) {
+            member = &uniform->members.data[i];
+        }
+    }
+    if (!member) {
+        golf_log_warning("Unable to find float member: %s", name);
+        return;
+    }
+    memcpy(uniform->data + member->offset, &f, 4);
+}
+
+void golf_shader_uniform_set_vec2(golf_shader_uniform_t *uniform, const char *name, vec2 v) {
+    golf_shader_uniform_member_t *member = NULL;
+    for (int i = 0; i < uniform->members.length; i++) {
+        if ((strcmp(uniform->members.data[i].name, name) == 0) && uniform->members.data[i].size == 8) {
+            member = &uniform->members.data[i];
+        }
+    }
+    if (!member) {
+        golf_log_warning("Unable to find vec2 member: %s", name);
+        return;
+    }
+    memcpy(uniform->data + member->offset, &v, 8);
+}
+
+void golf_shader_uniform_set_vec4(golf_shader_uniform_t *uniform, const char *name, vec4 v) {
+    golf_shader_uniform_member_t *member = NULL;
+    for (int i = 0; i < uniform->members.length; i++) {
+        if ((strcmp(uniform->members.data[i].name, name) == 0) && uniform->members.data[i].size == 16) {
+            member = &uniform->members.data[i];
+        }
+    }
+    if (!member) {
+        golf_log_warning("Unable to find vec4 member: %s", name);
+        return;
+    }
+    memcpy(uniform->data + member->offset, &v, 16);
+}
+
+void golf_shader_uniform_set_mat4(golf_shader_uniform_t *uniform, const char *name, mat4 m) {
+    golf_shader_uniform_member_t *member = NULL;
+    for (int i = 0; i < uniform->members.length; i++) {
+        if ((strcmp(uniform->members.data[i].name, name) == 0) && uniform->members.data[i].size == 64) {
+            member = &uniform->members.data[i];
+        }
+    }
+    if (!member) {
+        golf_log_warning("Unable to find mat4 member: %s", name);
+        return;
+    }
+    memcpy(uniform->data + member->offset, &m, 64);
+}
+
+golf_shader_uniform_t *golf_shader_get_vs_uniform(golf_shader_t *shader, const char *name) {
+    for (int i = 0; i < shader->vs_uniforms.length; i++) {
+        if (strcmp(shader->vs_uniforms.data[i].name, name) == 0) {
+            return &shader->vs_uniforms.data[i];
+        }
+    }
+    golf_log_warning("Could not find vs uniform: %s", name);
+    return NULL;
+}
+
+golf_shader_uniform_t *golf_shader_get_fs_uniform(golf_shader_t *shader, const char *name) {
+    for (int i = 0; i < shader->fs_uniforms.length; i++) {
+        if (strcmp(shader->fs_uniforms.data[i].name, name) == 0) {
+            return &shader->fs_uniforms.data[i];
+        }
+    }
+    golf_log_warning("Could not find fs uniform: %s", name);
+    return NULL;
+}
+
+golf_shader_pipeline_t *golf_shader_get_pipeline(golf_shader_t *shader, const char *name) {
+    for (int i = 0; i < shader->pipelines.length; i++) {
+        if (strcmp(shader->pipelines.data[i].name, name) == 0) {
+            return &shader->pipelines.data[i];
+        }
+    }
+    golf_log_warning("Could not find pipeline: %s", name);
+    return NULL;
+}
+
+static bool _golf_shader_load_inputs(JSON_Array *inputs_arr, vec_golf_shader_input_t *inputs) {
+    vec_init(inputs, "data");
+    for (int i = 0; i < (int)json_array_get_count(inputs_arr); i++) {
+        JSON_Object *input_obj = json_array_get_object(inputs_arr, i);
+        const char *name = json_object_get_string(input_obj, "name");
+        int location = (int)json_object_get_number(input_obj, "location");
+
+        golf_shader_input_t input;
+        snprintf(input.name, GOLF_MAX_NAME_LEN, "%s", name);
+        input.location = location;
+
+        vec_push(inputs, input);
+    }
+    return true;
+}
+
+static bool _golf_shader_load_uniforms(JSON_Array *uniforms_arr, vec_golf_shader_uniform_t *uniforms) {
+    vec_init(uniforms, "data");
+    for (int i = 0; i < (int)json_array_get_count(uniforms_arr); i++) {
+        JSON_Object *uniform_obj = json_array_get_object(uniforms_arr, i);
+        const char *name = json_object_get_string(uniform_obj, "name");
+        int size = (int)json_object_get_number(uniform_obj, "size");
+        int binding = (int)json_object_get_number(uniform_obj, "binding");
+
+        golf_shader_uniform_t uniform;
+        snprintf(uniform.name, GOLF_MAX_NAME_LEN, "%s", name);
+        uniform.size = size;
+        uniform.binding = binding;
+        vec_init(&uniform.members, "data");
+
+        JSON_Array *members_arr = json_object_get_array(uniform_obj, "members");
+        for (int i = 0; i < (int)json_array_get_count(members_arr); i++) {
+            JSON_Object *member_obj = json_array_get_object(members_arr, i);
+            const char *name = json_object_get_string(member_obj, "name");
+            int offset = (int)json_object_get_number(member_obj, "offset");
+            int size = (int)json_object_get_number(member_obj, "size");
+
+            golf_shader_uniform_member_t member;
+            snprintf(member.name, GOLF_MAX_NAME_LEN, "%s", name);
+            member.offset = offset;
+            member.size = size;
+
+            vec_push(&uniform.members, member);
+        }
+
+        vec_push(uniforms, uniform);
+    }
+    return true;
+}
+
+static bool _golf_shader_load_textures(JSON_Array *textures_arr, vec_golf_shader_texture_t *textures) {
+    vec_init(textures, "data");
+    for (int i = 0; i < (int)json_array_get_count(textures_arr); i++) {
+        JSON_Object *texture_obj = json_array_get_object(textures_arr, i);
+        const char *name = json_object_get_string(texture_obj, "name");
+        int binding = (int)json_object_get_number(texture_obj, "binding");
+
+        golf_shader_texture_t texture;
+        snprintf(texture.name, GOLF_MAX_NAME_LEN, "%s", name);
+        texture.binding = binding;
+
+        vec_push(textures, texture);
+    }
     return true;
 }
 
@@ -403,36 +960,41 @@ static bool _golf_shader_load(void *ptr, const char *path, char *data, int data_
     GOLF_UNUSED(meta_data_len);
 
     golf_shader_t *shader = (golf_shader_t*) ptr;
-
-    sg_shader_desc shader_desc;
-    if (!golf_graphics_get_shader_desc(path, &shader_desc)) {
-        golf_log_warning("Can't find shader desc for shader %s", path);
-        return false;
-    }
+    shader->file = golf_file(path);
 
     JSON_Value *val = json_parse_string(data);
     JSON_Object *obj = json_value_get_object(val);
-    const char *fs = NULL, *vs = NULL;
+
+    JSON_Object *fs_obj, *vs_obj;
 #if SOKOL_GLCORE33
-    fs = json_object_dotget_string(obj, "glsl330.fs");
-    vs = json_object_dotget_string(obj, "glsl330.vs");
+    fs_obj = json_object_dotget_object(obj, "glsl330.fs");
+    vs_obj = json_object_dotget_object(obj, "glsl330.vs");
 #elif SOKOL_GLES3
-    fs = json_object_dotget_string(obj, "glsl300es.fs");
-    vs = json_object_dotget_string(obj, "glsl300es.vs");
+    fs_obj = json_object_dotget_object(obj, "gles300.fs");
+    vs_obj = json_object_dotget_object(obj, "gles300.vs");
+#else
+#error Unknown sokol backend
 #endif
 
-    int fs_len = (int)strlen(fs);
-    shader->fs = golf_alloc(fs_len + 1);
-    strcpy(shader->fs, fs);
+    {
+        const char *fs_source = json_object_get_string(fs_obj, "source");
+        const char *vs_source = json_object_get_string(vs_obj, "source");
 
-    int vs_len = (int)strlen(vs);
-    shader->vs = golf_alloc(vs_len + 1);
-    strcpy(shader->vs, vs);
+        int fs_source_len = (int)strlen(fs_source);
+        shader->fs_source = golf_alloc(fs_source_len + 1);
+        strcpy(shader->fs_source, fs_source);
 
-    shader_desc.fs.source = shader->fs;
-    shader_desc.vs.source = shader->vs;
+        int vs_source_len = (int)strlen(vs_source);
+        shader->vs_source = golf_alloc(vs_source_len + 1);
+        strcpy(shader->vs_source, vs_source);
+    }
 
-    shader->shader_desc = shader_desc;
+    _golf_shader_load_inputs(json_object_get_array(fs_obj, "inputs"), &shader->fs_inputs);
+    _golf_shader_load_uniforms(json_object_get_array(fs_obj, "uniforms"), &shader->fs_uniforms);
+    _golf_shader_load_textures(json_object_get_array(fs_obj, "textures"), &shader->fs_textures);
+
+    _golf_shader_load_inputs(json_object_get_array(vs_obj, "inputs"), &shader->vs_inputs);
+    _golf_shader_load_uniforms(json_object_get_array(vs_obj, "uniforms"), &shader->vs_uniforms);
 
     json_value_free(val);
     return true;
@@ -2330,7 +2892,7 @@ void golf_data_update(float dt) {
                         int meta_data_len;
                         _golf_assetsys_file_load(meta_file.path, &meta_data, &meta_data_len);
 
-                        loader->load_fn(ptr, file_to_load.path, bytes, bytes_len, meta_data, meta_data_len);
+                        loader->load_fn(ptr, event.file.path, bytes, bytes_len, meta_data, meta_data_len);
                         if (loader->finalize_fn) {
                             loader->finalize_fn(ptr);
                         }

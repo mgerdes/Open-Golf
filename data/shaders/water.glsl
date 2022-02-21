@@ -27,7 +27,8 @@ layout(binding = 0) uniform water_fs_params {
     float t;
 };
 layout(binding = 0) uniform sampler2D water_lightmap_tex;
-layout(binding = 1) uniform sampler2D water_noise_tex0, water_noise_tex1;
+layout(binding = 1) uniform sampler2D water_noise_tex0;
+layout(binding = 2) uniform sampler2D water_noise_tex1;
 
 layout(location = 0) in vec2 frag_texture_coord;
 layout(location = 1) in vec2 frag_lightmap_uv;

@@ -1,7 +1,7 @@
 {
     "glsl330": {
         "fs": {
-            "source": "#version 330\n\nlayout(std140) uniform ui_fs_params\n{\n    vec4 color;\n    float alpha;\n    float tex_x;\n    float tex_y;\n    float tex_dx;\n    float tex_dy;\n    float is_font;\n} _13;\n\nuniform sampler2D ui_texture;\n\nin vec2 frag_texture_coord;\nlayout(location = 0) out vec4 g_frag_color;\n\nvoid main()\n{\n    vec2 tc = vec2(_13.tex_x, _13.tex_y) + (frag_texture_coord * vec2(_13.tex_dx, _13.tex_dy));\n    g_frag_color = texture(ui_texture, tc);\n    g_frag_color.w = _13.alpha * ((_13.is_font * g_frag_color.x) + ((1.0 - _13.is_font) * g_frag_color.w));\n    vec3 _93 = (((g_frag_color.xyz * (1.0 - _13.color.w)) + (_13.color.xyz * _13.color.w)) * (1.0 - _13.is_font)) + (_13.color.xyz * _13.is_font);\n    g_frag_color = vec4(_93.x, _93.y, _93.z, g_frag_color.w);\n}\n\n",
+            "source": "#version 330\n\nuniform vec4 ui_fs_params[3];\nuniform sampler2D ui_texture;\n\nin vec2 frag_texture_coord;\nlayout(location = 0) out vec4 g_frag_color;\n\nvoid main()\n{\n    vec2 tc = vec2(ui_fs_params[1].y, ui_fs_params[1].z) + (frag_texture_coord * vec2(ui_fs_params[1].w, ui_fs_params[2].x));\n    g_frag_color = texture(ui_texture, tc);\n    g_frag_color.w = ui_fs_params[1].x * ((ui_fs_params[2].y * g_frag_color.x) + ((1.0 - ui_fs_params[2].y) * g_frag_color.w));\n    vec3 _93 = (((g_frag_color.xyz * (1.0 - ui_fs_params[0].w)) + (ui_fs_params[0].xyz * ui_fs_params[0].w)) * (1.0 - ui_fs_params[2].y)) + (ui_fs_params[0].xyz * ui_fs_params[2].y);\n    g_frag_color = vec4(_93.x, _93.y, _93.z, g_frag_color.w);\n}\n\n",
             "inputs": [
                 {
                     "name": "frag_texture_coord",
@@ -11,7 +11,7 @@
             "uniforms": [
                 {
                     "name": "ui_fs_params",
-                    "size": 40,
+                    "size": 48,
                     "binding": 0,
                     "members": [
                         {
@@ -60,7 +60,7 @@
             ]
         },
         "vs": {
-            "source": "#version 330\n\nlayout(std140) uniform ui_vs_params\n{\n    mat4 mvp_mat;\n} _25;\n\nout vec2 frag_texture_coord;\nlayout(location = 1) in vec2 texture_coord;\nlayout(location = 0) in vec3 position;\n\nvoid main()\n{\n    frag_texture_coord = texture_coord;\n    gl_Position = _25.mvp_mat * vec4(position, 1.0);\n}\n\n",
+            "source": "#version 330\n\nuniform vec4 ui_vs_params[4];\nout vec2 frag_texture_coord;\nlayout(location = 1) in vec2 texture_coord;\nlayout(location = 0) in vec3 position;\n\nvoid main()\n{\n    frag_texture_coord = texture_coord;\n    gl_Position = mat4(ui_vs_params[0], ui_vs_params[1], ui_vs_params[2], ui_vs_params[3]) * vec4(position, 1.0);\n}\n\n",
             "inputs": [
                 {
                     "name": "texture_coord",
@@ -74,7 +74,7 @@
             "uniforms": [
                 {
                     "name": "ui_vs_params",
-                    "size": 64,
+                    "size": 80,
                     "binding": 0,
                     "members": [
                         {
@@ -89,7 +89,7 @@
     },
     "gles300": {
         "fs": {
-            "source": "#version 300 es\nprecision mediump float;\nprecision highp int;\n\nlayout(std140) uniform ui_fs_params\n{\n    highp vec4 color;\n    highp float alpha;\n    highp float tex_x;\n    highp float tex_y;\n    highp float tex_dx;\n    highp float tex_dy;\n    highp float is_font;\n} _13;\n\nuniform highp sampler2D ui_texture;\n\nin highp vec2 frag_texture_coord;\nlayout(location = 0) out highp vec4 g_frag_color;\n\nvoid main()\n{\n    highp vec2 tc = vec2(_13.tex_x, _13.tex_y) + (frag_texture_coord * vec2(_13.tex_dx, _13.tex_dy));\n    g_frag_color = texture(ui_texture, tc);\n    g_frag_color.w = _13.alpha * ((_13.is_font * g_frag_color.x) + ((1.0 - _13.is_font) * g_frag_color.w));\n    highp vec3 _93 = (((g_frag_color.xyz * (1.0 - _13.color.w)) + (_13.color.xyz * _13.color.w)) * (1.0 - _13.is_font)) + (_13.color.xyz * _13.is_font);\n    g_frag_color = vec4(_93.x, _93.y, _93.z, g_frag_color.w);\n}\n\n",
+            "source": "#version 300 es\nprecision mediump float;\nprecision highp int;\n\nuniform highp vec4 ui_fs_params[3];\nuniform highp sampler2D ui_texture;\n\nin highp vec2 frag_texture_coord;\nlayout(location = 0) out highp vec4 g_frag_color;\n\nvoid main()\n{\n    highp vec2 tc = vec2(ui_fs_params[1].y, ui_fs_params[1].z) + (frag_texture_coord * vec2(ui_fs_params[1].w, ui_fs_params[2].x));\n    g_frag_color = texture(ui_texture, tc);\n    g_frag_color.w = ui_fs_params[1].x * ((ui_fs_params[2].y * g_frag_color.x) + ((1.0 - ui_fs_params[2].y) * g_frag_color.w));\n    highp vec3 _93 = (((g_frag_color.xyz * (1.0 - ui_fs_params[0].w)) + (ui_fs_params[0].xyz * ui_fs_params[0].w)) * (1.0 - ui_fs_params[2].y)) + (ui_fs_params[0].xyz * ui_fs_params[2].y);\n    g_frag_color = vec4(_93.x, _93.y, _93.z, g_frag_color.w);\n}\n\n",
             "inputs": [
                 {
                     "name": "frag_texture_coord",
@@ -99,7 +99,7 @@
             "uniforms": [
                 {
                     "name": "ui_fs_params",
-                    "size": 40,
+                    "size": 48,
                     "binding": 0,
                     "members": [
                         {
@@ -148,7 +148,7 @@
             ]
         },
         "vs": {
-            "source": "#version 300 es\n\nlayout(std140) uniform ui_vs_params\n{\n    mat4 mvp_mat;\n} _25;\n\nout vec2 frag_texture_coord;\nlayout(location = 1) in vec2 texture_coord;\nlayout(location = 0) in vec3 position;\n\nvoid main()\n{\n    frag_texture_coord = texture_coord;\n    gl_Position = _25.mvp_mat * vec4(position, 1.0);\n}\n\n",
+            "source": "#version 300 es\n\nuniform vec4 ui_vs_params[4];\nout vec2 frag_texture_coord;\nlayout(location = 1) in vec2 texture_coord;\nlayout(location = 0) in vec3 position;\n\nvoid main()\n{\n    frag_texture_coord = texture_coord;\n    gl_Position = mat4(ui_vs_params[0], ui_vs_params[1], ui_vs_params[2], ui_vs_params[3]) * vec4(position, 1.0);\n}\n\n",
             "inputs": [
                 {
                     "name": "texture_coord",
@@ -162,7 +162,7 @@
             "uniforms": [
                 {
                     "name": "ui_vs_params",
-                    "size": 64,
+                    "size": 80,
                     "binding": 0,
                     "members": [
                         {

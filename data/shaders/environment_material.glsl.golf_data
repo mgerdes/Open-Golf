@@ -1,7 +1,7 @@
 {
     "glsl330": {
         "fs": {
-            "source": "#version 330\n\nlayout(std140) uniform environment_material_fs_params\n{\n    vec4 ball_position;\n    float lightmap_texture_a;\n    float uv_scale;\n} _13;\n\nuniform sampler2D environment_material_lightmap_texture0;\nuniform sampler2D environment_material_lightmap_texture1;\nuniform sampler2D environment_material_texture;\n\nin vec2 frag_lightmap_uv;\nin vec3 frag_position;\nin vec2 frag_texturecoord;\nin vec3 frag_normal;\nlayout(location = 0) out vec4 g_frag_color;\n\nvoid main()\n{\n    float gi0 = (1.0 - _13.lightmap_texture_a) * texture(environment_material_lightmap_texture0, frag_lightmap_uv).x;\n    float gi1 = _13.lightmap_texture_a * texture(environment_material_lightmap_texture1, frag_lightmap_uv).x;\n    float gi = gi0 + gi1;\n    float dist_to_ball = distance(frag_position.xz, _13.ball_position.xz);\n    bool _62 = dist_to_ball < 0.14000000059604644775390625;\n    bool _72;\n    if (_62)\n    {\n        _72 = frag_position.y < _13.ball_position.y;\n    }\n    else\n    {\n        _72 = _62;\n    }\n    if (_72)\n    {\n        float scale = (0.14000000059604644775390625 - dist_to_ball) \/ 0.14000000059604644775390625;\n        gi -= ((scale * scale) * 0.800000011920928955078125);\n    }\n    gi = max(gi, 0.0);\n    vec3 color = texture(environment_material_texture, frag_texturecoord * _13.uv_scale).xyz;\n    color += ((frag_normal + frag_position) * 0.001000000047497451305389404296875);\n    g_frag_color = vec4(color * gi, 1.0);\n}\n\n",
+            "source": "#version 330\n\nuniform vec4 environment_material_fs_params[2];\nuniform sampler2D environment_material_lightmap_texture0;\nuniform sampler2D environment_material_lightmap_texture1;\nuniform sampler2D environment_material_texture;\n\nin vec2 frag_lightmap_uv;\nin vec3 frag_position;\nin vec2 frag_texturecoord;\nin vec3 frag_normal;\nlayout(location = 0) out vec4 g_frag_color;\n\nvoid main()\n{\n    float gi0 = (1.0 - environment_material_fs_params[1].x) * texture(environment_material_lightmap_texture0, frag_lightmap_uv).x;\n    float gi1 = environment_material_fs_params[1].x * texture(environment_material_lightmap_texture1, frag_lightmap_uv).x;\n    float gi = gi0 + gi1;\n    float dist_to_ball = distance(frag_position.xz, environment_material_fs_params[0].xz);\n    bool _62 = dist_to_ball < 0.14000000059604644775390625;\n    bool _72;\n    if (_62)\n    {\n        _72 = frag_position.y < environment_material_fs_params[0].y;\n    }\n    else\n    {\n        _72 = _62;\n    }\n    if (_72)\n    {\n        float scale = (0.14000000059604644775390625 - dist_to_ball) \/ 0.14000000059604644775390625;\n        gi -= ((scale * scale) * 0.800000011920928955078125);\n    }\n    gi = max(gi, 0.0);\n    vec3 color = texture(environment_material_texture, frag_texturecoord * environment_material_fs_params[1].y).xyz;\n    color += ((frag_normal + frag_position) * 0.001000000047497451305389404296875);\n    g_frag_color = vec4(color * gi, 1.0);\n}\n\n",
             "inputs": [
                 {
                     "name": "frag_lightmap_uv",
@@ -23,7 +23,7 @@
             "uniforms": [
                 {
                     "name": "environment_material_fs_params",
-                    "size": 24,
+                    "size": 32,
                     "binding": 0,
                     "members": [
                         {
@@ -60,7 +60,7 @@
             ]
         },
         "vs": {
-            "source": "#version 330\n\nlayout(std140) uniform environment_material_vs_params\n{\n    mat4 model_mat;\n    mat4 proj_view_mat;\n} _14;\n\nout vec3 frag_position;\nlayout(location = 0) in vec3 position;\nout vec2 frag_texturecoord;\nlayout(location = 1) in vec2 texturecoord;\nout vec3 frag_normal;\nlayout(location = 2) in vec3 normal;\nout vec2 frag_lightmap_uv;\nlayout(location = 3) in vec2 lightmap_uv;\n\nvoid main()\n{\n    frag_position = (_14.model_mat * vec4(position, 1.0)).xyz;\n    frag_texturecoord = texturecoord;\n    frag_normal = normal;\n    frag_lightmap_uv = lightmap_uv;\n    gl_Position = (_14.proj_view_mat * _14.model_mat) * vec4(position, 1.0);\n}\n\n",
+            "source": "#version 330\n\nuniform vec4 environment_material_vs_params[8];\nout vec3 frag_position;\nlayout(location = 0) in vec3 position;\nout vec2 frag_texturecoord;\nlayout(location = 1) in vec2 texturecoord;\nout vec3 frag_normal;\nlayout(location = 2) in vec3 normal;\nout vec2 frag_lightmap_uv;\nlayout(location = 3) in vec2 lightmap_uv;\n\nvoid main()\n{\n    frag_position = (mat4(environment_material_vs_params[0], environment_material_vs_params[1], environment_material_vs_params[2], environment_material_vs_params[3]) * vec4(position, 1.0)).xyz;\n    frag_texturecoord = texturecoord;\n    frag_normal = normal;\n    frag_lightmap_uv = lightmap_uv;\n    gl_Position = (mat4(environment_material_vs_params[4], environment_material_vs_params[5], environment_material_vs_params[6], environment_material_vs_params[7]) * mat4(environment_material_vs_params[0], environment_material_vs_params[1], environment_material_vs_params[2], environment_material_vs_params[3])) * vec4(position, 1.0);\n}\n\n",
             "inputs": [
                 {
                     "name": "position",
@@ -82,7 +82,7 @@
             "uniforms": [
                 {
                     "name": "environment_material_vs_params",
-                    "size": 128,
+                    "size": 144,
                     "binding": 0,
                     "members": [
                         {
@@ -102,7 +102,7 @@
     },
     "gles300": {
         "fs": {
-            "source": "#version 300 es\nprecision mediump float;\nprecision highp int;\n\nlayout(std140) uniform environment_material_fs_params\n{\n    highp vec4 ball_position;\n    highp float lightmap_texture_a;\n    highp float uv_scale;\n} _13;\n\nuniform highp sampler2D environment_material_lightmap_texture0;\nuniform highp sampler2D environment_material_lightmap_texture1;\nuniform highp sampler2D environment_material_texture;\n\nin highp vec2 frag_lightmap_uv;\nin highp vec3 frag_position;\nin highp vec2 frag_texturecoord;\nin highp vec3 frag_normal;\nlayout(location = 0) out highp vec4 g_frag_color;\n\nvoid main()\n{\n    highp float gi0 = (1.0 - _13.lightmap_texture_a) * texture(environment_material_lightmap_texture0, frag_lightmap_uv).x;\n    highp float gi1 = _13.lightmap_texture_a * texture(environment_material_lightmap_texture1, frag_lightmap_uv).x;\n    highp float gi = gi0 + gi1;\n    highp float dist_to_ball = distance(frag_position.xz, _13.ball_position.xz);\n    bool _62 = dist_to_ball < 0.14000000059604644775390625;\n    bool _72;\n    if (_62)\n    {\n        _72 = frag_position.y < _13.ball_position.y;\n    }\n    else\n    {\n        _72 = _62;\n    }\n    if (_72)\n    {\n        highp float scale = (0.14000000059604644775390625 - dist_to_ball) \/ 0.14000000059604644775390625;\n        gi -= ((scale * scale) * 0.800000011920928955078125);\n    }\n    gi = max(gi, 0.0);\n    highp vec3 color = texture(environment_material_texture, frag_texturecoord * _13.uv_scale).xyz;\n    color += ((frag_normal + frag_position) * 0.001000000047497451305389404296875);\n    g_frag_color = vec4(color * gi, 1.0);\n}\n\n",
+            "source": "#version 300 es\nprecision mediump float;\nprecision highp int;\n\nuniform highp vec4 environment_material_fs_params[2];\nuniform highp sampler2D environment_material_lightmap_texture0;\nuniform highp sampler2D environment_material_lightmap_texture1;\nuniform highp sampler2D environment_material_texture;\n\nin highp vec2 frag_lightmap_uv;\nin highp vec3 frag_position;\nin highp vec2 frag_texturecoord;\nin highp vec3 frag_normal;\nlayout(location = 0) out highp vec4 g_frag_color;\n\nvoid main()\n{\n    highp float gi0 = (1.0 - environment_material_fs_params[1].x) * texture(environment_material_lightmap_texture0, frag_lightmap_uv).x;\n    highp float gi1 = environment_material_fs_params[1].x * texture(environment_material_lightmap_texture1, frag_lightmap_uv).x;\n    highp float gi = gi0 + gi1;\n    highp float dist_to_ball = distance(frag_position.xz, environment_material_fs_params[0].xz);\n    bool _62 = dist_to_ball < 0.14000000059604644775390625;\n    bool _72;\n    if (_62)\n    {\n        _72 = frag_position.y < environment_material_fs_params[0].y;\n    }\n    else\n    {\n        _72 = _62;\n    }\n    if (_72)\n    {\n        highp float scale = (0.14000000059604644775390625 - dist_to_ball) \/ 0.14000000059604644775390625;\n        gi -= ((scale * scale) * 0.800000011920928955078125);\n    }\n    gi = max(gi, 0.0);\n    highp vec3 color = texture(environment_material_texture, frag_texturecoord * environment_material_fs_params[1].y).xyz;\n    color += ((frag_normal + frag_position) * 0.001000000047497451305389404296875);\n    g_frag_color = vec4(color * gi, 1.0);\n}\n\n",
             "inputs": [
                 {
                     "name": "frag_lightmap_uv",
@@ -124,7 +124,7 @@
             "uniforms": [
                 {
                     "name": "environment_material_fs_params",
-                    "size": 24,
+                    "size": 32,
                     "binding": 0,
                     "members": [
                         {
@@ -161,7 +161,7 @@
             ]
         },
         "vs": {
-            "source": "#version 300 es\n\nlayout(std140) uniform environment_material_vs_params\n{\n    mat4 model_mat;\n    mat4 proj_view_mat;\n} _14;\n\nout vec3 frag_position;\nlayout(location = 0) in vec3 position;\nout vec2 frag_texturecoord;\nlayout(location = 1) in vec2 texturecoord;\nout vec3 frag_normal;\nlayout(location = 2) in vec3 normal;\nout vec2 frag_lightmap_uv;\nlayout(location = 3) in vec2 lightmap_uv;\n\nvoid main()\n{\n    frag_position = (_14.model_mat * vec4(position, 1.0)).xyz;\n    frag_texturecoord = texturecoord;\n    frag_normal = normal;\n    frag_lightmap_uv = lightmap_uv;\n    gl_Position = (_14.proj_view_mat * _14.model_mat) * vec4(position, 1.0);\n}\n\n",
+            "source": "#version 300 es\n\nuniform vec4 environment_material_vs_params[8];\nout vec3 frag_position;\nlayout(location = 0) in vec3 position;\nout vec2 frag_texturecoord;\nlayout(location = 1) in vec2 texturecoord;\nout vec3 frag_normal;\nlayout(location = 2) in vec3 normal;\nout vec2 frag_lightmap_uv;\nlayout(location = 3) in vec2 lightmap_uv;\n\nvoid main()\n{\n    frag_position = (mat4(environment_material_vs_params[0], environment_material_vs_params[1], environment_material_vs_params[2], environment_material_vs_params[3]) * vec4(position, 1.0)).xyz;\n    frag_texturecoord = texturecoord;\n    frag_normal = normal;\n    frag_lightmap_uv = lightmap_uv;\n    gl_Position = (mat4(environment_material_vs_params[4], environment_material_vs_params[5], environment_material_vs_params[6], environment_material_vs_params[7]) * mat4(environment_material_vs_params[0], environment_material_vs_params[1], environment_material_vs_params[2], environment_material_vs_params[3])) * vec4(position, 1.0);\n}\n\n",
             "inputs": [
                 {
                     "name": "position",
@@ -183,7 +183,7 @@
             "uniforms": [
                 {
                     "name": "environment_material_vs_params",
-                    "size": 128,
+                    "size": 144,
                     "binding": 0,
                     "members": [
                         {

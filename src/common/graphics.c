@@ -38,6 +38,7 @@ void golf_graphics_init(void) {
         graphics.viewport_size = V2((float)sapp_width(), (float)sapp_width());
     }
 
+    /*
     {
         golf_shader_t *shader = golf_data_get_shader("data/shaders/render_image.glsl");
         sg_pipeline_desc pipeline_desc = {
@@ -369,6 +370,7 @@ void golf_graphics_init(void) {
         };
         graphics.water_pipeline = sg_make_pipeline(&pipeline_desc);
     }
+    */
 }
 
 void golf_graphics_begin_frame(float dt) {
