@@ -1,10 +1,126 @@
 {
-    "glsl300es": {
-        "fs": "#version 300 es\nprecision mediump float;\nprecision highp int;\n\nuniform highp sampler2D texture_material_tex;\n\nin highp vec2 frag_texturecoord;\nin highp vec3 frag_normal;\nin highp vec3 frag_position;\nlayout(location = 0) out highp vec4 g_frag_color;\n\nvoid main()\n{\n    g_frag_color = vec4(texture(texture_material_tex, frag_texturecoord).xyz + ((frag_normal + frag_position) * 0.001000000047497451305389404296875), 1.0);\n}\n\n",
-        "vs": "#version 300 es\n\nuniform vec4 texture_material_vs_params[8];\nout vec3 frag_position;\nlayout(location = 0) in vec3 position;\nout vec2 frag_texturecoord;\nlayout(location = 1) in vec2 texturecoord;\nout vec3 frag_normal;\nlayout(location = 2) in vec3 normal;\n\nvoid main()\n{\n    mat4 _21 = mat4(texture_material_vs_params[0], texture_material_vs_params[1], texture_material_vs_params[2], texture_material_vs_params[3]);\n    vec4 _29 = vec4(position, 1.0);\n    frag_position = (_21 * _29).xyz;\n    frag_texturecoord = texturecoord;\n    frag_normal = normal;\n    gl_Position = (mat4(texture_material_vs_params[4], texture_material_vs_params[5], texture_material_vs_params[6], texture_material_vs_params[7]) * _21) * _29;\n}\n\n"
-    },
     "glsl330": {
-        "fs": "#version 330\n\nuniform sampler2D texture_material_tex;\n\nin vec2 frag_texturecoord;\nin vec3 frag_normal;\nin vec3 frag_position;\nlayout(location = 0) out vec4 g_frag_color;\n\nvoid main()\n{\n    g_frag_color = vec4(texture(texture_material_tex, frag_texturecoord).xyz + ((frag_normal + frag_position) * 0.001000000047497451305389404296875), 1.0);\n}\n\n",
-        "vs": "#version 330\n\nuniform vec4 texture_material_vs_params[8];\nout vec3 frag_position;\nlayout(location = 0) in vec3 position;\nout vec2 frag_texturecoord;\nlayout(location = 1) in vec2 texturecoord;\nout vec3 frag_normal;\nlayout(location = 2) in vec3 normal;\n\nvoid main()\n{\n    mat4 _21 = mat4(texture_material_vs_params[0], texture_material_vs_params[1], texture_material_vs_params[2], texture_material_vs_params[3]);\n    vec4 _29 = vec4(position, 1.0);\n    frag_position = (_21 * _29).xyz;\n    frag_texturecoord = texturecoord;\n    frag_normal = normal;\n    gl_Position = (mat4(texture_material_vs_params[4], texture_material_vs_params[5], texture_material_vs_params[6], texture_material_vs_params[7]) * _21) * _29;\n}\n\n"
+        "fs": {
+            "source": "#version 330\n\nuniform sampler2D texture_material_tex;\n\nin vec2 frag_texturecoord;\nin vec3 frag_normal;\nin vec3 frag_position;\nlayout(location = 0) out vec4 g_frag_color;\n\nvoid main()\n{\n    vec3 color = texture(texture_material_tex, frag_texturecoord).xyz;\n    color += ((frag_normal + frag_position) * 0.001000000047497451305389404296875);\n    g_frag_color = vec4(color, 1.0);\n}\n\n",
+            "inputs": [
+                {
+                    "name": "frag_texturecoord",
+                    "location": 1
+                },
+                {
+                    "name": "frag_normal",
+                    "location": 2
+                },
+                {
+                    "name": "frag_position",
+                    "location": 0
+                }
+            ],
+            "uniforms": [],
+            "textures": [
+                {
+                    "name": "texture_material_tex",
+                    "binding": 0
+                }
+            ]
+        },
+        "vs": {
+            "source": "#version 330\n\nlayout(std140) uniform texture_material_vs_params\n{\n    mat4 model_mat;\n    mat4 proj_view_mat;\n} _14;\n\nout vec3 frag_position;\nlayout(location = 0) in vec3 position;\nout vec2 frag_texturecoord;\nlayout(location = 1) in vec2 texturecoord;\nout vec3 frag_normal;\nlayout(location = 2) in vec3 normal;\n\nvoid main()\n{\n    frag_position = (_14.model_mat * vec4(position, 1.0)).xyz;\n    frag_texturecoord = texturecoord;\n    frag_normal = normal;\n    gl_Position = (_14.proj_view_mat * _14.model_mat) * vec4(position, 1.0);\n}\n\n",
+            "inputs": [
+                {
+                    "name": "position",
+                    "location": 0
+                },
+                {
+                    "name": "texturecoord",
+                    "location": 1
+                },
+                {
+                    "name": "normal",
+                    "location": 2
+                }
+            ],
+            "uniforms": [
+                {
+                    "name": "texture_material_vs_params",
+                    "size": 128,
+                    "binding": 0,
+                    "members": [
+                        {
+                            "name": "model_mat",
+                            "offset": 64,
+                            "size": 0
+                        },
+                        {
+                            "name": "proj_view_mat",
+                            "offset": 64,
+                            "size": 64
+                        }
+                    ]
+                }
+            ]
+        }
+    },
+    "gles300": {
+        "fs": {
+            "source": "#version 300 es\nprecision mediump float;\nprecision highp int;\n\nuniform highp sampler2D texture_material_tex;\n\nin highp vec2 frag_texturecoord;\nin highp vec3 frag_normal;\nin highp vec3 frag_position;\nlayout(location = 0) out highp vec4 g_frag_color;\n\nvoid main()\n{\n    highp vec3 color = texture(texture_material_tex, frag_texturecoord).xyz;\n    color += ((frag_normal + frag_position) * 0.001000000047497451305389404296875);\n    g_frag_color = vec4(color, 1.0);\n}\n\n",
+            "inputs": [
+                {
+                    "name": "frag_texturecoord",
+                    "location": 1
+                },
+                {
+                    "name": "frag_normal",
+                    "location": 2
+                },
+                {
+                    "name": "frag_position",
+                    "location": 0
+                }
+            ],
+            "uniforms": [],
+            "textures": [
+                {
+                    "name": "texture_material_tex",
+                    "binding": 0
+                }
+            ]
+        },
+        "vs": {
+            "source": "#version 300 es\n\nlayout(std140) uniform texture_material_vs_params\n{\n    mat4 model_mat;\n    mat4 proj_view_mat;\n} _14;\n\nout vec3 frag_position;\nlayout(location = 0) in vec3 position;\nout vec2 frag_texturecoord;\nlayout(location = 1) in vec2 texturecoord;\nout vec3 frag_normal;\nlayout(location = 2) in vec3 normal;\n\nvoid main()\n{\n    frag_position = (_14.model_mat * vec4(position, 1.0)).xyz;\n    frag_texturecoord = texturecoord;\n    frag_normal = normal;\n    gl_Position = (_14.proj_view_mat * _14.model_mat) * vec4(position, 1.0);\n}\n\n",
+            "inputs": [
+                {
+                    "name": "position",
+                    "location": 0
+                },
+                {
+                    "name": "texturecoord",
+                    "location": 1
+                },
+                {
+                    "name": "normal",
+                    "location": 2
+                }
+            ],
+            "uniforms": [
+                {
+                    "name": "texture_material_vs_params",
+                    "size": 128,
+                    "binding": 0,
+                    "members": [
+                        {
+                            "name": "model_mat",
+                            "offset": 64,
+                            "size": 0
+                        },
+                        {
+                            "name": "proj_view_mat",
+                            "offset": 64,
+                            "size": 64
+                        }
+                    ]
+                }
+            ]
+        }
     }
 }

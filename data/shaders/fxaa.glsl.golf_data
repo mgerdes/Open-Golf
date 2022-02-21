@@ -1,10 +1,66 @@
 {
-    "glsl300es": {
-        "fs": "#version 300 es\nprecision mediump float;\nprecision highp int;\n\nuniform highp sampler2D fxaa_tex;\n\nin highp vec2 frag_texture_coord;\nlayout(location = 0) out highp vec4 g_frag_color;\n\nvoid main()\n{\n    highp vec2 _40 = vec2(1.0 \/ float(textureSize(fxaa_tex, 0).x), 1.0 \/ float(textureSize(fxaa_tex, 0).y));\n    highp vec4 _56 = vec4(frag_texture_coord, frag_texture_coord - (_40 * 0.75));\n    highp vec2 _62 = _56.zw;\n    highp vec2 _99 = _56.xy;\n    highp float _110 = dot(textureLod(fxaa_tex, _62, 0.0).xyz, vec3(0.2989999949932098388671875, 0.58700001239776611328125, 0.114000000059604644775390625));\n    highp float _114 = dot(textureLod(fxaa_tex, _62 + (vec2(1.0, 0.0) * _40), 0.0).xyz, vec3(0.2989999949932098388671875, 0.58700001239776611328125, 0.114000000059604644775390625));\n    highp float _118 = dot(textureLod(fxaa_tex, _62 + (vec2(0.0, 1.0) * _40), 0.0).xyz, vec3(0.2989999949932098388671875, 0.58700001239776611328125, 0.114000000059604644775390625));\n    highp float _122 = dot(textureLod(fxaa_tex, _62 + _40, 0.0).xyz, vec3(0.2989999949932098388671875, 0.58700001239776611328125, 0.114000000059604644775390625));\n    highp float _126 = dot(textureLod(fxaa_tex, _99, 0.0).xyz, vec3(0.2989999949932098388671875, 0.58700001239776611328125, 0.114000000059604644775390625));\n    highp float _150 = _110 + _114;\n    highp float _155 = -(_150 - (_118 + _122));\n    highp vec2 dir;\n    highp vec2 _273 = dir;\n    _273.x = _155;\n    highp float _163 = (_110 + _118) - (_114 + _122);\n    highp vec2 _275 = _273;\n    _275.y = _163;\n    highp vec2 _198 = min(vec2(8.0), max(vec2(-8.0), _275 * (1.0 \/ (min(abs(_155), abs(_163)) + max(((_150 + _118) + _122) * 0.03125, 0.0078125))))) * _40;\n    dir = _198;\n    highp vec3 _220 = (textureLod(fxaa_tex, _99 + (_198 * (-0.16666667163372039794921875)), 0.0).xyz + textureLod(fxaa_tex, _99 + (_198 * 0.16666667163372039794921875), 0.0).xyz) * 0.5;\n    highp vec3 _244 = (_220 * 0.5) + ((textureLod(fxaa_tex, _99 + (_198 * (-0.5)), 0.0).xyz + textureLod(fxaa_tex, _99 + (_198 * 0.5), 0.0).xyz) * 0.25);\n    highp float _248 = dot(_244, vec3(0.2989999949932098388671875, 0.58700001239776611328125, 0.114000000059604644775390625));\n    if ((_248 < min(_126, min(min(_110, _114), min(_118, _122)))) || (_248 > max(_126, max(max(_110, _114), max(_118, _122)))))\n    {\n        g_frag_color = vec4(_220, 1.0);\n    }\n    else\n    {\n        g_frag_color = vec4(_244, 1.0);\n    }\n}\n\n",
-        "vs": "#version 300 es\n\nout vec2 frag_texture_coord;\nlayout(location = 1) in vec2 texture_coord;\nlayout(location = 0) in vec3 position;\n\nvoid main()\n{\n    frag_texture_coord = texture_coord;\n    gl_Position = vec4(position, 1.0);\n}\n\n"
-    },
     "glsl330": {
-        "fs": "#version 330\n\nuniform sampler2D fxaa_tex;\n\nin vec2 frag_texture_coord;\nlayout(location = 0) out vec4 g_frag_color;\n\nvoid main()\n{\n    vec2 _40 = vec2(1.0 \/ float(textureSize(fxaa_tex, 0).x), 1.0 \/ float(textureSize(fxaa_tex, 0).y));\n    vec4 _56 = vec4(frag_texture_coord, frag_texture_coord - (_40 * 0.75));\n    vec2 _62 = _56.zw;\n    vec2 _99 = _56.xy;\n    float _110 = dot(textureLod(fxaa_tex, _62, 0.0).xyz, vec3(0.2989999949932098388671875, 0.58700001239776611328125, 0.114000000059604644775390625));\n    float _114 = dot(textureLod(fxaa_tex, _62 + (vec2(1.0, 0.0) * _40), 0.0).xyz, vec3(0.2989999949932098388671875, 0.58700001239776611328125, 0.114000000059604644775390625));\n    float _118 = dot(textureLod(fxaa_tex, _62 + (vec2(0.0, 1.0) * _40), 0.0).xyz, vec3(0.2989999949932098388671875, 0.58700001239776611328125, 0.114000000059604644775390625));\n    float _122 = dot(textureLod(fxaa_tex, _62 + _40, 0.0).xyz, vec3(0.2989999949932098388671875, 0.58700001239776611328125, 0.114000000059604644775390625));\n    float _126 = dot(textureLod(fxaa_tex, _99, 0.0).xyz, vec3(0.2989999949932098388671875, 0.58700001239776611328125, 0.114000000059604644775390625));\n    float _150 = _110 + _114;\n    float _155 = -(_150 - (_118 + _122));\n    vec2 dir;\n    vec2 _273 = dir;\n    _273.x = _155;\n    float _163 = (_110 + _118) - (_114 + _122);\n    vec2 _275 = _273;\n    _275.y = _163;\n    vec2 _198 = min(vec2(8.0), max(vec2(-8.0), _275 * (1.0 \/ (min(abs(_155), abs(_163)) + max(((_150 + _118) + _122) * 0.03125, 0.0078125))))) * _40;\n    dir = _198;\n    vec3 _220 = (textureLod(fxaa_tex, _99 + (_198 * (-0.16666667163372039794921875)), 0.0).xyz + textureLod(fxaa_tex, _99 + (_198 * 0.16666667163372039794921875), 0.0).xyz) * 0.5;\n    vec3 _244 = (_220 * 0.5) + ((textureLod(fxaa_tex, _99 + (_198 * (-0.5)), 0.0).xyz + textureLod(fxaa_tex, _99 + (_198 * 0.5), 0.0).xyz) * 0.25);\n    float _248 = dot(_244, vec3(0.2989999949932098388671875, 0.58700001239776611328125, 0.114000000059604644775390625));\n    if ((_248 < min(_126, min(min(_110, _114), min(_118, _122)))) || (_248 > max(_126, max(max(_110, _114), max(_118, _122)))))\n    {\n        g_frag_color = vec4(_220, 1.0);\n    }\n    else\n    {\n        g_frag_color = vec4(_244, 1.0);\n    }\n}\n\n",
-        "vs": "#version 330\n\nout vec2 frag_texture_coord;\nlayout(location = 1) in vec2 texture_coord;\nlayout(location = 0) in vec3 position;\n\nvoid main()\n{\n    frag_texture_coord = texture_coord;\n    gl_Position = vec4(position, 1.0);\n}\n\n"
+        "fs": {
+            "source": "#version 330\n\nuniform sampler2D fxaa_tex;\n\nin vec2 frag_texture_coord;\nlayout(location = 0) out vec4 g_frag_color;\n\nvoid main()\n{\n    float width = float(textureSize(fxaa_tex, 0).x);\n    float height = float(textureSize(fxaa_tex, 0).y);\n    vec2 rcpFrame = vec2(1.0 \/ width, 1.0 \/ height);\n    vec4 uv = vec4(frag_texture_coord, frag_texture_coord - (rcpFrame * 0.75));\n    vec3 rgbNW = textureLod(fxaa_tex, uv.zw, 0.0).xyz;\n    vec3 rgbNE = textureLod(fxaa_tex, uv.zw + (vec2(1.0, 0.0) * rcpFrame), 0.0).xyz;\n    vec3 rgbSW = textureLod(fxaa_tex, uv.zw + (vec2(0.0, 1.0) * rcpFrame), 0.0).xyz;\n    vec3 rgbSE = textureLod(fxaa_tex, uv.zw + (vec2(1.0) * rcpFrame), 0.0).xyz;\n    vec3 rgbM = textureLod(fxaa_tex, uv.xy, 0.0).xyz;\n    vec3 luma = vec3(0.2989999949932098388671875, 0.58700001239776611328125, 0.114000000059604644775390625);\n    float lumaNW = dot(rgbNW, luma);\n    float lumaNE = dot(rgbNE, luma);\n    float lumaSW = dot(rgbSW, luma);\n    float lumaSE = dot(rgbSE, luma);\n    float lumaM = dot(rgbM, luma);\n    float lumaMin = min(lumaM, min(min(lumaNW, lumaNE), min(lumaSW, lumaSE)));\n    float lumaMax = max(lumaM, max(max(lumaNW, lumaNE), max(lumaSW, lumaSE)));\n    vec2 dir;\n    dir.x = -((lumaNW + lumaNE) - (lumaSW + lumaSE));\n    dir.y = (lumaNW + lumaSW) - (lumaNE + lumaSE);\n    float dirReduce = max((((lumaNW + lumaNE) + lumaSW) + lumaSE) * 0.03125, 0.0078125);\n    float rcpDirMin = 1.0 \/ (min(abs(dir.x), abs(dir.y)) + dirReduce);\n    dir = min(vec2(8.0), max(vec2(-8.0), dir * rcpDirMin)) * rcpFrame;\n    vec3 rgbA = (textureLod(fxaa_tex, uv.xy + (dir * (-0.16666667163372039794921875)), 0.0).xyz + textureLod(fxaa_tex, uv.xy + (dir * 0.16666667163372039794921875), 0.0).xyz) * 0.5;\n    vec3 rgbB = (rgbA * 0.5) + ((textureLod(fxaa_tex, uv.xy + (dir * (-0.5)), 0.0).xyz + textureLod(fxaa_tex, uv.xy + (dir * 0.5), 0.0).xyz) * 0.25);\n    float lumaB = dot(rgbB, luma);\n    if ((lumaB < lumaMin) || (lumaB > lumaMax))\n    {\n        g_frag_color = vec4(rgbA, 1.0);\n    }\n    else\n    {\n        g_frag_color = vec4(rgbB, 1.0);\n    }\n}\n\n",
+            "inputs": [
+                {
+                    "name": "frag_texture_coord",
+                    "location": 0
+                }
+            ],
+            "uniforms": [],
+            "textures": [
+                {
+                    "name": "fxaa_tex",
+                    "binding": 0
+                }
+            ]
+        },
+        "vs": {
+            "source": "#version 330\n\nout vec2 frag_texture_coord;\nlayout(location = 1) in vec2 texture_coord;\nlayout(location = 0) in vec3 position;\n\nvoid main()\n{\n    frag_texture_coord = texture_coord;\n    gl_Position = vec4(position, 1.0);\n}\n\n",
+            "inputs": [
+                {
+                    "name": "texture_coord",
+                    "location": 1
+                },
+                {
+                    "name": "position",
+                    "location": 0
+                }
+            ],
+            "uniforms": []
+        }
+    },
+    "gles300": {
+        "fs": {
+            "source": "#version 300 es\nprecision mediump float;\nprecision highp int;\n\nuniform highp sampler2D fxaa_tex;\n\nin highp vec2 frag_texture_coord;\nlayout(location = 0) out highp vec4 g_frag_color;\n\nvoid main()\n{\n    highp float width = float(textureSize(fxaa_tex, 0).x);\n    highp float height = float(textureSize(fxaa_tex, 0).y);\n    highp vec2 rcpFrame = vec2(1.0 \/ width, 1.0 \/ height);\n    highp vec4 uv = vec4(frag_texture_coord, frag_texture_coord - (rcpFrame * 0.75));\n    highp vec3 rgbNW = textureLod(fxaa_tex, uv.zw, 0.0).xyz;\n    highp vec3 rgbNE = textureLod(fxaa_tex, uv.zw + (vec2(1.0, 0.0) * rcpFrame), 0.0).xyz;\n    highp vec3 rgbSW = textureLod(fxaa_tex, uv.zw + (vec2(0.0, 1.0) * rcpFrame), 0.0).xyz;\n    highp vec3 rgbSE = textureLod(fxaa_tex, uv.zw + (vec2(1.0) * rcpFrame), 0.0).xyz;\n    highp vec3 rgbM = textureLod(fxaa_tex, uv.xy, 0.0).xyz;\n    highp vec3 luma = vec3(0.2989999949932098388671875, 0.58700001239776611328125, 0.114000000059604644775390625);\n    highp float lumaNW = dot(rgbNW, luma);\n    highp float lumaNE = dot(rgbNE, luma);\n    highp float lumaSW = dot(rgbSW, luma);\n    highp float lumaSE = dot(rgbSE, luma);\n    highp float lumaM = dot(rgbM, luma);\n    highp float lumaMin = min(lumaM, min(min(lumaNW, lumaNE), min(lumaSW, lumaSE)));\n    highp float lumaMax = max(lumaM, max(max(lumaNW, lumaNE), max(lumaSW, lumaSE)));\n    highp vec2 dir;\n    dir.x = -((lumaNW + lumaNE) - (lumaSW + lumaSE));\n    dir.y = (lumaNW + lumaSW) - (lumaNE + lumaSE);\n    highp float dirReduce = max((((lumaNW + lumaNE) + lumaSW) + lumaSE) * 0.03125, 0.0078125);\n    highp float rcpDirMin = 1.0 \/ (min(abs(dir.x), abs(dir.y)) + dirReduce);\n    dir = min(vec2(8.0), max(vec2(-8.0), dir * rcpDirMin)) * rcpFrame;\n    highp vec3 rgbA = (textureLod(fxaa_tex, uv.xy + (dir * (-0.16666667163372039794921875)), 0.0).xyz + textureLod(fxaa_tex, uv.xy + (dir * 0.16666667163372039794921875), 0.0).xyz) * 0.5;\n    highp vec3 rgbB = (rgbA * 0.5) + ((textureLod(fxaa_tex, uv.xy + (dir * (-0.5)), 0.0).xyz + textureLod(fxaa_tex, uv.xy + (dir * 0.5), 0.0).xyz) * 0.25);\n    highp float lumaB = dot(rgbB, luma);\n    if ((lumaB < lumaMin) || (lumaB > lumaMax))\n    {\n        g_frag_color = vec4(rgbA, 1.0);\n    }\n    else\n    {\n        g_frag_color = vec4(rgbB, 1.0);\n    }\n}\n\n",
+            "inputs": [
+                {
+                    "name": "frag_texture_coord",
+                    "location": 0
+                }
+            ],
+            "uniforms": [],
+            "textures": [
+                {
+                    "name": "fxaa_tex",
+                    "binding": 0
+                }
+            ]
+        },
+        "vs": {
+            "source": "#version 300 es\n\nout vec2 frag_texture_coord;\nlayout(location = 1) in vec2 texture_coord;\nlayout(location = 0) in vec3 position;\n\nvoid main()\n{\n    frag_texture_coord = texture_coord;\n    gl_Position = vec4(position, 1.0);\n}\n\n",
+            "inputs": [
+                {
+                    "name": "texture_coord",
+                    "location": 1
+                },
+                {
+                    "name": "position",
+                    "location": 0
+                }
+            ],
+            "uniforms": []
+        }
     }
 }

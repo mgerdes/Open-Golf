@@ -199,41 +199,162 @@ static bool _golf_texture_unload(void *ptr) {
 // SHADERS
 //
 
-static JSON_Value *_golf_shader_import_bare(const char *base_name, const char *name) {
-    JSON_Value *val = json_value_init_object();
-    JSON_Object *obj = json_value_get_object(val);
+static void _golf_shader_import_get_inputs(JSON_Array *inputs_arr, JSON_Value **my_inputs_val) {
+    *my_inputs_val = json_value_init_array();
+    JSON_Array *my_inputs_arr = json_value_get_array(*my_inputs_val);
+
+    for (int i = 0; i < (int)json_array_get_count(inputs_arr); i++) {
+        JSON_Value *my_input_val = json_value_init_object();
+        JSON_Object *my_input_obj = json_value_get_object(my_input_val);
+
+        JSON_Object *input_obj = json_array_get_object(inputs_arr, i);
+        const char *name = json_object_get_string(input_obj, "name");
+        int location = (int)json_object_get_number(input_obj, "location");
+
+        json_object_set_string(my_input_obj, "name", name);
+        json_object_set_number(my_input_obj, "location", location);
+        json_array_append_value(my_inputs_arr, my_input_val);
+    }
+}
+
+static void _golf_shader_input_get_uniforms(JSON_Array *uniforms_arr, JSON_Value **my_uniforms_val) {
+    *my_uniforms_val = json_value_init_array();
+    JSON_Array *my_uniforms_arr = json_value_get_array(*my_uniforms_val);
+
+    for (int i = 0; i < (int)json_array_get_count(uniforms_arr); i++) {
+        JSON_Value *my_uniform_val = json_value_init_object();
+        JSON_Object *my_uniform_obj = json_value_get_object(my_uniform_val);
+
+        JSON_Object *uniform_obj = json_array_get_object(uniforms_arr, i);
+        const char *name = json_object_get_string(uniform_obj, "name");
+        int size = (int)json_object_get_number(uniform_obj, "block_size");
+        int binding = (int)json_object_get_number(uniform_obj, "binding");
+
+        json_object_set_string(my_uniform_obj, "name", name);
+        json_object_set_number(my_uniform_obj, "size", size);
+        json_object_set_number(my_uniform_obj, "binding", binding);
+
+        JSON_Value *my_members_val = json_value_init_array();
+        JSON_Array *my_members_arr = json_value_get_array(my_members_val);
+
+        JSON_Array *members_arr = json_object_get_array(uniform_obj, "members");
+        for (int i = 0; i < (int)json_array_get_count(members_arr); i++) {
+            JSON_Value *my_member_val = json_value_init_object();
+            JSON_Object *my_member_obj = json_value_get_object(my_member_val);
+
+            JSON_Object *member_obj = json_array_get_object(members_arr, i);
+            const char *name = json_object_get_string(member_obj, "name");
+            int offset = (int)json_object_get_number(member_obj, "offset");
+            int size = (int)json_object_get_number(member_obj, "size");
+
+            json_object_set_string(my_member_obj, "name", name);
+            json_object_set_number(my_member_obj, "offset", size);
+            json_object_set_number(my_member_obj, "size", offset);
+            json_array_append_value(my_members_arr, my_member_val);
+        }
+
+        json_object_set_value(my_uniform_obj, "members", my_members_val);
+        json_array_append_value(my_uniforms_arr, my_uniform_val);
+    }
+}
+
+static void _golf_shader_import_get_textures(JSON_Array *textures_arr, JSON_Value **my_textures_val) {
+    *my_textures_val = json_value_init_array();
+    JSON_Array *my_textures_arr = json_value_get_array(*my_textures_val);
+
+    for (int i = 0; i < (int)json_array_get_count(textures_arr); i++) {
+        JSON_Value *my_texture_val = json_value_init_object();
+        JSON_Object *my_texture_obj = json_value_get_object(my_texture_val);
+
+        JSON_Object *texture_obj = json_array_get_object(textures_arr, i);
+        const char *name = json_object_get_string(texture_obj, "name");
+        int binding = (int)json_object_get_number(texture_obj, "binding");
+
+        json_object_set_string(my_texture_obj, "name", name);
+        json_object_set_number(my_texture_obj, "binding", binding);
+        json_array_append_value(my_textures_arr, my_texture_val);
+    }
+}
+
+static void _golf_shader_import_get_shader(const char *file_path, const char *lang, const char *profile, JSON_Value **my_val) {
+    *my_val = json_value_init_object();
+    JSON_Object *my_obj = json_value_get_object(*my_val);
 
     {
-        golf_string_t fs_bare_name;
-        golf_string_initf(&fs_bare_name, "data", "%s_%s_fs.glsl", base_name, name);
-
-        char *data;
-        int data_len;
-        if (!golf_file_load_data(fs_bare_name.cstr, &data, &data_len)) {
-            golf_log_error("Failed to read file %s", fs_bare_name.cstr);
-        }
-        json_object_set_string(obj, "fs", data);
-        golf_free(data);
-
-        golf_string_deinit(&fs_bare_name);
+        golf_string_t cmd;
+        golf_string_init(&cmd, "data", "");
+#if GOLF_PLATFORM_LINUX
+        golf_string_appendf(&cmd, "tools/glslcc/linux/glslcc %s -S -o out/temp/temp.glsl -l %s -p %s -r", file_path, lang, profile);
+#elif GOLF_PLATFORM_WINDOWS
+        //golf_string_appendf(&cmd, "tools\\sokol-tools\\win32\\sokol-shdc --input %s --output src/golf/shaders/%s.h --slang %s", file.path, file.name, slangs);
+#elif GOLF_PLATFORM_MACOS
+#endif
+        system(cmd.cstr);
+        golf_string_deinit(&cmd);
     }
 
     {
-        golf_string_t vs_bare_name;
-        golf_string_initf(&vs_bare_name, "data", "%s_%s_vs.glsl", base_name, name);
+        JSON_Value *my_fs_val = json_value_init_object();
+        JSON_Object *my_fs_obj = json_value_get_object(my_fs_val);
 
-        char *data;
-        int data_len;
-        if (!golf_file_load_data(vs_bare_name.cstr, &data, &data_len)) {
-            golf_log_error("Failed to read file %s", vs_bare_name.cstr);
+        char *source_data;
+        int source_data_len;
+        if (golf_file_load_data("out/temp/temp_fs.glsl", &source_data, &source_data_len)) {
+            json_object_set_string(my_fs_obj, "source", source_data);
+        } 
+        else {
+            golf_log_warning("Unable to open source shader");
         }
-        json_object_set_string(obj, "vs", data);
-        golf_free(data);
 
-        golf_string_deinit(&vs_bare_name);
+        JSON_Value *fs_val = json_parse_file("out/temp/temp_fs.glsl.json");
+        JSON_Object *fs_obj = json_value_get_object(fs_val);
+
+        JSON_Value *my_inputs_val;
+        JSON_Array *inputs_arr = json_object_dotget_array(fs_obj, "fs.inputs");
+        _golf_shader_import_get_inputs(inputs_arr, &my_inputs_val);
+        json_object_set_value(my_fs_obj, "inputs", my_inputs_val);
+
+        JSON_Value *my_uniforms_val;
+        JSON_Array *uniforms_arr = json_object_dotget_array(fs_obj, "fs.uniform_buffers");
+        _golf_shader_input_get_uniforms(uniforms_arr, &my_uniforms_val);
+        json_object_set_value(my_fs_obj, "uniforms", my_uniforms_val);
+
+        JSON_Value *my_textures_val;
+        JSON_Array *textures_arr = json_object_dotget_array(fs_obj, "fs.textures");
+        _golf_shader_import_get_textures(textures_arr, &my_textures_val);
+        json_object_set_value(my_fs_obj, "textures", my_textures_val);
+
+        json_object_set_value(my_obj, "fs", my_fs_val);
     }
 
-    return val;
+    {
+        JSON_Value *my_vs_val = json_value_init_object();
+        JSON_Object *my_vs_obj = json_value_get_object(my_vs_val);
+
+        char *source_data;
+        int source_data_len;
+        if (golf_file_load_data("out/temp/temp_vs.glsl", &source_data, &source_data_len)) {
+            json_object_set_string(my_vs_obj, "source", source_data);
+        } 
+        else {
+            golf_log_warning("Unable to open source shader");
+        }
+
+        JSON_Value *vs_val = json_parse_file("out/temp/temp_vs.glsl.json");
+        JSON_Object *vs_obj = json_value_get_object(vs_val);
+
+        JSON_Value *my_inputs_val;
+        JSON_Array *inputs_arr = json_object_dotget_array(vs_obj, "vs.inputs");
+        _golf_shader_import_get_inputs(inputs_arr, &my_inputs_val);
+        json_object_set_value(my_vs_obj, "inputs", my_inputs_val);
+
+        JSON_Value *my_uniforms_val;
+        JSON_Array *uniforms_arr = json_object_dotget_array(vs_obj, "vs.uniform_buffers");
+        _golf_shader_input_get_uniforms(uniforms_arr, &my_uniforms_val);
+        json_object_set_value(my_vs_obj, "uniforms", my_uniforms_val);
+
+        json_object_set_value(my_obj, "vs", my_vs_val);
+    }
 }
 
 static bool _golf_shader_import(const char *path, char *data, int data_len) {
@@ -242,57 +363,23 @@ static bool _golf_shader_import(const char *path, char *data, int data_len) {
 
 #if GOLF_PLATFORM_LINUX | GOLF_PLATFORM_WINDOWS
     golf_file_t file = golf_file(path);
-    static const char *slangs = "glsl330:glsl300es";
     JSON_Value *val = json_value_init_object();
     JSON_Object *obj = json_value_get_object(val);
 
-    {
-        golf_string_t cmd;
-        golf_string_init(&cmd, "data", "");
-#if GOLF_PLATFORM_LINUX
-        golf_string_appendf(&cmd, "tools/sokol-tools/linux/sokol-shdc --input %s --output src/golf/shaders/%s.h --slang %s", file.path, file.name, slangs);
-#elif GOLF_PLATFORM_WINDOWS
-        golf_string_appendf(&cmd, "tools\\sokol-tools\\win32\\sokol-shdc --input %s --output src/golf/shaders/%s.h --slang %s", file.path, file.name, slangs);
-#elif GOLF_PLATFORM_MACOS
-#endif
-        system(cmd.cstr);
-        golf_string_deinit(&cmd);
-    }
+    JSON_Value *glsl330_val;
+    _golf_shader_import_get_shader(path, "glsl", "330", &glsl330_val);
+    json_object_set_value(obj, "glsl330", glsl330_val);
+
+    JSON_Value *gles300_val;
+    _golf_shader_import_get_shader(path, "gles", "300", &gles300_val);
+    json_object_set_value(obj, "gles300", gles300_val);
 
     {
-        golf_string_t cmd;
-        golf_string_init(&cmd, "data", "");
-#if GOLF_PLATFORM_LINUX
-        golf_string_appendf(&cmd, "tools/sokol-tools/linux/sokol-shdc --input %s --output out/temp/bare --slang %s --format bare", file.path, slangs);
-#elif GOLF_PLATFORM_WINDOWS
-        golf_string_appendf(&cmd, "tools\\sokol-tools\\win32\\sokol-shdc --input %s --output out/temp/bare --slang %s --format bare", file.path, slangs);
-#elif GOLF_PLATFORM_MACOS
-#endif
-        int ret = system(cmd.cstr);
-        if (ret == 0) {
-            golf_string_t base_bare_name;
-            golf_string_initf(&base_bare_name, "data", "out/temp/bare_%s", file.name);
-            golf_string_pop(&base_bare_name, 5);
-
-            {
-                JSON_Value *bare_val = _golf_shader_import_bare(base_bare_name.cstr, "glsl300es");
-                json_object_set_value(obj, "glsl300es", bare_val);
-            }
-
-            {
-                JSON_Value *bare_val = _golf_shader_import_bare(base_bare_name.cstr, "glsl330");
-                json_object_set_value(obj, "glsl330", bare_val);
-            }
-
-            golf_string_deinit(&base_bare_name);
-        }
-        golf_string_deinit(&cmd);
+        golf_string_t import_shader_file_path;
+        golf_string_initf(&import_shader_file_path, "data", "%s.golf_data", file.path);
+        json_serialize_to_file_pretty(val, import_shader_file_path.cstr);
+        golf_string_deinit(&import_shader_file_path);
     }
-
-    golf_string_t import_shader_file_path;
-    golf_string_initf(&import_shader_file_path, "data", "%s.golf_data", file.path);
-    json_serialize_to_file_pretty(val, import_shader_file_path.cstr);
-    golf_string_deinit(&import_shader_file_path);
 
     json_value_free(val);
     return true;

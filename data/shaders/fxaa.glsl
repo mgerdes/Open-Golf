@@ -1,26 +1,25 @@
-@ctype mat4 mat4
-@ctype vec4 vec4
-@ctype vec3 vec3
-@ctype vec2 vec2
+//@begin_vert
+#version 450
 
-@vs fxaa_vs
-in vec3 position;
-in vec2 texture_coord;
+layout(location = 0) in vec3 position;
+layout(location = 1) in vec2 texture_coord;
 
-out vec2 frag_texture_coord;
+layout(location = 0) out vec2 frag_texture_coord;
 
 void main() {
     frag_texture_coord = texture_coord;
     gl_Position = vec4(position, 1);
 }
-@end
+//@end
 
-@fs fxaa_fs
-uniform sampler2D fxaa_tex;
+//@begin_frag
+#version 450
 
-in vec2 frag_texture_coord;
+layout(binding = 0) uniform sampler2D fxaa_tex;
 
-out vec4 g_frag_color;
+layout(location = 0) in vec2 frag_texture_coord;
+
+layout(location = 0) out vec4 g_frag_color;
 
 #define FXAA_SPAN_MAX 8.0
 #define FXAA_REDUCE_MUL   (1.0/FXAA_SPAN_MAX)
@@ -78,6 +77,4 @@ void main() {
         g_frag_color = vec4(rgbB, 1.0); 
     }
 }
-@end
-
-@program fxaa fxaa_vs fxaa_fs
+//@end

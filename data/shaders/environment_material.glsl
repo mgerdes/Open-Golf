@@ -1,23 +1,20 @@
-@ctype mat4 mat4
-@ctype vec4 vec4
-@ctype vec3 vec3
-@ctype vec2 vec2
+//@begin_vert
+#version 450
 
-@vs environment_material_vs
-uniform environment_material_vs_params {
+layout(binding = 0) uniform environment_material_vs_params {
     mat4 model_mat;
     mat4 proj_view_mat;
 };
 
-in vec3 position;
-in vec2 texturecoord;
-in vec3 normal;
-in vec2 lightmap_uv;
+layout(location = 0) in vec3 position;
+layout(location = 1) in vec2 texturecoord;
+layout(location = 2) in vec3 normal;
+layout(location = 3) in vec2 lightmap_uv;
 
-out vec3 frag_position;
-out vec2 frag_texturecoord;
-out vec3 frag_normal;
-out vec2 frag_lightmap_uv;
+layout(location = 0) out vec3 frag_position;
+layout(location = 1) out vec2 frag_texturecoord;
+layout(location = 2) out vec3 frag_normal;
+layout(location = 3) out vec2 frag_lightmap_uv;
 
 void main() {
     frag_position = (model_mat * vec4(position, 1.0)).xyz;
@@ -26,25 +23,27 @@ void main() {
     frag_lightmap_uv = lightmap_uv;
     gl_Position = proj_view_mat * model_mat * vec4(position, 1.0);
 }
-@end
+//@end
 
-@fs environment_material_fs
-uniform environment_material_fs_params {
+//@begin_frag
+#version 450
+
+layout(binding = 0) uniform environment_material_fs_params {
     vec4 ball_position;
     float lightmap_texture_a;
     float uv_scale;
 };
 
-uniform sampler2D environment_material_texture;
-uniform sampler2D environment_material_lightmap_texture0;
-uniform sampler2D environment_material_lightmap_texture1;
+layout(binding = 0) uniform sampler2D environment_material_texture;
+layout(binding = 1) uniform sampler2D environment_material_lightmap_texture0;
+layout(binding = 2) uniform sampler2D environment_material_lightmap_texture1;
 
-in vec3 frag_position;
-in vec2 frag_texturecoord;
-in vec3 frag_normal;
-in vec2 frag_lightmap_uv;
+layout(location = 0) in vec3 frag_position;
+layout(location = 1) in vec2 frag_texturecoord;
+layout(location = 2) in vec3 frag_normal;
+layout(location = 3) in vec2 frag_lightmap_uv;
 
-out vec4 g_frag_color;
+layout(location = 0) out vec4 g_frag_color;
 
 void main() {
     float gi0 = (1 - lightmap_texture_a) * texture(environment_material_lightmap_texture0, frag_lightmap_uv).x; 
@@ -64,6 +63,4 @@ void main() {
     //g_frag_color *= 0.001;
     //g_frag_color += vec4(frag_lightmap_uv, 0.0, 1.0);
 }
-@end
-
-@program environment_material environment_material_vs environment_material_fs
+//@end

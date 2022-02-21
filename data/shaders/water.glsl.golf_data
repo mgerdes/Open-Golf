@@ -1,10 +1,160 @@
 {
-    "glsl300es": {
-        "fs": "#version 300 es\nprecision mediump float;\nprecision highp int;\n\nuniform highp vec4 water_fs_params[1];\nuniform highp sampler2D water_noise_tex1;\nuniform highp sampler2D water_noise_tex0;\nuniform highp sampler2D water_lightmap_tex;\n\nin highp vec2 frag_texture_coord;\nin highp vec2 frag_lightmap_uv;\nlayout(location = 0) out highp vec4 g_frag_color;\n\nvoid main()\n{\n    highp vec4 _56 = texture(water_noise_tex1, vec2(frag_texture_coord.x, 0.100000001490116119384765625 * (frag_texture_coord.y + (0.800000011920928955078125 * water_fs_params[0].x))));\n    highp vec3 color = vec3(0.0039215688593685626983642578125, 0.4862745106220245361328125, 0.56078433990478515625);\n    if (texture(water_noise_tex0, vec2(frag_texture_coord.x, frag_texture_coord.y + (0.0625 * water_fs_params[0].x))).w > 0.100000001490116119384765625)\n    {\n        color = vec3(0.60000002384185791015625);\n    }\n    if (_56.w > 0.100000001490116119384765625)\n    {\n        color = vec3(0.800000011920928955078125);\n    }\n    if (frag_texture_coord.x > 0.949999988079071044921875)\n    {\n        highp float _95 = (frag_texture_coord.x - 0.949999988079071044921875) * 20.0;\n        color = (vec3(1.0) * _95) + (color * (1.0 - _95));\n    }\n    if (frag_texture_coord.x < 0.0500000007450580596923828125)\n    {\n        highp float _114 = (0.0500000007450580596923828125 - frag_texture_coord.x) * 20.0;\n        color = (vec3(1.0) * _114) + (color * (1.0 - _114));\n    }\n    g_frag_color = vec4(color * texture(water_lightmap_tex, frag_lightmap_uv).x, 0.85000002384185791015625);\n}\n\n",
-        "vs": "#version 300 es\n\nuniform vec4 water_vs_params[8];\nout vec2 frag_texture_coord;\nlayout(location = 1) in vec2 texture_coord;\nout vec2 frag_lightmap_uv;\nlayout(location = 2) in vec2 lightmap_uv;\nlayout(location = 0) in vec3 position;\n\nvoid main()\n{\n    frag_texture_coord = texture_coord;\n    frag_lightmap_uv = lightmap_uv;\n    gl_Position = (mat4(water_vs_params[0], water_vs_params[1], water_vs_params[2], water_vs_params[3]) * mat4(water_vs_params[4], water_vs_params[5], water_vs_params[6], water_vs_params[7])) * vec4(position, 1.0);\n}\n\n"
-    },
     "glsl330": {
-        "fs": "#version 330\n\nuniform vec4 water_fs_params[1];\nuniform sampler2D water_noise_tex1;\nuniform sampler2D water_noise_tex0;\nuniform sampler2D water_lightmap_tex;\n\nin vec2 frag_texture_coord;\nin vec2 frag_lightmap_uv;\nlayout(location = 0) out vec4 g_frag_color;\n\nvoid main()\n{\n    vec4 _56 = texture(water_noise_tex1, vec2(frag_texture_coord.x, 0.100000001490116119384765625 * (frag_texture_coord.y + (0.800000011920928955078125 * water_fs_params[0].x))));\n    vec3 color = vec3(0.0039215688593685626983642578125, 0.4862745106220245361328125, 0.56078433990478515625);\n    if (texture(water_noise_tex0, vec2(frag_texture_coord.x, frag_texture_coord.y + (0.0625 * water_fs_params[0].x))).w > 0.100000001490116119384765625)\n    {\n        color = vec3(0.60000002384185791015625);\n    }\n    if (_56.w > 0.100000001490116119384765625)\n    {\n        color = vec3(0.800000011920928955078125);\n    }\n    if (frag_texture_coord.x > 0.949999988079071044921875)\n    {\n        float _95 = (frag_texture_coord.x - 0.949999988079071044921875) * 20.0;\n        color = (vec3(1.0) * _95) + (color * (1.0 - _95));\n    }\n    if (frag_texture_coord.x < 0.0500000007450580596923828125)\n    {\n        float _114 = (0.0500000007450580596923828125 - frag_texture_coord.x) * 20.0;\n        color = (vec3(1.0) * _114) + (color * (1.0 - _114));\n    }\n    g_frag_color = vec4(color * texture(water_lightmap_tex, frag_lightmap_uv).x, 0.85000002384185791015625);\n}\n\n",
-        "vs": "#version 330\n\nuniform vec4 water_vs_params[8];\nout vec2 frag_texture_coord;\nlayout(location = 1) in vec2 texture_coord;\nout vec2 frag_lightmap_uv;\nlayout(location = 2) in vec2 lightmap_uv;\nlayout(location = 0) in vec3 position;\n\nvoid main()\n{\n    frag_texture_coord = texture_coord;\n    frag_lightmap_uv = lightmap_uv;\n    gl_Position = (mat4(water_vs_params[0], water_vs_params[1], water_vs_params[2], water_vs_params[3]) * mat4(water_vs_params[4], water_vs_params[5], water_vs_params[6], water_vs_params[7])) * vec4(position, 1.0);\n}\n\n"
+        "fs": {
+            "source": "#version 330\n\nlayout(std140) uniform water_fs_params\n{\n    float t;\n} _24;\n\nuniform sampler2D water_noise_tex1;\nuniform sampler2D water_noise_tex0;\nuniform sampler2D water_lightmap_tex;\n\nin vec2 frag_texture_coord;\nin vec2 frag_lightmap_uv;\nlayout(location = 0) out vec4 g_frag_color;\n\nvoid main()\n{\n    vec2 tc0 = vec2(frag_texture_coord.x, 0.100000001490116119384765625 * (frag_texture_coord.y + (0.800000011920928955078125 * _24.t)));\n    vec2 tc1 = vec2(frag_texture_coord.x, frag_texture_coord.y + (0.0625 * _24.t));\n    float noise0 = texture(water_noise_tex1, tc0).w;\n    float _noise1 = texture(water_noise_tex0, tc1).w;\n    vec3 color = vec3(0.0039215688593685626983642578125, 0.4862745106220245361328125, 0.56078433990478515625);\n    if (_noise1 > 0.100000001490116119384765625)\n    {\n        color = vec3(0.60000002384185791015625);\n    }\n    if (noise0 > 0.100000001490116119384765625)\n    {\n        color = vec3(0.800000011920928955078125);\n    }\n    if (frag_texture_coord.x > 0.949999988079071044921875)\n    {\n        float a = (frag_texture_coord.x - 0.949999988079071044921875) \/ 0.0500000007450580596923828125;\n        color = (vec3(1.0) * a) + (color * (1.0 - a));\n    }\n    if (frag_texture_coord.x < 0.0500000007450580596923828125)\n    {\n        float a_1 = (0.0500000007450580596923828125 - frag_texture_coord.x) \/ 0.0500000007450580596923828125;\n        color = (vec3(1.0) * a_1) + (color * (1.0 - a_1));\n    }\n    float ao = texture(water_lightmap_tex, frag_lightmap_uv).x;\n    g_frag_color = vec4(color * ao, 0.85000002384185791015625);\n}\n\n",
+            "inputs": [
+                {
+                    "name": "frag_texture_coord",
+                    "location": 0
+                },
+                {
+                    "name": "frag_lightmap_uv",
+                    "location": 1
+                }
+            ],
+            "uniforms": [
+                {
+                    "name": "water_fs_params",
+                    "size": 4,
+                    "binding": 0,
+                    "members": [
+                        {
+                            "name": "t",
+                            "offset": 4,
+                            "size": 0
+                        }
+                    ]
+                }
+            ],
+            "textures": [
+                {
+                    "name": "water_noise_tex1",
+                    "binding": 1
+                },
+                {
+                    "name": "water_noise_tex0",
+                    "binding": 1
+                },
+                {
+                    "name": "water_lightmap_tex",
+                    "binding": 0
+                }
+            ]
+        },
+        "vs": {
+            "source": "#version 330\n\nlayout(std140) uniform water_vs_params\n{\n    mat4 proj_view_mat;\n    mat4 model_mat;\n} _28;\n\nout vec2 frag_texture_coord;\nlayout(location = 1) in vec2 texture_coord;\nout vec2 frag_lightmap_uv;\nlayout(location = 2) in vec2 lightmap_uv;\nlayout(location = 0) in vec3 position;\n\nvoid main()\n{\n    frag_texture_coord = texture_coord;\n    frag_lightmap_uv = lightmap_uv;\n    gl_Position = (_28.proj_view_mat * _28.model_mat) * vec4(position, 1.0);\n}\n\n",
+            "inputs": [
+                {
+                    "name": "texture_coord",
+                    "location": 1
+                },
+                {
+                    "name": "lightmap_uv",
+                    "location": 2
+                },
+                {
+                    "name": "position",
+                    "location": 0
+                }
+            ],
+            "uniforms": [
+                {
+                    "name": "water_vs_params",
+                    "size": 128,
+                    "binding": 0,
+                    "members": [
+                        {
+                            "name": "proj_view_mat",
+                            "offset": 64,
+                            "size": 0
+                        },
+                        {
+                            "name": "model_mat",
+                            "offset": 64,
+                            "size": 64
+                        }
+                    ]
+                }
+            ]
+        }
+    },
+    "gles300": {
+        "fs": {
+            "source": "#version 300 es\nprecision mediump float;\nprecision highp int;\n\nlayout(std140) uniform water_fs_params\n{\n    highp float t;\n} _24;\n\nuniform highp sampler2D water_noise_tex1;\nuniform highp sampler2D water_noise_tex0;\nuniform highp sampler2D water_lightmap_tex;\n\nin highp vec2 frag_texture_coord;\nin highp vec2 frag_lightmap_uv;\nlayout(location = 0) out highp vec4 g_frag_color;\n\nvoid main()\n{\n    highp vec2 tc0 = vec2(frag_texture_coord.x, 0.100000001490116119384765625 * (frag_texture_coord.y + (0.800000011920928955078125 * _24.t)));\n    highp vec2 tc1 = vec2(frag_texture_coord.x, frag_texture_coord.y + (0.0625 * _24.t));\n    highp float noise0 = texture(water_noise_tex1, tc0).w;\n    highp float _noise1 = texture(water_noise_tex0, tc1).w;\n    highp vec3 color = vec3(0.0039215688593685626983642578125, 0.4862745106220245361328125, 0.56078433990478515625);\n    if (_noise1 > 0.100000001490116119384765625)\n    {\n        color = vec3(0.60000002384185791015625);\n    }\n    if (noise0 > 0.100000001490116119384765625)\n    {\n        color = vec3(0.800000011920928955078125);\n    }\n    if (frag_texture_coord.x > 0.949999988079071044921875)\n    {\n        highp float a = (frag_texture_coord.x - 0.949999988079071044921875) \/ 0.0500000007450580596923828125;\n        color = (vec3(1.0) * a) + (color * (1.0 - a));\n    }\n    if (frag_texture_coord.x < 0.0500000007450580596923828125)\n    {\n        highp float a_1 = (0.0500000007450580596923828125 - frag_texture_coord.x) \/ 0.0500000007450580596923828125;\n        color = (vec3(1.0) * a_1) + (color * (1.0 - a_1));\n    }\n    highp float ao = texture(water_lightmap_tex, frag_lightmap_uv).x;\n    g_frag_color = vec4(color * ao, 0.85000002384185791015625);\n}\n\n",
+            "inputs": [
+                {
+                    "name": "frag_texture_coord",
+                    "location": 0
+                },
+                {
+                    "name": "frag_lightmap_uv",
+                    "location": 1
+                }
+            ],
+            "uniforms": [
+                {
+                    "name": "water_fs_params",
+                    "size": 4,
+                    "binding": 0,
+                    "members": [
+                        {
+                            "name": "t",
+                            "offset": 4,
+                            "size": 0
+                        }
+                    ]
+                }
+            ],
+            "textures": [
+                {
+                    "name": "water_noise_tex1",
+                    "binding": 1
+                },
+                {
+                    "name": "water_noise_tex0",
+                    "binding": 1
+                },
+                {
+                    "name": "water_lightmap_tex",
+                    "binding": 0
+                }
+            ]
+        },
+        "vs": {
+            "source": "#version 300 es\n\nlayout(std140) uniform water_vs_params\n{\n    mat4 proj_view_mat;\n    mat4 model_mat;\n} _28;\n\nout vec2 frag_texture_coord;\nlayout(location = 1) in vec2 texture_coord;\nout vec2 frag_lightmap_uv;\nlayout(location = 2) in vec2 lightmap_uv;\nlayout(location = 0) in vec3 position;\n\nvoid main()\n{\n    frag_texture_coord = texture_coord;\n    frag_lightmap_uv = lightmap_uv;\n    gl_Position = (_28.proj_view_mat * _28.model_mat) * vec4(position, 1.0);\n}\n\n",
+            "inputs": [
+                {
+                    "name": "texture_coord",
+                    "location": 1
+                },
+                {
+                    "name": "lightmap_uv",
+                    "location": 2
+                },
+                {
+                    "name": "position",
+                    "location": 0
+                }
+            ],
+            "uniforms": [
+                {
+                    "name": "water_vs_params",
+                    "size": 128,
+                    "binding": 0,
+                    "members": [
+                        {
+                            "name": "proj_view_mat",
+                            "offset": 64,
+                            "size": 0
+                        },
+                        {
+                            "name": "model_mat",
+                            "offset": 64,
+                            "size": 64
+                        }
+                    ]
+                }
+            ]
+        }
     }
 }
