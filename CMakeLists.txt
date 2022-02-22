@@ -25,6 +25,11 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
 else()
 endif()
 
+if(CMAKE_SYSTEM_NAME STREQUAL Windows)
+else()
+    add_compile_options(-g)
+endif()
+
 add_subdirectory(src/3rd_party/cimgui)
 add_subdirectory(src/3rd_party/fast_obj)
 add_subdirectory(src/3rd_party/glad)

@@ -527,6 +527,7 @@ static void _physics_tick(float dt) {
         bp = vec3_add(bp, correction);
     }
 
+    game.ball.is_in_water = false;
     for (int i = 0; i < num_contacts; i++) {
         golf_ball_contact_t *contact = &contacts[i];
         if (contact->is_ignored) {
@@ -539,6 +540,7 @@ static void _physics_tick(float dt) {
         vec3 water_dir = contact->water_dir;
         vec3 water_vel = vec3_scale(water_dir, CFG_NUM(game_cfg, "physics_water_max_speed"));
         bv = vec3_add(bv, vec3_scale(vec3_sub(water_vel, bv), CFG_NUM(game_cfg, "physics_water_speed") * dt));
+        game.ball.is_in_water = true;
     }
 
     if (game.ball.is_moving && num_contacts > 0) {

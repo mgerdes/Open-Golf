@@ -34,7 +34,7 @@
             "textures": [
                 {
                     "name": "editor_water_noise_tex1",
-                    "binding": 1
+                    "binding": 2
                 },
                 {
                     "name": "editor_water_noise_tex0",
@@ -118,7 +118,7 @@
             "textures": [
                 {
                     "name": "editor_water_noise_tex1",
-                    "binding": 1
+                    "binding": 2
                 },
                 {
                     "name": "editor_water_noise_tex0",

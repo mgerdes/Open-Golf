@@ -428,11 +428,6 @@ static bool _golf_shader_finalize(void *ptr) {
         desc.fs.images[texture->binding].sampler_type = SG_SAMPLERTYPE_FLOAT;
     }
 
-    if (strcmp(shader->file.path, "data/shaders/ui.glsl") == 0) {
-        float testing = 100;
-        testing = 100 + 100;
-    }
-
     shader->sg_shader = sg_make_shader(&desc);
 
     vec_init(&shader->pipelines, "data.shader");
@@ -790,6 +785,53 @@ static bool _golf_shader_finalize(void *ptr) {
 
             golf_shader_pipeline_t pipeline;
             snprintf(pipeline.name, GOLF_MAX_NAME_LEN, "%s", "water");
+            pipeline.sg_pipeline = sg_make_pipeline(&desc);
+            vec_push(&shader->pipelines, pipeline);
+        }
+    }
+    else if (strcmp(shader->file.path, "data/shaders/water_around_ball.glsl") == 0) {
+        {
+            sg_pipeline_desc desc = {
+                .shader = shader->sg_shader,
+                .layout = {
+                    .attrs = {
+                        [0] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                        [1] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
+                    },
+                },
+                .depth = {
+                    .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                    .write_enabled = false,
+                },
+                .stencil = {
+                    .front = {
+                        .fail_op = SG_STENCILOP_KEEP,
+                        .depth_fail_op = SG_STENCILOP_KEEP,
+                        .pass_op = SG_STENCILOP_KEEP,
+                        .compare = SG_COMPAREFUNC_EQUAL,
+                    },
+                    .back = {
+                        .fail_op = SG_STENCILOP_KEEP,
+                        .depth_fail_op = SG_STENCILOP_KEEP,
+                        .pass_op = SG_STENCILOP_KEEP,
+                        .compare = SG_COMPAREFUNC_EQUAL,
+                    },
+                    .enabled = true,
+                    .write_mask = 255,
+                    .read_mask = 255,
+                    .ref = 255,
+                },
+                .colors[0] = {
+                    .blend = {
+                        .enabled = true,
+                        .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                        .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                    },
+                }
+            };
+
+            golf_shader_pipeline_t pipeline;
+            snprintf(pipeline.name, GOLF_MAX_NAME_LEN, "%s", "water_around_ball");
             pipeline.sg_pipeline = sg_make_pipeline(&desc);
             vec_push(&shader->pipelines, pipeline);
         }

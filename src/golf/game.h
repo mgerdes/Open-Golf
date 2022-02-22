@@ -31,7 +31,7 @@ typedef struct golf_game {
         vec3 start_pos, pos, vel, draw_pos, rot_vec;
         quat orientation;
         float time_going_slow, radius, rot_vel;
-        bool is_moving, is_in_hole;
+        bool is_moving, is_in_hole, is_in_water;
     } ball;
 
     struct {

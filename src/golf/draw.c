@@ -190,6 +190,37 @@ static void _draw_level(void) {
         }
     }
 
+
+    if (game->ball.is_in_water) {
+        golf_shader_t *shader = golf_data_get_shader("data/shaders/water_around_ball.glsl");
+        golf_shader_pipeline_t *pipeline = golf_shader_get_pipeline(shader, "water_around_ball");
+        sg_apply_pipeline(pipeline->sg_pipeline);
+
+        golf_texture_t *noise_tex = golf_data_get_texture("data/textures/water_noise_3.png");
+        golf_model_t *model = golf_data_get_model("data/models/ui_square.obj");
+        sg_bindings bindings = {
+            .vertex_buffers[0] = model->sg_positions_buf,
+            .vertex_buffers[1] = model->sg_texcoords_buf,
+            .fs_images[0] = noise_tex->sg_image,
+        };
+        sg_apply_bindings(&bindings);
+
+        golf_shader_uniform_t *vs_params = golf_shader_get_vs_uniform(shader, "vs_params");
+        golf_shader_uniform_set_mat4(vs_params, "mvp_mat", mat4_transpose(
+                    mat4_multiply_n(4, 
+                        graphics->proj_view_mat,
+                        mat4_translation(vec3_sub(game->ball.draw_pos, V3(0.0f, 0.02f, 0.0f))),
+                        mat4_scale(V3(0.4f, 0.4f, 0.4f)),
+                        mat4_rotation_x(-0.5f * MF_PI))));
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &(sg_range) { vs_params->data, vs_params->size });
+
+        golf_shader_uniform_t *fs_params = golf_shader_get_fs_uniform(shader, "fs_params");
+        golf_shader_uniform_set_float(fs_params, "t", game->t);
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &(sg_range) { fs_params->data, fs_params->size });
+
+        sg_draw(0, model->positions.length, 1);
+    }
+
     if (game->physics.debug_draw_collisions) {
         golf_shader_t *shader = golf_data_get_shader("data/shaders/texture_material.glsl");
         golf_shader_pipeline_t *pipeline = golf_shader_get_pipeline(shader, "texture_material");
@@ -353,6 +384,7 @@ static void _draw_level(void) {
                         .vertex_buffers[0] = model->sg_positions_buf,
                     };
                     sg_apply_bindings(&bindings);
+
                     sg_draw(0, model->positions.length, 1);
 
                     break;

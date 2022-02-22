@@ -9,6 +9,7 @@
     "data/shaders/render_image.glsl",
     "data/shaders/fxaa.glsl",
     "data/shaders/ui.glsl",
+    "data/shaders/water_around_ball.glsl",
     "data/ui/main_menu.ui",
     "data/models/ui_square.obj",
     "data/models/cube.obj",

@@ -14,6 +14,7 @@
     "data/shaders/ball.glsl",
     "data/shaders/editor_water.glsl",
     "data/shaders/water.glsl",
+    "data/shaders/water_around_ball.glsl",
     "data/ui/main_menu.ui",
     "data/models/ui_square.obj",
     "data/models/cube.obj",
@@ -29,5 +30,6 @@
     "data/textures/arrow.png",
     "data/textures/water_noise_1.png",
     "data/textures/water_noise_2.png",
+    "data/textures/water_noise_3.png",
     "data/textures/loading.gif"
 ]
