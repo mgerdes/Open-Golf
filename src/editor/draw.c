@@ -169,8 +169,8 @@ static void _draw_level(void) {
 
             switch (material.type) {
                 case GOLF_MATERIAL_TEXTURE: {
-                    sg_apply_pipeline(graphics->texture_material_pipeline);
-                    _golf_renderer_draw_with_material(model, group.start_vertex, group.vertex_count, model_mat, material);
+                    //sg_apply_pipeline(graphics->texture_material_pipeline);
+                    //_golf_renderer_draw_with_material(model, group.start_vertex, group.vertex_count, model_mat, material);
                     break;
                 }
                 case GOLF_MATERIAL_COLOR: {
@@ -205,7 +205,7 @@ static void _draw_level(void) {
         sg_apply_pipeline(pipeline->sg_pipeline);
         for (int i = 0; i < level->entities.length; i++) {
             golf_entity_t *entity = &level->entities.data[i];
-            if (entity->type != WATER_ENTITY) continue;
+            if (!entity->active || entity->type != WATER_ENTITY) continue;
 
             golf_model_t *model = golf_entity_get_model(entity);
             golf_transform_t world_transform = golf_entity_get_world_transform(level, entity);
@@ -335,7 +335,6 @@ void golf_editor_draw(void) {
         golf_geo_t *geo = editor->edit_mode.geo;
         mat4 model_mat = golf_transform_get_model_mat(editor->edit_mode.transform);
 
-        sg_apply_pipeline(graphics->solid_color_material_pipeline);
         for (int i = 0; i < geo->points.length; i++) {
             golf_geo_point_t p = geo->points.data[i];
             if (!p.active) continue;

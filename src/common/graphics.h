@@ -12,20 +12,6 @@ typedef struct golf_graphics {
 
     mat4 ui_proj_mat, proj_mat, view_mat, proj_view_mat;
     vec3 cam_pos, cam_dir, cam_up;
-
-    sg_pipeline render_image_pipeline,
-                diffuse_color_material_pipeline,
-                environment_material_pipeline,
-                solid_color_material_pipeline,
-                texture_material_pipeline,
-                ui_pipeline,
-                hole_pass1_pipeline,
-                hole_pass2_pipeline,
-                fxaa_pipeline,
-                aim_line_pipeline,
-                ball_pipeline,
-                editor_water_pipeline,
-                water_pipeline;
 } golf_graphics_t;
 
 golf_graphics_t *golf_graphics_get(void);

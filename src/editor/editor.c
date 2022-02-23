@@ -762,6 +762,16 @@ static void _golf_editor_delete_selected_entities(void) {
             golf_entity_t *entity = &editor.level->entities.data[idx];
             _golf_editor_action_push_data(&action, &entity->active, sizeof(entity->active));
             entity->active = false;
+
+            if (entity->type == GROUP_ENTITY) {
+                for (int i = 0; i < editor.level->entities.length; i++) {
+                    golf_entity_t *child_entity = &editor.level->entities.data[i];
+                    if (child_entity->active && child_entity->parent_idx == idx) {
+                        _golf_editor_action_push_data(&action, &child_entity->active, sizeof(child_entity->active));
+                        child_entity->active = false;
+                    }
+                }
+            }
         }
     }
 
