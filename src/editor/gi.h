@@ -18,15 +18,15 @@ typedef struct golf_gi_lightmap_section {
 typedef vec_t(golf_gi_lightmap_section_t) vec_golf_gi_lightmap_section_t;
 
 typedef struct golf_gi_entity {
-    vec_vec3_t positions, gl_positions, normals;
-    vec_vec2_t lightmap_uvs, gl_lightmap_uvs;
+    vec_vec3_t positions, normals;
+    vec_vec2_t lightmap_uvs, ignore;
     int resolution, image_width, image_height;
     float time_length;
     bool repeats;
     int num_samples;
     float **image_data;
     int *gl_tex;
-    int gl_position_vbo, gl_lightmap_uv_vbo;
+    int gl_position_vbo, gl_lightmap_uv_vbo, gl_ignore_vbo;
 
     golf_lightmap_image_t *lightmap_image;
     vec_golf_gi_lightmap_section_t gi_lightmap_sections;

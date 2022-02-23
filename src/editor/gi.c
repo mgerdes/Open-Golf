@@ -86,9 +86,11 @@ static golf_thread_result_t _gi_run(void *user_data) {
             "#version 150 core\n"
             "precision highp float;"
             "in vec2 frag_texture_coord;"
+            "in vec2 frag_ignore;"
             "uniform sampler2D ao_map;"
             "out vec4 g_fragment_color;"
             "void main() {"
+            "    if (frag_ignore.x > 0) discard;"
             "    float ao = texture(ao_map, frag_texture_coord).r;"
             "    if (gl_FrontFacing) {"
             "        g_fragment_color = vec4(ao, ao, ao, 1.0);"
@@ -101,10 +103,13 @@ static golf_thread_result_t _gi_run(void *user_data) {
             "#version 150 core\n"
             "in vec3 position;"
             "in vec2 texture_coord;"
+            "in vec2 ignore;"
             "uniform mat4 mvp_mat;"
             "out vec2 frag_texture_coord;"
+            "out vec2 frag_ignore;"
             "void main() {"
             "    frag_texture_coord = texture_coord;"
+            "    frag_ignore = ignore;"   
             "    gl_Position = mvp_mat * vec4(position, 1.0);"
             "}";
         program = glCreateProgram();
@@ -133,6 +138,9 @@ static golf_thread_result_t _gi_run(void *user_data) {
     GLint texture_coord_id = glGetAttribLocation(program, "texture_coord");
     assert(texture_coord_id >= 0);
 
+    GLint ignore_id = glGetAttribLocation(program, "ignore");
+    assert(ignore_id >= 0);
+
     GLuint dummy_vao;
     glGenVertexArrays(1, &dummy_vao);
 
@@ -151,11 +159,15 @@ static golf_thread_result_t _gi_run(void *user_data) {
                 vec_push(&entity->positions, p);
                 vec_push(&entity->normals, n);
                 vec_push(&entity->lightmap_uvs, uv);
+
+                vec2 ignore = section->should_draw ? V2(0, 0) : V2(1, 1);
+                vec_push(&entity->ignore, ignore);
             }
         }
 
         vec_vec3_t *positions = &entity->positions;
         vec_vec2_t *lightmap_uvs = &entity->lightmap_uvs;
+        vec_vec2_t *ignore = &entity->ignore;
         _gi_inc_uv_gen_progress(gi);
         if (gi->create_uvs) {
             int resolution = entity->resolution;
@@ -193,6 +205,11 @@ static golf_thread_result_t _gi_run(void *user_data) {
         glBindBuffer(GL_ARRAY_BUFFER, lightmap_uvs_vbo);
         glBufferData(GL_ARRAY_BUFFER, sizeof(vec2) * lightmap_uvs->length, lightmap_uvs->data, GL_STATIC_DRAW);
 
+        GLuint ignore_vbo;
+        glGenBuffers(1, &ignore_vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, ignore_vbo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vec2) * ignore->length, ignore->data, GL_STATIC_DRAW);
+
         int image_width = entity->image_width;
         int image_height = entity->image_height;
         int num_samples = entity->num_samples;
@@ -221,6 +238,7 @@ static golf_thread_result_t _gi_run(void *user_data) {
 
         entity->gl_position_vbo = positions_vbo;
         entity->gl_lightmap_uv_vbo = lightmap_uvs_vbo;
+        entity->gl_ignore_vbo = ignore_vbo;
     }
 
     lm_context *ctx = lmCreate(gi->hemisphere_size,
@@ -265,6 +283,7 @@ static golf_thread_result_t _gi_run(void *user_data) {
                         }
                         transform = golf_transform_apply_movement(transform, movement, t);
                         mat4 model_mat = golf_transform_get_model_mat(transform);
+
                         for (int i = 0; i < section->positions.length; i++) {
                             vec3 p = section->positions.data[i];
                             p = vec3_apply_mat4(p, 1, model_mat);
@@ -321,6 +340,10 @@ static golf_thread_result_t _gi_run(void *user_data) {
                         glBindBuffer(GL_ARRAY_BUFFER, entity->gl_lightmap_uv_vbo);
                         glVertexAttribPointer(texture_coord_id, 2, GL_FLOAT, GL_FALSE, 0, NULL);
                         glEnableVertexAttribArray(texture_coord_id);
+
+                        glBindBuffer(GL_ARRAY_BUFFER, entity->gl_ignore_vbo);
+                        glVertexAttribPointer(ignore_id, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+                        glEnableVertexAttribArray(ignore_id);
 
                         glBindVertexArray(dummy_vao);
 
@@ -401,6 +424,7 @@ void golf_gi_start_lightmap(golf_gi_t *gi, golf_lightmap_image_t *lightmap_image
     vec_init(&entity.positions, "gi");
     vec_init(&entity.normals, "gi");
     vec_init(&entity.lightmap_uvs, "gi");
+    vec_init(&entity.ignore, "gi");
     vec_init(&entity.gi_lightmap_sections, "gi");
 
     entity.time_length = lightmap_image->time_length;
@@ -458,6 +482,7 @@ void golf_gi_deinit(golf_gi_t *gi) {
         vec_deinit(&entity->positions);
         vec_deinit(&entity->normals);
         vec_deinit(&entity->lightmap_uvs);
+        vec_deinit(&entity->ignore);
     }
     vec_deinit(&gi->entities);
     golf_thread_join(gi->thread);
