@@ -166,6 +166,10 @@ static void _golf_game_update_state_waiting_for_aim(float dt) {
     if (inputs->button_down[SAPP_KEYCODE_E]) {
         game.ball.pos = vec3_add(game.ball.pos, V3(0, -0.1f, 0));
     }
+
+    if (game.ball.is_moving) {
+        game.state = GOLF_GAME_STATE_WATCHING_BALL;
+    }
 }
 
 static void _golf_game_update_state_aiming(float dt) {
@@ -227,6 +231,10 @@ static void _golf_game_update_state_aiming(float dt) {
                 t = max_length;
             }
         }
+    }
+
+    if (game.ball.is_moving) {
+        game.state = GOLF_GAME_STATE_WATCHING_BALL;
     }
 }
 
