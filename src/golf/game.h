@@ -6,6 +6,7 @@
 
 #define MAX_NUM_CONTACTS 8
 #define MAX_AIM_LINE_POINTS 5
+#define MAX_NUM_WATER_RIPPLES 64
 
 typedef struct golf_collision_data {
     bool is_highlighted;
@@ -30,7 +31,7 @@ typedef struct golf_game {
     struct {
         vec3 start_pos, pos, vel, draw_pos, rot_vec;
         quat orientation;
-        float time_going_slow, radius, rot_vel;
+        float time_since_water_ripple, time_going_slow, radius, rot_vel;
         bool is_moving, is_in_hole, is_in_water;
     } ball;
 
@@ -52,6 +53,12 @@ typedef struct golf_game {
         int num_points;
         vec3 points[MAX_AIM_LINE_POINTS];
     } aim_line;
+
+    struct {
+        float t0;
+        vec3 pos;
+        vec4 color;
+    } water_ripples[MAX_NUM_WATER_RIPPLES];
 
     float t;
 } golf_game_t;

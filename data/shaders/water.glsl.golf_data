@@ -60,7 +60,7 @@
             "uniforms": [
                 {
                     "name": "water_vs_params",
-                    "size": 144,
+                    "size": 128,
                     "binding": 0,
                     "members": [
                         {
@@ -139,7 +139,7 @@
             "uniforms": [
                 {
                     "name": "water_vs_params",
-                    "size": 144,
+                    "size": 128,
                     "binding": 0,
                     "members": [
                         {

@@ -1892,11 +1892,19 @@ void golf_editor_update(float dt) {
                                     golf_lightmap_section_t *lightmap_section = golf_entity_get_lightmap_section(entity);
                                     golf_transform_t *transform = golf_entity_get_transform(entity);
                                     golf_model_t *model = golf_entity_get_model(entity);
-                                    golf_movement_t *movement = golf_entity_get_movement(entity);
-                                    if (lightmap_section && transform && model && movement &&
+                                    golf_movement_t *entity_movement = golf_entity_get_movement(entity);
+                                    golf_movement_t movement;
+                                    if (entity_movement) {
+                                        movement = *entity_movement;
+                                    }
+                                    else {
+                                        movement = golf_movement_none();
+                                    }
+                                    if (lightmap_section && transform && model &&
                                             strcmp(lightmap_section->lightmap_name, lightmap->name) == 0) {
+                                        bool should_draw = entity->type != WATER_ENTITY;
                                         golf_transform_t world_transform = golf_entity_get_world_transform(editor.level, entity);
-                                        golf_gi_add_lightmap_section(gi, lightmap_section, model, world_transform, *movement);
+                                        golf_gi_add_lightmap_section(gi, lightmap_section, model, world_transform, movement, should_draw);
                                     }
                                 }
                                 golf_gi_end_lightmap(gi);

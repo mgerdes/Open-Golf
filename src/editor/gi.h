@@ -11,14 +11,15 @@ typedef struct golf_gi_lightmap_section {
     golf_movement_t movement;
     vec_vec3_t positions, normals;
     vec_vec2_t lightmap_uvs;
+    bool should_draw;
 
     golf_lightmap_section_t *lightmap_section;
 } golf_gi_lightmap_section_t;
 typedef vec_t(golf_gi_lightmap_section_t) vec_golf_gi_lightmap_section_t;
 
 typedef struct golf_gi_entity {
-    vec_vec3_t positions, normals;
-    vec_vec2_t lightmap_uvs;
+    vec_vec3_t positions, gl_positions, normals;
+    vec_vec2_t lightmap_uvs, gl_lightmap_uvs;
     int resolution, image_width, image_height;
     float time_length;
     bool repeats;
@@ -57,7 +58,7 @@ void golf_gi_init(golf_gi_t *generator,
 void golf_gi_deinit(golf_gi_t *generator);
 void golf_gi_start_lightmap(golf_gi_t *gi, golf_lightmap_image_t *lightmap_image);
 void golf_gi_end_lightmap(golf_gi_t *gi);
-void golf_gi_add_lightmap_section(golf_gi_t *gi, golf_lightmap_section_t *lightmap_section, golf_model_t *model, golf_transform_t transform, golf_movement_t movement);
+void golf_gi_add_lightmap_section(golf_gi_t *gi, golf_lightmap_section_t *lightmap_section, golf_model_t *model, golf_transform_t transform, golf_movement_t movement, bool should_draw);
 int golf_gi_get_lm_gen_progress(golf_gi_t *generator);
 int golf_gi_get_uv_gen_progress(golf_gi_t *generator);
 bool golf_gi_is_running(golf_gi_t *generator);

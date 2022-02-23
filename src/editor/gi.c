@@ -424,7 +424,7 @@ void golf_gi_end_lightmap(golf_gi_t *gi) {
     gi->has_cur_entity = false;
 }
 
-void golf_gi_add_lightmap_section(golf_gi_t *gi, golf_lightmap_section_t *lightmap_section, golf_model_t *model, golf_transform_t transform, golf_movement_t movement) {
+void golf_gi_add_lightmap_section(golf_gi_t *gi, golf_lightmap_section_t *lightmap_section, golf_model_t *model, golf_transform_t transform, golf_movement_t movement, bool should_draw) {
     if (!gi->has_cur_entity) {
         return;
     }
@@ -441,6 +441,7 @@ void golf_gi_add_lightmap_section(golf_gi_t *gi, golf_lightmap_section_t *lightm
     section.transform = transform;
     section.movement = movement;
     section.lightmap_section = lightmap_section;
+    section.should_draw = should_draw;
     vec_push(&gi->cur_entity.gi_lightmap_sections, section);
 }
 

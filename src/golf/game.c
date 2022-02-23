@@ -89,6 +89,7 @@ void golf_game_init(void) {
     game.ball.orientation = QUAT(0, 0, 0, 1);
     game.ball.radius = 0.12f;
     game.ball.time_going_slow = 0;
+    game.ball.time_since_water_ripple = 0;
     game.ball.rot_vel = 0;
     game.ball.is_moving = true;
     game.ball.is_in_hole = false;
@@ -108,6 +109,25 @@ void golf_game_init(void) {
     graphics->cam_pos = V3(5, 5, 5);
     graphics->cam_dir = vec3_normalize(V3(-5, -5, -5));
     graphics->cam_up = V3(0, 1, 0);
+
+    for (int i = 0; i < MAX_NUM_WATER_RIPPLES; i++) {
+        game.water_ripples[i].t0 = FLT_MAX;
+
+        vec4 color = V4(0, 0, 0, 0);
+        if (i % 4 == 0) {
+            color = CFG_VEC4(game_cfg, "water_ripple_color_0");
+        }
+        else if (i % 4 == 1) {
+            color = CFG_VEC4(game_cfg, "water_ripple_color_1");
+        }
+        else if (i % 4 == 2) {
+            color = CFG_VEC4(game_cfg, "water_ripple_color_2");
+        }
+        else if (i % 4 == 3) {
+            color = CFG_VEC4(game_cfg, "water_ripple_color_3");
+        }
+        game.water_ripples[i].color = color;
+    }
 
     game.t = 0;
 
@@ -583,6 +603,27 @@ static void _physics_tick(float dt) {
             game.ball.is_in_hole = true;
         }
     }
+
+    if (game.ball.is_in_water) {
+        game.ball.time_since_water_ripple += dt;
+        if (game.ball.time_since_water_ripple > CFG_NUM(game_cfg, "water_ripple_frequency")) {
+            game.ball.time_since_water_ripple = 0;
+            
+            vec3 pos = game.ball.draw_pos;
+            pos.y -= game.ball.radius;
+            pos.y += 0.02f;
+
+            for (int i = 0; i < MAX_NUM_WATER_RIPPLES; i++) {
+                if (game.water_ripples[i].t0 < FLT_MAX) {
+                    continue;
+                }
+
+                game.water_ripples[i].t0 = game.t;
+                game.water_ripples[i].pos = pos;
+                break;
+            }
+        }
+    }
 }
 
 void golf_game_update(float dt) {
@@ -601,6 +642,21 @@ void golf_game_update(float dt) {
         case GOLF_GAME_STATE_WATCHING_BALL:
             _golf_game_update_state_watching_ball(dt);
             break;
+    }
+
+    {
+        // Remove any water ripples that have finished
+        float time_length = CFG_NUM(game_cfg, "water_ripple_time_length"); 
+        for (int i = 0; i < MAX_NUM_WATER_RIPPLES; i++) {
+            if (game.water_ripples[i].t0 == FLT_MAX) {
+                continue;
+            }
+
+            float dt = game.t - game.water_ripples[i].t0;
+            if (dt > time_length) {
+                game.water_ripples[i].t0 = FLT_MAX;
+            }
+        }
     }
 
     if (game.state > GOLF_GAME_STATE_MAIN_MENU) {

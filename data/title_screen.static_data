@@ -15,6 +15,7 @@
     "data/shaders/editor_water.glsl",
     "data/shaders/water.glsl",
     "data/shaders/water_around_ball.glsl",
+    "data/shaders/water_ripple.glsl",
     "data/ui/main_menu.ui",
     "data/models/ui_square.obj",
     "data/models/cube.obj",

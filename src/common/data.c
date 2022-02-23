@@ -228,7 +228,9 @@ static void _golf_shader_import_get_uniforms(JSON_Array *uniforms_arr, JSON_Valu
         JSON_Object *uniform_obj = json_array_get_object(uniforms_arr, i);
         const char *name = json_object_get_string(uniform_obj, "name");
         int size = (int)json_object_get_number(uniform_obj, "block_size");
-        size = size + (16 - size % 16);
+        if (size % 16 != 0) {
+            size = size + (16 - size % 16);
+        }
         int binding = (int)json_object_get_number(uniform_obj, "binding");
 
         json_object_set_string(my_uniform_obj, "name", name);
@@ -832,6 +834,53 @@ static bool _golf_shader_finalize(void *ptr) {
 
             golf_shader_pipeline_t pipeline;
             snprintf(pipeline.name, GOLF_MAX_NAME_LEN, "%s", "water_around_ball");
+            pipeline.sg_pipeline = sg_make_pipeline(&desc);
+            vec_push(&shader->pipelines, pipeline);
+        }
+    }
+    else if (strcmp(shader->file.path, "data/shaders/water_ripple.glsl") == 0) {
+        {
+            sg_pipeline_desc desc = {
+                .shader = shader->sg_shader,
+                .layout = {
+                    .attrs = {
+                        [0] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                        [1] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 1 },
+                    },
+                },
+                .depth = {
+                    .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                    .write_enabled = false,
+                },
+                .stencil = {
+                    .front = {
+                        .fail_op = SG_STENCILOP_KEEP,
+                        .depth_fail_op = SG_STENCILOP_KEEP,
+                        .pass_op = SG_STENCILOP_KEEP,
+                        .compare = SG_COMPAREFUNC_EQUAL,
+                    },
+                    .back = {
+                        .fail_op = SG_STENCILOP_KEEP,
+                        .depth_fail_op = SG_STENCILOP_KEEP,
+                        .pass_op = SG_STENCILOP_KEEP,
+                        .compare = SG_COMPAREFUNC_EQUAL,
+                    },
+                    .enabled = true,
+                    .write_mask = 255,
+                    .read_mask = 255,
+                    .ref = 255,
+                },
+                .colors[0] = {
+                    .blend = {
+                        .enabled = true,
+                        .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                        .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                    },
+                }
+            };
+
+            golf_shader_pipeline_t pipeline;
+            snprintf(pipeline.name, GOLF_MAX_NAME_LEN, "%s", "water_ripple");
             pipeline.sg_pipeline = sg_make_pipeline(&desc);
             vec_push(&shader->pipelines, pipeline);
         }

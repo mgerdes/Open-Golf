@@ -2,6 +2,7 @@
 #define _GOLF_DATA_H
 
 #include <stdbool.h>
+#include <stdarg.h>
 #include "sokol/sokol_gfx.h"
 #include "common/file.h"
 #include "common/map.h"

@@ -1,0 +1,128 @@
+{
+    "glsl330": {
+        "fs": {
+            "source": "#version 330\n\nuniform vec4 fs_params[2];\nuniform sampler2D water_ripple_noise_tex;\n\nin vec2 frag_texture_coord;\nlayout(location = 0) out vec4 g_frag_color;\n\nvoid main()\n{\n    vec2 tc = vec2(frag_texture_coord.x, frag_texture_coord.y);\n    float _noise = texture(water_ripple_noise_tex, (tc * 0.300000011920928955078125) + vec2(0.20000000298023223876953125 * fs_params[0].x, 0.20000000298023223876953125 * fs_params[0].x)).x;\n    float l = length(vec2(tc.x - 0.5, tc.y - 0.5));\n    vec3 color = vec3(0.121568627655506134033203125, 0.603921592235565185546875, 0.67843139171600341796875);\n    float alpha = 1.0;\n    float r0 = 0.0500000007450580596923828125 + (0.4000000059604644775390625 * fs_params[0].x);\n    float r1 = 0.07999999821186065673828125 + (0.4000000059604644775390625 * fs_params[0].x);\n    if ((l > r0) && (l < r1))\n    {\n        color = fs_params[1].xyz;\n        alpha = 0.5;\n        if (fs_params[0].x > 0.800000011920928955078125)\n        {\n            alpha = (0.5 * (1.0 - fs_params[0].x)) \/ 0.20000000298023223876953125;\n        }\n    }\n    else\n    {\n        color = vec3(0.800000011920928955078125) * (0.5 + (0.5 * _noise));\n        alpha = (0.5 * fs_params[0].x) * (0.5 - l);\n    }\n    g_frag_color = vec4(color, alpha);\n}\n\n",
+            "inputs": [
+                {
+                    "name": "frag_texture_coord",
+                    "location": 0
+                }
+            ],
+            "uniforms": [
+                {
+                    "name": "fs_params",
+                    "size": 32,
+                    "binding": 0,
+                    "members": [
+                        {
+                            "name": "t",
+                            "offset": 0,
+                            "size": 4
+                        },
+                        {
+                            "name": "uniform_color",
+                            "offset": 16,
+                            "size": 16
+                        }
+                    ]
+                }
+            ],
+            "textures": [
+                {
+                    "name": "water_ripple_noise_tex",
+                    "binding": 0
+                }
+            ]
+        },
+        "vs": {
+            "source": "#version 330\n\nuniform vec4 vs_params[4];\nout vec2 frag_texture_coord;\nlayout(location = 1) in vec2 texture_coord;\nlayout(location = 0) in vec3 position;\n\nvoid main()\n{\n    frag_texture_coord = texture_coord;\n    gl_Position = mat4(vs_params[0], vs_params[1], vs_params[2], vs_params[3]) * vec4(position, 1.0);\n}\n\n",
+            "inputs": [
+                {
+                    "name": "texture_coord",
+                    "location": 1
+                },
+                {
+                    "name": "position",
+                    "location": 0
+                }
+            ],
+            "uniforms": [
+                {
+                    "name": "vs_params",
+                    "size": 64,
+                    "binding": 0,
+                    "members": [
+                        {
+                            "name": "mvp_mat",
+                            "offset": 0,
+                            "size": 64
+                        }
+                    ]
+                }
+            ]
+        }
+    },
+    "gles300": {
+        "fs": {
+            "source": "#version 300 es\nprecision mediump float;\nprecision highp int;\n\nuniform highp vec4 fs_params[2];\nuniform highp sampler2D water_ripple_noise_tex;\n\nin highp vec2 frag_texture_coord;\nlayout(location = 0) out highp vec4 g_frag_color;\n\nvoid main()\n{\n    highp vec2 tc = vec2(frag_texture_coord.x, frag_texture_coord.y);\n    highp float _noise = texture(water_ripple_noise_tex, (tc * 0.300000011920928955078125) + vec2(0.20000000298023223876953125 * fs_params[0].x, 0.20000000298023223876953125 * fs_params[0].x)).x;\n    highp float l = length(vec2(tc.x - 0.5, tc.y - 0.5));\n    highp vec3 color = vec3(0.121568627655506134033203125, 0.603921592235565185546875, 0.67843139171600341796875);\n    highp float alpha = 1.0;\n    highp float r0 = 0.0500000007450580596923828125 + (0.4000000059604644775390625 * fs_params[0].x);\n    highp float r1 = 0.07999999821186065673828125 + (0.4000000059604644775390625 * fs_params[0].x);\n    if ((l > r0) && (l < r1))\n    {\n        color = fs_params[1].xyz;\n        alpha = 0.5;\n        if (fs_params[0].x > 0.800000011920928955078125)\n        {\n            alpha = (0.5 * (1.0 - fs_params[0].x)) \/ 0.20000000298023223876953125;\n        }\n    }\n    else\n    {\n        color = vec3(0.800000011920928955078125) * (0.5 + (0.5 * _noise));\n        alpha = (0.5 * fs_params[0].x) * (0.5 - l);\n    }\n    g_frag_color = vec4(color, alpha);\n}\n\n",
+            "inputs": [
+                {
+                    "name": "frag_texture_coord",
+                    "location": 0
+                }
+            ],
+            "uniforms": [
+                {
+                    "name": "fs_params",
+                    "size": 32,
+                    "binding": 0,
+                    "members": [
+                        {
+                            "name": "t",
+                            "offset": 0,
+                            "size": 4
+                        },
+                        {
+                            "name": "uniform_color",
+                            "offset": 16,
+                            "size": 16
+                        }
+                    ]
+                }
+            ],
+            "textures": [
+                {
+                    "name": "water_ripple_noise_tex",
+                    "binding": 0
+                }
+            ]
+        },
+        "vs": {
+            "source": "#version 300 es\n\nuniform vec4 vs_params[4];\nout vec2 frag_texture_coord;\nlayout(location = 1) in vec2 texture_coord;\nlayout(location = 0) in vec3 position;\n\nvoid main()\n{\n    frag_texture_coord = texture_coord;\n    gl_Position = mat4(vs_params[0], vs_params[1], vs_params[2], vs_params[3]) * vec4(position, 1.0);\n}\n\n",
+            "inputs": [
+                {
+                    "name": "texture_coord",
+                    "location": 1
+                },
+                {
+                    "name": "position",
+                    "location": 0
+                }
+            ],
+            "uniforms": [
+                {
+                    "name": "vs_params",
+                    "size": 64,
+                    "binding": 0,
+                    "members": [
+                        {
+                            "name": "mvp_mat",
+                            "offset": 0,
+                            "size": 64
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}
