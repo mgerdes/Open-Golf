@@ -24,6 +24,8 @@ golf_bvh_node_info_t golf_bvh_node_info(golf_bvh_t *bvh, int idx, golf_level_t *
     info.face_start = bvh->faces.length;
     info.face_count = model->positions.length / 3;
     info.pos = V3(0, 0, 0);
+    info.aabb.min = V3(FLT_MAX, FLT_MAX, FLT_MAX);
+    info.aabb.max = V3(FLT_MIN, FLT_MIN, FLT_MIN);
 
     golf_transform_t moved_transform = transform;
     if (movement) {
@@ -66,11 +68,6 @@ golf_bvh_node_info_t golf_bvh_node_info(golf_bvh_t *bvh, int idx, golf_level_t *
                 face.water_dir = V3(0, 0, 0);
             }
             vec_push(&bvh->faces, face);
-
-            if (i == 0) {
-                info.aabb.min = a;
-                info.aabb.max = a;
-            }
 
             _update_aabb(&info.aabb, a);
             _update_aabb(&info.aabb, b);
