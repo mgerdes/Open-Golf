@@ -102,7 +102,7 @@ static void frame(void) {
     if (!inited) {
         golf_data_turn_off_reload(".level");
         golf_data_init();
-        golf_data_load("data/editor.static_data", false);
+        golf_data_load("data/static_data.static_data", false);
 
         golf_inputs_init();
         golf_graphics_init();
@@ -114,20 +114,17 @@ static void frame(void) {
 
     golf_editor_t *editor = golf_editor_get();
 
+	golf_data_update(dt);
+
     golf_graphics_begin_frame(dt);
-    golf_graphics_set_viewport(editor->viewport_pos, editor->viewport_size);
     golf_inputs_begin_frame();
 
-    {
-        golf_data_update(dt);
-        golf_editor_update(dt);
-        golf_debug_console_update(dt);
-    }
+	golf_editor_update(dt);
+	golf_debug_console_update(dt);
 
-    {
-        golf_graphics_update_proj_view_mat();
-        golf_editor_draw();
-    }
+    golf_graphics_set_viewport(editor->viewport_pos, editor->viewport_size);
+	golf_graphics_update_proj_view_mat();
+	golf_editor_draw();
 
     golf_inputs_end_frame();
     golf_graphics_end_frame();

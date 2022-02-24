@@ -117,6 +117,36 @@ typedef struct golf_shader {
     sg_shader sg_shader;
 } golf_shader_t;
 
+typedef enum golf_shader_uniform_value_type {
+	GOLF_SHADER_UNIFORM_VALUE_FLOAT,
+	GOLF_SHADER_UNIFORM_VALUE_VEC2,
+	GOLF_SHADER_UNIFORM_VALUE_VEC4,
+	GOLF_SHADER_UNIFORM_VALUE_MAT4,
+} golf_shader_uniform_value_type_t;
+
+typedef struct golf_shader_uniform_value {
+	const char *name;
+	golf_shader_uniform_value_type_t type;
+	union {
+		float f;
+		vec2 v2;
+		vec4 v4;
+		mat4 m4;
+	};
+} golf_shader_uniform_value_t;
+
+#define UNIFORM_FLOAT(name, f) golf_shader_uniform_value_float((name), (f))
+#define UNIFORM_VEC2(name, v2) golf_shader_uniform_value_vec2((name), (v2))
+#define UNIFORM_VEC4(name, v4) golf_shader_uniform_value_vec4((name), (v4))
+#define UNIFORM_MAT4(name, m4) golf_shader_uniform_value_mat4((name), (m4))
+
+golf_shader_uniform_value_t golf_shader_uniform_value_float(const char *name, float f);
+golf_shader_uniform_value_t golf_shader_uniform_value_vec2(const char *name, vec2 v2);
+golf_shader_uniform_value_t golf_shader_uniform_value_vec4(const char *name, vec4 v4);
+golf_shader_uniform_value_t golf_shader_uniform_value_mat4(const char *name, mat4 m4);
+golf_shader_uniform_t *golf_shader_vs_uniform_setup(golf_shader_t *shader, const char *name, int n, ...);
+golf_shader_uniform_t *golf_shader_fs_uniform_setup(golf_shader_t *shader, const char *name, int n, ...);
+
 void golf_shader_uniform_set_float(golf_shader_uniform_t *uniform, const char *name, float f);
 void golf_shader_uniform_set_vec2(golf_shader_uniform_t *uniform, const char *name, vec2 v);
 void golf_shader_uniform_set_vec4(golf_shader_uniform_t *uniform, const char *name, vec4 v);

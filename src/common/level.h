@@ -18,7 +18,7 @@ typedef struct golf_geo_generator_data {
     golf_script_t *script;
     vec_golf_geo_generator_data_arg_t args;
 } golf_geo_generator_data_t;
-void golf_geo_generator_data_init(golf_geo_generator_data_t *generator_data);
+golf_geo_generator_data_t golf_geo_generator_data(golf_script_t *script, vec_golf_geo_generator_data_arg_t args);
 bool golf_geo_generator_data_get_arg(golf_geo_generator_data_t *data, const char *name, golf_geo_generator_data_arg_t **arg);
 
 typedef enum golf_geo_face_uv_gen_type {
@@ -58,7 +58,7 @@ typedef struct golf_geo {
     bool model_updated_this_frame;
     golf_model_t model;
 } golf_geo_t;
-golf_geo_t golf_geo(vec_golf_geo_point_t points, vec_golf_geo_face_t faces, bool is_water);
+golf_geo_t golf_geo(vec_golf_geo_point_t points, vec_golf_geo_face_t faces, golf_geo_generator_data_t generator_data, bool is_water);
 void golf_geo_finalize(golf_geo_t *geo);
 void golf_geo_update_model(golf_geo_t *geo);
 

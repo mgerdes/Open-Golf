@@ -1,0 +1,128 @@
+{
+    "glsl330": {
+        "fs": {
+            "source": "#version 330\n\nuniform vec4 fs_params[2];\nin vec3 frag_normal;\nlayout(location = 0) out vec4 g_frag_color;\n\nvoid main()\n{\n    vec3 dir = normalize(fs_params[1].xyz - fs_params[0].xyz);\n    float d = min(max(dot(frag_normal, dir), 0.0), 1.0);\n    float c = 0.20000000298023223876953125 + (0.5 * d);\n    float a = 0.100000001490116119384765625 + (0.5 * (1.0 - d));\n    g_frag_color = vec4(c, c, c, a);\n}\n\n",
+            "inputs": [
+                {
+                    "name": "frag_normal",
+                    "location": 0
+                }
+            ],
+            "uniforms": [
+                {
+                    "name": "fs_params",
+                    "size": 32,
+                    "binding": 0,
+                    "members": [
+                        {
+                            "name": "ball_position",
+                            "offset": 0,
+                            "size": 16
+                        },
+                        {
+                            "name": "cam_position",
+                            "offset": 16,
+                            "size": 16
+                        }
+                    ]
+                }
+            ],
+            "textures": []
+        },
+        "vs": {
+            "source": "#version 330\n\nuniform vec4 vs_params[8];\nout vec3 frag_normal;\nlayout(location = 1) in vec3 normal;\nlayout(location = 0) in vec3 position;\n\nvoid main()\n{\n    frag_normal = normalize((inverse(transpose(mat4(vs_params[0], vs_params[1], vs_params[2], vs_params[3]))) * vec4(normal, 0.0)).xyz);\n    gl_Position = (mat4(vs_params[4], vs_params[5], vs_params[6], vs_params[7]) * mat4(vs_params[0], vs_params[1], vs_params[2], vs_params[3])) * vec4(position, 1.0);\n}\n\n",
+            "inputs": [
+                {
+                    "name": "normal",
+                    "location": 1
+                },
+                {
+                    "name": "position",
+                    "location": 0
+                }
+            ],
+            "uniforms": [
+                {
+                    "name": "vs_params",
+                    "size": 128,
+                    "binding": 0,
+                    "members": [
+                        {
+                            "name": "model_mat",
+                            "offset": 0,
+                            "size": 64
+                        },
+                        {
+                            "name": "proj_view_mat",
+                            "offset": 64,
+                            "size": 64
+                        }
+                    ]
+                }
+            ]
+        }
+    },
+    "gles300": {
+        "fs": {
+            "source": "#version 300 es\nprecision mediump float;\nprecision highp int;\n\nuniform highp vec4 fs_params[2];\nin highp vec3 frag_normal;\nlayout(location = 0) out highp vec4 g_frag_color;\n\nvoid main()\n{\n    highp vec3 dir = normalize(fs_params[1].xyz - fs_params[0].xyz);\n    highp float d = min(max(dot(frag_normal, dir), 0.0), 1.0);\n    highp float c = 0.20000000298023223876953125 + (0.5 * d);\n    highp float a = 0.100000001490116119384765625 + (0.5 * (1.0 - d));\n    g_frag_color = vec4(c, c, c, a);\n}\n\n",
+            "inputs": [
+                {
+                    "name": "frag_normal",
+                    "location": 0
+                }
+            ],
+            "uniforms": [
+                {
+                    "name": "fs_params",
+                    "size": 32,
+                    "binding": 0,
+                    "members": [
+                        {
+                            "name": "ball_position",
+                            "offset": 0,
+                            "size": 16
+                        },
+                        {
+                            "name": "cam_position",
+                            "offset": 16,
+                            "size": 16
+                        }
+                    ]
+                }
+            ],
+            "textures": []
+        },
+        "vs": {
+            "source": "#version 300 es\n\nuniform vec4 vs_params[8];\nout vec3 frag_normal;\nlayout(location = 1) in vec3 normal;\nlayout(location = 0) in vec3 position;\n\nvoid main()\n{\n    frag_normal = normalize((inverse(transpose(mat4(vs_params[0], vs_params[1], vs_params[2], vs_params[3]))) * vec4(normal, 0.0)).xyz);\n    gl_Position = (mat4(vs_params[4], vs_params[5], vs_params[6], vs_params[7]) * mat4(vs_params[0], vs_params[1], vs_params[2], vs_params[3])) * vec4(position, 1.0);\n}\n\n",
+            "inputs": [
+                {
+                    "name": "normal",
+                    "location": 1
+                },
+                {
+                    "name": "position",
+                    "location": 0
+                }
+            ],
+            "uniforms": [
+                {
+                    "name": "vs_params",
+                    "size": 128,
+                    "binding": 0,
+                    "members": [
+                        {
+                            "name": "model_mat",
+                            "offset": 0,
+                            "size": 64
+                        },
+                        {
+                            "name": "proj_view_mat",
+                            "offset": 64,
+                            "size": 64
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}

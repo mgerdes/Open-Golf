@@ -1,6 +1,11 @@
 [
+    "data/config/game.cfg",
+    "data/config/editor.cfg",
+
     "data/scripts/ramp.gs",
     "data/scripts/teseting.gs",
+    "data/scripts/spinner_platform.gs",
+
     "data/shaders/diffuse_color_material.glsl",
     "data/shaders/environment_material.glsl",
     "data/shaders/pass_through.glsl",
@@ -9,13 +14,31 @@
     "data/shaders/render_image.glsl",
     "data/shaders/fxaa.glsl",
     "data/shaders/ui.glsl",
+    "data/shaders/aim_line.glsl",
+    "data/shaders/ball.glsl",
+    "data/shaders/editor_water.glsl",
+    "data/shaders/water.glsl",
     "data/shaders/water_around_ball.glsl",
+    "data/shaders/water_ripple.glsl",
+    "data/shaders/ball_hidden.glsl",
+
     "data/ui/main_menu.ui",
+
     "data/models/ui_square.obj",
     "data/models/cube.obj",
     "data/models/render_image_square.obj",
     "data/models/editor/ball_start.obj",
+    "data/models/golf_ball.obj",
+
+    "data/textures/golf_ball_normal_map.jpg",
     "data/textures/fallback.png",
     "data/textures/colors/white.png",
+    "data/textures/colors/red.png",
+    "data/textures/colors/yellow.png",
+    "data/textures/aimer.png",
+    "data/textures/arrow.png",
+    "data/textures/water_noise_1.png",
+    "data/textures/water_noise_2.png",
+    "data/textures/water_noise_3.png",
     "data/textures/loading.gif"
 ]

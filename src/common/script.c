@@ -1788,7 +1788,6 @@ static gs_val_t gs_c_fn_terrain_model_add_point(gs_eval_t *eval, gs_val_t *vals,
 }
 
 static gs_val_t gs_c_fn_terrain_model_add_face(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
-
     for (int i = 0; i < num_vals; i++) {
         vals[i] = gs_eval_cast(eval, vals[i], GS_VAL_INT);
         if (vals[i].is_return) return vals[i];

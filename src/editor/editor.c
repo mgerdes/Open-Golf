@@ -1248,7 +1248,12 @@ static void _golf_editor_entities_tab(void) {
         vec_pusharr(&uvs5, ((vec2[]){{0, 0}, {0, 0}, {0, 0}, {0, 0}}), 4);
         vec_push(&faces, golf_geo_face("default", idx5, uv_gen_type, uvs5, V3(0, 0, 0)));
 
-        golf_geo_t geo = golf_geo(points, faces, false);
+        golf_script_t *script = NULL;
+        vec_golf_geo_generator_data_arg_t args;
+        vec_init(&args, "geo");
+        golf_geo_generator_data_t generator_data = golf_geo_generator_data(script, args);
+
+        golf_geo_t geo = golf_geo(points, faces, generator_data, false);
         golf_geo_finalize(&geo);
 
         golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
@@ -1287,7 +1292,12 @@ static void _golf_editor_entities_tab(void) {
         vec_pusharr(&uvs0, ((vec2[]){{0, 0}, {1, 0}, {1, 1}, {0, 1}}), 4);
         vec_push(&faces, golf_geo_face("default", idx0, uv_gen_type, uvs0, V3(0, 0, 1)));
 
-        golf_geo_t geo = golf_geo(points, faces, true);
+        golf_script_t *script = NULL;
+        vec_golf_geo_generator_data_arg_t args;
+        vec_init(&args, "geo");
+        golf_geo_generator_data_t generator_data = golf_geo_generator_data(script, args);
+
+        golf_geo_t geo = golf_geo(points, faces, generator_data, true);
         golf_geo_finalize(&geo);
 
         golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));

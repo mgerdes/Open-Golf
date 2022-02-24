@@ -885,11 +885,132 @@ static bool _golf_shader_finalize(void *ptr) {
             vec_push(&shader->pipelines, pipeline);
         }
     }
+	else if (strcmp(shader->file.path, "data/shaders/ball_hidden.glsl") == 0) {
+		{
+			sg_pipeline_desc desc = {
+				.shader = shader->sg_shader,
+				.layout = {
+					.attrs = {
+						[0] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+						[1] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 1 },
+					},
+				},
+				.depth = {
+					.compare = SG_COMPAREFUNC_GREATER,
+				},
+				.cull_mode = SG_CULLMODE_FRONT,
+				.colors[0] = {
+					.blend = {
+						.enabled = true,
+						.src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+						.dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+					},
+				}
+			};
+
+            golf_shader_pipeline_t pipeline;
+            snprintf(pipeline.name, GOLF_MAX_NAME_LEN, "%s", "ball_hidden");
+            pipeline.sg_pipeline = sg_make_pipeline(&desc);
+            vec_push(&shader->pipelines, pipeline);
+		}
+	}
     else {
         golf_log_warning("No pipelines created for shader: %s", shader->file.path);
     }
 
     return true;
+}
+
+golf_shader_uniform_value_t golf_shader_uniform_value_float(const char *name, float f) {
+	golf_shader_uniform_value_t value;
+	value.type = GOLF_SHADER_UNIFORM_VALUE_FLOAT;
+	value.name = name;
+	value.f = f;
+	return value;
+}
+
+golf_shader_uniform_value_t golf_shader_uniform_value_vec2(const char *name, vec2 v2) {
+	golf_shader_uniform_value_t value;
+	value.type = GOLF_SHADER_UNIFORM_VALUE_VEC2;
+	value.name = name;
+	value.v2 = v2;
+	return value;
+}
+
+golf_shader_uniform_value_t golf_shader_uniform_value_vec4(const char *name, vec4 v4) {
+	golf_shader_uniform_value_t value;
+	value.type = GOLF_SHADER_UNIFORM_VALUE_VEC4;
+	value.name = name;
+	value.v4 = v4;
+	return value;
+}
+
+golf_shader_uniform_value_t golf_shader_uniform_value_mat4(const char *name, mat4 m4) {
+	golf_shader_uniform_value_t value;
+	value.type = GOLF_SHADER_UNIFORM_VALUE_MAT4;
+	value.name = name;
+	value.m4 = m4;
+	return value;
+}
+
+golf_shader_uniform_t *golf_shader_vs_uniform_setup(golf_shader_t *shader, const char *name, int n, ...) {
+	golf_shader_uniform_t *uniform = golf_shader_get_vs_uniform(shader, name);
+	if (!uniform) {
+		return NULL;
+	}
+
+	va_list args;
+	va_start(args, n);
+	for (int i = 0; i < n; i++) {
+		golf_shader_uniform_value_t value = va_arg(args, golf_shader_uniform_value_t);
+		switch (value.type) {
+			case GOLF_SHADER_UNIFORM_VALUE_FLOAT:
+				golf_shader_uniform_set_float(uniform, value.name, value.f);
+				break;
+			case GOLF_SHADER_UNIFORM_VALUE_VEC2:
+				golf_shader_uniform_set_vec2(uniform, value.name, value.v2);
+				break;
+			case GOLF_SHADER_UNIFORM_VALUE_VEC4:
+				golf_shader_uniform_set_vec4(uniform, value.name, value.v4);
+				break;
+			case GOLF_SHADER_UNIFORM_VALUE_MAT4:
+				golf_shader_uniform_set_mat4(uniform, value.name, value.m4);
+				break;
+		}
+	}
+	va_end(args);
+
+	return uniform;
+}
+
+golf_shader_uniform_t *golf_shader_fs_uniform_setup(golf_shader_t *shader, const char *name, int n, ...) {
+	golf_shader_uniform_t *uniform = golf_shader_get_fs_uniform(shader, name);
+	if (!uniform) {
+		return NULL;
+	}
+
+	va_list args;
+	va_start(args, n);
+	for (int i = 0; i < n; i++) {
+		golf_shader_uniform_value_t value = va_arg(args, golf_shader_uniform_value_t);
+		switch (value.type) {
+			case GOLF_SHADER_UNIFORM_VALUE_FLOAT:
+				golf_shader_uniform_set_float(uniform, value.name, value.f);
+				break;
+			case GOLF_SHADER_UNIFORM_VALUE_VEC2:
+				golf_shader_uniform_set_vec2(uniform, value.name, value.v2);
+				break;
+			case GOLF_SHADER_UNIFORM_VALUE_VEC4:
+				golf_shader_uniform_set_vec4(uniform, value.name, value.v4);
+				break;
+			case GOLF_SHADER_UNIFORM_VALUE_MAT4:
+				golf_shader_uniform_set_mat4(uniform, value.name, value.m4);
+				break;
+		}
+	}
+	va_end(args);
+
+	return uniform;
 }
 
 void golf_shader_uniform_set_float(golf_shader_uniform_t *uniform, const char *name, float f) {
@@ -1323,25 +1444,33 @@ golf_model_t golf_model_dynamic_water(vec_golf_group_t groups, vec_vec3_t positi
 void golf_model_dynamic_finalize(golf_model_t *model) {
     model->sg_size = model->positions.length;
 
-    sg_buffer_desc desc = {
-        .type = SG_BUFFERTYPE_VERTEXBUFFER,
-        .usage = SG_USAGE_DYNAMIC,
-    };
+    if (model->sg_size > 0) {
+        sg_buffer_desc desc = {
+            .type = SG_BUFFERTYPE_VERTEXBUFFER,
+            .usage = SG_USAGE_DYNAMIC,
+        };
 
-    desc.size = sizeof(vec3) * model->sg_size;
-    model->sg_positions_buf = sg_make_buffer(&desc);
+        desc.size = sizeof(vec3) * model->sg_size;
+        model->sg_positions_buf = sg_make_buffer(&desc);
 
-    desc.size = sizeof(vec3) * model->sg_size;
-    model->sg_normals_buf = sg_make_buffer(&desc);
+        desc.size = sizeof(vec3) * model->sg_size;
+        model->sg_normals_buf = sg_make_buffer(&desc);
 
-    desc.size = sizeof(vec2) * model->sg_size;
-    model->sg_texcoords_buf = sg_make_buffer(&desc);
+        desc.size = sizeof(vec2) * model->sg_size;
+        model->sg_texcoords_buf = sg_make_buffer(&desc);
 
-    golf_model_dynamic_update_sg_buf(model);
+        golf_model_dynamic_update_sg_buf(model);
+    }
 }
 
 void golf_model_dynamic_update_sg_buf(golf_model_t *model) {
     if (model->positions.length > model->sg_size) {
+        if (model->sg_size > 0) {
+            sg_destroy_buffer(model->sg_positions_buf);
+            sg_destroy_buffer(model->sg_normals_buf);
+            sg_destroy_buffer(model->sg_texcoords_buf);
+        }
+
         model->sg_size = 2 * model->positions.length;
 
         sg_buffer_desc desc = {
@@ -1350,15 +1479,12 @@ void golf_model_dynamic_update_sg_buf(golf_model_t *model) {
         };
 
         desc.size = sizeof(vec3) * model->sg_size;
-        sg_destroy_buffer(model->sg_positions_buf);
         model->sg_positions_buf = sg_make_buffer(&desc);
 
         desc.size = sizeof(vec3) * model->sg_size;
-        sg_destroy_buffer(model->sg_normals_buf);
         model->sg_normals_buf = sg_make_buffer(&desc);
 
         desc.size = sizeof(vec2) * model->sg_size;
-        sg_destroy_buffer(model->sg_texcoords_buf);
         model->sg_texcoords_buf = sg_make_buffer(&desc);
     }
 
@@ -2147,6 +2273,11 @@ static void _golf_json_object_get_geo(JSON_Object *obj, const char *name, golf_g
     vec_golf_geo_face_t faces;
     vec_init(&faces, "geo");
 
+    vec_golf_geo_generator_data_arg_t args;
+    vec_init(&args, "geo");
+
+    golf_script_t *script = NULL;
+
     JSON_Array *p_arr = json_object_get_array(geo_obj, "p");
     for (int i = 0; i < (int)json_array_get_count(p_arr); i += 3) {
         float x = (float)json_array_get_number(p_arr, i);
@@ -2183,11 +2314,10 @@ static void _golf_json_object_get_geo(JSON_Object *obj, const char *name, golf_g
         vec_push(&faces, golf_geo_face(material_name, idxs, uv_gen_type, uvs, water_dir));
     }
 
-    /*
     JSON_Object *generator_data_obj = json_object_get_object(geo_obj, "generator_data");
     if (generator_data_obj) {
         const char *script_path = json_object_get_string(generator_data_obj, "script");
-        geo->generator_data.script = golf_data_get_script(script_path);
+        script = golf_data_get_script(script_path);
 
         JSON_Array *args_arr = json_object_get_array(generator_data_obj, "args");
         for (int i = 0; i < (int)json_array_get_count(args_arr); i++) {
@@ -2229,13 +2359,14 @@ static void _golf_json_object_get_geo(JSON_Object *obj, const char *name, golf_g
                 golf_geo_generator_data_arg_t arg;
                 snprintf(arg.name, GOLF_MAX_NAME_LEN, "%s", name);
                 arg.val = val;
-                vec_push(&geo->generator_data.args, arg);
+                vec_push(&args, arg);
             }
         }
     }
-    */
 
-    *geo = golf_geo(points, faces, is_water);
+    golf_geo_generator_data_t generator_data = golf_geo_generator_data(script, args);
+
+    *geo = golf_geo(points, faces, generator_data, is_water);
 }
 
 static bool _golf_level_finalize(void *ptr) {
@@ -2931,8 +3062,6 @@ void golf_data_init(void) {
     golf_dir_recurse("data", _golf_data_handle_file, &push_events); 
     qsort(_seen_files.data, _seen_files.length, sizeof(golf_file_t), _file_alpha_cmp);
     golf_thread_create(_golf_data_thread_fn, NULL, "_golf_data_thread_fn");
-
-    //golf_data_load("data/static_data.static_data");
 }
 
 void golf_data_update(float dt) {

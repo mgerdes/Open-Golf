@@ -41,14 +41,13 @@ static void cleanup(void) {
 }
 
 static void frame(void) {
-
     static bool inited = false;
     static uint64_t last_time = 0;
 
     float dt = (float) stm_sec(stm_laptime(&last_time));
     if (!inited) {
         golf_data_init();
-        golf_data_load("data/title_screen.static_data", false);
+        golf_data_load("data/static_data.static_data", false);
 
         golf_debug_console_init();
         golf_inputs_init();
@@ -91,8 +90,8 @@ sapp_desc sokol_main(int argc, char *argv[]) {
             .frame_cb = frame,
             .cleanup_cb = cleanup,
             .event_cb = event,
-            .width = 375/4,
-            .height = 667/4,
+            .width = 375,
+            .height = 667,
             .window_title = "Minigolf",
             .enable_clipboard = true,
             .clipboard_size = 1024,

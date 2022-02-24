@@ -21,6 +21,13 @@ const char **golf_geo_uv_gen_type_strings(void) {
     return _golf_geo_face_uv_gen_type_strings;
 }
 
+golf_geo_generator_data_t golf_geo_generator_data(golf_script_t *script, vec_golf_geo_generator_data_arg_t args) {
+    golf_geo_generator_data_t generator_data;
+    generator_data.script = script;
+    generator_data.args = args;
+    return generator_data;
+}
+
 void golf_geo_generator_data_init(golf_geo_generator_data_t *generator_data) {
     generator_data->script = NULL;
     vec_init(&generator_data->args, "geo");
@@ -230,11 +237,11 @@ static void _golf_geo_generate_model_data(golf_geo_t *geo, vec_golf_group_t *gro
     }
 }
 
-golf_geo_t golf_geo(vec_golf_geo_point_t points, vec_golf_geo_face_t faces, bool is_water) {
+golf_geo_t golf_geo(vec_golf_geo_point_t points, vec_golf_geo_face_t faces, golf_geo_generator_data_t generator_data, bool is_water) {
     golf_geo_t geo;
-    golf_geo_generator_data_init(&geo.generator_data);
     geo.points = points;
     geo.faces = faces;
+    geo.generator_data = generator_data;
     geo.model_updated_this_frame = false;
     geo.is_water = is_water;
 
@@ -951,16 +958,19 @@ golf_entity_t golf_entity_make_copy(golf_entity_t *entity) {
             vec_push(&faces_copy, face_copy);
         }
 
-        *geo_copy = golf_geo(points_copy, faces_copy, geo->is_water);
-        golf_geo_finalize(geo_copy);
-        /*
-        geo_copy->generator_data.script = geo->generator_data.script;
-        for (int i = 0; i < geo->generator_data.args.length; i++) {
-            golf_geo_generator_data_arg_t arg = geo->generator_data.args.data[i];
-            golf_geo_generator_data_arg_t arg_copy = arg;
-            vec_push(&geo_copy->generator_data.args, arg_copy);
+        golf_geo_generator_data_t generator_data_copy;
+        {
+            golf_script_t *script = geo->generator_data.script;
+            vec_golf_geo_generator_data_arg_t args;
+            vec_init(&args, "geo");
+            for (int i = 0; i < geo->generator_data.args.length; i++) {
+                vec_push(&args, geo->generator_data.args.data[i]);
+            }
+            generator_data_copy = golf_geo_generator_data(script, args);
         }
-        */
+
+        *geo_copy = golf_geo(points_copy, faces_copy, generator_data_copy, geo->is_water);
+        golf_geo_finalize(geo_copy);
     }
 
     return entity_copy;

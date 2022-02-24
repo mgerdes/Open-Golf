@@ -78,11 +78,6 @@ static void _draw_game(void) {
                         continue;
                     }
 
-                    golf_shader_uniform_t *vs_uniform = golf_shader_get_vs_uniform(shader, "environment_material_vs_params");
-                    golf_shader_uniform_set_mat4(vs_uniform, "proj_view_mat", mat4_transpose(graphics->proj_view_mat));
-                    golf_shader_uniform_set_mat4(vs_uniform, "model_mat", mat4_transpose(model_mat));
-                    sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &(sg_range) { vs_uniform->data, vs_uniform->size });
-
                     int num_samples = lightmap_image.num_samples;
                     int sample0 = 0;
                     int sample1 = 0;
@@ -109,12 +104,17 @@ static void _draw_game(void) {
                         lightmap_t = golf_clampf(lightmap_t, 0, 1);
                     }
 
-                    vec3 pos = game->ball.draw_pos;
+                    vec3 ball_pos = game->ball.draw_pos;
 
-                    golf_shader_uniform_t *fs_uniform = golf_shader_get_fs_uniform(shader, "environment_material_fs_params");
-                    golf_shader_uniform_set_vec4(fs_uniform, "ball_position", V4(pos.x, pos.y, pos.z, 0));
-                    golf_shader_uniform_set_float(fs_uniform, "lightmap_texture_a", lightmap_t);
-                    golf_shader_uniform_set_float(fs_uniform, "uv_scale", uv_scale);
+                    golf_shader_uniform_t *vs_uniform = golf_shader_vs_uniform_setup(shader, "environment_material_vs_params", 2,
+                            UNIFORM_MAT4("proj_view_mat", mat4_transpose(graphics->proj_view_mat)),
+                            UNIFORM_MAT4("model_mat", mat4_transpose(model_mat)));
+                    sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &(sg_range) { vs_uniform->data, vs_uniform->size });
+
+                    golf_shader_uniform_t *fs_uniform = golf_shader_fs_uniform_setup(shader, "environment_material_fs_params", 3,
+                            UNIFORM_VEC4("ball_position", V4(ball_pos.x, ball_pos.y, ball_pos.z, 0)),
+                            UNIFORM_FLOAT("lightmap_texture_a", lightmap_t),
+                            UNIFORM_FLOAT("uv_scale", uv_scale));
                     sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &(sg_range) { fs_uniform->data, fs_uniform->size });
 
                     sg_bindings bindings = {
@@ -157,13 +157,46 @@ static void _draw_game(void) {
             };
             sg_apply_bindings(&bindings);
 
-            golf_shader_uniform_t *vs_uniform = golf_shader_get_vs_uniform(shader, "ball_vs_params");
-            golf_shader_uniform_set_mat4(vs_uniform, "proj_view_mat", mat4_transpose(graphics->proj_view_mat));
-            golf_shader_uniform_set_mat4(vs_uniform, "model_mat", mat4_transpose(model_mat));
+            golf_shader_uniform_t *vs_uniform = golf_shader_vs_uniform_setup(shader, "ball_vs_params", 2,
+                    UNIFORM_MAT4("proj_view_mat", mat4_transpose(graphics->proj_view_mat)),
+                    UNIFORM_MAT4("model_mat", mat4_transpose(model_mat)));
             sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &(sg_range) { vs_uniform->data, vs_uniform->size });
 
-            golf_shader_uniform_t *fs_uniform = golf_shader_get_fs_uniform(shader, "ball_fs_params");
-            golf_shader_uniform_set_vec4(fs_uniform, "color", color);
+            golf_shader_uniform_t *fs_uniform = golf_shader_fs_uniform_setup(shader, "ball_fs_params", 1,
+                    UNIFORM_VEC4("color", color));
+            sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &(sg_range) { fs_uniform->data, fs_uniform->size });
+
+            sg_draw(0, model->positions.length, 1);
+        }
+
+        // Draw the ball hidden behind objects
+        {
+            golf_shader_t *shader = golf_data_get_shader("data/shaders/ball_hidden.glsl");
+            golf_shader_pipeline_t *pipeline = golf_shader_get_pipeline(shader, "ball_hidden");
+            sg_apply_pipeline(pipeline->sg_pipeline);
+
+            vec3 cam_pos = graphics->cam_pos;
+            vec3 ball_pos = game->ball.draw_pos;
+            float ball_radius = game->ball.radius;
+            mat4 model_mat = mat4_multiply_n(2,
+                    mat4_translation(ball_pos),
+                    mat4_scale(V3(ball_radius + 0.001f, ball_radius + 0.001f, ball_radius + 0.001f)));
+            golf_model_t *model = golf_data_get_model("data/models/golf_ball.obj");
+
+            sg_bindings bindings = {
+                .vertex_buffers[0] = model->sg_positions_buf,
+                .vertex_buffers[1] = model->sg_normals_buf,
+            };
+            sg_apply_bindings(&bindings);
+
+            golf_shader_uniform_t *vs_uniform = golf_shader_vs_uniform_setup(shader, "vs_params", 2,
+                    UNIFORM_MAT4("model_mat", mat4_transpose(model_mat)),
+                    UNIFORM_MAT4("proj_view_mat", mat4_transpose(graphics->proj_view_mat)));
+            sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &(sg_range) { vs_uniform->data, vs_uniform->size });
+
+            golf_shader_uniform_t *fs_uniform = golf_shader_fs_uniform_setup(shader, "fs_params", 2,
+                    UNIFORM_VEC4("ball_position", V4(ball_pos.x, ball_pos.y, ball_pos.z, 0)),
+                    UNIFORM_VEC4("cam_position", V4(cam_pos.x, cam_pos.y, cam_pos.z, 0)));
             sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &(sg_range) { fs_uniform->data, fs_uniform->size });
 
             sg_draw(0, model->positions.length, 1);
