@@ -54,7 +54,7 @@ gs_val_t gs_val_list(vec_gs_val_t *list);
 gs_val_t gs_val_string(golf_string_t *string);
 gs_val_t gs_val_fn(gs_stmt_t *fn_stmt);
 gs_val_t gs_val_c_fn(gs_val_t (*c_fn)(gs_eval_t *eval, gs_val_t *vals, int num_vals));
-gs_val_t gs_val_error(const char *v);
+gs_val_t gs_val_error(const char *v, ...);
 
 typedef enum gs_token_type {
     GS_TOKEN_INT,
@@ -249,5 +249,9 @@ bool golf_script_load(golf_script_t *script, const char *path, const char *data,
 bool golf_script_unload(golf_script_t *script);
 bool golf_script_get_val(golf_script_t *script, const char *name, gs_val_t *val);
 gs_val_t golf_script_eval_fn(golf_script_t *script, const char *name, gs_val_t *args, int num_args);
+
+gs_val_t gs_eval_cast(gs_eval_t *eval, gs_val_t val, gs_val_type type);
+gs_val_t gs_c_fn_signature(gs_eval_t *eval, gs_val_t *vals, int num_vals, gs_val_type *types, int num_types);
+void golf_script_set_c_fn(golf_script_t *script, const char *name, gs_val_t (*c_fn)(gs_eval_t *eval, gs_val_t *vals, int num_vals));
 
 #endif

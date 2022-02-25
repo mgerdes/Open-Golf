@@ -899,6 +899,42 @@ static void _golf_editor_edit_geo(golf_geo_t *geo, golf_transform_t transform) {
     }
 }
 
+static gs_val_t gs_c_fn_terrain_model_add_point(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
+    gs_val_type signature_arg_types[] = { GS_VAL_VEC3 };
+    int signature_arg_count = sizeof(signature_arg_types) / sizeof(signature_arg_types[0]);;
+    gs_val_t sig = gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
+    if (sig.is_return) return sig;
+
+    golf_geo_point_t point = golf_geo_point(vals[0].vec3_val);
+    golf_editor_edit_mode_geo_add_point(point);
+    return gs_val_void();
+}
+
+static gs_val_t gs_c_fn_terrain_model_add_face(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
+    for (int i = 0; i < num_vals; i++) {
+        vals[i] = gs_eval_cast(eval, vals[i], GS_VAL_INT);
+        if (vals[i].is_return) return vals[i];
+    }
+    
+    vec_int_t idx;
+    vec_init(&idx, "geo");
+
+    vec_vec2_t uvs;
+    vec_init(&uvs, "geo");
+
+    for (int i = 0; i < num_vals; i++) {
+        vec_push(&idx, vals[i].int_val);
+        vec_push(&uvs, V2(0, 0));
+    }
+
+    vec3 water_dir = V3(0, 0, 0);
+
+    golf_geo_face_t face = golf_geo_face("default", idx, GOLF_GEO_FACE_UV_GEN_MANUAL, uvs, water_dir);
+    golf_editor_edit_mode_geo_add_face(face);
+
+    return gs_val_void();
+}
+
 static void _golf_editor_geo_tab(void) {
     golf_geo_t *geo = editor.edit_mode.geo;
     int num_points_selected = 0;
@@ -1071,7 +1107,13 @@ static void _golf_editor_geo_tab(void) {
 
                         geo->points.length = 0;
                         geo->faces.length = 0;
-                        golf_script_eval_fn(selected_script, "generate", args, num_args);
+
+                        golf_script_set_c_fn(selected_script, "terrain_model_add_point", gs_c_fn_terrain_model_add_point);
+                        golf_script_set_c_fn(selected_script, "terrain_model_add_face", gs_c_fn_terrain_model_add_face);
+                        gs_val_t val = golf_script_eval_fn(selected_script, "generate", args, num_args);
+                        if (val.type == GS_VAL_ERROR) {
+                            golf_log_warning("Error running script: %s", val.error_val);
+                        } 
                     }
                     golf_free(args);
                 }

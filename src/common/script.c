@@ -12,6 +12,7 @@
 #include "common/map.h"
 #include "common/string.h"
 #include "common/vec.h"
+#include "common/level.h"
 
 typedef struct gs_expr gs_expr_t;
 typedef struct gs_stmt gs_stmt_t;
@@ -115,7 +116,7 @@ static gs_val_t gs_eval_expr_array_access(gs_eval_t *eval, gs_expr_t *expr);
 static gs_val_t gs_eval_expr_array_decl(gs_eval_t *eval, gs_expr_t *expr);
 static gs_val_t gs_eval_expr_cast(gs_eval_t *eval, gs_expr_t *expr);
 
-static gs_val_t gs_eval_cast(gs_eval_t *eval, gs_val_t val, gs_val_type type);
+//gs_val_t gs_eval_cast(gs_eval_t *eval, gs_val_t val, gs_val_type type);
 static gs_val_t gs_eval_binary_op_add(gs_eval_t *eval, gs_val_t left, gs_val_t right);
 static gs_val_t gs_eval_binary_op_sub(gs_eval_t *eval, gs_val_t left, gs_val_t right);
 static gs_val_t gs_eval_binary_op_mul(gs_eval_t *eval, gs_val_t left, gs_val_t right);
@@ -1144,7 +1145,7 @@ static gs_val_t gs_eval_expr_symbol(gs_eval_t *eval, gs_expr_t *expr)  {
     }
 
     if (!found_val) {
-        val = gs_val_error("Could not find symbol");
+        val = gs_val_error("Could not find symbol %s", expr->symbol);
         goto cleanup;
     }
 
@@ -1342,7 +1343,7 @@ cleanup:
     return val;
 }
 
-static gs_val_t gs_eval_cast(gs_eval_t *eval, gs_val_t val, gs_val_type type) {
+gs_val_t gs_eval_cast(gs_eval_t *eval, gs_val_t val, gs_val_type type) {
     GOLF_UNUSED(eval);
 
     if (val.type == type) {
@@ -1627,7 +1628,7 @@ static gs_val_t gs_eval_lval(gs_eval_t *eval, gs_expr_t *expr, gs_val_t **lval) 
             }
         }
 
-        return gs_val_error("Unable to find symbol");
+        return gs_val_error("Unable to find symbol %s", expr->symbol);
     }
     else if (expr->type == GS_EXPR_MEMBER_ACCESS) {
         return gs_eval_lval(eval, expr->member_access.val, lval);   
@@ -1727,9 +1728,9 @@ static gs_val_t gs_c_fn_print(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
     return gs_val_void();
 }
 
-static gs_val_t gs_c_fn_signature(gs_eval_t *eval, gs_val_t *vals, int num_vals, gs_val_type *types, int num_types) {
+gs_val_t gs_c_fn_signature(gs_eval_t *eval, gs_val_t *vals, int num_vals, gs_val_type *types, int num_types) {
     if (num_types != num_vals) {
-        return gs_val_error("Expected 3 args to V3");
+        return gs_val_error("Wrong num of args to function");
     }
 
     for (int i = 0; i < num_types; i++) {
@@ -1774,37 +1775,6 @@ static gs_val_t gs_c_fn_sin(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
     if (sig.is_return) return sig;
 
     return gs_val_float(sinf(vals[0].float_val));
-}
-
-static gs_val_t gs_c_fn_terrain_model_add_point(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
-    gs_val_type signature_arg_types[] = { GS_VAL_VEC3 };
-    int signature_arg_count = sizeof(signature_arg_types) / sizeof(signature_arg_types[0]);;
-    gs_val_t sig = gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
-    if (sig.is_return) return sig;
-
-    //golf_geo_point_t point = golf_geo_point(vals[0].vec3_val);
-    //golf_editor_edit_mode_geo_add_point(point);
-    return gs_val_void();
-}
-
-static gs_val_t gs_c_fn_terrain_model_add_face(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
-    for (int i = 0; i < num_vals; i++) {
-        vals[i] = gs_eval_cast(eval, vals[i], GS_VAL_INT);
-        if (vals[i].is_return) return vals[i];
-    }
-    
-    vec2 *uvs = golf_alloc(sizeof(vec2) * num_vals);
-    int *idx = golf_alloc(sizeof(int) * num_vals);
-    for (int i = 0; i < num_vals; i++) {
-        idx[i] = vals[i].int_val;
-    }
-
-    //golf_geo_face_t face = golf_geo_face("default", num_vals, idx, GOLF_GEO_FACE_UV_GEN_MANUAL, uvs);
-    //golf_editor_edit_mode_geo_add_face(face);
-
-    golf_free(idx);
-    golf_free(uvs);
-    return gs_val_void();
 }
 
 static void gs_parser_error(gs_parser_t *parser, gs_token_t token, const char *fmt, ...) {
@@ -2690,11 +2660,18 @@ gs_val_t gs_val_c_fn(gs_val_t (*c_fn)(gs_eval_t *eval, gs_val_t *vals, int num_v
     return val;
 }
 
-gs_val_t gs_val_error(const char *v) {
+gs_val_t gs_val_error(const char *v, ...) {
+    static char error_string[2048]; 
+
+    va_list args;
+    va_start(args, v);
+    vsnprintf(error_string, 2048, v, args);
+    va_end(args);
+
     gs_val_t val;
     val.type = GS_VAL_ERROR;
     val.is_return = true;
-    val.error_val = v;
+    val.error_val = error_string;
     return val;
 }
 
@@ -2738,8 +2715,8 @@ bool golf_script_load(golf_script_t *script, const char *path, const char *data,
     map_set(&global_env->val_map, "V3", gs_val_c_fn(gs_c_fn_V3));
     map_set(&global_env->val_map, "cos", gs_val_c_fn(gs_c_fn_cos));
     map_set(&global_env->val_map, "sin", gs_val_c_fn(gs_c_fn_sin));
-    map_set(&global_env->val_map, "terrain_model_add_point", gs_val_c_fn(gs_c_fn_terrain_model_add_point));
-    map_set(&global_env->val_map, "terrain_model_add_face", gs_val_c_fn(gs_c_fn_terrain_model_add_face));
+    //map_set(&global_env->val_map, "terrain_model_add_point", gs_val_c_fn(gs_c_fn_terrain_model_add_point));
+    //map_set(&global_env->val_map, "terrain_model_add_face", gs_val_c_fn(gs_c_fn_terrain_model_add_face));
 
     vec_init(&script->eval.env, "script/eval");
     vec_push(&script->eval.env, global_env);
@@ -2863,4 +2840,9 @@ cleanup:
     map_deinit(&env->val_map);
     golf_free(env);
     return val;
+}
+
+void golf_script_set_c_fn(golf_script_t *script, const char *name, gs_val_t (*c_fn)(gs_eval_t *eval, gs_val_t *vals, int num_vals)) {
+    gs_env_t *env = script->eval.env.data[0];
+    map_set(&env->val_map, name, gs_val_c_fn(c_fn));
 }

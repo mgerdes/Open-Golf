@@ -2662,7 +2662,11 @@ static bool _golf_script_data_load(void *ptr, const char *path, char *data, int 
     GOLF_UNUSED(meta_data_len);
 
     golf_script_t *script = (golf_script_t*) ptr;
-    return golf_script_load(script, path, data, data_len);
+    bool r = golf_script_load(script, path, data, data_len);
+    if (script->error) {
+        golf_log_warning("Error loading script: %s", script->error);
+    }
+    return r;
 }
 
 static bool _golf_script_data_unload(void *ptr) {
