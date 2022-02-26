@@ -2462,8 +2462,8 @@ void golf_editor_update(float dt) {
 
                 golf_data_load(file.path, false);
                 strcpy(editor.file_picker.path, file.path);
-                //golf_data_t *data = golf_data_get_file(file.path); 
-                //*editor.file_picker.data = data->ptr;
+                void *ptr = golf_data_get_ptr(file.path, editor.file_picker.type); 
+                *editor.file_picker.data = ptr;
 
                 _golf_editor_start_action(action);
                 _golf_editor_commit_action();

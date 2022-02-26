@@ -3223,6 +3223,10 @@ static void *_golf_data_get_ptr(const char *path, golf_data_type_t type) {
     return ptr;
 }
 
+void *golf_data_get_ptr(const char *path, golf_data_type_t type) {
+    return _golf_data_get_ptr(path, type);
+}
+
 golf_gif_texture_t *golf_data_get_gif_texture(const char *path) {
     golf_gif_texture_t *texture = _golf_data_get_ptr(path, GOLF_DATA_GIF_TEXTURE);
     if (!texture) {
