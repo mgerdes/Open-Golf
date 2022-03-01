@@ -89,6 +89,8 @@ void golf_editor_init(void) {
 
     {
         editor.select_box.is_open = false;
+        editor.select_box.select_points = true;
+        editor.select_box.select_faces = true;
         editor.select_box.p0 = V2(0, 0);
         editor.select_box.p1 = V2(0, 0);
         vec_init(&editor.select_box.hovered_entities, "editor");
@@ -1567,19 +1569,21 @@ void golf_editor_update(float dt) {
                 vec3 box_half_lengths = V3(h_width, h_height, 1);
 
                 editor.select_box.hovered_entities.length = 0;
-                for (int i = 0; i < geo->points.length; i++) {
-                    golf_geo_point_t point = geo->points.data[i];
-                    if (!point.active) continue;
+                if (editor.select_box.select_points) {
+                    for (int i = 0; i < geo->points.length; i++) {
+                        golf_geo_point_t point = geo->points.data[i];
+                        if (!point.active) continue;
 
-                    vec3 p = vec3_apply_mat4(geo->points.data[i].position, 1, model_mat);
-                    vec2 p_screen = golf_graphics_world_to_screen(p);
-                    vec3 p_screen3 = V3(p_screen.x, graphics->window_size.y - p_screen.y, 0);
-                    if (point_inside_box(p_screen3, box_center, box_half_lengths)) {
-                        vec_push(&editor.select_box.hovered_entities, golf_edit_mode_entity_point(i));
+                        vec3 p = vec3_apply_mat4(geo->points.data[i].position, 1, model_mat);
+                        vec2 p_screen = golf_graphics_world_to_screen(p);
+                        vec3 p_screen3 = V3(p_screen.x, graphics->window_size.y - p_screen.y, 0);
+                        if (point_inside_box(p_screen3, box_center, box_half_lengths)) {
+                            vec_push(&editor.select_box.hovered_entities, golf_edit_mode_entity_point(i));
+                        }
                     }
                 }
 
-                {
+                if (editor.select_box.select_faces) {
                     vec_vec3_t triangle_points;
                     vec_int_t triangle_idxs;
                     vec_bool_t is_inside;
@@ -1869,6 +1873,15 @@ void golf_editor_update(float dt) {
                 igOpenPopup_Str("settings_popup", ImGuiPopupFlags_None);
             }
             if (igBeginPopup("settings_popup", ImGuiWindowFlags_None)) {
+                if (igTreeNode_Str("Select Box")) {
+                    igPushItemWidth(75);
+
+                    _golf_editor_undoable_igCheckbox("Select Points", &editor.select_box.select_points, "Modify select box - select points");
+                    _golf_editor_undoable_igCheckbox("Select Faces", &editor.select_box.select_faces, "Modify select box - select faces");
+
+                    igPopItemWidth();
+                    igTreePop();
+                }
                 if (igTreeNode_Str("Global Illumination")) {
                     igPushItemWidth(75);
 

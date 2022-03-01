@@ -8,7 +8,7 @@
 static golf_t golf;
 static golf_graphics_t *graphics;
 
-static const char *initial_level_path = "data/levels/level-1.level";
+static const char *initial_level_path = "data/levels/level-4.level";
 
 void golf_init(void) {
     golf_data_load(initial_level_path, true);

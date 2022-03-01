@@ -100,7 +100,7 @@ typedef struct golf_editor {
     } file_picker;
 
     struct {
-        bool is_open;
+        bool is_open, select_points, select_faces;
         vec2 p0, p1;
         vec_golf_edit_mode_entity_t hovered_entities;
     } select_box;

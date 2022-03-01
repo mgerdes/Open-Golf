@@ -5,6 +5,7 @@
     "data/scripts/ramp.gs",
     "data/scripts/teseting.gs",
     "data/scripts/spinner_platform.gs",
+    "data/scripts/bump.gs",
 
     "data/shaders/diffuse_color_material.glsl",
     "data/shaders/environment_material.glsl",
