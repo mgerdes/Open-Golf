@@ -283,6 +283,7 @@ static void _golf_shader_import_get_shader(const char *file_path, const char *la
     *my_val = json_value_init_object();
     JSON_Object *my_obj = json_value_get_object(*my_val);
 
+#if GOLF_PLATFORM_LINUX | GOLF_PLATFORM_WINDOWS
     {
         golf_string_t cmd;
         golf_string_init(&cmd, "data", "");
@@ -290,11 +291,13 @@ static void _golf_shader_import_get_shader(const char *file_path, const char *la
         golf_string_appendf(&cmd, "tools/glslcc/linux/glslcc %s -S -F -o out/temp/temp.glsl -l %s -p %s -r", file_path, lang, profile);
 #elif GOLF_PLATFORM_WINDOWS
         golf_string_appendf(&cmd, "tools\\glslcc\\win64\\glslcc %s -S -F -o out/temp/temp.glsl -l %s -p %s -r", file_path, lang, profile);
-#elif GOLF_PLATFORM_MACOS
 #endif
         system(cmd.cstr);
         golf_string_deinit(&cmd);
     }
+#else
+    golf_log_error("Unable to import shader on this platform.");
+#endif
 
     {
         JSON_Value *my_fs_val = json_value_init_object();
