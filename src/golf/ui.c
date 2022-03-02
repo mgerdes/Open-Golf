@@ -741,7 +741,7 @@ static void _golf_ui_main_menu(float dt) {
             ui.main_menu.is_level_select_open = false;
         }
         int clicked_button_num = _golf_ui_level_select_scroll_box_name(layout, "level_select_scroll_box", dt);
-        if (clicked_button_num >= 1) {
+        if (clicked_button_num >= 0) {
             golf_start_level(clicked_button_num);
         }
     }
