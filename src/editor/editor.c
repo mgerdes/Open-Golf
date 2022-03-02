@@ -913,10 +913,10 @@ static gs_val_t gs_c_fn_terrain_model_add_point(gs_eval_t *eval, gs_val_t *vals,
 }
 
 static gs_val_t gs_c_fn_terrain_model_add_face(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
-    for (int i = 0; i < num_vals; i++) {
-        vals[i] = gs_eval_cast(eval, vals[i], GS_VAL_INT);
-        if (vals[i].is_return) return vals[i];
-    }
+    gs_val_type signature_arg_types[] = { GS_VAL_STRING, GS_VAL_LIST, GS_VAL_LIST };
+    int signature_arg_count = sizeof(signature_arg_types) / sizeof(signature_arg_types[0]);;
+    gs_val_t sig = gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
+    if (sig.is_return) return sig;
     
     vec_int_t idx;
     vec_init(&idx, "geo");
