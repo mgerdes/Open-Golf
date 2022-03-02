@@ -221,6 +221,7 @@ golf_geo_t *golf_entity_get_geo(golf_entity_t *entity);
 vec3 golf_entity_get_velocity(golf_level_t *level, golf_entity_t *entity, float t, vec3 world_point);
 
 typedef struct golf_level {
+    vec_golf_file_t deps; 
     vec_golf_lightmap_image_t lightmap_images;
     vec_golf_material_t materials;
     vec_golf_entity_t entities;

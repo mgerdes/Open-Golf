@@ -6,7 +6,14 @@
 #include "common/data.h"
 #include "common/string.h"
 
+typedef enum golf_ui_draw_entity_type {
+    GOLF_UI_DRAW_TEXTURE,
+    GOLF_UI_DRAW_APPLY_VIEWPORT,
+    GOLF_UI_DRAW_UNDO_APPLY_VIEWPORT,
+} golf_ui_draw_entity_type_t;
+
 typedef struct golf_ui_draw_entity {
+    golf_ui_draw_entity_type_t type;
     sg_image image;
     vec2 pos, size, uv0, uv1;
     float angle, is_font, alpha;
@@ -14,12 +21,7 @@ typedef struct golf_ui_draw_entity {
 } golf_ui_draw_entity_t;
 typedef vec_t(golf_ui_draw_entity_t) vec_golf_ui_draw_entity_t;
 
-typedef enum golf_ui_state {
-    GOLF_UI_MAIN_MENU,
-} golf_ui_state_t;
-
 typedef struct golf_ui {
-    golf_ui_state_t state;
     union {
         struct {
             bool is_level_select_open;

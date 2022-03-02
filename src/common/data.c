@@ -885,35 +885,35 @@ static bool _golf_shader_finalize(void *ptr) {
             vec_push(&shader->pipelines, pipeline);
         }
     }
-	else if (strcmp(shader->file.path, "data/shaders/ball_hidden.glsl") == 0) {
-		{
-			sg_pipeline_desc desc = {
-				.shader = shader->sg_shader,
-				.layout = {
-					.attrs = {
-						[0] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
-						[1] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 1 },
-					},
-				},
-				.depth = {
-					.compare = SG_COMPAREFUNC_GREATER,
-				},
-				.cull_mode = SG_CULLMODE_FRONT,
-				.colors[0] = {
-					.blend = {
-						.enabled = true,
-						.src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
-						.dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
-					},
-				}
-			};
+    else if (strcmp(shader->file.path, "data/shaders/ball_hidden.glsl") == 0) {
+        {
+            sg_pipeline_desc desc = {
+                .shader = shader->sg_shader,
+                .layout = {
+                    .attrs = {
+                        [0] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                        [1] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 1 },
+                    },
+                },
+                .depth = {
+                    .compare = SG_COMPAREFUNC_GREATER,
+                },
+                .cull_mode = SG_CULLMODE_FRONT,
+                .colors[0] = {
+                    .blend = {
+                        .enabled = true,
+                        .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                        .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                    },
+                }
+            };
 
             golf_shader_pipeline_t pipeline;
             snprintf(pipeline.name, GOLF_MAX_NAME_LEN, "%s", "ball_hidden");
             pipeline.sg_pipeline = sg_make_pipeline(&desc);
             vec_push(&shader->pipelines, pipeline);
-		}
-	}
+        }
+    }
     else {
         golf_log_warning("No pipelines created for shader: %s", shader->file.path);
     }
@@ -922,95 +922,95 @@ static bool _golf_shader_finalize(void *ptr) {
 }
 
 golf_shader_uniform_value_t golf_shader_uniform_value_float(const char *name, float f) {
-	golf_shader_uniform_value_t value;
-	value.type = GOLF_SHADER_UNIFORM_VALUE_FLOAT;
-	value.name = name;
-	value.f = f;
-	return value;
+    golf_shader_uniform_value_t value;
+    value.type = GOLF_SHADER_UNIFORM_VALUE_FLOAT;
+    value.name = name;
+    value.f = f;
+    return value;
 }
 
 golf_shader_uniform_value_t golf_shader_uniform_value_vec2(const char *name, vec2 v2) {
-	golf_shader_uniform_value_t value;
-	value.type = GOLF_SHADER_UNIFORM_VALUE_VEC2;
-	value.name = name;
-	value.v2 = v2;
-	return value;
+    golf_shader_uniform_value_t value;
+    value.type = GOLF_SHADER_UNIFORM_VALUE_VEC2;
+    value.name = name;
+    value.v2 = v2;
+    return value;
 }
 
 golf_shader_uniform_value_t golf_shader_uniform_value_vec4(const char *name, vec4 v4) {
-	golf_shader_uniform_value_t value;
-	value.type = GOLF_SHADER_UNIFORM_VALUE_VEC4;
-	value.name = name;
-	value.v4 = v4;
-	return value;
+    golf_shader_uniform_value_t value;
+    value.type = GOLF_SHADER_UNIFORM_VALUE_VEC4;
+    value.name = name;
+    value.v4 = v4;
+    return value;
 }
 
 golf_shader_uniform_value_t golf_shader_uniform_value_mat4(const char *name, mat4 m4) {
-	golf_shader_uniform_value_t value;
-	value.type = GOLF_SHADER_UNIFORM_VALUE_MAT4;
-	value.name = name;
-	value.m4 = m4;
-	return value;
+    golf_shader_uniform_value_t value;
+    value.type = GOLF_SHADER_UNIFORM_VALUE_MAT4;
+    value.name = name;
+    value.m4 = m4;
+    return value;
 }
 
 golf_shader_uniform_t *golf_shader_vs_uniform_setup(golf_shader_t *shader, const char *name, int n, ...) {
-	golf_shader_uniform_t *uniform = golf_shader_get_vs_uniform(shader, name);
-	if (!uniform) {
-		return NULL;
-	}
+    golf_shader_uniform_t *uniform = golf_shader_get_vs_uniform(shader, name);
+    if (!uniform) {
+        return NULL;
+    }
 
-	va_list args;
-	va_start(args, n);
-	for (int i = 0; i < n; i++) {
-		golf_shader_uniform_value_t value = va_arg(args, golf_shader_uniform_value_t);
-		switch (value.type) {
-			case GOLF_SHADER_UNIFORM_VALUE_FLOAT:
-				golf_shader_uniform_set_float(uniform, value.name, value.f);
-				break;
-			case GOLF_SHADER_UNIFORM_VALUE_VEC2:
-				golf_shader_uniform_set_vec2(uniform, value.name, value.v2);
-				break;
-			case GOLF_SHADER_UNIFORM_VALUE_VEC4:
-				golf_shader_uniform_set_vec4(uniform, value.name, value.v4);
-				break;
-			case GOLF_SHADER_UNIFORM_VALUE_MAT4:
-				golf_shader_uniform_set_mat4(uniform, value.name, value.m4);
-				break;
-		}
-	}
-	va_end(args);
+    va_list args;
+    va_start(args, n);
+    for (int i = 0; i < n; i++) {
+        golf_shader_uniform_value_t value = va_arg(args, golf_shader_uniform_value_t);
+        switch (value.type) {
+            case GOLF_SHADER_UNIFORM_VALUE_FLOAT:
+                golf_shader_uniform_set_float(uniform, value.name, value.f);
+                break;
+            case GOLF_SHADER_UNIFORM_VALUE_VEC2:
+                golf_shader_uniform_set_vec2(uniform, value.name, value.v2);
+                break;
+            case GOLF_SHADER_UNIFORM_VALUE_VEC4:
+                golf_shader_uniform_set_vec4(uniform, value.name, value.v4);
+                break;
+            case GOLF_SHADER_UNIFORM_VALUE_MAT4:
+                golf_shader_uniform_set_mat4(uniform, value.name, value.m4);
+                break;
+        }
+    }
+    va_end(args);
 
-	return uniform;
+    return uniform;
 }
 
 golf_shader_uniform_t *golf_shader_fs_uniform_setup(golf_shader_t *shader, const char *name, int n, ...) {
-	golf_shader_uniform_t *uniform = golf_shader_get_fs_uniform(shader, name);
-	if (!uniform) {
-		return NULL;
-	}
+    golf_shader_uniform_t *uniform = golf_shader_get_fs_uniform(shader, name);
+    if (!uniform) {
+        return NULL;
+    }
 
-	va_list args;
-	va_start(args, n);
-	for (int i = 0; i < n; i++) {
-		golf_shader_uniform_value_t value = va_arg(args, golf_shader_uniform_value_t);
-		switch (value.type) {
-			case GOLF_SHADER_UNIFORM_VALUE_FLOAT:
-				golf_shader_uniform_set_float(uniform, value.name, value.f);
-				break;
-			case GOLF_SHADER_UNIFORM_VALUE_VEC2:
-				golf_shader_uniform_set_vec2(uniform, value.name, value.v2);
-				break;
-			case GOLF_SHADER_UNIFORM_VALUE_VEC4:
-				golf_shader_uniform_set_vec4(uniform, value.name, value.v4);
-				break;
-			case GOLF_SHADER_UNIFORM_VALUE_MAT4:
-				golf_shader_uniform_set_mat4(uniform, value.name, value.m4);
-				break;
-		}
-	}
-	va_end(args);
+    va_list args;
+    va_start(args, n);
+    for (int i = 0; i < n; i++) {
+        golf_shader_uniform_value_t value = va_arg(args, golf_shader_uniform_value_t);
+        switch (value.type) {
+            case GOLF_SHADER_UNIFORM_VALUE_FLOAT:
+                golf_shader_uniform_set_float(uniform, value.name, value.f);
+                break;
+            case GOLF_SHADER_UNIFORM_VALUE_VEC2:
+                golf_shader_uniform_set_vec2(uniform, value.name, value.v2);
+                break;
+            case GOLF_SHADER_UNIFORM_VALUE_VEC4:
+                golf_shader_uniform_set_vec4(uniform, value.name, value.v4);
+                break;
+            case GOLF_SHADER_UNIFORM_VALUE_MAT4:
+                golf_shader_uniform_set_mat4(uniform, value.name, value.m4);
+                break;
+        }
+    }
+    va_end(args);
 
-	return uniform;
+    return uniform;
 }
 
 void golf_shader_uniform_set_float(golf_shader_uniform_t *uniform, const char *name, float f) {
@@ -1947,6 +1947,56 @@ static bool _golf_ui_layout_load_entity(JSON_Object *entity_obj, golf_ui_layout_
         entity->aim_circle.num_squares = num_squares;
         entity->aim_circle.t = 0;
     }
+    else if (strcmp(type, "level_select_scroll_box") == 0) {
+        entity->type = GOLF_UI_LEVEL_SELECT_SCROLL_BOX;
+
+        vec2 button_size = golf_json_object_get_vec2(entity_obj, "button_size");
+        float button_tile_size = (float)json_object_get_number(entity_obj, "button_tile_size");
+        const char *button_pixel_pack_path = json_object_get_string(entity_obj, "button_pixel_pack");
+        const char *button_up_square = json_object_get_string(entity_obj, "button_up_square");
+        const char *button_down_square = json_object_get_string(entity_obj, "button_down_square");
+        const char *button_font_path = json_object_get_string(entity_obj, "button_font");
+        float button_best_text_size = (float)json_object_get_number(entity_obj, "button_best_text_size");
+        vec4 button_best_text_color = golf_json_object_get_vec4(entity_obj, "button_best_text_color");
+        vec2 button_best_text_offset = golf_json_object_get_vec2(entity_obj, "button_best_text_offset");
+        float button_num_text_size = (float)json_object_get_number(entity_obj, "button_num_text_size");
+        vec4 button_num_text_color = golf_json_object_get_vec4(entity_obj, "button_num_text_color");
+        vec2 button_num_text_offset = golf_json_object_get_vec2(entity_obj, "button_num_text_offset");
+        vec2 button_down_text_offset = golf_json_object_get_vec2(entity_obj, "button_down_text_offset");
+        float scroll_bar_background_width = (float)json_object_get_number(entity_obj, "scroll_bar_background_width");
+        float scroll_bar_background_padding = (float)json_object_get_number(entity_obj, "scroll_bar_background_padding");
+        float scroll_bar_tile_size = (float)json_object_get_number(entity_obj, "scroll_bar_tile_size");
+        const char *scroll_bar_square_name = json_object_get_string(entity_obj, "scroll_bar_square");
+        float scroll_bar_width = (float)json_object_get_number(entity_obj, "scroll_bar_width");
+        float scroll_bar_height = (float)json_object_get_number(entity_obj, "scroll_bar_height");
+        float scroll_bar_leeway = (float)json_object_get_number(entity_obj, "scroll_bar_leeway");
+        float scroll_bar_leeway_fix_speed = (float)json_object_get_number(entity_obj, "scroll_bar_leeway_fix_speed");
+        vec4 scroll_bar_down_overlay = golf_json_object_get_vec4(entity_obj, "scroll_bar_down_overlay");
+
+        entity->level_select_scroll_box.down_delta = 0;
+        entity->level_select_scroll_box.button_size = button_size;
+        entity->level_select_scroll_box.button_tile_size = button_tile_size;
+        entity->level_select_scroll_box.button_pixel_pack = golf_data_get_pixel_pack(button_pixel_pack_path);
+        entity->level_select_scroll_box.button_font = golf_data_get_font(button_font_path);
+        entity->level_select_scroll_box.button_best_text_size = button_best_text_size;
+        entity->level_select_scroll_box.button_best_text_color = button_best_text_color;
+        entity->level_select_scroll_box.button_best_text_offset = button_best_text_offset;
+        entity->level_select_scroll_box.button_num_text_size = button_num_text_size;
+        entity->level_select_scroll_box.button_num_text_color = button_num_text_color;
+        entity->level_select_scroll_box.button_num_text_offset = button_num_text_offset;
+        entity->level_select_scroll_box.button_down_text_offset = button_down_text_offset;
+        snprintf(entity->level_select_scroll_box.button_up_square_name, GOLF_MAX_NAME_LEN, "%s", button_up_square);
+        snprintf(entity->level_select_scroll_box.button_down_square_name, GOLF_MAX_NAME_LEN, "%s", button_down_square);
+        entity->level_select_scroll_box.scroll_bar_background_width = scroll_bar_background_width;
+        entity->level_select_scroll_box.scroll_bar_background_padding = scroll_bar_background_padding;
+        entity->level_select_scroll_box.scroll_bar_tile_size = scroll_bar_tile_size;
+        snprintf(entity->level_select_scroll_box.scroll_bar_square_name, GOLF_MAX_NAME_LEN, "%s", scroll_bar_square_name);
+        entity->level_select_scroll_box.scroll_bar_width = scroll_bar_width;
+        entity->level_select_scroll_box.scroll_bar_height = scroll_bar_height;
+        entity->level_select_scroll_box.scroll_bar_leeway = scroll_bar_leeway;
+        entity->level_select_scroll_box.scroll_bar_leeway_fix_speed = scroll_bar_leeway_fix_speed;
+        entity->level_select_scroll_box.scroll_bar_down_overlay = scroll_bar_down_overlay;
+    }
     else {
         golf_log_warning("Unknown ui entity type %s", type);
         return false;
@@ -1984,6 +2034,14 @@ static void _golf_ui_layout_get_entity_dependency(JSON_Object *entity_obj, vec_g
         const char *texture_path = json_object_get_string(entity_obj, "texture");
         if (texture_path) _golf_data_add_dependency(deps, golf_file(texture_path));
     }
+    else if (type && strcmp(type, "level_select_scroll_box") == 0) {
+        const char *texture_path = json_object_get_string(entity_obj, "button_pixel_pack");
+        if (texture_path) _golf_data_add_dependency(deps, golf_file(texture_path));
+
+        const char *font_path = json_object_get_string(entity_obj, "button_font");
+        if (font_path) _golf_data_add_dependency(deps, golf_file(font_path));
+    }
+
 }
 
 static bool _golf_ui_layout_load(void *ptr, const char *path, char *data, int data_len, char *meta_data, int meta_data_len) {
@@ -2411,22 +2469,21 @@ static bool _golf_level_load(void *ptr, const char *path, char *data, int data_l
 
     // load dependencies
     {
-        vec_golf_file_t deps; 
-        vec_init(&deps, "level");
-        _golf_data_add_dependency(&deps, golf_file("data/textures/hole_lightmap.png"));
-        _golf_data_add_dependency(&deps, golf_file("data/models/hole.obj"));
-        _golf_data_add_dependency(&deps, golf_file("data/models/hole-cover.obj"));
-        _golf_data_add_dependency(&deps, golf_file("data/models/sphere.obj"));
+        vec_init(&level->deps, "level");
+        _golf_data_add_dependency(&level->deps, golf_file("data/textures/hole_lightmap.png"));
+        _golf_data_add_dependency(&level->deps, golf_file("data/models/hole.obj"));
+        _golf_data_add_dependency(&level->deps, golf_file("data/models/hole-cover.obj"));
+        _golf_data_add_dependency(&level->deps, golf_file("data/models/sphere.obj"));
         for (int i = 0; i < (int)json_array_get_count(json_materials_arr); i++) {
             JSON_Object *obj = json_array_get_object(json_materials_arr, i);
             const char *type = json_object_get_string(obj, "type");
             if (type && strcmp(type, "texture") == 0) {
                 const char *texture = json_object_get_string(obj, "texture");
-                if (texture) _golf_data_add_dependency(&deps, golf_file(texture));
+                if (texture) _golf_data_add_dependency(&level->deps, golf_file(texture));
             }
             else if (type && strcmp(type, "environment") == 0) {
                 const char *texture = json_object_get_string(obj, "texture");
-                if (texture) _golf_data_add_dependency(&deps, golf_file(texture));
+                if (texture) _golf_data_add_dependency(&level->deps, golf_file(texture));
             }
         }
         for (int i = 0; i < (int)json_array_get_count(json_entities_arr); i++) {
@@ -2434,15 +2491,14 @@ static bool _golf_level_load(void *ptr, const char *path, char *data, int data_l
             const char *type = json_object_get_string(obj, "type");
             if (type && strcmp(type, "model") == 0) {
                 const char *model = json_object_get_string(obj, "model");
-                if (model) _golf_data_add_dependency(&deps, golf_file(model));
+                if (model) _golf_data_add_dependency(&level->deps, golf_file(model));
             }
         }
-        for (int i = 0; i < deps.length; i++) {
-            _golf_data_thread_load_file(deps.data[i]);
-            while (golf_data_get_load_state(deps.data[i].path) != GOLF_DATA_LOADED) 
+        for (int i = 0; i < level->deps.length; i++) {
+            _golf_data_thread_load_file(level->deps.data[i]);
+            while (golf_data_get_load_state(level->deps.data[i].path) != GOLF_DATA_LOADED) 
                 golf_thread_timer_wait(&_data_thread_timer, 10000000);
         }
-        vec_deinit(&deps);
     }
 
     for (int i = 0; i < (int)json_array_get_count(json_materials_arr); i++) {
@@ -2602,7 +2658,63 @@ static bool _golf_level_load(void *ptr, const char *path, char *data, int data_l
 }
 
 static bool _golf_level_unload(void *ptr) {
-    GOLF_UNUSED(ptr);
+    golf_level_t *level = (golf_level_t*) ptr;
+
+    for (int i = 0; i < level->deps.length; i++) {
+        golf_data_unload(level->deps.data[i].path);
+    }
+
+    for (int i = 0; i < level->lightmap_images.length; i++) {
+        golf_lightmap_image_t *lightmap_image = &level->lightmap_images.data[i];
+        for (int i = 0; i < lightmap_image->num_samples; i++) {
+            sg_destroy_image(lightmap_image->sg_image[i]);
+            free(lightmap_image->data[i]);
+        }
+        golf_free(lightmap_image->data);
+        golf_free(lightmap_image->sg_image);
+    }
+
+    for (int i = 0; i < level->entities.length; i++) {
+        golf_entity_t *entity = &level->entities.data[i];
+
+        golf_lightmap_section_t *lightmap_section = golf_entity_get_lightmap_section(entity);
+        if (lightmap_section) {
+            vec_deinit(&lightmap_section->uvs);
+        }
+
+        golf_geo_t *geo = golf_entity_get_geo(entity);
+        if (geo) {
+            for (int i = 0; i < geo->faces.length; i++) {
+                golf_geo_face_t *face = &geo->faces.data[i];
+                vec_deinit(&face->idx);
+                vec_deinit(&face->uvs);
+            }
+
+            vec_deinit(&geo->points);
+            vec_deinit(&geo->faces);
+            vec_deinit(&geo->generator_data.args);
+
+            vec_deinit(&geo->model.groups);
+            vec_deinit(&geo->model.positions);
+            vec_deinit(&geo->model.normals);
+            vec_deinit(&geo->model.texcoords);
+            if (geo->model.is_water) {
+                vec_deinit(&geo->model.water_dir);
+            }
+
+            if (geo->model.sg_size > 0) {
+                sg_destroy_buffer(geo->model.sg_positions_buf);
+                sg_destroy_buffer(geo->model.sg_normals_buf);
+                sg_destroy_buffer(geo->model.sg_texcoords_buf);
+            }
+        }
+    }
+
+    vec_deinit(&level->materials);
+    vec_deinit(&level->lightmap_images);
+    vec_deinit(&level->entities);
+    vec_deinit(&level->deps);
+
     return true;
 }
 

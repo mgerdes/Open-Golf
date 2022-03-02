@@ -118,21 +118,21 @@ typedef struct golf_shader {
 } golf_shader_t;
 
 typedef enum golf_shader_uniform_value_type {
-	GOLF_SHADER_UNIFORM_VALUE_FLOAT,
-	GOLF_SHADER_UNIFORM_VALUE_VEC2,
-	GOLF_SHADER_UNIFORM_VALUE_VEC4,
-	GOLF_SHADER_UNIFORM_VALUE_MAT4,
+    GOLF_SHADER_UNIFORM_VALUE_FLOAT,
+    GOLF_SHADER_UNIFORM_VALUE_VEC2,
+    GOLF_SHADER_UNIFORM_VALUE_VEC4,
+    GOLF_SHADER_UNIFORM_VALUE_MAT4,
 } golf_shader_uniform_value_type_t;
 
 typedef struct golf_shader_uniform_value {
-	const char *name;
-	golf_shader_uniform_value_type_t type;
-	union {
-		float f;
-		vec2 v2;
-		vec4 v4;
-		mat4 m4;
-	};
+    const char *name;
+    golf_shader_uniform_value_type_t type;
+    union {
+        float f;
+        vec2 v2;
+        vec4 v4;
+        mat4 m4;
+    };
 } golf_shader_uniform_value_t;
 
 #define UNIFORM_FLOAT(name, f) golf_shader_uniform_value_float((name), (f))
@@ -226,6 +226,7 @@ typedef enum golf_ui_layout_entity_type {
     GOLF_UI_BUTTON,
     GOLF_UI_GIF_TEXTURE,
     GOLF_UI_AIM_CIRCLE,
+    GOLF_UI_LEVEL_SELECT_SCROLL_BOX,
 } golf_ui_layout_entity_type;
 
 typedef struct golf_ui_layout_entity golf_ui_layout_entity_t;
@@ -266,6 +267,32 @@ typedef struct golf_ui_layout_entity {
             vec2 square_size;
             golf_texture_t *texture;
         } aim_circle;
+
+        struct {
+            float down_delta;
+            vec2 button_size;
+            float button_tile_size;
+            golf_pixel_pack_t *button_pixel_pack; 
+            char button_up_square_name[GOLF_MAX_NAME_LEN];
+            char button_down_square_name[GOLF_MAX_NAME_LEN];
+            golf_font_t *button_font;
+            float button_best_text_size;
+            vec4 button_best_text_color;
+            vec2 button_best_text_offset;
+            float button_num_text_size;
+            vec4 button_num_text_color;
+            vec2 button_num_text_offset;
+            vec2 button_down_text_offset;
+            float scroll_bar_background_width;
+            float scroll_bar_background_padding;
+            char scroll_bar_square_name[GOLF_MAX_NAME_LEN];
+            float scroll_bar_tile_size;
+            float scroll_bar_width;
+            float scroll_bar_height;
+            float scroll_bar_leeway;
+            float scroll_bar_leeway_fix_speed;
+            vec4 scroll_bar_down_overlay;
+        } level_select_scroll_box;
     };
 } golf_ui_layout_entity_t;
 

@@ -551,39 +551,58 @@ static void _draw_ui(void) {
 
         for (int i = 0; i < ui->draw_entities.length; i++) {
             golf_ui_draw_entity_t draw = ui->draw_entities.data[i];
-            vec3 translate = V3(draw.pos.x, draw.pos.y, 0);
-            vec3 scale = V3(0.5f * draw.size.x, 0.5f * draw.size.y, 1);
-            float angle = draw.angle;
+            switch (draw.type) {
+                case GOLF_UI_DRAW_TEXTURE: {
+                    vec3 translate = V3(draw.pos.x, draw.pos.y, 0);
+                    vec3 scale = V3(0.5f * draw.size.x, 0.5f * draw.size.y, 1);
+                    float angle = draw.angle;
 
-            golf_model_t *square = golf_data_get_model("data/models/ui_square.obj");
-            sg_bindings bindings = {
-                .vertex_buffers[0] = square->sg_positions_buf,
-                .vertex_buffers[1] = square->sg_texcoords_buf,
-                .fs_images[0] = draw.image,
-            };
-            sg_apply_bindings(&bindings);
+                    golf_model_t *square = golf_data_get_model("data/models/ui_square.obj");
+                    sg_bindings bindings = {
+                        .vertex_buffers[0] = square->sg_positions_buf,
+                        .vertex_buffers[1] = square->sg_texcoords_buf,
+                        .fs_images[0] = draw.image,
+                    };
+                    sg_apply_bindings(&bindings);
 
-            mat4 mvp_mat = mat4_transpose(mat4_multiply_n(4,
-                        ui_proj_mat,
-                        mat4_translation(translate),
-                        mat4_rotation_z(angle),
-                        mat4_scale(scale)));
+                    mat4 mvp_mat = mat4_transpose(mat4_multiply_n(4,
+                                ui_proj_mat,
+                                mat4_translation(translate),
+                                mat4_rotation_z(angle),
+                                mat4_scale(scale)));
 
-            golf_shader_uniform_t *vs_uniform = golf_shader_get_vs_uniform(shader, "ui_vs_params");
-            golf_shader_uniform_set_mat4(vs_uniform, "mvp_mat", mvp_mat);
-            sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &(sg_range) { vs_uniform->data, vs_uniform->size } );
+                    golf_shader_uniform_t *vs_uniform = golf_shader_get_vs_uniform(shader, "ui_vs_params");
+                    golf_shader_uniform_set_mat4(vs_uniform, "mvp_mat", mvp_mat);
+                    sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &(sg_range) { vs_uniform->data, vs_uniform->size } );
 
-            golf_shader_uniform_t *fs_uniform = golf_shader_get_fs_uniform(shader, "ui_fs_params");
-            golf_shader_uniform_set_float(fs_uniform, "tex_x", draw.uv0.x);
-            golf_shader_uniform_set_float(fs_uniform, "tex_y", draw.uv0.y);
-            golf_shader_uniform_set_float(fs_uniform, "tex_dx", draw.uv1.x - draw.uv0.x);
-            golf_shader_uniform_set_float(fs_uniform, "tex_dy", draw.uv1.y - draw.uv0.y);
-            golf_shader_uniform_set_float(fs_uniform, "is_font", draw.is_font);
-            golf_shader_uniform_set_vec4(fs_uniform, "color", draw.overlay_color);
-            golf_shader_uniform_set_float(fs_uniform, "alpha", draw.alpha);
-            sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &(sg_range) { fs_uniform->data, fs_uniform->size });
+                    golf_shader_uniform_t *fs_uniform = golf_shader_get_fs_uniform(shader, "ui_fs_params");
+                    golf_shader_uniform_set_float(fs_uniform, "tex_x", draw.uv0.x);
+                    golf_shader_uniform_set_float(fs_uniform, "tex_y", draw.uv0.y);
+                    golf_shader_uniform_set_float(fs_uniform, "tex_dx", draw.uv1.x - draw.uv0.x);
+                    golf_shader_uniform_set_float(fs_uniform, "tex_dy", draw.uv1.y - draw.uv0.y);
+                    golf_shader_uniform_set_float(fs_uniform, "is_font", draw.is_font);
+                    golf_shader_uniform_set_vec4(fs_uniform, "color", draw.overlay_color);
+                    golf_shader_uniform_set_float(fs_uniform, "alpha", draw.alpha);
+                    sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &(sg_range) { fs_uniform->data, fs_uniform->size });
 
-            sg_draw(0, square->positions.length, 1);
+                    sg_draw(0, square->positions.length, 1);
+                    break;
+                }
+                case GOLF_UI_DRAW_APPLY_VIEWPORT: {
+                    vec2 pos = draw.pos;
+                    vec2 size = draw.size;
+                    pos.x -= 0.5f * size.x;
+                    pos.y -= 0.5f * size.y;
+
+                    sg_apply_scissor_rectf(pos.x, pos.y, size.x, size.y, true);
+                    break;
+                }
+                case GOLF_UI_DRAW_UNDO_APPLY_VIEWPORT: {
+                    sg_apply_scissor_rectf(graphics->viewport_pos.x, graphics->viewport_pos.y, 
+                            graphics->viewport_size.x, graphics->viewport_size.y, true);
+                    break;
+                }
+            }
         }
     }
 
@@ -644,33 +663,34 @@ void golf_draw(void) {
 
     if (golf->state == GOLF_STATE_MAIN_MENU || golf->state == GOLF_STATE_IN_GAME) {
         _draw_game();
+
+        {
+            sg_pass_action action = {
+                .colors[0] = {
+                    .action = SG_ACTION_DONTCARE,
+                },
+            };
+
+            sg_begin_default_pass(&action, (int)graphics->viewport_size.x, (int)graphics->viewport_size.y);
+            sg_apply_viewportf(graphics->viewport_pos.x, graphics->viewport_pos.y, 
+                    graphics->viewport_size.x, graphics->viewport_size.y, true);
+
+            golf_shader_t *shader = golf_data_get_shader("data/shaders/fxaa.glsl");
+            golf_shader_pipeline_t *pipeline = golf_shader_get_pipeline(shader, "fxaa");
+
+            sg_apply_pipeline(pipeline->sg_pipeline);
+            golf_model_t *square = golf_data_get_model("data/models/render_image_square.obj");
+            sg_bindings bindings = {
+                .vertex_buffers[0] = square->sg_positions_buf,
+                .vertex_buffers[1] = square->sg_texcoords_buf,
+                .fs_images[0] = draw.game_draw_pass_image,
+            };
+            sg_apply_bindings(&bindings);
+            sg_draw(0, square->positions.length, 1);
+            sg_end_pass();
+        }
     }
 
-    {
-        sg_pass_action action = {
-            .colors[0] = {
-                .action = SG_ACTION_DONTCARE,
-            },
-        };
-
-        sg_begin_default_pass(&action, (int)graphics->viewport_size.x, (int)graphics->viewport_size.y);
-        sg_apply_viewportf(graphics->viewport_pos.x, graphics->viewport_pos.y, 
-                graphics->viewport_size.x, graphics->viewport_size.y, true);
-
-        golf_shader_t *shader = golf_data_get_shader("data/shaders/fxaa.glsl");
-        golf_shader_pipeline_t *pipeline = golf_shader_get_pipeline(shader, "fxaa");
-
-        sg_apply_pipeline(pipeline->sg_pipeline);
-        golf_model_t *square = golf_data_get_model("data/models/render_image_square.obj");
-        sg_bindings bindings = {
-            .vertex_buffers[0] = square->sg_positions_buf,
-            .vertex_buffers[1] = square->sg_texcoords_buf,
-            .fs_images[0] = draw.game_draw_pass_image,
-        };
-        sg_apply_bindings(&bindings);
-        sg_draw(0, square->positions.length, 1);
-        sg_end_pass();
-    }
 
     _draw_ui();
 }

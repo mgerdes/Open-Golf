@@ -90,63 +90,6 @@
             ]
         },
         {
-            "name": "courses_button",
-            "type": "button",
-            "anchor": [0.5, 0.45],
-            "pos": [0, 300],
-            "size": [280, 100],
-            "up_entities": [
-                {
-                    "parent": "courses_button",
-                    "type": "pixel_pack_square",
-                    "pixel_pack": "data/textures/pixel_pack.pixel_pack",
-                    "square": "blue_button_up",
-                    "anchor": [0.5, 0.5],
-                    "pos": [0, 0],
-                    "size": [280, 100],
-                    "tile_size": 64,
-                    "overlay_color": [0, 0, 0, 0]
-                },
-                {
-                    "parent": "courses_button",
-                    "type": "text",
-                    "font": "data/font/Castle-Rock.ttf",
-                    "anchor": [0.5, 0.5],
-                    "pos": [0, 2],
-                    "horiz_align": 0,
-                    "vert_align": 0,
-                    "font_size": 60,
-                    "color": [0.3, 0.1, 0.3, 1],
-                    "text": "COURSES"
-                }
-            ],
-            "down_entities": [
-                {
-                    "parent": "courses_button",
-                    "type": "pixel_pack_square",
-                    "pixel_pack": "data/textures/pixel_pack.pixel_pack",
-                    "square": "blue_button_down",
-                    "anchor": [0.5, 0.5],
-                    "pos": [0, 0],
-                    "size": [280, 100],
-                    "tile_size": 64,
-                    "overlay_color": [0, 0, 0, 0]
-                },
-                {
-                    "parent": "courses_button",
-                    "type": "text",
-                    "font": "data/font/Castle-Rock.ttf",
-                    "anchor": [0.5, 0.5],
-                    "pos": [0, 8],
-                    "horiz_align": 0,
-                    "vert_align": 0,
-                    "font_size": 60,
-                    "color": [0.3, 0.1, 0.3, 1],
-                    "text": "COURSES"
-                }
-            ]
-        },
-        {
             "name": "main_text",
             "type": "text",
             "font": "data/font/Castle-Rock.ttf",
@@ -169,6 +112,81 @@
             "font_size": 128,
             "color": [0.7, 0.9, 0.7, 1],
             "text": "OPEN GOLF"
+        },
+        {
+            "name": "level_select_background",
+            "type": "pixel_pack_square",
+            "pixel_pack": "data/textures/pixel_pack.pixel_pack",
+            "square": "blue_background",
+            "anchor": [0.5, 0.5],
+            "pos": [0, 0],
+            "size": [640, 780],
+            "tile_size": 64,
+            "overlay_color": [0, 0, 0, 0]
+        },
+        {
+            "parent": "level_select_background",
+            "name": "level_select_exit_button",
+            "type": "button",
+            "anchor": [0.5, 0.90],
+            "pos": [0, 0],
+            "size": [60, 60],
+            "up_entities": [
+                {
+                    "parent": "level_select_exit_button",
+                    "type": "pixel_pack_square",
+                    "pixel_pack": "data/textures/pixel_pack.pixel_pack",
+                    "square": "blue_button_up",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 0],
+                    "size": [60, 60],
+                    "tile_size": 32,
+                    "overlay_color": [0, 0, 0, 0]
+                }
+            ],
+            "down_entities": [
+                {
+                    "parent": "level_select_exit_button",
+                    "type": "pixel_pack_square",
+                    "pixel_pack": "data/textures/pixel_pack.pixel_pack",
+                    "square": "blue_button_down",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 0],
+                    "size": [60, 60],
+                    "tile_size": 32,
+                    "overlay_color": [0, 0, 0, 0]
+                }
+            ]
+        },
+        {
+            "parent": "level_select_background",
+            "name": "level_select_scroll_box",
+            "type": "level_select_scroll_box",
+            "anchor": [0.5, 0.5],
+            "pos": [0, -20],
+            "size": [580, 500],
+            "button_size": [130, 130],
+            "button_tile_size": 64,
+            "button_pixel_pack": "data/textures/pixel_pack.pixel_pack",
+            "button_up_square": "blue_button_up",
+            "button_down_square": "blue_button_down",
+            "button_font": "data/font/FiraSans-Bold.ttf",
+            "button_best_text_size": 28,
+            "button_best_text_color": [1, 1, 1, 1],
+            "button_best_text_offset": [0, 20],
+            "button_num_text_size": 44,
+            "button_num_text_color": [1, 1, 1, 1],
+            "button_num_text_offset": [0, -24],
+            "button_down_text_offset": [0, 6],
+            "scroll_bar_background_width": 3,
+            "scroll_bar_background_padding": 2,
+            "scroll_bar_square": "blue_border_background",
+            "scroll_bar_down_overlay": [0, 0, 0, 0.1],
+            "scroll_bar_tile_size": 1,
+            "scroll_bar_width": 8,
+            "scroll_bar_height": 80,
+            "scroll_bar_leeway": 60,
+            "scroll_bar_leeway_fix_speed": 200
         }
     ]
 }
