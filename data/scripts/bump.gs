@@ -15,12 +15,12 @@ void generate(float N, float width, float height, float length) {
             idx[2] = 2 * i + 1;
             idx[3] = 2 * i;
 
-            uv[0] = 0;
-            uv[1] = 0;
-            uv[2] = 0;
-            uv[3] = 0;
+            uv[0] = V2(0, 0.5 * (i - 1) / N);
+            uv[1] = V2(width, 0.5 * (i - 1) / N);
+            uv[2] = V2(width, 0.5 * i / N);
+            uv[3] = V2(0, 0.5 * i / N);
 
-            terrain_model_add_face("default", idx, uv);
+            terrain_model_add_face("bump_face", idx, uv);
         }
     }
 }

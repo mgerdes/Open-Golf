@@ -917,6 +917,14 @@ static gs_val_t gs_c_fn_terrain_model_add_face(gs_eval_t *eval, gs_val_t *vals, 
     int signature_arg_count = sizeof(signature_arg_types) / sizeof(signature_arg_types[0]);;
     gs_val_t sig = gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
     if (sig.is_return) return sig;
+
+    golf_string_t *material_string = vals[0].string_val;
+    vec_gs_val_t *idx_list = vals[1].list_val;
+    vec_gs_val_t *uvs_list = vals[2].list_val;
+
+    if (idx_list->length != uvs_list->length) {
+        return gs_val_error("Need same number of idx and uvs");
+    }
     
     vec_int_t idx;
     vec_init(&idx, "geo");
@@ -924,14 +932,24 @@ static gs_val_t gs_c_fn_terrain_model_add_face(gs_eval_t *eval, gs_val_t *vals, 
     vec_vec2_t uvs;
     vec_init(&uvs, "geo");
 
-    for (int i = 0; i < num_vals; i++) {
-        vec_push(&idx, vals[i].int_val);
-        vec_push(&uvs, V2(0, 0));
+    for (int i = 0; i < idx_list->length; i++) {
+        gs_val_t idx_val = gs_eval_cast(eval, idx_list->data[i], GS_VAL_INT);
+        if (idx_val.is_return) {
+            return gs_val_error("Expected an int in idx list");
+        }
+
+        gs_val_t uv_val = gs_eval_cast(eval, uvs_list->data[i], GS_VAL_VEC2);
+        if (uv_val.is_return) {
+            return gs_val_error("Expected a vec2 in uv list");
+        }
+
+        vec_push(&idx, idx_val.int_val);
+        vec_push(&uvs, uv_val.vec2_val);
     }
 
     vec3 water_dir = V3(0, 0, 0);
 
-    golf_geo_face_t face = golf_geo_face("default", idx, GOLF_GEO_FACE_UV_GEN_MANUAL, uvs, water_dir);
+    golf_geo_face_t face = golf_geo_face(material_string->cstr, idx, GOLF_GEO_FACE_UV_GEN_MANUAL, uvs, water_dir);
     golf_editor_edit_mode_geo_add_face(face);
 
     return gs_val_void();

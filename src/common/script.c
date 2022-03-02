@@ -1777,6 +1777,15 @@ static gs_val_t gs_c_fn_sin(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
     return gs_val_float(sinf(vals[0].float_val));
 }
 
+static gs_val_t gs_c_fn_sqrt(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
+    gs_val_type signature_arg_types[] = { GS_VAL_FLOAT };
+    int signature_arg_count = sizeof(signature_arg_types) / sizeof(signature_arg_types[0]);;
+    gs_val_t sig = gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
+    if (sig.is_return) return sig;
+
+    return gs_val_float(sqrtf(vals[0].float_val));
+}
+
 static void gs_parser_error(gs_parser_t *parser, gs_token_t token, const char *fmt, ...) {
     if (parser->error) {
         golf_log_error("There is already an error!"); 
@@ -2715,6 +2724,7 @@ bool golf_script_load(golf_script_t *script, const char *path, const char *data,
     map_set(&global_env->val_map, "V3", gs_val_c_fn(gs_c_fn_V3));
     map_set(&global_env->val_map, "cos", gs_val_c_fn(gs_c_fn_cos));
     map_set(&global_env->val_map, "sin", gs_val_c_fn(gs_c_fn_sin));
+    map_set(&global_env->val_map, "sqrt", gs_val_c_fn(gs_c_fn_sqrt));
     //map_set(&global_env->val_map, "terrain_model_add_point", gs_val_c_fn(gs_c_fn_terrain_model_add_point));
     //map_set(&global_env->val_map, "terrain_model_add_face", gs_val_c_fn(gs_c_fn_terrain_model_add_face));
 

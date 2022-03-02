@@ -6,6 +6,7 @@
     "data/scripts/teseting.gs",
     "data/scripts/spinner_platform.gs",
     "data/scripts/bump.gs",
+    "data/scripts/curve_down.gs",
 
     "data/shaders/diffuse_color_material.glsl",
     "data/shaders/environment_material.glsl",

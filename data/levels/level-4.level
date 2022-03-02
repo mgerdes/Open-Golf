@@ -245,6 +245,14 @@
             "vel_scale": 0,
             "type": "environment",
             "texture": "data\/textures\/environment\/dark_stone.jpg"
+        },
+        {
+            "name": "bump_face",
+            "friction": 0.3,
+            "restitution": 0.4,
+            "vel_scale": 1,
+            "type": "environment",
+            "texture": "data\/textures\/ground.png"
         }
     ],
     "lightmap_images": [
@@ -303,7 +311,7 @@
             },
             "lightmap_section": {
                 "lightmap_name": "main",
-                "uvs": "MD0BAAAtAADEOwEAhC4AADA9AQCELgAAxDsBAIQuAAAwPQEAAC0AAMQ7AQAALQAAECEBAKSeAAB7IgEAKKAAAHsiAQCkngAAeyIBACigAAAQIQEApJ4AABAhAQAooAAAyuwAAGAZAQCKGAEA5BoBAIoYAQBgGQEAihgBAOQaAQDK7AAAYBkBAMrsAADkGgEAOyIAAL5HAQD7TQAAOkYBADsiAAA6RgEA+00AADpGAQA7IgAAvkcBAPtNAAC+RwEA\/pYAAH7LAAC+wgAAAs0AAL7CAAB+ywAAvsIAAALNAAD+lgAAfssAAP6WAAACzQAAMqUAADCZAAByeQAAtJoAADKlAAC0mgAAcnkAALSaAAAypQAAMJkAAP+DAABTmgAA\/4MAAFOaAAAypQAAMJkAAP+DAACRmQAA\/4MAAJGZAAAypQAAMJkAAMt5AACRmQAAy3kAAFOaAAByeQAAtJoAAP+DAABTmgAAcnkAALSaAADLeQAAU5oAAHJ5AAAwmQAAcnkAADCZAADLeQAAU5oAAMt5AACRmQAAcnkAADCZAADLeQAAkZkAADKlAAAwmQAAsZkAAPqrAABEmQAAvLsAAB6aAAC8uwAAuHsAAG\/PAAB+igAAb88AAHqKAACGzgAAjw0BABswAQANCgEAaDoBANIYAQBoOgEAJMgAABBlAADq1gAAEGUAAKbLAADDWgAA"
+                "uvs": "MD0BAAAtAADEOwEAhC4AADA9AQCELgAAxDsBAIQuAAAwPQEAAC0AAMQ7AQAALQAAECEBAKSeAAB7IgEAKKAAAHsiAQCkngAAeyIBACigAAAQIQEApJ4AABAhAQAooAAAyuwAAGAZAQCKGAEA5BoBAIoYAQBgGQEAihgBAOQaAQDK7AAAYBkBAMrsAADkGgEAOyIAAL5HAQD7TQAAOkYBADsiAAA6RgEA+00AADpGAQA7IgAAvkcBAPtNAAC+RwEA\/pYAAH7LAAC+wgAAAs0AAL7CAAB+ywAAvsIAAALNAAD+lgAAfssAAP6WAAACzQAAMqUAADCZAAByeQAAtJoAADKlAAC0mgAAcnkAALSaAAAypQAAMJkAAP+DAABTmgAA\/4MAAFOaAAAypQAAMJkAAP+DAACRmQAA\/4MAAJGZAAAypQAAMJkAAMp5AACRmQAAynkAAFOaAAByeQAAtJoAAP+DAABTmgAAcnkAALSaAADKeQAAU5oAAHJ5AAAwmQAAcnkAADCZAADKeQAAU5oAAMp5AACRmQAAcnkAADCZAADKeQAAkZkAADKlAAAwmQAAsZkAAPqrAABEmQAAvLsAAB6aAAC8uwAAuHsAAG\/PAAB+igAAb88AAHqKAACGzgAAjw0BABswAQANCgEAaDoBANIYAQBoOgEAI8gAABBlAADq1gAAEGUAAKbLAADDWgAA"
             },
             "movement": {
                 "type": "none"
@@ -444,7 +452,7 @@
             },
             "lightmap_section": {
                 "lightmap_name": "main",
-                "uvs": "JAAAAMU2AQAeaAAAxTYBAB5oAAAmAAAAJAAAAMU2AQAeaAAAJgAAACQAAAAmAAAASmMAAHmGAQB7hgEAeYYBAHuGAQBCewEASmMAAHmGAQB7hgEAQnsBAEpjAABCewEArWoAAAAbAACtagAAj1EBADB1AACPUQEArWoAAAAbAAAwdQAAj1EBADB1AAAAGwAAIRUBAOwJAQAhmAAA7AkBACGYAAAiFQEAIRUBAOwJAQAhmAAAIhUBACEVAQAiFQEAlXoAABhKAACV9wAAGEoAAJX3AADhPgAAGwABADHzAAAbgwAAaP4AABsAAQBo\/gAArWoAAI9RAQCtagAAp1wBADB1AACnXAEArWoAAI9RAQAwdQAAp1wBADB1AACPUQEAHhcBABA9AAChIQEAED0AAKEhAQDZMQAAHhcBABA9AAChIQEA2TEAAB4XAQDZMQAAQTEBAGFfAQAPDgAAYV8BAA8OAACXagEAQTEBAGFfAQAPDgAAl2oBAEExAQCXagEAikoBALZOAQANVQEAtk4BAA1VAQAXGAAAikoBALZOAQANVQEAFxgAAIpKAQAXGAAACo8AAFFPAQAKDAEAUU8BAAoMAQAbRAEACo8AAFFPAQAKDAEAG0QBAAqPAAAbRAEABPcAABcOAAAEdAEAFw4AAAR0AQDhAgAABPcAABcOAAAEdAEA4QIAAAT3AADhAgAArWoAAOgPAACtagAAABsAADB1AAAAGwAArWoAAOgPAAAwdQAAABsAADB1AADoDwAA9bUAAD4dAAB4wAAAPh0AAHjAAAAHEgAA9bUAAD4dAAB4wAAABxIAAPW1AAAHEgAAviYBAIhaAQBBMQEAiFoBAEExAQDpIwAAviYBAIhaAQBBMQEA6SMAAL4mAQDpIwAARy0BAIh4AQBHLQEAUm0BABUKAABSbQEARy0BAIh4AQAVCgAAUm0BABUKAACIeAEAMI4AAPrTAAAwjgAAMd8AADALAQAx3wAAMI4AAPrTAAAwCwEAMd8AADALAQD60wAAGBsBAGUsAAAYGwEALiEAABieAAAuIQAAGBsBAGUsAAAYngAALiEAABieAABlLAAA"
+                "uvs": "JAAAAMU2AQAeaAAAxTYBAB5oAAAmAAAAJAAAAMU2AQAeaAAAJgAAACQAAAAmAAAASmMAAHmGAQB7hgEAeYYBAHuGAQBCewEASmMAAHmGAQB7hgEAQnsBAEpjAABCewEArWoAAP8aAACtagAAj1EBADB1AACPUQEArWoAAP8aAAAwdQAAj1EBADB1AAD\/GgAAIRUBAOwJAQAhmAAA7AkBACGYAAAiFQEAIRUBAOwJAQAhmAAAIhUBACEVAQAiFQEAlXoAABhKAACV9wAAGEoAAJX3AADhPgAAGwABADDzAAAbgwAAaP4AABsAAQBo\/gAArWoAAI9RAQCtagAAp1wBADB1AACnXAEArWoAAI9RAQAwdQAAp1wBADB1AACPUQEAHhcBABA9AAChIQEAED0AAKEhAQDZMQAAHhcBABA9AAChIQEA2TEAAB4XAQDZMQAAQTEBAGFfAQAPDgAAYV8BAA8OAACXagEAQTEBAGFfAQAPDgAAl2oBAEExAQCXagEAikoBALZOAQANVQEAtk4BAA1VAQAXGAAAikoBALZOAQANVQEAFxgAAIpKAQAXGAAACo8AAFFPAQAKDAEAUU8BAAoMAQAbRAEACo8AAFFPAQAKDAEAG0QBAAqPAAAbRAEABPcAABcOAAAEdAEAFw4AAAR0AQDhAgAABPcAABcOAAAEdAEA4QIAAAT3AADhAgAArWoAAOgPAACtagAA\/xoAADB1AAD\/GgAArWoAAOgPAAAwdQAA\/xoAADB1AADoDwAA9bUAAD4dAAB4wAAAPh0AAHjAAAAHEgAA9bUAAD4dAAB4wAAABxIAAPW1AAAHEgAAviYBAIhaAQBBMQEAiFoBAEExAQDpIwAAviYBAIhaAQBBMQEA6SMAAL4mAQDpIwAARy0BAIh4AQBHLQEAUm0BABUKAABSbQEARy0BAIh4AQAVCgAAUm0BABUKAACIeAEAMI4AAPrTAAAwjgAAMd8AADALAQAx3wAAMI4AAPrTAAAwCwEAMd8AADALAQD60wAAGBsBAGUsAAAYGwEALiEAABieAAAuIQAAGBsBAGUsAAAYngAALiEAABieAABlLAAA"
             },
             "movement": {
                 "type": "none"
@@ -473,7 +481,7 @@
             },
             "lightmap_section": {
                 "lightmap_name": "terrain",
-                "uvs": "a3YBAPN9AQDPggEAzoQBAKiEAQBQfAEAz4IBAM6EAQBrdgEA830BAO10AQDOhAEAVZsAANq9AACaiwAAk7YAACmNAADavQAAmosAAJO2AABVmwAA2r0AAG6aAACmuQAASzoBANfbAACvEAEA2ucAAM4bAQAT2QAArxABANrnAABLOgEA19sAAN89AQDz6wAAdc0AAL1+AQCr6AAALnABADbJAAAucAEAq+gAAC5wAQB1zQAAvX4BAGzkAAC9fgEA2ocAAFhaAQAIXwAAHWoBADmOAAAdagEACF8AAB1qAQDahwAAWFoBAGdlAABYWgEAgmYBAFy1AAC4gQEAzaYAAMFqAQDNpgAAuIEBAM2mAACCZgEAXLUAAPiFAQBctQAANxgAAHZ3AQA1BwAAzoQBAN8aAADOhAEANQcAAM6EAQA3GAAAdncBAN0JAAB2dwEAz\/8AAIEGAQCP6gAA1hgBAEECAQBMFAEAj+oAANYYAQDP\/wAAgQYBAATsAABLCgEAq0kBAJ9hAQCpOAEA+G4BAARHAQD4bgEAqTgBAPhuAQCrSQEAn2EBAAI2AQCfYQEADzEBAD79AABBAgEATBQBAAI2AQDWGAEAQQIBAEwUAQAPMQEAPv0AAAgJAQC7+QAAQQIBAEwUAQAICQEAu\/kAAM\/\/AACBBgEAz\/8AAIEGAQAICQEAu\/kAAGXoAADe9gAAz\/8AAIEGAQBl6AAA3vYAAG3jAAADBAEA5gUAAIpsAQC3LgAAxVwBAEQMAADFXAEAty4AAMVcAQDmBQAAimwBABY1AACKbAEAAXIBAHk+AAAaaQEAPyoAAHtjAQB5PgAAy3wBAKcXAAAaaQEAPyoAAAFyAQB5PgAAiF8BAGwYAAAaaQEAPyoAAMt8AQCnFwAAGmkBAD8qAACIXwEAbBgAAFVdAQBXIAAAqAIBANIWAAB3FAEAPCIAAL0AAQAAJQAAdxQBADwiAACoAgEA0hYAAHwSAQCaFAAA8GABAM6EAQDBUgEAvX4BADlQAQDOhAEAwVIBAL1+AQDwYAEAzoQBAJNiAQDhgAEAKu8AAD4EAABK4QAATwoAANjxAABPCgAASuEAAE8KAAAq7wAAPgQAAH7fAAA\/BgAAfkABAJsoAQDLfAEA6w0BAMJIAQDrDQEAy3wBAOsNAQB+QAEAmygBAGR1AQCbKAEA9wEAABsrAQD3EQAAdCQBAHUXAADh8gAA9xEAAHQkAQD3AQAAGysBAKY7AADaUQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA9xEAAHQkAQCmOwAA2lEBAHI9AACoQQEAcj0AAKhBAQCmOwAA2lEBAKhxAADyKwEAqHEAAPIrAQCmOwAA2lEBAL1wAADGOwEAqHEAAPIrAQC9cAAAxjsBAIuZAACTQQEAi5kAAJNBAQC9cAAAxjsBAHWZAADaUQEAi5kAAJNBAQB1mQAA2lEBACXIAADdKAEAJcgAAN0oAQB1mQAA2lEBAEnXAAASMQEAJcgAAN0oAQBJ1wAAEjEBAKHXAAD17gAAdRcAAOHyAAD7BQAA4AYBAPcBAAAbKwEAdRcAAOHyAABBCQAAVukAAPsFAADgBgEAQQkAAFbpAAB1FwAA4fIAADtKAABRzgAAO0oAAFHOAAB1FwAA4fIAAG9IAACD3gAAO0oAAFHOAABvSAAAg94AAOhsAACc5QAA6GwAAJzlAABvSAAAg94AAPBrAABb9gAA6GwAAJzlAADwawAAW\/YAACaaAACfzQAAJpoAAJ\/NAADwawAAW\/YAABCaAADn3QAAJpoAAJ\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\/hAACk0QAAzhsBABPZAADlKQEA\/MkAACsvAQAG1wAAn+EAAKTRAABm6QAAa94AAH7fAAB33wAA7kUBAKyaAACYTQEABKgAAJlJAQCsmgAAmE0BAASoAADuRQEArJoAAFE6AQAEqAAA0FEBAFy1AACYTQEABKgAAFE6AQAEqAAAmE0BAASoAADQUQEAXLUAAHhVAQAEqAAA0FEBAFy1AABROgEABKgAAHkKAQBctQAAeQoBAFy1AABROgEABKgAANEGAQAEqAAA+icAAGGCAQC1NwAAYYIBAEs2AAC9fgEAKhwBAMEjAQDmLQEA2lEBALI0AQBHOgEA5i0BANpRAQAqHAEAwSMBAGIEAQCuRwEAYgQBAK5HAQAqHAEAwSMBAL36AAAULAEAYgQBAK5HAQC9+gAAFCwBAGX5AADaUQEAZfkAANpRAQC9+gAAFCwBANjxAADsSgEABVwBAHFgAAA4dQEA9VQAAC9oAQB1TwAAOHUBAPVUAADPfgEAZ1EAAC9oAQB1TwAAz34BAGdRAAA4dQEA9VQAAPiFAQBxYAAAiVEBALV1AABTHAEA33AAAFpOAQCOfQAAUxwBAN9wAACJUQEAtXUAAMw7AQDNXAAAUxwBAN9wAADMOwEAzVwAAN8ZAQD2YQAA3xkBAPZhAACvDgEAjn0AAFMcAQDfcAAAt1QBAFz\/AAAwXQEAGecAAIlRAQD7+QAAMF0BABnnAAC3VAEAXP8AAPJoAQBv9AAAMF0BABnnAADyaAEAb\/QAACB0AQBM5wAAIHQBAEznAADyaAEAb\/QAAFh8AQBc\/wAAIHQBAEznAABYfAEAXP8AAGp\/AQBi+gAARXMBAFxrAABYdwEAxX4AAHt7AQCSdgAAWHcBAMV+AABFcwEAXGsAAB5pAQDyeQAAHmkBAPJ5AABFcwEAXGsAANlkAQBzbAAAHmkBAPJ5AADZZAEAc2wAAA1jAQDFfgAADWMBAMV+AADZZAEAc2wAAKVeAQDAeAAAanUBANMGAACTYgEAzgkAAFhjAQC8DAAAk2IBAM4JAABqdQEA0wYAAONsAQCbAAAA42wBAJsAAABqdQEA0wYAAJd6AQBVBAAAl3oBAFUEAABqdQEA0wYAAMt8AQC8DAAAFRUAAFIIAQBvSAAAg94AAHUXAADh8gAAb0gAAIPeAAAVFQAAUggBAPcRAAB0JAEAb0gAAIPeAAD3EQAAdCQBAHI9AACoQQEAb0gAAIPeAAByPQAAqEEBAPBrAABb9gAA8GsAAFv2AAByPQAAqEEBAKhxAADyKwEA8GsAAFv2AACocQAA8isBABCaAADn3QAAEJoAAOfdAACocQAA8isBAIuZAACTQQEAEJoAAOfdAACLmQAAk0EBAGjIAAAH9wAAaMgAAAf3AACLmQAAk0EBACXIAADdKAEA"
+                "uvs": "a3YBAPN9AQDPggEAzoQBAKiEAQBQfAEAz4IBAM6EAQBrdgEA830BAO10AQDOhAEAVZsAANq9AACaiwAAk7YAACmNAADavQAAmosAAJO2AABVmwAA2r0AAG6aAACmuQAASzoBANbbAACvEAEA2ucAAM4bAQAT2QAArxABANrnAABLOgEA1tsAAN89AQDz6wAAdc0AAL1+AQCr6AAALnABADbJAAAucAEAq+gAAC5wAQB1zQAAvX4BAGzkAAC9fgEA2ocAAFhaAQAIXwAAHWoBADmOAAAdagEACF8AAB1qAQDahwAAWFoBAGdlAABYWgEAgmYBAFy1AAC4gQEAzaYAAMFqAQDNpgAAuIEBAM2mAACCZgEAXLUAAPiFAQBctQAANxgAAHZ3AQA1BwAAzoQBAN8aAADOhAEANQcAAM6EAQA3GAAAdncBAN0JAAB2dwEAzv8AAIEGAQCP6gAA1hgBAEECAQBMFAEAj+oAANYYAQDO\/wAAgQYBAATsAABLCgEAq0kBAJ9hAQCpOAEA+G4BAARHAQD4bgEAqTgBAPhuAQCrSQEAn2EBAAI2AQCfYQEADzEBAD79AABBAgEATBQBAAI2AQDWGAEAQQIBAEwUAQAPMQEAPv0AAAgJAQC7+QAAQQIBAEwUAQAICQEAu\/kAAM7\/AACBBgEAzv8AAIEGAQAICQEAu\/kAAGXoAADe9gAAzv8AAIEGAQBl6AAA3vYAAG3jAAADBAEA5gUAAIpsAQC3LgAAxVwBAEQMAADFXAEAty4AAMVcAQDmBQAAimwBABY1AACKbAEAAXIBAHk+AAAaaQEAPyoAAHtjAQB5PgAAy3wBAKcXAAAaaQEAPyoAAAFyAQB5PgAAiF8BAGsYAAAaaQEAPyoAAMt8AQCnFwAAGmkBAD8qAACIXwEAaxgAAFVdAQBXIAAAqAIBANIWAAB3FAEAPCIAAL0AAQAAJQAAdxQBADwiAACoAgEA0hYAAHwSAQCaFAAA8GABAM6EAQDBUgEAvX4BADlQAQDOhAEAwVIBAL1+AQDwYAEAzoQBAJNiAQDhgAEAKu8AAD4EAABK4QAATwoAANjxAABPCgAASuEAAE8KAAAq7wAAPgQAAH3fAAA\/BgAAfkABAJsoAQDLfAEA6w0BAMJIAQDrDQEAy3wBAOsNAQB+QAEAmygBAGR1AQCbKAEA9wEAABsrAQD3EQAAdCQBAHUXAADh8gAA9xEAAHQkAQD3AQAAGysBAKY7AADaUQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA9xEAAHQkAQCmOwAA2lEBAHI9AACoQQEAcj0AAKhBAQCmOwAA2lEBAKhxAADyKwEAqHEAAPIrAQCmOwAA2lEBAL1wAADGOwEAqHEAAPIrAQC9cAAAxjsBAIuZAACTQQEAi5kAAJNBAQC9cAAAxjsBAHWZAADaUQEAi5kAAJNBAQB1mQAA2lEBACXIAADdKAEAJcgAAN0oAQB1mQAA2lEBAEnXAAASMQEAJcgAAN0oAQBJ1wAAEjEBAKHXAAD07gAAdRcAAOHyAAD7BQAA4AYBAPcBAAAbKwEAdRcAAOHyAABBCQAAVukAAPsFAADgBgEAQQkAAFbpAAB1FwAA4fIAADtKAABRzgAAO0oAAFHOAAB1FwAA4fIAAG9IAACD3gAAO0oAAFHOAABvSAAAg94AAOhsAACc5QAA6GwAAJzlAABvSAAAg94AAPBrAABb9gAA6GwAAJzlAADwawAAW\/YAACaaAACfzQAAJpoAAJ\/NAADwawAAW\/YAABCaAADn3QAAJpoAAJ\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\/hAACk0QAAzhsBABPZAADlKQEA\/MkAACsvAQAG1wAAn+EAAKTRAABm6QAAa94AAH3fAAB33wAA7kUBAKyaAACYTQEABKgAAJlJAQCsmgAAmE0BAASoAADuRQEArJoAAFE6AQAEqAAA0FEBAFy1AACYTQEABKgAAFE6AQAEqAAAmE0BAASoAADQUQEAXLUAAHhVAQAEqAAA0FEBAFy1AABROgEABKgAAHkKAQBctQAAeQoBAFy1AABROgEABKgAANEGAQAEqAAA+icAAGGCAQC1NwAAYYIBAEs2AAC9fgEAKhwBAMEjAQDmLQEA2lEBALI0AQBHOgEA5i0BANpRAQAqHAEAwSMBAGIEAQCuRwEAYgQBAK5HAQAqHAEAwSMBAL36AAAULAEAYgQBAK5HAQC9+gAAFCwBAGX5AADaUQEAZfkAANpRAQC9+gAAFCwBANjxAADsSgEABVwBAHFgAAA4dQEA9VQAAC9oAQB1TwAAOHUBAPVUAADPfgEAZ1EAAC9oAQB1TwAAz34BAGdRAAA4dQEA9VQAAPiFAQBxYAAAiVEBALV1AABTHAEA33AAAFpOAQCOfQAAUxwBAN9wAACJUQEAtXUAAMw7AQDNXAAAUxwBAN9wAADMOwEAzVwAAN8ZAQD1YQAA3xkBAPVhAACvDgEAjn0AAFMcAQDfcAAAt1QBAFz\/AAAwXQEAGecAAIlRAQD6+QAAMF0BABnnAAC3VAEAXP8AAPJoAQBv9AAAMF0BABnnAADyaAEAb\/QAACB0AQBM5wAAIHQBAEznAADyaAEAb\/QAAFh8AQBc\/wAAIHQBAEznAABYfAEAXP8AAGp\/AQBi+gAARXMBAFxrAABYdwEAxX4AAHt7AQCSdgAAWHcBAMV+AABFcwEAXGsAAB5pAQDyeQAAHmkBAPJ5AABFcwEAXGsAANlkAQBzbAAAHmkBAPJ5AADZZAEAc2wAAA1jAQDFfgAADWMBAMV+AADZZAEAc2wAAKVeAQDAeAAAanUBANMGAACTYgEAzgkAAFhjAQC8DAAAk2IBAM4JAABqdQEA0wYAAONsAQCbAAAA42wBAJsAAABqdQEA0wYAAJd6AQBVBAAAl3oBAFUEAABqdQEA0wYAAMt8AQC8DAAAFRUAAFIIAQBvSAAAg94AAHUXAADh8gAAb0gAAIPeAAAVFQAAUggBAPcRAAB0JAEAb0gAAIPeAAD3EQAAdCQBAHI9AACoQQEAb0gAAIPeAAByPQAAqEEBAPBrAABb9gAA8GsAAFv2AAByPQAAqEEBAKhxAADyKwEA8GsAAFv2AACocQAA8isBABCaAADn3QAAEJoAAOfdAACocQAA8isBAIuZAACTQQEAEJoAAOfdAACLmQAAk0EBAGjIAAAH9wAAaMgAAAf3AACLmQAAk0EBACXIAADdKAEA"
             },
             "movement": {
                 "type": "none"
@@ -487,72 +495,72 @@
                 "p": [0, 0, 0.25, 5, 0, 0.25, 0, 0.030902, 0.23776, 5, 0.030902, 0.23776, 0, 0.058779, 0.20225, 5, 0.058779, 0.20225, 0, 0.080902, 0.14695, 5, 0.080902, 0.14695, 0, 0.095106, 0.077254, 5, 0.095106, 0.077254, 0, 0.1, -1.0928e-08, 5, 0.1, -1.0928e-08, 0, 0.095106, -0.077254, 5, 0.095106, -0.077254, 0, 0.080902, -0.14695, 5, 0.080902, -0.14695, 0, 0.058779, -0.20225, 5, 0.058779, -0.20225, 0, 0.030902, -0.23776, 5, 0.030902, -0.23776, 0, -8.7423e-09, -0.25, 5, -8.7423e-09, -0.25],
                 "faces": [
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [0, 1, 3, 2],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0, 5, 0, 5, 0.05, 0, 0.05],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [2, 3, 5, 4],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.05, 5, 0.05, 5, 0.1, 0, 0.1],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [4, 5, 7, 6],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.1, 5, 0.1, 5, 0.15, 0, 0.15],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [6, 7, 9, 8],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.15, 5, 0.15, 5, 0.2, 0, 0.2],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [8, 9, 11, 10],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.2, 5, 0.2, 5, 0.25, 0, 0.25],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [10, 11, 13, 12],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.25, 5, 0.25, 5, 0.3, 0, 0.3],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [12, 13, 15, 14],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.3, 5, 0.3, 5, 0.35, 0, 0.35],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [14, 15, 17, 16],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.35, 5, 0.35, 5, 0.4, 0, 0.4],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [16, 17, 19, 18],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.4, 5, 0.4, 5, 0.45, 0, 0.45],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [18, 19, 21, 20],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.45, 5, 0.45, 5, 0.5, 0, 0.5],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     }
@@ -614,72 +622,72 @@
                 "p": [0, 0, 0.25, 5, 0, 0.25, 0, 0.030902, 0.23776, 5, 0.030902, 0.23776, 0, 0.058779, 0.20225, 5, 0.058779, 0.20225, 0, 0.080902, 0.14695, 5, 0.080902, 0.14695, 0, 0.095106, 0.077254, 5, 0.095106, 0.077254, 0, 0.1, -1.0928e-08, 5, 0.1, -1.0928e-08, 0, 0.095106, -0.077254, 5, 0.095106, -0.077254, 0, 0.080902, -0.14695, 5, 0.080902, -0.14695, 0, 0.058779, -0.20225, 5, 0.058779, -0.20225, 0, 0.030902, -0.23776, 5, 0.030902, -0.23776, 0, -8.7423e-09, -0.25, 5, -8.7423e-09, -0.25],
                 "faces": [
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [0, 1, 3, 2],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0, 5, 0, 5, 0.05, 0, 0.05],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [2, 3, 5, 4],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.05, 5, 0.05, 5, 0.1, 0, 0.1],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [4, 5, 7, 6],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.1, 5, 0.1, 5, 0.15, 0, 0.15],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [6, 7, 9, 8],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.15, 5, 0.15, 5, 0.2, 0, 0.2],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [8, 9, 11, 10],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.2, 5, 0.2, 5, 0.25, 0, 0.25],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [10, 11, 13, 12],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.25, 5, 0.25, 5, 0.3, 0, 0.3],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [12, 13, 15, 14],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.3, 5, 0.3, 5, 0.35, 0, 0.35],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [14, 15, 17, 16],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.35, 5, 0.35, 5, 0.4, 0, 0.4],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [16, 17, 19, 18],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.4, 5, 0.4, 5, 0.45, 0, 0.45],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [18, 19, 21, 20],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.45, 5, 0.45, 5, 0.5, 0, 0.5],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     }
@@ -727,7 +735,7 @@
             },
             "lightmap_section": {
                 "lightmap_name": "main",
-                "uvs": "8DYBAGUYAAD1zgAAZRgAAPXOAABNGQAA8DYBAGUYAAD1zgAATRkAAPA2AQBNGQAAEjgBAOPeAAASOAEAs2gAAOE4AQCzaAAAEjgBAOPeAADhOAEAs2gAAOE4AQDj3gAA4TgBAOPeAADhOAEAs2gAACI6AQCzaAAA4TgBAOPeAAAiOgEAs2gAACI6AQDj3gAAIjoBAOPeAAAiOgEAs2gAALc7AQCzaAAAIjoBAOPeAAC3OwEAs2gAALc7AQDj3gAAtzsBAOPeAAC3OwEAs2gAAHg9AQCzaAAAtzsBAOPeAAB4PQEAs2gAAHg9AQDj3gAAeD0BAOPeAAB4PQEAs2gAADk\/AQCzaAAAeD0BAOPeAAA5PwEAs2gAADk\/AQDj3gAAOT8BAOPeAAA5PwEAs2gAAM5AAQCzaAAAOT8BAOPeAADOQAEAs2gAAM5AAQDj3gAAzkABAOPeAADOQAEAs2gAABBCAQCzaAAAzkABAOPeAAAQQgEAs2gAABBCAQDj3gAAEEIBAOPeAAAQQgEAs2gAAN5CAQCzaAAAEEIBAOPeAADeQgEAs2gAAN5CAQDj3gAAp6AAANzlAAChCAEA3OUAAKEIAQDz5AAAp6AAANzlAAChCAEA8+QAAKegAADz5AAA"
+                "uvs": "8DYBAGUYAAD1zgAAZRgAAPXOAABNGQAA8DYBAGUYAAD1zgAATRkAAPA2AQBNGQAAEjgBAOPeAAASOAEAsmgAAOE4AQCyaAAAEjgBAOPeAADhOAEAsmgAAOE4AQDj3gAA4TgBAOPeAADhOAEAsmgAACI6AQCyaAAA4TgBAOPeAAAiOgEAsmgAACI6AQDj3gAAIjoBAOPeAAAiOgEAsmgAALc7AQCyaAAAIjoBAOPeAAC3OwEAsmgAALc7AQDj3gAAtzsBAOPeAAC3OwEAsmgAAHg9AQCyaAAAtzsBAOPeAAB4PQEAsmgAAHg9AQDj3gAAeD0BAOPeAAB4PQEAsmgAADk\/AQCyaAAAeD0BAOPeAAA5PwEAsmgAADk\/AQDj3gAAOT8BAOPeAAA5PwEAsmgAAM5AAQCyaAAAOT8BAOPeAADOQAEAsmgAAM5AAQDj3gAAzkABAOPeAADOQAEAsmgAABBCAQCyaAAAzkABAOPeAAAQQgEAsmgAABBCAQDj3gAAEEIBAOPeAAAQQgEAsmgAAN5CAQCyaAAAEEIBAOPeAADeQgEAsmgAAN5CAQDj3gAAp6AAANzlAAChCAEA3OUAAKEIAQDz5AAAp6AAANzlAAChCAEA8+QAAKegAADz5AAA"
             },
             "movement": {
                 "type": "none"
@@ -741,72 +749,72 @@
                 "p": [0, 0, 0.25, 5, 0, 0.25, 0, 0.030902, 0.23776, 5, 0.030902, 0.23776, 0, 0.058779, 0.20225, 5, 0.058779, 0.20225, 0, 0.080902, 0.14695, 5, 0.080902, 0.14695, 0, 0.095106, 0.077254, 5, 0.095106, 0.077254, 0, 0.1, -1.0928e-08, 5, 0.1, -1.0928e-08, 0, 0.095106, -0.077254, 5, 0.095106, -0.077254, 0, 0.080902, -0.14695, 5, 0.080902, -0.14695, 0, 0.058779, -0.20225, 5, 0.058779, -0.20225, 0, 0.030902, -0.23776, 5, 0.030902, -0.23776, 0, -8.7423e-09, -0.25, 5, -8.7423e-09, -0.25],
                 "faces": [
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [0, 1, 3, 2],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0, 5, 0, 5, 0.05, 0, 0.05],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [2, 3, 5, 4],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.05, 5, 0.05, 5, 0.1, 0, 0.1],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [4, 5, 7, 6],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.1, 5, 0.1, 5, 0.15, 0, 0.15],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [6, 7, 9, 8],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.15, 5, 0.15, 5, 0.2, 0, 0.2],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [8, 9, 11, 10],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.2, 5, 0.2, 5, 0.25, 0, 0.25],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [10, 11, 13, 12],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.25, 5, 0.25, 5, 0.3, 0, 0.3],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [12, 13, 15, 14],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.3, 5, 0.3, 5, 0.35, 0, 0.35],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [14, 15, 17, 16],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.35, 5, 0.35, 5, 0.4, 0, 0.4],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [16, 17, 19, 18],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.4, 5, 0.4, 5, 0.45, 0, 0.45],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [18, 19, 21, 20],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.45, 5, 0.45, 5, 0.5, 0, 0.5],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     }
@@ -868,72 +876,72 @@
                 "p": [0, 0, 0.25, 5, 0, 0.25, 0, 0.030902, 0.23776, 5, 0.030902, 0.23776, 0, 0.058779, 0.20225, 5, 0.058779, 0.20225, 0, 0.080902, 0.14695, 5, 0.080902, 0.14695, 0, 0.095106, 0.077254, 5, 0.095106, 0.077254, 0, 0.1, -1.0928e-08, 5, 0.1, -1.0928e-08, 0, 0.095106, -0.077254, 5, 0.095106, -0.077254, 0, 0.080902, -0.14695, 5, 0.080902, -0.14695, 0, 0.058779, -0.20225, 5, 0.058779, -0.20225, 0, 0.030902, -0.23776, 5, 0.030902, -0.23776, 0, -8.7423e-09, -0.25, 5, -8.7423e-09, -0.25],
                 "faces": [
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [0, 1, 3, 2],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0, 5, 0, 5, 0.05, 0, 0.05],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [2, 3, 5, 4],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.05, 5, 0.05, 5, 0.1, 0, 0.1],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [4, 5, 7, 6],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.1, 5, 0.1, 5, 0.15, 0, 0.15],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [6, 7, 9, 8],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.15, 5, 0.15, 5, 0.2, 0, 0.2],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [8, 9, 11, 10],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.2, 5, 0.2, 5, 0.25, 0, 0.25],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [10, 11, 13, 12],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.25, 5, 0.25, 5, 0.3, 0, 0.3],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [12, 13, 15, 14],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.3, 5, 0.3, 5, 0.35, 0, 0.35],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [14, 15, 17, 16],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.35, 5, 0.35, 5, 0.4, 0, 0.4],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [16, 17, 19, 18],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.4, 5, 0.4, 5, 0.45, 0, 0.45],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [18, 19, 21, 20],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.45, 5, 0.45, 5, 0.5, 0, 0.5],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     }
@@ -995,72 +1003,72 @@
                 "p": [0, 0, 0.25, 5, 0, 0.25, 0, 0.030902, 0.23776, 5, 0.030902, 0.23776, 0, 0.058779, 0.20225, 5, 0.058779, 0.20225, 0, 0.080902, 0.14695, 5, 0.080902, 0.14695, 0, 0.095106, 0.077254, 5, 0.095106, 0.077254, 0, 0.1, -1.0928e-08, 5, 0.1, -1.0928e-08, 0, 0.095106, -0.077254, 5, 0.095106, -0.077254, 0, 0.080902, -0.14695, 5, 0.080902, -0.14695, 0, 0.058779, -0.20225, 5, 0.058779, -0.20225, 0, 0.030902, -0.23776, 5, 0.030902, -0.23776, 0, -8.7423e-09, -0.25, 5, -8.7423e-09, -0.25],
                 "faces": [
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [0, 1, 3, 2],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0, 5, 0, 5, 0.05, 0, 0.05],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [2, 3, 5, 4],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.05, 5, 0.05, 5, 0.1, 0, 0.1],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [4, 5, 7, 6],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.1, 5, 0.1, 5, 0.15, 0, 0.15],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [6, 7, 9, 8],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.15, 5, 0.15, 5, 0.2, 0, 0.2],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [8, 9, 11, 10],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.2, 5, 0.2, 5, 0.25, 0, 0.25],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [10, 11, 13, 12],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.25, 5, 0.25, 5, 0.3, 0, 0.3],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [12, 13, 15, 14],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.3, 5, 0.3, 5, 0.35, 0, 0.35],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [14, 15, 17, 16],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.35, 5, 0.35, 5, 0.4, 0, 0.4],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [16, 17, 19, 18],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.4, 5, 0.4, 5, 0.45, 0, 0.45],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [18, 19, 21, 20],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.45, 5, 0.45, 5, 0.5, 0, 0.5],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     }
@@ -1108,7 +1116,7 @@
             },
             "lightmap_section": {
                 "lightmap_name": "main",
-                "uvs": "ddsAAKoBAAB7cwAAqgEAAHtzAACTAgAAddsAAKoBAAB7cwAAkwIAAHXbAACTAgAA+OUAADjEAAD45QAACE4AAMfmAAAITgAA+OUAADjEAADH5gAACE4AAMfmAAA4xAAAx+YAADjEAADH5gAACE4AAAjoAAAITgAAx+YAADjEAAAI6AAACE4AAAjoAAA4xAAACOgAADjEAAAI6AAACE4AAJ3pAAAITgAACOgAADjEAACd6QAACE4AAJ3pAAA4xAAAnekAADjEAACd6QAACE4AAF7rAAAITgAAnekAADjEAABe6wAACE4AAF7rAAA4xAAAXusAADjEAABe6wAACE4AAB\/tAAAITgAAXusAADjEAAAf7QAACE4AAB\/tAAA4xAAAH+0AADjEAAAf7QAACE4AALTuAAAITgAAH+0AADjEAAC07gAACE4AALTuAAA4xAAAtO4AADjEAAC07gAACE4AAPXvAAAITgAAtO4AADjEAAD17wAACE4AAPXvAAA4xAAA9e8AADjEAAD17wAACE4AAMTwAAAITgAA9e8AADjEAADE8AAACE4AAMTwAAA4xAAAapgAAM1XAQBkAAEAzVcBAGQAAQDlVgEAapgAAM1XAQBkAAEA5VYBAGqYAADlVgEA"
+                "uvs": "ddsAAKkBAAB7cwAAqQEAAHtzAACTAgAAddsAAKkBAAB7cwAAkwIAAHXbAACTAgAA+OUAADjEAAD45QAACE4AAMbmAAAITgAA+OUAADjEAADG5gAACE4AAMbmAAA4xAAAxuYAADjEAADG5gAACE4AAAjoAAAITgAAxuYAADjEAAAI6AAACE4AAAjoAAA4xAAACOgAADjEAAAI6AAACE4AAJ3pAAAITgAACOgAADjEAACd6QAACE4AAJ3pAAA4xAAAnekAADjEAACd6QAACE4AAF7rAAAITgAAnekAADjEAABe6wAACE4AAF7rAAA4xAAAXusAADjEAABe6wAACE4AAB7tAAAITgAAXusAADjEAAAe7QAACE4AAB7tAAA4xAAAHu0AADjEAAAe7QAACE4AALTuAAAITgAAHu0AADjEAAC07gAACE4AALTuAAA4xAAAtO4AADjEAAC07gAACE4AAPXvAAAITgAAtO4AADjEAAD17wAACE4AAPXvAAA4xAAA9e8AADjEAAD17wAACE4AAMTwAAAITgAA9e8AADjEAADE8AAACE4AAMTwAAA4xAAAapgAAM1XAQBkAAEAzVcBAGQAAQDlVgEAapgAAM1XAQBkAAEA5VYBAGqYAADlVgEA"
             },
             "movement": {
                 "type": "none"
@@ -1122,72 +1130,72 @@
                 "p": [0, 0, 0.25, 5, 0, 0.25, 0, 0.030902, 0.23776, 5, 0.030902, 0.23776, 0, 0.058779, 0.20225, 5, 0.058779, 0.20225, 0, 0.080902, 0.14695, 5, 0.080902, 0.14695, 0, 0.095106, 0.077254, 5, 0.095106, 0.077254, 0, 0.1, -1.0928e-08, 5, 0.1, -1.0928e-08, 0, 0.095106, -0.077254, 5, 0.095106, -0.077254, 0, 0.080902, -0.14695, 5, 0.080902, -0.14695, 0, 0.058779, -0.20225, 5, 0.058779, -0.20225, 0, 0.030902, -0.23776, 5, 0.030902, -0.23776, 0, -8.7423e-09, -0.25, 5, -8.7423e-09, -0.25],
                 "faces": [
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [0, 1, 3, 2],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0, 5, 0, 5, 0.05, 0, 0.05],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [2, 3, 5, 4],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.05, 5, 0.05, 5, 0.1, 0, 0.1],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [4, 5, 7, 6],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.1, 5, 0.1, 5, 0.15, 0, 0.15],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [6, 7, 9, 8],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.15, 5, 0.15, 5, 0.2, 0, 0.2],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [8, 9, 11, 10],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.2, 5, 0.2, 5, 0.25, 0, 0.25],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [10, 11, 13, 12],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.25, 5, 0.25, 5, 0.3, 0, 0.3],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [12, 13, 15, 14],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.3, 5, 0.3, 5, 0.35, 0, 0.35],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [14, 15, 17, 16],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.35, 5, 0.35, 5, 0.4, 0, 0.4],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [16, 17, 19, 18],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.4, 5, 0.4, 5, 0.45, 0, 0.45],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     },
                     {
-                        "material_name": "default",
+                        "material_name": "bump_face",
                         "idxs": [18, 19, 21, 20],
-                        "uvs": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "uvs": [0, 0.45, 5, 0.45, 5, 0.5, 0, 0.5],
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     }
