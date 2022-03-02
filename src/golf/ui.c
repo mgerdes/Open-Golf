@@ -724,8 +724,6 @@ static void _golf_ui_title_screen(float dt) {
 }
 
 static void _golf_ui_main_menu(float dt) {
-    GOLF_UNUSED(dt);
-
     golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
     _golf_ui_text_name(layout, "main_text");
     _golf_ui_text_name(layout, "main2_text");
