@@ -304,6 +304,14 @@ static void _golf_json_object_set_movement(JSON_Object *obj, const char *name, g
             json_object_set_number(movement_obj, "length", movement->length);
             break;
         }
+        case GOLF_MOVEMENT_PENDULUM: {
+            json_object_set_string(movement_obj, "type", "pendulum");
+            json_object_set_number(movement_obj, "t0", movement->t0);
+            json_object_set_number(movement_obj, "length", movement->length);
+            json_object_set_number(movement_obj, "theta0", movement->pendulum.theta0);
+            golf_json_object_set_vec3(movement_obj, "axis", movement->pendulum.axis);
+            break;
+        }
     }
 
     json_object_set_value(obj, name, movement_val);
@@ -472,6 +480,17 @@ golf_movement_t golf_movement_spinner(float t0, float length) {
     movement.repeats = false;
     movement.t0 = t0;
     movement.length = length;
+    return movement;
+}
+
+golf_movement_t golf_movement_pendulum(float t0, float length, float theta0, vec3 axis) {
+    golf_movement_t movement;
+    movement.type = GOLF_MOVEMENT_PENDULUM;
+    movement.repeats = true;
+    movement.t0 = t0;
+    movement.length = length;
+    movement.pendulum.theta0 = theta0;
+    movement.pendulum.axis = axis;
     return movement;
 }
 
@@ -816,6 +835,15 @@ golf_transform_t golf_transform_apply_movement(golf_transform_t transform, golf_
         case GOLF_MOVEMENT_SPINNER: {
             float a = 2 * MF_PI * (t / l);
             quat r = quat_create_from_axis_angle(V3(0, 1, 0), a);
+            new_transform.rotation = quat_multiply(r, transform.rotation);
+            break;
+        }
+        case GOLF_MOVEMENT_PENDULUM: {
+            float a = 2 * (t / l);
+            if (a >= 1) a = 2 - a;
+
+            float theta = movement.pendulum.theta0 * cosf(MF_PI * a);
+            quat r = quat_create_from_axis_angle(movement.pendulum.axis, theta);
             new_transform.rotation = quat_multiply(r, transform.rotation);
             break;
         }

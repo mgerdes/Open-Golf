@@ -2104,6 +2104,8 @@ static void _golf_ui_layout_unload_entity(golf_ui_layout_entity_t *entity) {
         case GOLF_UI_PIXEL_PACK_SQUARE:
         case GOLF_UI_GIF_TEXTURE:
         case GOLF_UI_AIM_CIRCLE:
+        case GOLF_UI_TEXTURE:
+        case GOLF_UI_LEVEL_SELECT_SCROLL_BOX:
             break;
         case GOLF_UI_TEXT:
             golf_string_deinit(&entity->text.text);
@@ -2331,6 +2333,13 @@ static void _golf_json_object_get_movement(JSON_Object *obj, const char *name, g
         float t0 = (float)json_object_get_number(movement_obj, "t0");
         float length = (float)json_object_get_number(movement_obj, "length");
         *movement = golf_movement_spinner(t0, length);
+    }
+    else if (type && strcmp(type, "pendulum") == 0) {
+        float t0 = (float)json_object_get_number(movement_obj, "t0");
+        float length = (float)json_object_get_number(movement_obj, "length");
+        float theta0 = (float)json_object_get_number(movement_obj, "theta0");
+        vec3 axis = golf_json_object_get_vec3(movement_obj, "axis");
+        *movement = golf_movement_pendulum(t0, length, theta0, axis);
     }
     else {
         golf_log_warning("Invalid type for movement");

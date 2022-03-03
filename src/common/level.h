@@ -66,6 +66,7 @@ typedef enum golf_movement_type {
     GOLF_MOVEMENT_NONE,
     GOLF_MOVEMENT_LINEAR,
     GOLF_MOVEMENT_SPINNER,
+    GOLF_MOVEMENT_PENDULUM,
 } golf_movement_type_t;
 
 typedef struct golf_movement {
@@ -76,11 +77,16 @@ typedef struct golf_movement {
         struct {
             vec3 p0, p1;
         } linear;
+        struct {
+            float theta0;
+            vec3 axis;
+        } pendulum;
     };
 } golf_movement_t;
 golf_movement_t golf_movement_none(void);
 golf_movement_t golf_movement_linear(float t0, vec3 p0, vec3 p1, float length);
 golf_movement_t golf_movement_spinner(float t0, float length);
+golf_movement_t golf_movement_pendulum(float t0, float length, float theta0, vec3 axis);
 
 typedef struct golf_lightmap_image {
     bool active;

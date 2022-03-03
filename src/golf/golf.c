@@ -8,6 +8,7 @@
 
 static golf_t golf;
 static golf_graphics_t *graphics;
+static golf_ui_t *ui;
 
 static const char *initial_level_path = "data/levels/level-1.level";
 
@@ -17,6 +18,7 @@ void golf_init(void) {
     golf.state = GOLF_STATE_TITLE_SCREEN;
     golf.title_screen.t = 0;
     graphics = golf_graphics_get();
+    ui = golf_ui_get();
 
     golf_game_init();
     golf_ui_init();
@@ -72,4 +74,9 @@ void golf_start_level(int level_num) {
     snprintf(golf.level_loading_path, GOLF_FILE_MAX_PATH, "data/levels/level-%d.level", level_num + 1);
     golf_data_load(golf.level_loading_path, true);
     golf.state = GOLF_STATE_LOADING_LEVEL;
+}
+
+void golf_goto_main_menu(void) {
+    ui->main_menu.is_level_select_open = false;
+    golf.state = GOLF_STATE_MAIN_MENU;
 }

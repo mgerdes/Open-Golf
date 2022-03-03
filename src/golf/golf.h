@@ -40,5 +40,6 @@ void golf_init(void);
 void golf_update(float dt);
 golf_t *golf_get(void);
 void golf_start_level(int level_num);
+void golf_goto_main_menu(void);
 
 #endif

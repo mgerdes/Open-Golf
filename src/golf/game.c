@@ -705,7 +705,7 @@ void golf_game_update(float dt) {
 }
 
 void golf_game_start_level(void) {
-    game.state = GOLF_GAME_STATE_WAITING_FOR_AIM;
+    game.state = GOLF_GAME_STATE_WATCHING_BALL;
 
     vec3 ball_start_pos = V3(0, 0, 0);
 
@@ -717,6 +717,7 @@ void golf_game_start_level(void) {
             case HOLE_ENTITY:
             case GEO_ENTITY:
             case GROUP_ENTITY:
+            case WATER_ENTITY:
                 break;
             case BALL_START_ENTITY:
                 ball_start_pos = entity->ball_start.transform.position;
@@ -750,6 +751,8 @@ void golf_game_start_level(void) {
         golf_bvh_construct(bvh, bvh->node_infos);
     }
 
+    game.ball.time_going_slow = 0;
+    game.ball.is_moving = true;
     game.ball.start_pos = ball_start_pos;
     game.ball.pos = ball_start_pos;
     game.ball.draw_pos = ball_start_pos;
@@ -803,4 +806,13 @@ void golf_game_hit_ball(vec2 aim_delta) {
     game.ball.is_moving = true;
 
     game.physics.collision_history.length = 0;
+}
+
+void golf_game_pause(void) {
+    game.state_before_pause = game.state;
+    game.state = GOLF_GAME_STATE_PAUSED;
+}
+
+void golf_game_resume(void) {
+    game.state = game.state_before_pause;
 }

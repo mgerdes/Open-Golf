@@ -25,7 +25,7 @@ typedef enum golf_game_state {
 } golf_game_state_t;
 
 typedef struct golf_game {
-    golf_game_state_t state;
+    golf_game_state_t state, state_before_pause;
 
     bool debug_inputs;
 
@@ -70,5 +70,6 @@ void golf_game_update(float dt);
 void golf_game_start_level(void);
 void golf_game_start_aiming(void);
 void golf_game_hit_ball(vec2 aim_delta);
+void golf_game_pause(void);
 
 #endif

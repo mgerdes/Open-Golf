@@ -849,7 +849,7 @@ static void _golf_editor_edit_lightmap_section(golf_lightmap_section_t *lightmap
 static void _golf_editor_edit_movement(golf_movement_t *movement) {
     if (igTreeNode_Str("Movement")) {
         golf_movement_type_t movement_type_before = movement->type;
-        const char *items[] = { "None", "Linear", "Spinner" };
+        const char *items[] = { "None", "Linear", "Spinner", "Pendulum" };
         igCombo_Str_arr("Type", (int*)&movement->type, items, sizeof(items) / sizeof(items[0]), 0);
         if (movement_type_before != movement->type) {
             golf_movement_type_t movement_type_after = movement->type;
@@ -868,6 +868,10 @@ static void _golf_editor_edit_movement(golf_movement_t *movement) {
                     break;
                 case GOLF_MOVEMENT_SPINNER:
                     break;
+                case GOLF_MOVEMENT_PENDULUM:
+                    movement->pendulum.theta0 = 0;
+                    movement->pendulum.axis = V3(1, 0, 0);
+                    break;
             }
         }
 
@@ -884,6 +888,13 @@ static void _golf_editor_edit_movement(golf_movement_t *movement) {
             case GOLF_MOVEMENT_SPINNER: {
                 _golf_editor_undoable_igInputFloat("T0", (float*)&movement->t0, "Modify movement t0");
                 _golf_editor_undoable_igInputFloat("Length", (float*)&movement->length, "Modify movement length");
+                break;
+            }
+            case GOLF_MOVEMENT_PENDULUM: {
+                _golf_editor_undoable_igInputFloat("T0", (float*)&movement->t0, "Modify movement t0");
+                _golf_editor_undoable_igInputFloat("Length", (float*)&movement->length, "Modify movement length");
+                _golf_editor_undoable_igInputFloat("Theta0", (float*)&movement->pendulum.theta0, "Modify pendulum theta0");
+                _golf_editor_undoable_igInputFloat3("Axis", (float*)&movement->pendulum.axis, "Modify pendulum axis");
                 break;
             }
         }

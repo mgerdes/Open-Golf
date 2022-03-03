@@ -442,6 +442,7 @@ static void _draw_game(void) {
                     case BALL_START_ENTITY:
                     case GEO_ENTITY:
                     case GROUP_ENTITY:
+                    case WATER_ENTITY:
                         break;
                     case HOLE_ENTITY: {
                         golf_transform_t transform = entity->hole.transform;
@@ -496,6 +497,7 @@ static void _draw_game(void) {
                     case BALL_START_ENTITY:
                     case GEO_ENTITY:
                     case GROUP_ENTITY:
+                    case WATER_ENTITY:
                         break;
                     case HOLE_ENTITY: {
                         golf_transform_t transform = entity->hole.transform;

@@ -340,6 +340,51 @@ static void _golf_ui_text_name(golf_ui_layout_t *layout, const char *name) {
     _golf_ui_text(layout, *entity);
 }
 
+static void _golf_ui_texture_draw(golf_texture_t *texture, vec2 pos, vec2 size, vec4 overlay_color) {
+    vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_image, pos, size, 0,
+                V2(0, 0), V2(1, 1), 0, overlay_color, 1));
+}
+
+static void _golf_ui_texture(golf_ui_layout_t *layout, golf_ui_layout_entity_t entity) {
+    float ui_scale = _get_ui_scale();
+    vec2 pos = _golf_ui_layout_get_entity_pos(layout, entity);
+    vec2 size = vec2_scale(entity.size, ui_scale);
+    vec4 overlay_color = entity.texture.overlay_color;
+    golf_texture_t *texture = entity.texture.texture;
+    _golf_ui_texture_draw(texture, pos, size, overlay_color);
+}
+
+static void _golf_ui_texture_name(golf_ui_layout_t *layout, const char *name) {
+    golf_ui_layout_entity_t *entity;
+    if (!_golf_ui_layout_get_entity_of_type(layout, name, GOLF_UI_TEXTURE, &entity)) {
+        golf_log_warning("Could not find texture entity %s.", name);
+        return;
+    }
+    _golf_ui_texture(layout, *entity);
+}
+
+static void _golf_ui_gif_texture_name(golf_ui_layout_t *layout, const char *name, float dt) {
+    golf_ui_layout_entity_t *entity;
+    if (!_golf_ui_layout_get_entity_of_type(layout, name, GOLF_UI_GIF_TEXTURE, &entity)) {
+        golf_log_warning("Could not find gif texture entity %s.", name);
+        return;
+    }
+
+    float ui_scale = _get_ui_scale();
+    vec2 pos = _golf_ui_layout_get_entity_pos(layout, *entity);
+    vec2 size = vec2_scale(entity->size, ui_scale);
+    golf_gif_texture_t *texture = entity->gif_texture.texture;
+
+    entity->gif_texture.t += dt;
+    float a = fmodf(entity->gif_texture.t, entity->gif_texture.total_time) / entity->gif_texture.total_time;
+    int frame = (int) (a * texture->num_frames);
+    if (frame < 0) frame = 0;
+    if (frame >= texture->num_frames) frame = texture->num_frames - 1;
+
+    vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_images[frame], pos, size, 0,
+                V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0), 1));
+}
+
 static void _golf_ui_button(vec2 pos, vec2 size, bool *down, bool *clicked) {
     vec2 mp = inputs->mouse_pos;
     vec2 tp = inputs->touch_pos;
@@ -378,6 +423,7 @@ static bool _golf_ui_button_name(golf_ui_layout_t *layout, const char *name) {
             case GOLF_UI_BUTTON:
             case GOLF_UI_GIF_TEXTURE:
             case GOLF_UI_AIM_CIRCLE:
+            case GOLF_UI_LEVEL_SELECT_SCROLL_BOX:
                 break;
             case GOLF_UI_TEXT:
                 _golf_ui_text(layout, entity);
@@ -385,52 +431,13 @@ static bool _golf_ui_button_name(golf_ui_layout_t *layout, const char *name) {
             case GOLF_UI_PIXEL_PACK_SQUARE:
                 _golf_ui_pixel_pack_square(layout, entity);
                 break;
+            case GOLF_UI_TEXTURE:
+                _golf_ui_texture(layout, entity);
+                break;
         }
     }
 
     return clicked;
-}
-
-static void _golf_ui_texture_draw(golf_texture_t *texture, vec2 pos, vec2 size, vec4 overlay_color) {
-    vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_image, pos, size, 0,
-                V2(0, 0), V2(1, 1), 0, overlay_color, 1));
-}
-
-static void _golf_ui_texture_name(golf_ui_layout_t *layout, const char *name) {
-    golf_ui_layout_entity_t *entity;
-    if (!_golf_ui_layout_get_entity_of_type(layout, name, GOLF_UI_TEXTURE, &entity)) {
-        golf_log_warning("Could not find texture entity %s.", name);
-        return;
-    }
-
-    float ui_scale = _get_ui_scale();
-    vec2 pos = _golf_ui_layout_get_entity_pos(layout, *entity);
-    vec2 size = vec2_scale(entity->size, ui_scale);
-    vec4 overlay_color = entity->texture.overlay_color;
-    golf_texture_t *texture = entity->texture.texture;
-    _golf_ui_texture_draw(texture, pos, size, overlay_color);
-}
-
-static void _golf_ui_gif_texture_name(golf_ui_layout_t *layout, const char *name, float dt) {
-    golf_ui_layout_entity_t *entity;
-    if (!_golf_ui_layout_get_entity_of_type(layout, name, GOLF_UI_GIF_TEXTURE, &entity)) {
-        golf_log_warning("Could not find gif texture entity %s.", name);
-        return;
-    }
-
-    float ui_scale = _get_ui_scale();
-    vec2 pos = _golf_ui_layout_get_entity_pos(layout, *entity);
-    vec2 size = vec2_scale(entity->size, ui_scale);
-    golf_gif_texture_t *texture = entity->gif_texture.texture;
-
-    entity->gif_texture.t += dt;
-    float a = fmodf(entity->gif_texture.t, entity->gif_texture.total_time) / entity->gif_texture.total_time;
-    int frame = (int) (a * texture->num_frames);
-    if (frame < 0) frame = 0;
-    if (frame >= texture->num_frames) frame = texture->num_frames - 1;
-
-    vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_images[frame], pos, size, 0,
-                V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0), 1));
 }
 
 static bool _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name, bool draw_aimer, float dt, vec2 *aim_delta) {
@@ -686,7 +693,7 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
         for (int col = 0; col < buttons_per_row; col++) {
             vec2 button_pos = bg_pos;
             button_pos.x = button_pos.x - 0.5f * bg_size.x + col * button_size.x + 0.5f * button_size.x + (col + 1) * button_padding;
-            button_pos.y = button_pos.y - 0.5f * bg_size.y + row * button_size.y + 0.5f * button_size.y + (row + 1) * button_padding;
+            button_pos.y = button_pos.y - 0.5f * bg_size.y + row * button_size.y + 0.5f * button_size.y + row * button_padding;
             button_pos.y += entity->level_select_scroll_box.down_delta;
 
             bool button_down, button_clicked;
@@ -694,7 +701,6 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
             button_down = button_down && down_in_bg;
             button_clicked = button_clicked && clicked_in_bg;
 
-            float tile_size = entity->level_select_scroll_box.button_tile_size * ui_scale;
             golf_pixel_pack_t *pixel_pack = entity->level_select_scroll_box.button_pixel_pack;
             const char *square_name;
             if (button_down) {
@@ -747,8 +753,6 @@ static void _golf_ui_loading_level(float dt) {
 
 static void _golf_ui_title_screen(float dt) {
     golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
-    _golf_ui_text_name(layout, "main_text");
-    _golf_ui_text_name(layout, "main2_text");
     _golf_ui_gif_texture_name(layout, "loading_icon", dt);
 }
 
@@ -861,13 +865,25 @@ static void _golf_ui_in_game_watching_ball(float dt) {
 }
             
 static void _golf_ui_in_game_paused(float dt) {
-    
+    GOLF_UNUSED(dt);
+    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
+
+    _golf_ui_pixel_pack_square_name(layout, "pause_menu_background");
+    if (_golf_ui_button_name(layout, "resume_button")) {
+        golf_game_resume();
+    }
+    if (_golf_ui_button_name(layout, "exit_button")) {
+        golf_goto_main_menu();
+    }
+    _golf_ui_text_name(layout, "paused_text");
 }
 
 static void _golf_ui_in_game(float dt) {
     if (game->state != GOLF_GAME_STATE_MAIN_MENU && game->state != GOLF_GAME_STATE_PAUSED) {
         golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
-        _golf_ui_texture_name(layout, "pause_button");
+        if (_golf_ui_button_name(layout, "pause_button")) {
+            golf_game_pause();
+        }
     }
 
     switch (game->state) {
