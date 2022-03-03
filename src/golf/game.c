@@ -787,6 +787,7 @@ void golf_game_start_level(void) {
 
     vec3 ball_start_pos = V3(0, 0, 0);
     vec3 hole_pos = V3(0, 0, 0);
+    vec3 begin_animation_pos = V3(0, 0, 0);
 
     golf_level_t *level = golf->level;
     for (int i = 0; i < level->entities.length; i++) {
@@ -802,6 +803,9 @@ void golf_game_start_level(void) {
                 break;
             case BALL_START_ENTITY:
                 ball_start_pos = entity->ball_start.transform.position;
+                break;
+            case BEGIN_ANIMATION_ENTITY:
+                begin_animation_pos = entity->begin_animation.transform.position;
                 break;
         }
     }
@@ -843,7 +847,7 @@ void golf_game_start_level(void) {
     game.ball.draw_pos = ball_start_pos;
 
     game.begin_camera_animation.t = 0;
-    game.begin_camera_animation.cam_pos0 = V3(10, 10, 10);
+    game.begin_camera_animation.cam_pos0 = begin_animation_pos;
     game.begin_camera_animation.cam_dir0 = vec3_normalize(vec3_sub(hole_pos, game.begin_camera_animation.cam_pos0));
 
     vec3 cam_delta = vec3_rotate_y(V3(2.6f, 1.5f, 0), game.cam.angle);

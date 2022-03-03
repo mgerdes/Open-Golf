@@ -1169,6 +1169,7 @@ static void _golf_editor_entities_tab(void) {
         igPushID_Int(i);
         switch (entity->type) {
             case BALL_START_ENTITY:
+            case BEGIN_ANIMATION_ENTITY:
             case MODEL_ENTITY: 
             case GEO_ENTITY:
             case WATER_ENTITY:
@@ -1391,6 +1392,12 @@ static void _golf_editor_entities_tab(void) {
     if (igButton("Create Group Entity", (ImVec2){0, 0})) {
         golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
         golf_entity_t entity = golf_entity_group("group", transform);
+        _vec_push_and_fix_actions(&editor.level->entities, entity, NULL);
+    }
+
+    if (igButton("Create Begin Animation Entity", (ImVec2){0, 0})) {
+        golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
+        golf_entity_t entity = golf_entity_begin_animation("begin_animation", transform);
         _vec_push_and_fix_actions(&editor.level->entities, entity, NULL);
     }
 }
@@ -2411,6 +2418,10 @@ void golf_editor_update(float dt) {
                 }
                 case BALL_START_ENTITY: {
                     igText("TYPE: Ball Start");
+                    break;
+                }
+                case BEGIN_ANIMATION_ENTITY: {
+                    igText("TYPE: Begin Animation");
                     break;
                 }
                 case HOLE_ENTITY: {

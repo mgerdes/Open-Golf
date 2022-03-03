@@ -1226,6 +1226,16 @@
             "movement": {
                 "type": "none"
             }
+        },
+        {
+            "parent_idx": -1,
+            "name": "begin_animation",
+            "type": "begin_animation",
+            "transform": {
+                "position": [19.75, 10, 2.75],
+                "scale": [1, 1, 1],
+                "rotation": [0, 0, 0, 1]
+            }
         }
     ]
 }

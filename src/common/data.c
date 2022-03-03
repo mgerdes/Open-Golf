@@ -2708,6 +2708,14 @@ static bool _golf_level_load(void *ptr, const char *path, char *data, int data_l
 
             valid_entity = true;
         }
+        else if (type && strcmp(type, "begin_animation") == 0) {
+            golf_transform_t transform;
+            _golf_json_object_get_transform(obj, "transform", &transform);
+
+            entity = golf_entity_begin_animation(name, transform);
+
+            valid_entity = true;
+        }
         entity.parent_idx = parent_idx;
 
         if (valid_entity) {
