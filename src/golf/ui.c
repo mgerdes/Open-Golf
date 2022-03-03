@@ -802,17 +802,17 @@ static void _golf_ui_camera_controls(float dt) {
         float angle1 = angle0;
 
         if (pos0.x < aim_circle_pos.x) {
-            angle1 -= 1.5f * (delta.y / reference_width);
+            angle1 -= 3.0f * (delta.y / reference_width);
         }
         else {
-            angle1 += 1.5f * (delta.y / reference_width);
+            angle1 += 3.0f * (delta.y / reference_width);
         }
 
         if (pos0.y >= aim_circle_pos.y) {
-            angle1 -= 1.5f * (delta.x / reference_width);
+            angle1 -= 3.0f * (delta.x / reference_width);
         }
         else {
-            angle1 += 1.5f * (delta.x / reference_width);
+            angle1 += 3.0f * (delta.x / reference_width);
         }
 
         game->cam.angle = angle1;
