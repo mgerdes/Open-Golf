@@ -119,7 +119,7 @@ static int _alloc_inner_node(golf_bvh_t *bvh, int left, int right) {
     return idx;
 }
 
-golf_ball_contact_t golf_ball_contact(vec3 a, vec3 b, vec3 c, vec3 vel, vec3 bp, float br, vec3 cp, float dist, float restitution, float friction, float vel_scale, triangle_contact_type_t type, bool is_water, vec3 water_dir) {
+golf_ball_contact_t golf_ball_contact(vec3 a, vec3 b, vec3 c, vec3 vel, vec3 bp, float br, vec3 cp, float dist, float restitution, float friction, float vel_scale, triangle_contact_type_t type, bool is_water, vec3 water_dir, bool is_out_of_bounds) {
     golf_ball_contact_t contact;
     contact.is_water = is_water;
     contact.is_ignored = false;
@@ -148,6 +148,7 @@ golf_ball_contact_t golf_ball_contact(vec3 a, vec3 b, vec3 c, vec3 vel, vec3 bp,
     contact.type = type;
     contact.penetration = br - dist;
     contact.water_dir = water_dir;
+    contact.is_out_of_bounds = is_out_of_bounds;
     return contact;
 }
 
@@ -315,9 +316,10 @@ static bool _golf_bvh_ball_test(golf_bvh_t *bvh, int node_idx, vec3 bp, float br
             if (dist < br) {
                 if (*num_ball_contacts < max_ball_contacts) {
                     vec3 vel = golf_entity_get_velocity(face.level, face.entity, face.t, cp);
+                    bool is_out_of_bounds = face.entity->parent_idx >= 0;
                     bool is_water = face.entity->type == WATER_ENTITY;
                     vec3 water_dir = face.water_dir;
-                    golf_ball_contact_t contact = golf_ball_contact(face.a, face.b, face.c, vel, bp, br, cp, dist, face.restitution, face.friction, face.vel_scale, type, is_water, water_dir);
+                    golf_ball_contact_t contact = golf_ball_contact(face.a, face.b, face.c, vel, bp, br, cp, dist, face.restitution, face.friction, face.vel_scale, type, is_water, water_dir, is_out_of_bounds);
                     contacts[*num_ball_contacts] = contact;
                     *num_ball_contacts = *num_ball_contacts + 1;
                 }

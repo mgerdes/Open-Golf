@@ -356,6 +356,146 @@
                     "text": "EXIT"
                 }
             ]
+        },
+        {
+            "name": "finished_menu_background",
+            "type": "pixel_pack_square",
+            "pixel_pack": "data/textures/pixel_pack.pixel_pack",
+            "square": "blue_background",
+            "anchor": [0.5, 0.5],
+            "pos": [0, 0],
+            "size": [400, 500],
+            "tile_size": 64,
+            "overlay_color": [0, 0, 0, 0]
+        },
+        {
+            "name": "finished_menu_text",
+            "parent": "finished_menu_background",
+            "type": "text",
+            "font": "data/font/FiraSans-Bold.ttf",
+            "anchor": [0.5, 0.5],
+            "pos": [0, -145],
+            "horiz_align": 0,
+            "vert_align": 0,
+            "font_size": 74,
+            "color": [1.0, 1.0, 1.0, 1],
+            "text": "SUCCESS!"
+        },
+        {
+            "name": "finished_menu_next_button",
+            "parent": "finished_menu_background",
+            "type": "button",
+            "anchor": [0.5, 0.5],
+            "pos": [0, 0],
+            "size": [200, 100],
+            "up_entities": [
+                {
+                    "parent": "finished_menu_next_button",
+                    "type": "pixel_pack_square",
+                    "pixel_pack": "data/textures/pixel_pack.pixel_pack",
+                    "square": "blue_button_up",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 0],
+                    "size": [200, 100],
+                    "tile_size": 64,
+                    "overlay_color": [0, 0, 0, 0]
+                },
+                {
+                    "parent": "finished_menu_next_button",
+                    "type": "text",
+                    "font": "data/font/FiraSans-Bold.ttf",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, -2],
+                    "horiz_align": 0,
+                    "vert_align": 0,
+                    "font_size": 38,
+                    "color": [0.2, 0.2, 0.2, 1],
+                    "text": "NEXT"
+                }
+            ],
+            "down_entities": [
+                {
+                    "parent": "finished_menu_next_button",
+                    "type": "pixel_pack_square",
+                    "pixel_pack": "data/textures/pixel_pack.pixel_pack",
+                    "square": "blue_button_down",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 0],
+                    "size": [200, 100],
+                    "tile_size": 64,
+                    "overlay_color": [0, 0, 0, 0]
+                },
+                {
+                    "parent": "finished_menu_next_button",
+                    "type": "text",
+                    "font": "data/font/FiraSans-Bold.ttf",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 4],
+                    "horiz_align": 0,
+                    "vert_align": 0,
+                    "font_size": 38,
+                    "color": [0.2, 0.2, 0.2, 1],
+                    "text": "NEXT"
+                }
+            ]
+        },
+        {
+            "name": "finished_menu_exit_button",
+            "parent": "pause_menu_background",
+            "type": "button",
+            "anchor": [0.5, 0.5],
+            "pos": [0, 120],
+            "size": [200, 100],
+            "up_entities": [
+                {
+                    "parent": "finished_menu_exit_button",
+                    "type": "pixel_pack_square",
+                    "pixel_pack": "data/textures/pixel_pack.pixel_pack",
+                    "square": "blue_button_up",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 0],
+                    "size": [200, 100],
+                    "tile_size": 64,
+                    "overlay_color": [0, 0, 0, 0]
+                },
+                {
+                    "parent": "finished_menu_exit_button",
+                    "type": "text",
+                    "font": "data/font/FiraSans-Bold.ttf",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, -2],
+                    "horiz_align": 0,
+                    "vert_align": 0,
+                    "font_size": 38,
+                    "color": [0.2, 0.2, 0.2, 1],
+                    "text": "EXIT"
+                }
+            ],
+            "down_entities": [
+                {
+                    "parent": "finished_menu_exit_button",
+                    "type": "pixel_pack_square",
+                    "pixel_pack": "data/textures/pixel_pack.pixel_pack",
+                    "square": "blue_button_down",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 0],
+                    "size": [200, 100],
+                    "tile_size": 64,
+                    "overlay_color": [0, 0, 0, 0]
+                },
+                {
+                    "parent": "finished_menu_exit_button",
+                    "type": "text",
+                    "font": "data/font/FiraSans-Bold.ttf",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 4],
+                    "horiz_align": 0,
+                    "vert_align": 0,
+                    "font_size": 38,
+                    "color": [0.2, 0.2, 0.2, 1],
+                    "text": "EXIT"
+                }
+            ]
         }
     ]
 }

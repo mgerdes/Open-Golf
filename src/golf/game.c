@@ -91,7 +91,8 @@ void golf_game_init(void) {
     game.ball.time_going_slow = 0;
     game.ball.time_since_water_ripple = 0;
     game.ball.rot_vel = 0;
-    game.ball.is_moving = true;
+    game.ball.is_moving = false;
+    game.ball.is_out_of_bounds = false;
     game.ball.is_in_hole = false;
 
     game.physics.time_behind = 0;
@@ -242,9 +243,22 @@ static void _golf_game_update_state_watching_ball(float dt) {
     GOLF_UNUSED(dt);
 
     if (game.ball.is_in_hole) {
-        game.ball.pos = game.ball.start_pos;
         game.ball.vel = V3(0, 0, 0);
-        game.ball.is_in_hole = false;
+        game.ball.is_moving = false;
+
+        game.state = GOLF_GAME_STATE_CELEBRATION;
+        game.celebration.t = 0;
+        game.celebration.cam_pos0 = graphics->cam_pos;
+        game.celebration.cam_dir0 = graphics->cam_dir;
+        game.celebration.cam_pos1 = vec3_add(graphics->cam_pos, vec3_scale(graphics->cam_dir, -1.5f));
+        game.celebration.cam_dir1 = vec3_normalize(vec3_sub(game.ball.draw_pos, game.celebration.cam_pos1));
+    }
+    else if (game.ball.is_out_of_bounds) {
+        game.ball.pos = game.ball.start_pos;
+        game.ball.is_moving = false;
+        game.ball.vel = V3(0, 0, 0);
+        game.ball.is_out_of_bounds = 0;
+        game.state = GOLF_GAME_STATE_WAITING_FOR_AIM;
     }
     else if (!game.ball.is_moving) {
         game.state = GOLF_GAME_STATE_WAITING_FOR_AIM;
@@ -368,7 +382,7 @@ static void _physics_tick(float dt) {
                 }
                 if (num_contacts < MAX_NUM_CONTACTS) {
                     vec3 vel = V3(0, 0, 0);
-                    golf_ball_contact_t contact = golf_ball_contact(a, b, c, vel, bp, br, cp, dist, restitution, friction, vel_scale, type, false, V3(0, 0, 0));
+                    golf_ball_contact_t contact = golf_ball_contact(a, b, c, vel, bp, br, cp, dist, restitution, friction, vel_scale, type, false, V3(0, 0, 0), false);
                     contacts[num_contacts] = contact;
                     num_contacts = num_contacts + 1;
                 }
@@ -610,6 +624,15 @@ static void _physics_tick(float dt) {
         if (vec3_distance(p, bp) < CFG_NUM(game_cfg, "physics_in_hole_radius")) {
             game.ball.is_in_hole = true;
         }
+
+        // Check to see if the ball ended up out of bounds
+        for (int i = 0; i < num_contacts; i++) {
+            golf_ball_contact_t *contact = &contacts[i];
+            if (contact->is_out_of_bounds) {
+                game.ball.time_out_of_bounds = game.t;
+                game.ball.is_out_of_bounds = true;
+            }
+        }
     }
 
     if (game.ball.is_in_water) {
@@ -654,6 +677,7 @@ void golf_game_update(float dt) {
         case GOLF_GAME_STATE_WATCHING_BALL:
             _golf_game_update_state_watching_ball(dt);
             break;
+        case GOLF_GAME_STATE_FINISHED:
         case GOLF_GAME_STATE_PAUSED:
             break;
     }
@@ -674,50 +698,107 @@ void golf_game_update(float dt) {
     }
 
     if (game.state > GOLF_GAME_STATE_MAIN_MENU) {
-        {
-            float physics_dt = 1.0f/120.0f;
-            game.physics.time_behind += dt;
+        float physics_dt = 1.0f/120.0f;
+        game.physics.time_behind += dt;
 
-            vec3 bp_prev = game.ball.pos;
-            int num_ticks = 0;
-            while (game.physics.time_behind >= 0 && num_ticks < 5) {
-                bp_prev = game.ball.pos;
-                _physics_tick(physics_dt);
-                game.physics.time_behind -= physics_dt;
-                num_ticks++;
-            }
-            while (game.physics.time_behind >= 0) {
-                game.physics.time_behind -= physics_dt;
-            }
-
-            float alpha = (float)(-game.physics.time_behind / physics_dt);
-            game.ball.draw_pos = vec3_add(vec3_scale(game.ball.pos, 1.0f - alpha), vec3_scale(bp_prev, alpha));
+        vec3 bp_prev = game.ball.pos;
+        int num_ticks = 0;
+        while (game.physics.time_behind >= 0 && num_ticks < 5) {
+            bp_prev = game.ball.pos;
+            _physics_tick(physics_dt);
+            game.physics.time_behind -= physics_dt;
+            num_ticks++;
         }
+        while (game.physics.time_behind >= 0) {
+            game.physics.time_behind -= physics_dt;
+        }
+
+        float alpha = (float)(-game.physics.time_behind / physics_dt);
+        game.ball.draw_pos = vec3_add(vec3_scale(game.ball.pos, 1.0f - alpha), vec3_scale(bp_prev, alpha));
     }
 
-    {
-        vec3 cam_delta = vec3_rotate_y(V3(2.6f, 1.5f, 0), game.cam.angle);
-        vec3 wanted_pos = vec3_add(game.ball.draw_pos, cam_delta);
-        vec3 diff = vec3_sub(wanted_pos, graphics->cam_pos);
-        graphics->cam_pos = vec3_add(graphics->cam_pos, vec3_scale(diff, 0.5f));
-        graphics->cam_dir = vec3_normalize(vec3_sub(vec3_add(game.ball.draw_pos, V3(0, 0.3f, 0)), graphics->cam_pos));
+    // Move around the camera
+    switch (game.state) {
+        case GOLF_GAME_STATE_BEGIN_CAMERA_ANIMATION: {
+            vec3 cam_pos0 = game.begin_camera_animation.cam_pos0;
+            vec3 cam_pos1 = game.begin_camera_animation.cam_pos1;
+            vec3 cam_dir0 = game.begin_camera_animation.cam_dir0;
+            vec3 cam_dir1 = game.begin_camera_animation.cam_dir1;
+            float t = game.begin_camera_animation.t;
+            float length0 = CFG_NUM(game_cfg, "begin_camera_animation_length0");
+            float length1 = CFG_NUM(game_cfg, "begin_camera_animation_length1");
+
+            if (t >= length0) {
+                t = t - length0;
+                float a = sinf(0.5f * MF_PI * t / length1);
+
+                graphics->cam_pos = vec3_add(vec3_scale(cam_pos0, 1 - a), vec3_scale(cam_pos1, a));
+                graphics->cam_dir = vec3_normalize(vec3_add(vec3_scale(cam_dir0, 1 - a), vec3_scale(cam_dir1, a)));
+
+                if (t >= length1) {
+                    game.state = GOLF_GAME_STATE_WAITING_FOR_AIM;
+                    graphics->cam_pos = cam_pos1;
+                    graphics->cam_dir = cam_dir1;
+                }
+            }
+
+            game.begin_camera_animation.t += dt;
+            break;
+        }
+        case GOLF_GAME_STATE_CELEBRATION: {
+            vec3 cam_pos0 = game.celebration.cam_pos0;
+            vec3 cam_pos1 = game.celebration.cam_pos1;
+            vec3 cam_dir0 = game.celebration.cam_dir0;
+            vec3 cam_dir1 = game.celebration.cam_dir1;
+
+            float t = game.celebration.t;
+            float length = CFG_NUM(game_cfg, "celebration_length");
+            float a = sinf(0.5f * MF_PI * t / length);
+
+            graphics->cam_pos = vec3_add(cam_pos0, vec3_scale(vec3_sub(cam_pos1, cam_pos0), a));
+            graphics->cam_dir = vec3_add(cam_dir0, vec3_scale(vec3_sub(cam_dir1, cam_dir0), a));
+
+            if (t >= length) {
+                game.state = GOLF_GAME_STATE_FINISHED;
+            }
+
+            game.celebration.t += dt;
+            break;
+        }
+        case GOLF_GAME_STATE_WAITING_FOR_AIM:
+        case GOLF_GAME_STATE_AIMING:
+        case GOLF_GAME_STATE_WATCHING_BALL: {
+            vec3 cam_delta = vec3_rotate_y(V3(2.6f, 1.5f, 0), game.cam.angle);
+            vec3 wanted_pos = vec3_add(game.ball.draw_pos, cam_delta);
+            vec3 diff = vec3_sub(wanted_pos, graphics->cam_pos);
+            graphics->cam_pos = vec3_add(graphics->cam_pos, vec3_scale(diff, 0.5f));
+            graphics->cam_dir = vec3_normalize(vec3_sub(vec3_add(game.ball.draw_pos, V3(0, 0.3f, 0)), graphics->cam_pos));
+            break;
+        }
+        case GOLF_GAME_STATE_PAUSED:
+        case GOLF_GAME_STATE_FINISHED: 
+        case GOLF_GAME_STATE_MAIN_MENU: 
+            break;
     }
 }
 
 void golf_game_start_level(void) {
-    game.state = GOLF_GAME_STATE_WATCHING_BALL;
+    game.state = GOLF_GAME_STATE_BEGIN_CAMERA_ANIMATION;
 
     vec3 ball_start_pos = V3(0, 0, 0);
+    vec3 hole_pos = V3(0, 0, 0);
 
     golf_level_t *level = golf->level;
     for (int i = 0; i < level->entities.length; i++) {
         golf_entity_t *entity = &level->entities.data[i];
         switch (entity->type) {
             case MODEL_ENTITY:
-            case HOLE_ENTITY:
             case GEO_ENTITY:
             case GROUP_ENTITY:
             case WATER_ENTITY:
+                break;
+            case HOLE_ENTITY:
+                hole_pos = entity->hole.transform.position;
                 break;
             case BALL_START_ENTITY:
                 ball_start_pos = entity->ball_start.transform.position;
@@ -751,15 +832,26 @@ void golf_game_start_level(void) {
         golf_bvh_construct(bvh, bvh->node_infos);
     }
 
+    game.t = 0;
+
     game.ball.time_going_slow = 0;
-    game.ball.is_moving = true;
+    game.ball.is_moving = false;
+    game.ball.is_out_of_bounds = false;
+    game.ball.is_in_hole = false;
     game.ball.start_pos = ball_start_pos;
     game.ball.pos = ball_start_pos;
     game.ball.draw_pos = ball_start_pos;
 
+    game.begin_camera_animation.t = 0;
+    game.begin_camera_animation.cam_pos0 = V3(10, 10, 10);
+    game.begin_camera_animation.cam_dir0 = vec3_normalize(vec3_sub(hole_pos, game.begin_camera_animation.cam_pos0));
+
     vec3 cam_delta = vec3_rotate_y(V3(2.6f, 1.5f, 0), game.cam.angle);
-    graphics->cam_pos = vec3_add(game.ball.draw_pos, cam_delta);
-    graphics->cam_dir = vec3_normalize(vec3_sub(vec3_add(game.ball.draw_pos, V3(0, 0.3f, 0)), graphics->cam_pos));
+    game.begin_camera_animation.cam_pos1 = vec3_add(game.ball.draw_pos, cam_delta);
+    game.begin_camera_animation.cam_dir1 = vec3_normalize(vec3_sub(vec3_add(game.ball.draw_pos, V3(0, 0.3f, 0)), game.begin_camera_animation.cam_pos1));
+
+    graphics->cam_pos = game.begin_camera_animation.cam_pos0;
+    graphics->cam_dir = game.begin_camera_animation.cam_dir0;
 }
 
 void golf_game_start_aiming(void) {
@@ -804,6 +896,7 @@ void golf_game_hit_ball(vec2 aim_delta) {
 
     game.ball.vel = vec3_scale(aim_direction, start_speed);
     game.ball.is_moving = true;
+    game.ball.start_pos = game.ball.pos;
 
     game.physics.collision_history.length = 0;
 }

@@ -32,6 +32,7 @@ typedef struct golf {
         } in_level;
     };
 
+    int level_num;
     char level_loading_path[GOLF_FILE_MAX_PATH];
     golf_level_t *level;
 } golf_t;

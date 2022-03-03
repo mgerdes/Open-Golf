@@ -18,9 +18,12 @@ typedef vec_t(golf_collision_data_t) vec_golf_collision_data_t;
 
 typedef enum golf_game_state {
     GOLF_GAME_STATE_MAIN_MENU,
+    GOLF_GAME_STATE_BEGIN_CAMERA_ANIMATION,
     GOLF_GAME_STATE_WAITING_FOR_AIM,
     GOLF_GAME_STATE_AIMING,
     GOLF_GAME_STATE_WATCHING_BALL,
+    GOLF_GAME_STATE_CELEBRATION,
+    GOLF_GAME_STATE_FINISHED,
     GOLF_GAME_STATE_PAUSED,
 } golf_game_state_t;
 
@@ -32,8 +35,8 @@ typedef struct golf_game {
     struct {
         vec3 start_pos, pos, vel, draw_pos, rot_vec;
         quat orientation;
-        float time_since_water_ripple, time_going_slow, radius, rot_vel;
-        bool is_moving, is_in_hole, is_in_water;
+        float time_since_water_ripple, time_going_slow, time_out_of_bounds, radius, rot_vel;
+        bool is_moving, is_in_hole, is_in_water, is_out_of_bounds;
     } ball;
 
     struct {
@@ -60,6 +63,16 @@ typedef struct golf_game {
         vec3 pos;
         vec4 color;
     } water_ripples[MAX_NUM_WATER_RIPPLES];
+
+    struct {
+        float t;        
+        vec3 cam_pos0, cam_dir0, cam_pos1, cam_dir1;
+    } begin_camera_animation;
+
+    struct {
+        float t;
+        vec3 cam_pos0, cam_dir0, cam_pos1, cam_dir1;
+    } celebration;
 
     float t;
 } golf_game_t;

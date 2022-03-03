@@ -715,6 +715,46 @@ static bool _golf_shader_finalize(void *ptr) {
             pipeline.sg_pipeline = sg_make_pipeline(&desc);
             vec_push(&shader->pipelines, pipeline);
         }
+
+        {
+            sg_pipeline_desc desc = {
+                .shader = shader->sg_shader,
+                .layout = {
+                    .attrs = {
+                        [0] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 0 },
+                        [1] = { .format = SG_VERTEXFORMAT_FLOAT3, .buffer_index = 1 },
+                        [2] = { .format = SG_VERTEXFORMAT_FLOAT2, .buffer_index = 2 },
+                    },
+                },
+                .depth = {
+                    .compare = SG_COMPAREFUNC_LESS_EQUAL,
+                    .write_enabled = true,
+                },
+                .stencil = {
+                    .front = {
+                        .fail_op = SG_STENCILOP_KEEP,
+                        .depth_fail_op = SG_STENCILOP_KEEP,
+                        .pass_op = SG_STENCILOP_KEEP,
+                        .compare = SG_COMPAREFUNC_EQUAL,
+                    },
+                    .back = {
+                        .fail_op = SG_STENCILOP_KEEP,
+                        .depth_fail_op = SG_STENCILOP_KEEP,
+                        .pass_op = SG_STENCILOP_KEEP,
+                        .compare = SG_COMPAREFUNC_EQUAL,
+                    },
+                    .enabled = true,
+                    .read_mask = 255,
+                    .write_mask = 255,
+                    .ref = 255,
+                }
+            };
+
+            golf_shader_pipeline_t pipeline;
+            snprintf(pipeline.name, GOLF_MAX_NAME_LEN, "%s", "ball_in_hole");
+            pipeline.sg_pipeline = sg_make_pipeline(&desc);
+            vec_push(&shader->pipelines, pipeline);
+        }
     }
     else if (strcmp(shader->file.path, "data/shaders/editor_water.glsl") == 0) {
         {

@@ -440,11 +440,11 @@ static bool _golf_ui_button_name(golf_ui_layout_t *layout, const char *name) {
     return clicked;
 }
 
-static bool _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name, bool draw_aimer, float dt, vec2 *aim_delta) {
+static void _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name, bool draw_aimer, float dt, vec2 *aim_delta, bool *start_aiming) {
     golf_ui_layout_entity_t *entity;
     if (!_golf_ui_layout_get_entity_of_type(layout, name, GOLF_UI_AIM_CIRCLE, &entity)) {
         golf_log_warning("Could not find aim circle entity %s.", name);
-        return false;
+        return;
     }
 
     entity->aim_circle.t += dt;
@@ -546,21 +546,23 @@ static bool _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name,
                     V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0), circle_scale));
     }
 
-    bool in_aim_circle = false;
-    if (inputs->is_touch) {
-        vec2 tp = inputs->touch_pos;
-        float tp_dx = pos.x - tp.x;
-        float tp_dy = pos.y - tp.y;
-        in_aim_circle = (tp_dx * tp_dx + tp_dy * tp_dy <= size.x * size.y);
-    }
-    else {
-        vec2 mp = inputs->mouse_pos;
-        float mp_dx = pos.x - mp.x;
-        float mp_dy = pos.y - mp.y;
-        in_aim_circle = (mp_dx * mp_dx + mp_dy * mp_dy <= size.x * size.y);
-    }
+    if (start_aiming) {
+        bool down_in_aim_circle = false;
+        if (inputs->is_touch) {
+            vec2 tp = inputs->touch_down_pos;
+            float tp_dx = pos.x - tp.x;
+            float tp_dy = pos.y - tp.y;
+            down_in_aim_circle = (tp_dx * tp_dx + tp_dy * tp_dy <= size.x * size.y);
+        }
+        else {
+            vec2 mp = inputs->mouse_down_pos;
+            float mp_dx = pos.x - mp.x;
+            float mp_dy = pos.y - mp.y;
+            down_in_aim_circle = (mp_dx * mp_dx + mp_dy * mp_dy <= size.x * size.y);
+        }
 
-    return in_aim_circle && (inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT] || inputs->touch_down);
+        *start_aiming = down_in_aim_circle && (inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT] || inputs->touch_down);
+    }
 }
 
 static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const char *name, float dt) {
@@ -833,7 +835,9 @@ static void _golf_ui_camera_controls(float dt) {
 static void _golf_ui_in_game_waiting_for_aim(float dt) {
     golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
 
-    if (_golf_ui_aim_circle_name(layout, "aim_circle", false, dt, NULL)) {
+    bool start_aiming;
+    _golf_ui_aim_circle_name(layout, "aim_circle", false, dt, NULL, &start_aiming);
+    if (start_aiming) {
         ui.aim_circle.aimer_color = golf_config_get_vec4(game_cfg, "aim_green_color");
         golf_game_start_aiming();
     }
@@ -845,9 +849,10 @@ static void _golf_ui_in_game_waiting_for_aim(float dt) {
 static void _golf_ui_in_game_aiming(float dt) {
     golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
     vec2 aim_delta;
-    _golf_ui_aim_circle_name(layout, "aim_circle", true, dt, &aim_delta);
+    _golf_ui_aim_circle_name(layout, "aim_circle", true, dt, &aim_delta, NULL);
 
     game->aim_line.aim_delta = aim_delta;
+
     bool hit_ball = false;
     if (inputs->is_touch) {
         hit_ball = !inputs->touch_down;
@@ -856,7 +861,12 @@ static void _golf_ui_in_game_aiming(float dt) {
         hit_ball = inputs->mouse_clicked[SAPP_MOUSEBUTTON_LEFT];
     }
     if (hit_ball) {
-        golf_game_hit_ball(aim_delta);
+        if (game->aim_line.power > 0) {
+            golf_game_hit_ball(aim_delta);
+        }
+        else {
+            game->state = GOLF_GAME_STATE_WAITING_FOR_AIM;
+        }
     }
 }
 
@@ -876,6 +886,20 @@ static void _golf_ui_in_game_paused(float dt) {
         golf_goto_main_menu();
     }
     _golf_ui_text_name(layout, "paused_text");
+}
+
+static void _golf_ui_in_game_finished(float dt) {
+    GOLF_UNUSED(dt);
+    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
+
+    _golf_ui_pixel_pack_square_name(layout, "finished_menu_background");
+    if (_golf_ui_button_name(layout, "finished_menu_next_button")) {
+        golf_start_level(golf->level_num + 1);
+    }
+    if (_golf_ui_button_name(layout, "finished_menu_exit_button")) {
+        golf_goto_main_menu();
+    }
+    _golf_ui_text_name(layout, "finished_menu_text");
 }
 
 static void _golf_ui_in_game(float dt) {
@@ -900,6 +924,9 @@ static void _golf_ui_in_game(float dt) {
             break;
         case GOLF_GAME_STATE_PAUSED:
             _golf_ui_in_game_paused(dt);
+            break;
+        case GOLF_GAME_STATE_FINISHED:
+            _golf_ui_in_game_finished(dt);
             break;
     }
 }

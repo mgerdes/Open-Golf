@@ -63,11 +63,16 @@ golf_t *golf_get(void) {
 }
 
 void golf_start_level(int level_num) {
+    if (level_num >= 6) {
+        return;
+    }
+
     if (golf_data_get_load_state(golf.level_loading_path) != GOLF_DATA_LOADED) {
         golf_log_warning("Trying to load level before previous one has finished loading...");
         return;
     }
 
+    golf.level_num = level_num;
     golf.level = NULL;
     golf_data_unload(golf.level_loading_path);
 
