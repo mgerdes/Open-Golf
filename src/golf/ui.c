@@ -19,19 +19,15 @@ static golf_game_t *game;
 static golf_config_t *game_cfg; 
 static golf_t *golf; 
 
-static float _get_ui_scale(void) {
-    // What unity does
-    //float log_width = logf(graphics->viewport_size.x / 720.0f);
-    //float log_height = logf(graphics->viewport_size.y / 720.0f);
-    //float log_avg = log_width + 0.5f * (log_height - log_width);
-    //return expf(log_avg);
+static float reference_width = 720.0f;
 
+static float _get_ui_scale(void) {
     float ui_scale = 1;
     if (graphics->viewport_size.x > graphics->viewport_size.y) {
-        ui_scale = graphics->viewport_size.y / 720.0f;
+        ui_scale = graphics->viewport_size.y / reference_width;
     }
     else {
-        ui_scale = graphics->viewport_size.x / 720.0f;
+        ui_scale = graphics->viewport_size.x / reference_width;
     }
     return ui_scale;
 }
@@ -473,7 +469,7 @@ static bool _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name,
         float aimer_angle = acosf(vec2_dot(delta, V2(0, 1)));
         if (delta.x > 0) aimer_angle *= -1;
 
-        float vert_scale = (1280.0f / graphics->viewport_size.y);
+        float vert_scale = 1.777f * (reference_width / graphics->viewport_size.y);
         aimer_length = aimer_length * vert_scale;
 
         float min_length = golf_config_get_num(game_cfg, "aim_min_length");
@@ -806,17 +802,17 @@ static void _golf_ui_camera_controls(float dt) {
         float angle1 = angle0;
 
         if (pos0.x < aim_circle_pos.x) {
-            angle1 -= 1.5f * (delta.y / 720.0f);
+            angle1 -= 1.5f * (delta.y / reference_width);
         }
         else {
-            angle1 += 1.5f * (delta.y / 720.0f);
+            angle1 += 1.5f * (delta.y / reference_width);
         }
 
         if (pos0.y >= aim_circle_pos.y) {
-            angle1 -= 1.5f * (delta.x / 720.0f);
+            angle1 -= 1.5f * (delta.x / reference_width);
         }
         else {
-            angle1 += 1.5f * (delta.x / 720.0f);
+            angle1 += 1.5f * (delta.x / reference_width);
         }
 
         game->cam.angle = angle1;
