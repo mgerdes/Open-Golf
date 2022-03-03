@@ -21,6 +21,7 @@ typedef enum golf_game_state {
     GOLF_GAME_STATE_WAITING_FOR_AIM,
     GOLF_GAME_STATE_AIMING,
     GOLF_GAME_STATE_WATCHING_BALL,
+    GOLF_GAME_STATE_PAUSED,
 } golf_game_state_t;
 
 typedef struct golf_game {

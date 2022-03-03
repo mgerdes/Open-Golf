@@ -1926,6 +1926,15 @@ static bool _golf_ui_layout_load_entity(JSON_Object *entity_obj, golf_ui_layout_
             }
         }
     }
+    else if (strcmp(type, "texture") == 0) {
+        entity->type = GOLF_UI_TEXTURE;
+
+        const char *texture_path = json_object_get_string(entity_obj, "texture");
+        vec4 overlay_color = golf_json_object_get_vec4(entity_obj, "overlay_color");
+
+        entity->texture.texture = golf_data_get_texture(texture_path);
+        entity->texture.overlay_color = overlay_color;
+    }
     else if (strcmp(type, "gif_texture") == 0) {
         entity->type = GOLF_UI_GIF_TEXTURE;
 
@@ -2017,6 +2026,10 @@ static void _golf_ui_layout_get_entity_dependency(JSON_Object *entity_obj, vec_g
     else if (type && strcmp(type, "text") == 0) {
         const char *font_path = json_object_get_string(entity_obj, "font");
         if (font_path) _golf_data_add_dependency(deps, golf_file(font_path));
+    }
+    else if (type && strcmp(type, "texture") == 0) {
+        const char *texture_path = json_object_get_string(entity_obj, "texture");
+        if (texture_path) _golf_data_add_dependency(deps, golf_file(texture_path));
     }
     else if (type && strcmp(type, "gif_texture") == 0) {
         const char *texture_path = json_object_get_string(entity_obj, "texture");

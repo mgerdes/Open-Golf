@@ -224,6 +224,7 @@ typedef enum golf_ui_layout_entity_type {
     GOLF_UI_PIXEL_PACK_SQUARE,
     GOLF_UI_TEXT,
     GOLF_UI_BUTTON,
+    GOLF_UI_TEXTURE,
     GOLF_UI_GIF_TEXTURE,
     GOLF_UI_AIM_CIRCLE,
     GOLF_UI_LEVEL_SELECT_SCROLL_BOX,
@@ -255,6 +256,11 @@ typedef struct golf_ui_layout_entity {
         struct {
             vec_golf_ui_layout_entity_t up_entities, down_entities;
         } button;
+
+        struct {
+            golf_texture_t *texture;
+            vec4 overlay_color;
+        } texture;
 
         struct {
             float t, total_time;

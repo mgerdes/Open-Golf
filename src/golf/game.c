@@ -635,6 +635,10 @@ static void _physics_tick(float dt) {
 }
 
 void golf_game_update(float dt) {
+    if (game.state == GOLF_GAME_STATE_PAUSED) {
+        return;
+    }
+
     game.t += dt;
 
     switch (game.state) {
@@ -649,6 +653,8 @@ void golf_game_update(float dt) {
             break;
         case GOLF_GAME_STATE_WATCHING_BALL:
             _golf_game_update_state_watching_ball(dt);
+            break;
+        case GOLF_GAME_STATE_PAUSED:
             break;
     }
 

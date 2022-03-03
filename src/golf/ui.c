@@ -19,6 +19,23 @@ static golf_game_t *game;
 static golf_config_t *game_cfg; 
 static golf_t *golf; 
 
+static float _get_ui_scale(void) {
+    // What unity does
+    //float log_width = logf(graphics->viewport_size.x / 720.0f);
+    //float log_height = logf(graphics->viewport_size.y / 720.0f);
+    //float log_avg = log_width + 0.5f * (log_height - log_width);
+    //return expf(log_avg);
+
+    float ui_scale = 1;
+    if (graphics->viewport_size.x > graphics->viewport_size.y) {
+        ui_scale = graphics->viewport_size.y / 720.0f;
+    }
+    else {
+        ui_scale = graphics->viewport_size.x / 720.0f;
+    }
+    return ui_scale;
+}
+
 static golf_ui_draw_entity_t _golf_ui_draw_entity(sg_image image, vec2 pos, vec2 size, float angle, vec2 uv0, vec2 uv1, float is_font, vec4 overlay_color, float alpha) {
     golf_ui_draw_entity_t entity;
     entity.type = GOLF_UI_DRAW_TEXTURE;
@@ -95,7 +112,7 @@ static bool _golf_ui_layout_get_entity_of_type(golf_ui_layout_t *layout, const c
 }
 
 static vec2 _golf_ui_layout_get_entity_pos(golf_ui_layout_t *layout, golf_ui_layout_entity_t entity) {
-    float ui_scale = graphics->viewport_size.x / 720.0f;
+    float ui_scale = _get_ui_scale();
 
     golf_ui_layout_entity_t parent_entity;
     if (_golf_ui_layout_get_entity(layout, entity.parent_name, &parent_entity)) {
@@ -206,8 +223,7 @@ static void _golf_ui_draw_pixel_pack_square(vec2 pos, vec2 size, float tile_size
 static void _golf_ui_pixel_pack_square(golf_ui_layout_t *layout, golf_ui_layout_entity_t entity) {
     golf_pixel_pack_t *pixel_pack = entity.pixel_pack_square.pixel_pack;
 
-    vec2 vp_size = graphics->viewport_size;
-    float ui_scale = vp_size.x / 720.0f;
+    float ui_scale = _get_ui_scale();
     vec2 pos = _golf_ui_layout_get_entity_pos(layout, entity);
     vec2 size = vec2_scale(entity.size, ui_scale);
     float tile_size = ui_scale * entity.pixel_pack_square.tile_size;
@@ -312,8 +328,7 @@ static void _golf_ui_draw_text(golf_font_t *font, vec2 pos, float font_size, vec
 
 static void _golf_ui_text(golf_ui_layout_t *layout, golf_ui_layout_entity_t entity) {
     golf_font_t *font = entity.text.font;
-    vec2 vp_size = graphics->viewport_size;
-    float ui_scale = vp_size.x / 720.0f;
+    float ui_scale = _get_ui_scale();
     vec2 pos = _golf_ui_layout_get_entity_pos(layout, entity);
     float font_size = ui_scale * entity.text.font_size;
 
@@ -346,7 +361,7 @@ static bool _golf_ui_button_name(golf_ui_layout_t *layout, const char *name) {
         return false;
     }
 
-    float ui_scale = graphics->viewport_size.x / 720.0f;
+    float ui_scale = _get_ui_scale();
     vec2 pos = _golf_ui_layout_get_entity_pos(layout, *entity);
     vec2 size = vec2_scale(entity->size, ui_scale);
     vec_golf_ui_layout_entity_t entities;
@@ -380,6 +395,26 @@ static bool _golf_ui_button_name(golf_ui_layout_t *layout, const char *name) {
     return clicked;
 }
 
+static void _golf_ui_texture_draw(golf_texture_t *texture, vec2 pos, vec2 size, vec4 overlay_color) {
+    vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_image, pos, size, 0,
+                V2(0, 0), V2(1, 1), 0, overlay_color, 1));
+}
+
+static void _golf_ui_texture_name(golf_ui_layout_t *layout, const char *name) {
+    golf_ui_layout_entity_t *entity;
+    if (!_golf_ui_layout_get_entity_of_type(layout, name, GOLF_UI_TEXTURE, &entity)) {
+        golf_log_warning("Could not find texture entity %s.", name);
+        return;
+    }
+
+    float ui_scale = _get_ui_scale();
+    vec2 pos = _golf_ui_layout_get_entity_pos(layout, *entity);
+    vec2 size = vec2_scale(entity->size, ui_scale);
+    vec4 overlay_color = entity->texture.overlay_color;
+    golf_texture_t *texture = entity->texture.texture;
+    _golf_ui_texture_draw(texture, pos, size, overlay_color);
+}
+
 static void _golf_ui_gif_texture_name(golf_ui_layout_t *layout, const char *name, float dt) {
     golf_ui_layout_entity_t *entity;
     if (!_golf_ui_layout_get_entity_of_type(layout, name, GOLF_UI_GIF_TEXTURE, &entity)) {
@@ -387,10 +422,9 @@ static void _golf_ui_gif_texture_name(golf_ui_layout_t *layout, const char *name
         return;
     }
 
-    float ui_scale = graphics->viewport_size.x / 720.0f;
+    float ui_scale = _get_ui_scale();
     vec2 pos = _golf_ui_layout_get_entity_pos(layout, *entity);
     vec2 size = vec2_scale(entity->size, ui_scale);
-
     golf_gif_texture_t *texture = entity->gif_texture.texture;
 
     entity->gif_texture.t += dt;
@@ -412,7 +446,7 @@ static bool _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name,
 
     entity->aim_circle.t += dt;
 
-    float ui_scale = graphics->viewport_size.y / 1280.0f;
+    float ui_scale = _get_ui_scale();
     vec2 pos = golf_graphics_world_to_screen(game->ball.pos);
 
     if (!vec2_equal(graphics->viewport_size, ui.aim_circle.viewport_size_when_set)) {
@@ -533,8 +567,7 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
         return -1;
     }
 
-    vec2 vp_size = graphics->viewport_size;
-    float ui_scale = vp_size.x / 720.0f;
+    float ui_scale = _get_ui_scale();
     vec2 pos = _golf_ui_layout_get_entity_pos(layout, *entity);
     vec2 size = vec2_scale(entity->size, ui_scale);
 
@@ -773,17 +806,17 @@ static void _golf_ui_camera_controls(float dt) {
         float angle1 = angle0;
 
         if (pos0.x < aim_circle_pos.x) {
-            angle1 -= 1.5f * (delta.y / graphics->window_size.x);
+            angle1 -= 1.5f * (delta.y / 720.0f);
         }
         else {
-            angle1 += 1.5f * (delta.y / graphics->window_size.x);
+            angle1 += 1.5f * (delta.y / 720.0f);
         }
 
         if (pos0.y >= aim_circle_pos.y) {
-            angle1 -= 1.5f * (delta.x / graphics->window_size.x);
+            angle1 -= 1.5f * (delta.x / 720.0f);
         }
         else {
-            angle1 += 1.5f * (delta.x / graphics->window_size.x);
+            angle1 += 1.5f * (delta.x / 720.0f);
         }
 
         game->cam.angle = angle1;
@@ -830,8 +863,17 @@ static void _golf_ui_in_game_aiming(float dt) {
 static void _golf_ui_in_game_watching_ball(float dt) {
     _golf_ui_camera_controls(dt);
 }
+            
+static void _golf_ui_in_game_paused(float dt) {
+    
+}
 
 static void _golf_ui_in_game(float dt) {
+    if (game->state != GOLF_GAME_STATE_MAIN_MENU && game->state != GOLF_GAME_STATE_PAUSED) {
+        golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
+        _golf_ui_texture_name(layout, "pause_button");
+    }
+
     switch (game->state) {
         case GOLF_GAME_STATE_MAIN_MENU:
             break;
@@ -843,6 +885,9 @@ static void _golf_ui_in_game(float dt) {
             break;
         case GOLF_GAME_STATE_WATCHING_BALL:
             _golf_ui_in_game_watching_ball(dt);
+            break;
+        case GOLF_GAME_STATE_PAUSED:
+            _golf_ui_in_game_paused(dt);
             break;
     }
 }
