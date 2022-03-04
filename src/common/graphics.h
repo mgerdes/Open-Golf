@@ -25,6 +25,4 @@ vec2 golf_graphics_world_to_screen(vec3 world_pos);
 vec3 golf_graphics_screen_to_world(vec3 screen_point);
 void golf_graphics_debug_console_tab(void);
 
-bool golf_graphics_get_shader_desc(const char *path, sg_shader_desc *desc);
-
 #endif

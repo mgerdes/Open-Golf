@@ -10,19 +10,6 @@
 #include "common/log.h"
 #include "common/maths.h"
 
-#include "golf/shaders/diffuse_color_material.glsl.h"
-#include "golf/shaders/environment_material.glsl.h"
-#include "golf/shaders/pass_through.glsl.h"
-#include "golf/shaders/solid_color_material.glsl.h"
-#include "golf/shaders/texture_material.glsl.h"
-#include "golf/shaders/ui.glsl.h"
-#include "golf/shaders/render_image.glsl.h"
-#include "golf/shaders/fxaa.glsl.h"
-#include "golf/shaders/aim_line.glsl.h"
-#include "golf/shaders/ball.glsl.h"
-#include "golf/shaders/editor_water.glsl.h"
-#include "golf/shaders/water.glsl.h"
-
 static golf_graphics_t graphics;
 
 golf_graphics_t *golf_graphics_get(void) {
@@ -122,50 +109,4 @@ void golf_graphics_debug_console_tab(void) {
     igText("Cam Pos: <%.3f, %.3f, %.3f>", graphics.cam_pos.x, graphics.cam_pos.y, graphics.cam_pos.z); 
     igText("Cam Dir: <%.3f, %.3f, %.3f>", graphics.cam_dir.x, graphics.cam_dir.y, graphics.cam_dir.z); 
     igText("Cam Up: <%.3f, %.3f, %.3f>", graphics.cam_up.x, graphics.cam_up.y, graphics.cam_up.z); 
-}
-
-bool golf_graphics_get_shader_desc(const char *path, sg_shader_desc *desc) {
-    const sg_shader_desc *const_shader_desc = NULL;
-    if (strcmp(path, "data/shaders/diffuse_color_material.glsl") == 0) {
-        const_shader_desc = diffuse_color_material_shader_desc(sg_query_backend());
-    }
-    else if (strcmp(path, "data/shaders/environment_material.glsl") == 0) {
-        const_shader_desc = environment_material_shader_desc(sg_query_backend());
-    }
-    else if (strcmp(path, "data/shaders/pass_through.glsl") == 0) {
-        const_shader_desc = pass_through_shader_desc(sg_query_backend());
-    }
-    else if (strcmp(path, "data/shaders/solid_color_material.glsl") == 0) {
-        const_shader_desc = solid_color_material_shader_desc(sg_query_backend());
-    }
-    else if (strcmp(path, "data/shaders/texture_material.glsl") == 0) {
-        const_shader_desc = texture_material_shader_desc(sg_query_backend());
-    }
-    else if (strcmp(path, "data/shaders/ui.glsl") == 0) {
-        const_shader_desc = ui_shader_desc(sg_query_backend());
-    }
-    else if (strcmp(path, "data/shaders/render_image.glsl") == 0) {
-        const_shader_desc = render_image_shader_desc(sg_query_backend());
-    }
-    else if (strcmp(path, "data/shaders/fxaa.glsl") == 0) {
-        const_shader_desc = fxaa_shader_desc(sg_query_backend());
-    }
-    else if (strcmp(path, "data/shaders/aim_line.glsl") == 0) {
-        const_shader_desc = aim_line_shader_desc(sg_query_backend());
-    }
-    else if (strcmp(path, "data/shaders/ball.glsl") == 0) {
-        const_shader_desc = ball_shader_desc(sg_query_backend());
-    }
-    else if (strcmp(path, "data/shaders/editor_water.glsl") == 0) {
-        const_shader_desc = editor_water_shader_desc(sg_query_backend());
-    }
-    else if (strcmp(path, "data/shaders/water.glsl") == 0) {
-        const_shader_desc = water_shader_desc(sg_query_backend());
-    }
-    else {
-        return false;
-    }
-
-    *desc = *const_shader_desc;
-    return true;
 }
