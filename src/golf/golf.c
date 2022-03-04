@@ -8,6 +8,7 @@
 
 static golf_t golf;
 static golf_graphics_t *graphics;
+static golf_game_t *game;
 static golf_ui_t *ui;
 
 static const char *initial_level_path = "data/levels/level-1.level";
@@ -19,6 +20,7 @@ void golf_init(void) {
     golf.title_screen.t = 0;
     graphics = golf_graphics_get();
     ui = golf_ui_get();
+    game = golf_game_get();
 
     golf_game_init();
     golf_ui_init();
@@ -30,7 +32,7 @@ void golf_update(float dt) {
             golf.title_screen.t += dt;
             if (golf_data_get_load_state(golf.level_loading_path) == GOLF_DATA_LOADED) {
                 golf.level = golf_data_get_level(golf.level_loading_path);
-                golf.state = GOLF_STATE_MAIN_MENU;
+                golf_goto_main_menu(); 
             }
             break;
         }
@@ -84,4 +86,5 @@ void golf_start_level(int level_num) {
 void golf_goto_main_menu(void) {
     ui->main_menu.is_level_select_open = false;
     golf.state = GOLF_STATE_MAIN_MENU;
+    golf_game_start_main_menu();
 }

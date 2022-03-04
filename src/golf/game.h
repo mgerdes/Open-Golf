@@ -83,6 +83,7 @@ typedef struct golf_game {
 golf_game_t *golf_game_get(void);
 void golf_game_init(void);
 void golf_game_update(float dt);
+void golf_game_start_main_menu(void);
 void golf_game_start_level(void);
 void golf_game_start_aiming(void);
 void golf_game_hit_ball(vec2 aim_delta);

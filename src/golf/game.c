@@ -806,11 +806,40 @@ void golf_game_update(float dt) {
             graphics->cam_dir = vec3_normalize(vec3_sub(vec3_add(game.ball.draw_pos, V3(0, 0.3f, 0)), graphics->cam_pos));
             break;
         }
+        case GOLF_GAME_STATE_MAIN_MENU:
         case GOLF_GAME_STATE_PAUSED:
         case GOLF_GAME_STATE_FINISHED: 
-        case GOLF_GAME_STATE_MAIN_MENU: 
             break;
     }
+}
+
+void golf_game_start_main_menu(void) {
+    game.state = GOLF_GAME_STATE_MAIN_MENU;
+
+    vec3 hole_pos = V3(0, 0, 0);;
+    vec3 begin_animation_pos = V3(0, 0, 0);
+
+    golf_level_t *level = golf->level;
+    for (int i = 0; i < level->entities.length; i++) {
+        golf_entity_t *entity = &level->entities.data[i];
+        switch (entity->type) {
+            case MODEL_ENTITY:
+            case GEO_ENTITY:
+            case GROUP_ENTITY:
+            case WATER_ENTITY:
+            case BALL_START_ENTITY:
+                break;
+            case HOLE_ENTITY:
+                hole_pos = entity->hole.transform.position;
+                break;
+            case BEGIN_ANIMATION_ENTITY:
+                begin_animation_pos = entity->begin_animation.transform.position;
+                break;
+        }
+    }
+
+    graphics->cam_pos = begin_animation_pos;
+    graphics->cam_dir = vec3_normalize(vec3_sub(hole_pos, begin_animation_pos));
 }
 
 void golf_game_start_level(void) {
