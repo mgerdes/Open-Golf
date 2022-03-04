@@ -240,7 +240,7 @@
             "name": "ball-start",
             "type": "ball-start",
             "transform": {
-                "position": [-0.5, 0, -4.75],
+                "position": [-0.5, -0.375, -4.75],
                 "scale": [0.25, 0.25, 0.25],
                 "rotation": [0, 0, 0, 1]
             }
@@ -1241,6 +1241,7 @@
             "parent_idx": -1,
             "name": "camera_zone",
             "type": "camera_zone",
+            "towards_hole": false,
             "transform": {
                 "position": [-0.50001, 0, -10],
                 "scale": [2.5, 0.01, 7.75],
@@ -1251,6 +1252,29 @@
             "parent_idx": -1,
             "name": "camera_zone",
             "type": "camera_zone",
+            "towards_hole": true,
+            "transform": {
+                "position": [9.25, 0, -12.25],
+                "scale": [2.5, 0.01, 1.5],
+                "rotation": [0, -0.70711, 0, 0.70711]
+            }
+        },
+        {
+            "parent_idx": -1,
+            "name": "camera_zone",
+            "type": "camera_zone",
+            "towards_hole": false,
+            "transform": {
+                "position": [4.25, 0, -20.75],
+                "scale": [7.75, 0.01, 3],
+                "rotation": [0, 3.8725e-13, 0, 1]
+            }
+        },
+        {
+            "parent_idx": -1,
+            "name": "camera_zone",
+            "type": "camera_zone",
+            "towards_hole": false,
             "transform": {
                 "position": [14.5, 0, -19],
                 "scale": [2.5, 0.01, 7.75],
@@ -1261,10 +1285,11 @@
             "parent_idx": -1,
             "name": "camera_zone",
             "type": "camera_zone",
+            "towards_hole": true,
             "transform": {
-                "position": [4.25, 0, -20.75],
-                "scale": [7.75, 0.01, 3],
-                "rotation": [0, 3.8725e-13, 0, 1]
+                "position": [12.25, 0, -9.75],
+                "scale": [6, 0.01, 1.5],
+                "rotation": [0, -0.70711, 0, 0.70711]
             }
         }
     ]

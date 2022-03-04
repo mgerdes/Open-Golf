@@ -283,7 +283,7 @@
             "name": "ball-start",
             "type": "ball-start",
             "transform": {
-                "position": [-0.5, 0, -4.75],
+                "position": [-0.5, -0.375, -4.75],
                 "scale": [0.25, 0.25, 0.25],
                 "rotation": [0, 0, 0, 1]
             }
@@ -1247,6 +1247,17 @@
             },
             "movement": {
                 "type": "none"
+            }
+        },
+        {
+            "parent_idx": -1,
+            "name": "camera_zone",
+            "type": "camera_zone",
+            "towards_hole": true,
+            "transform": {
+                "position": [0, 0, -10],
+                "scale": [4, 0.01, 9.25],
+                "rotation": [0, 0, 0, 1]
             }
         }
     ]

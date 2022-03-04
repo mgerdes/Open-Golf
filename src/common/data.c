@@ -2724,10 +2724,12 @@ static bool _golf_level_load(void *ptr, const char *path, char *data, int data_l
             valid_entity = true;
         }
         else if (type && strcmp(type, "camera_zone") == 0) {
+            bool towards_hole = (bool)json_object_get_boolean(obj, "towards_hole");
+
             golf_transform_t transform;
             _golf_json_object_get_transform(obj, "transform", &transform);
 
-            entity = golf_entity_camera_zone(name, transform);
+            entity = golf_entity_camera_zone(name, towards_hole, transform);
 
             valid_entity = true;
         }

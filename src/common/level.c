@@ -761,6 +761,7 @@ bool golf_level_save(golf_level_t *level, const char *path) {
             }
             case CAMERA_ZONE_ENTITY: {
                 json_object_set_string(json_entity_obj, "type", "camera_zone");
+                json_object_set_boolean(json_entity_obj, "towards_hole", entity->camera_zone.towards_hole);
                 break;
             }
         }
@@ -963,12 +964,13 @@ golf_entity_t golf_entity_begin_animation(const char *name, golf_transform_t tra
     return entity;
 }
 
-golf_entity_t golf_entity_camera_zone(const char *name, golf_transform_t transform) {
+golf_entity_t golf_entity_camera_zone(const char *name, bool towards_hole, golf_transform_t transform) {
     golf_entity_t entity;
     entity.active = true;
     entity.parent_idx = -1;
     entity.type = CAMERA_ZONE_ENTITY;
     snprintf(entity.name, GOLF_MAX_NAME_LEN, "%s", name);
+    entity.camera_zone.towards_hole = towards_hole;
     entity.camera_zone.transform = transform;
     return entity;
 }
@@ -1204,7 +1206,7 @@ vec3 golf_entity_get_velocity(golf_level_t *level, golf_entity_t *entity, float 
     return velocity;
 }
 
-bool golf_level_get_camera_zone_direction(golf_level_t *level, vec3 pos, vec3 *dir) {
+bool golf_level_get_camera_zone(golf_level_t *level, vec3 pos, golf_camera_zone_entity_t *camera_zone) {
     for (int i = 0; i < level->entities.length; i++) {
         golf_entity_t *entity = &level->entities.data[i];
         if (entity->type != CAMERA_ZONE_ENTITY) {
@@ -1215,7 +1217,7 @@ bool golf_level_get_camera_zone_direction(golf_level_t *level, vec3 pos, vec3 *d
         vec3 cz_scale = entity->camera_zone.transform.scale;
         if (pos.x < cz_pos.x + cz_scale.x && pos.x > cz_pos.x - cz_scale.x &&
                 pos.z < cz_pos.z + cz_scale.z && pos.z > cz_pos.z - cz_scale.z) {
-            *dir = vec3_apply_quat(V3(1, 0, 0), 0, entity->camera_zone.transform.rotation);
+            *camera_zone = entity->camera_zone;
             return true;
         }
     }

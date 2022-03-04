@@ -70,6 +70,29 @@ static void _golf_game_debug_tab(void) {
     }
 }
 
+static float _golf_game_get_camera_zone_angle(vec3 pos) {
+    golf_camera_zone_entity_t camera_zone;
+    if (golf_level_get_camera_zone(golf->level, pos, &camera_zone)) {
+        vec3 camera_zone_dir;
+        if (camera_zone.towards_hole) {
+            camera_zone_dir = vec3_sub(game.hole_pos, game.ball.draw_pos);
+            camera_zone_dir.y = 0;
+            camera_zone_dir = vec3_normalize(camera_zone_dir);
+        }
+        else {
+            camera_zone_dir = vec3_apply_quat(V3(1, 0, 0), 0, camera_zone.transform.rotation);
+        }
+
+        float camera_zone_angle = acosf(camera_zone_dir.x);
+        if (camera_zone_dir.z > 0) camera_zone_angle *= -1;
+        camera_zone_angle += MF_PI;
+
+        return camera_zone_angle;
+    }
+
+    return game.cam.angle;
+}
+
 void golf_game_init(void) {
     memset(&game, 0, sizeof(game));
 
@@ -770,16 +793,7 @@ void golf_game_update(float dt) {
         case GOLF_GAME_STATE_AIMING:
         case GOLF_GAME_STATE_WATCHING_BALL: {
             if (game.cam.auto_rotate) {
-                vec3 camera_zone_dir;
-                if (!golf_level_get_camera_zone_direction(golf->level, game.ball.draw_pos, &camera_zone_dir)) {
-                    camera_zone_dir = vec3_sub(game.hole_pos, game.ball.draw_pos);
-                    camera_zone_dir.y = 0;
-                    camera_zone_dir = vec3_normalize(camera_zone_dir);
-                }
-                float camera_zone_angle = acosf(camera_zone_dir.x);
-                if (camera_zone_dir.z > 0) camera_zone_angle *= -1;
-                camera_zone_angle += MF_PI;
-
+                float camera_zone_angle = _golf_game_get_camera_zone_angle(game.ball.draw_pos);
                 float delta_angle = camera_zone_angle - game.cam.angle;
                 delta_angle = atan2f(sinf(delta_angle), cosf(delta_angle));
                 game.cam.angle += delta_angle * CFG_NUM(game_cfg, "cam_auto_rotate_speed");
@@ -820,6 +834,7 @@ void golf_game_start_level(void) {
                 break;
             case BALL_START_ENTITY:
                 ball_start_pos = entity->ball_start.transform.position;
+                ball_start_pos.y += game.ball.radius;
                 break;
             case BEGIN_ANIMATION_ENTITY:
                 begin_animation_pos = entity->begin_animation.transform.position;
@@ -858,13 +873,29 @@ void golf_game_start_level(void) {
     game.ball_start_pos = ball_start_pos;
     game.hole_pos = hole_pos;
 
+    game.ball.pos = ball_start_pos;
+    game.ball.draw_pos = ball_start_pos;
+    game.ball.vel = V3(0, 0, 0);
+    game.ball.rot_vec = V3(0, 0, 0);
+    game.ball.orientation = QUAT(0, 0, 0, 1);
+    game.ball.radius = 0.12f;
     game.ball.time_going_slow = 0;
+    game.ball.time_since_water_ripple = 0;
+    game.ball.rot_vel = 0;
     game.ball.is_moving = false;
     game.ball.is_out_of_bounds = false;
     game.ball.is_in_hole = false;
-    game.ball.start_pos = ball_start_pos;
-    game.ball.pos = ball_start_pos;
-    game.ball.draw_pos = ball_start_pos;
+
+    game.cam.auto_rotate = true;
+    game.cam.angle = _golf_game_get_camera_zone_angle(ball_start_pos);
+    game.cam.angle_velocity = 0;
+
+    game.physics.time_behind = 0;
+
+    game.aim_line.power = 0;
+    game.aim_line.aim_delta = V2(0, 0);
+    game.aim_line.offset = V2(0, 0);
+    game.aim_line.num_points = 0;
 
     game.begin_camera_animation.t = 0;
     game.begin_camera_animation.cam_pos0 = begin_animation_pos;

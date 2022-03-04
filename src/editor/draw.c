@@ -294,6 +294,38 @@ static void _draw_level(void) {
 
                 sg_draw(0, model->positions.length, 1);
             }
+            else if (entity->type == BALL_START_ENTITY) {
+                golf_model_t *model = golf_data_get_model("data/models/sphere.obj");
+                golf_texture_t *texture = golf_data_get_texture("data/textures/colors/red.png");
+
+                golf_transform_t transform = golf_entity_get_world_transform(level, entity);
+                mat4 model_mat = mat4_multiply_n(2,
+                        mat4_translation(transform.position),
+                        mat4_scale(V3(0.12f, 0.12f, 0.12f)));
+
+                golf_shader_t *shader = golf_data_get_shader("data/shaders/texture_material.glsl");
+                golf_shader_pipeline_t *pipeline = golf_shader_get_pipeline(shader, "texture_material");
+                sg_apply_pipeline(pipeline->sg_pipeline);
+
+                golf_shader_uniform_t *vs_uniforms = golf_shader_get_vs_uniform(shader, "texture_material_vs_params");
+                golf_shader_uniform_set_mat4(vs_uniforms, "proj_view_mat", mat4_transpose(graphics->proj_view_mat));
+                golf_shader_uniform_set_mat4(vs_uniforms, "model_mat", mat4_transpose(model_mat));
+                sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &(sg_range) { vs_uniforms->data, vs_uniforms->size });
+
+                golf_shader_uniform_t *fs_uniform = golf_shader_get_fs_uniform(shader, "fs_params");
+                golf_shader_uniform_set_float(fs_uniform, "alpha", 1);
+                sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &(sg_range) { fs_uniform->data, fs_uniform->size });
+
+                sg_bindings bindings = (sg_bindings) {
+                    .vertex_buffers[0] = model->sg_positions_buf,
+                        .vertex_buffers[1] = model->sg_texcoords_buf,
+                        .vertex_buffers[2] = model->sg_normals_buf,
+                        .fs_images[0] = texture->sg_image,
+                };
+                sg_apply_bindings(&bindings);
+
+                sg_draw(0, model->positions.length, 1);
+            }
         }
     }
 

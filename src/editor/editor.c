@@ -1407,8 +1407,9 @@ static void _golf_editor_entities_tab(void) {
     }
 
     if (igButton("Create Camera Zone Entity", (ImVec2){0, 0})) {
+        bool towards_hole = false;
         golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 0.01f, 1), QUAT(0, 0, 0, 1));
-        golf_entity_t entity = golf_entity_camera_zone("camera_zone", transform);
+        golf_entity_t entity = golf_entity_camera_zone("camera_zone", towards_hole, transform);
         _vec_push_and_fix_actions(&editor.level->entities, entity, NULL);
     }
 }
@@ -2472,6 +2473,10 @@ void golf_editor_update(float dt) {
             if (entity->type == MODEL_ENTITY) {
                 _golf_editor_file_picker("Model", GOLF_DATA_MODEL, entity->model.model_path, (void**)&entity->model.model);
                 _golf_editor_undoable_igInputFloat("UV Scale", &entity->model.uv_scale, "Modify model uv scale");
+            }
+
+            if (entity->type == CAMERA_ZONE_ENTITY) {
+                _golf_editor_undoable_igCheckbox("Towards Hole", &entity->camera_zone.towards_hole, "Modify towards hole");
             }
 
             golf_transform_t *transform = golf_entity_get_transform(entity);

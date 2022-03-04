@@ -193,6 +193,7 @@ typedef struct golf_begin_animation_entity {
 } golf_begin_animation_entity_t;
 
 typedef struct golf_camera_zone_entity {
+    bool towards_hole;
     golf_transform_t transform;
 } golf_camera_zone_entity_t;
 
@@ -230,7 +231,7 @@ golf_entity_t golf_entity_geo(const char *name, golf_transform_t transform, golf
 golf_entity_t golf_entity_water(const char *name, golf_transform_t transform, golf_geo_t geo, golf_lightmap_section_t lightmap_section);
 golf_entity_t golf_entity_group(const char *name, golf_transform_t transform);
 golf_entity_t golf_entity_begin_animation(const char *name, golf_transform_t transform);
-golf_entity_t golf_entity_camera_zone(const char *name, golf_transform_t transform);
+golf_entity_t golf_entity_camera_zone(const char *name, bool towards_hole, golf_transform_t transform);
 golf_entity_t golf_entity_make_copy(golf_entity_t *entity);
 golf_movement_t *golf_entity_get_movement(golf_entity_t *entity);
 golf_transform_t *golf_entity_get_transform(golf_entity_t *entity);
@@ -239,7 +240,7 @@ golf_lightmap_section_t *golf_entity_get_lightmap_section(golf_entity_t *entity)
 golf_model_t *golf_entity_get_model(golf_entity_t *entity);
 golf_geo_t *golf_entity_get_geo(golf_entity_t *entity);
 vec3 golf_entity_get_velocity(golf_level_t *level, golf_entity_t *entity, float t, vec3 world_point);
-bool golf_level_get_camera_zone_direction(golf_level_t *level, vec3 pos, vec3 *dir);
+bool golf_level_get_camera_zone(golf_level_t *level, vec3 pos, golf_camera_zone_entity_t *camera_zone);
 
 typedef struct golf_level {
     vec_golf_file_t deps; 
