@@ -589,6 +589,13 @@ static bool _golf_shader_finalize(void *ptr) {
                     .compare = SG_COMPAREFUNC_LESS_EQUAL,
                     .write_enabled = true,
                 },
+                .colors[0] = {
+                    .blend = {
+                        .enabled = true,
+                        .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                        .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+                    }
+                }
             };
 
             golf_shader_pipeline_t pipeline;
@@ -2713,6 +2720,14 @@ static bool _golf_level_load(void *ptr, const char *path, char *data, int data_l
             _golf_json_object_get_transform(obj, "transform", &transform);
 
             entity = golf_entity_begin_animation(name, transform);
+
+            valid_entity = true;
+        }
+        else if (type && strcmp(type, "camera_zone") == 0) {
+            golf_transform_t transform;
+            _golf_json_object_get_transform(obj, "transform", &transform);
+
+            entity = golf_entity_camera_zone(name, transform);
 
             valid_entity = true;
         }

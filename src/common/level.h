@@ -192,6 +192,10 @@ typedef struct golf_begin_animation_entity {
     golf_transform_t transform;
 } golf_begin_animation_entity_t;
 
+typedef struct golf_camera_zone_entity {
+    golf_transform_t transform;
+} golf_camera_zone_entity_t;
+
 typedef enum golf_entity_type {
     MODEL_ENTITY,
     BALL_START_ENTITY,
@@ -200,6 +204,7 @@ typedef enum golf_entity_type {
     WATER_ENTITY,
     GROUP_ENTITY,
     BEGIN_ANIMATION_ENTITY,
+    CAMERA_ZONE_ENTITY,
 } golf_entity_type_t;
 
 typedef struct golf_entity {
@@ -215,6 +220,7 @@ typedef struct golf_entity {
         golf_water_entity_t water;
         golf_group_entity_t group;
         golf_begin_animation_entity_t begin_animation;
+        golf_camera_zone_entity_t camera_zone;
     };
 } golf_entity_t;
 golf_entity_t golf_entity_model(const char *name, golf_transform_t transform, const char *model_path, float uv_scale, golf_lightmap_section_t lightmap_section, golf_movement_t movement);
@@ -224,6 +230,7 @@ golf_entity_t golf_entity_geo(const char *name, golf_transform_t transform, golf
 golf_entity_t golf_entity_water(const char *name, golf_transform_t transform, golf_geo_t geo, golf_lightmap_section_t lightmap_section);
 golf_entity_t golf_entity_group(const char *name, golf_transform_t transform);
 golf_entity_t golf_entity_begin_animation(const char *name, golf_transform_t transform);
+golf_entity_t golf_entity_camera_zone(const char *name, golf_transform_t transform);
 golf_entity_t golf_entity_make_copy(golf_entity_t *entity);
 golf_movement_t *golf_entity_get_movement(golf_entity_t *entity);
 golf_transform_t *golf_entity_get_transform(golf_entity_t *entity);
@@ -232,6 +239,7 @@ golf_lightmap_section_t *golf_entity_get_lightmap_section(golf_entity_t *entity)
 golf_model_t *golf_entity_get_model(golf_entity_t *entity);
 golf_geo_t *golf_entity_get_geo(golf_entity_t *entity);
 vec3 golf_entity_get_velocity(golf_level_t *level, golf_entity_t *entity, float t, vec3 world_point);
+bool golf_level_get_camera_zone_direction(golf_level_t *level, vec3 pos, vec3 *dir);
 
 typedef struct golf_level {
     vec_golf_file_t deps; 

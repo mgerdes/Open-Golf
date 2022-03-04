@@ -106,6 +106,10 @@ typedef struct golf_editor {
     } select_box;
 
     struct {
+        bool draw_camera_zones;
+    } entity_settings;
+
+    struct {
         bool gi_on;
     } renderer;
 

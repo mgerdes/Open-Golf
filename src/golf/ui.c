@@ -520,11 +520,13 @@ static void _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name,
         if (aimer_angle > min_angle) {
             float a = 1.0f - (max_angle - aimer_angle) / (max_angle - min_angle);
             if (a > 1) a = 1;
+            game->cam.auto_rotate = false;
             game->cam.angle -= rotate_speed * a * dt;
         }
         if (aimer_angle < -min_angle) {
             float a = 1.0f + (-max_angle - aimer_angle) / (max_angle - min_angle);
             if (a > 1) a = 1;
+            game->cam.auto_rotate = false;
             game->cam.angle += rotate_speed * a * dt;
         }
     }
@@ -821,6 +823,7 @@ static void _golf_ui_camera_controls(float dt) {
             angle1 += 3.0f * (delta.x / reference_width);
         }
 
+        game->cam.auto_rotate = false;
         game->cam.angle = angle1;
         game->cam.angle_velocity = (angle1 - angle0) / dt;
         game->cam.start_angle_velocity = game->cam.angle_velocity;

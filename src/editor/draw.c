@@ -86,6 +86,10 @@ static void _golf_renderer_draw_with_material(golf_model_t *model, int start, in
             golf_shader_uniform_set_mat4(vs_uniforms, "model_mat", mat4_transpose(model_mat));
             sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &(sg_range) { vs_uniforms->data, vs_uniforms->size });
 
+            golf_shader_uniform_t *fs_uniform = golf_shader_get_fs_uniform(shader, "fs_params");
+            golf_shader_uniform_set_float(fs_uniform, "alpha", 1);
+            sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &(sg_range) { fs_uniform->data, fs_uniform->size });
+
             sg_bindings bindings = {
                 .vertex_buffers[0] = model->sg_positions_buf,
                 .vertex_buffers[1] = model->sg_texcoords_buf,
@@ -200,6 +204,100 @@ static void _draw_level(void) {
     }
 
     {
+        for (int i = 0; i < level->entities.length; i++) {
+            golf_entity_t *entity = &level->entities.data[i];
+            if (editor->entity_settings.draw_camera_zones && entity->type == CAMERA_ZONE_ENTITY) {
+                golf_transform_t transform = golf_entity_get_world_transform(level, entity);
+                mat4 model_mat = mat4_multiply_n(2,
+                        mat4_translation(transform.position),
+                        mat4_scale(transform.scale));
+                golf_model_t *model = golf_data_get_model("data/models/cube.obj");
+                golf_texture_t *texture = golf_data_get_texture("data/textures/colors/red.png");
+
+                golf_shader_t *shader = golf_data_get_shader("data/shaders/texture_material.glsl");
+                golf_shader_pipeline_t *pipeline = golf_shader_get_pipeline(shader, "texture_material");
+                sg_apply_pipeline(pipeline->sg_pipeline);
+
+                golf_shader_uniform_t *vs_uniforms = golf_shader_get_vs_uniform(shader, "texture_material_vs_params");
+                golf_shader_uniform_set_mat4(vs_uniforms, "proj_view_mat", mat4_transpose(graphics->proj_view_mat));
+                golf_shader_uniform_set_mat4(vs_uniforms, "model_mat", mat4_transpose(model_mat));
+                sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &(sg_range) { vs_uniforms->data, vs_uniforms->size });
+
+                golf_shader_uniform_t *fs_uniform = golf_shader_get_fs_uniform(shader, "fs_params");
+                golf_shader_uniform_set_float(fs_uniform, "alpha", 0.4f);
+                sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &(sg_range) { fs_uniform->data, fs_uniform->size });
+
+                sg_bindings bindings = {
+                    .vertex_buffers[0] = model->sg_positions_buf,
+                    .vertex_buffers[1] = model->sg_texcoords_buf,
+                    .vertex_buffers[2] = model->sg_normals_buf,
+                    .fs_images[0] = texture->sg_image,
+                };
+                sg_apply_bindings(&bindings);
+
+                sg_draw(0, model->positions.length, 1);
+
+                //
+                // Draw direction
+                //
+
+                mat4 rotation_mat = mat4_from_quat(transform.rotation);  
+                model_mat = mat4_multiply_n(4,
+                        mat4_translation(transform.position),
+                        rotation_mat,
+                        mat4_scale(V3(1.0f, 0.1f, 0.1f)),
+                        mat4_translation(V3(1, 0.5f, 0)));
+                
+                golf_shader_uniform_set_mat4(vs_uniforms, "proj_view_mat", mat4_transpose(graphics->proj_view_mat));
+                golf_shader_uniform_set_mat4(vs_uniforms, "model_mat", mat4_transpose(model_mat));
+                sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &(sg_range) { vs_uniforms->data, vs_uniforms->size });
+
+                golf_shader_uniform_set_float(fs_uniform, "alpha", 1);
+                sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &(sg_range) { fs_uniform->data, fs_uniform->size });
+
+                bindings = (sg_bindings) {
+                    .vertex_buffers[0] = model->sg_positions_buf,
+                    .vertex_buffers[1] = model->sg_texcoords_buf,
+                    .vertex_buffers[2] = model->sg_normals_buf,
+                    .fs_images[0] = texture->sg_image,
+                };
+                sg_apply_bindings(&bindings);
+
+                sg_draw(0, model->positions.length, 1);
+
+                //
+                // Draw sphere
+                //
+
+                model = golf_data_get_model("data/models/sphere.obj");
+
+                model_mat = mat4_multiply_n(4,
+                        mat4_translation(transform.position),
+                        rotation_mat,
+                        mat4_translation(V3(2, 0.1f, 0)),
+                        mat4_scale(V3(0.2f, 0.2f, 0.2f)));
+
+                golf_shader_uniform_set_mat4(vs_uniforms, "proj_view_mat", mat4_transpose(graphics->proj_view_mat));
+                golf_shader_uniform_set_mat4(vs_uniforms, "model_mat", mat4_transpose(model_mat));
+                sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &(sg_range) { vs_uniforms->data, vs_uniforms->size });
+
+                golf_shader_uniform_set_float(fs_uniform, "alpha", 1);
+                sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &(sg_range) { fs_uniform->data, fs_uniform->size });
+
+                bindings = (sg_bindings) {
+                    .vertex_buffers[0] = model->sg_positions_buf,
+                    .vertex_buffers[1] = model->sg_texcoords_buf,
+                    .vertex_buffers[2] = model->sg_normals_buf,
+                    .fs_images[0] = texture->sg_image,
+                };
+                sg_apply_bindings(&bindings);
+
+                sg_draw(0, model->positions.length, 1);
+            }
+        }
+    }
+
+    {
         golf_shader_t *shader = golf_data_get_shader("data/shaders/editor_water.glsl");
         golf_shader_pipeline_t *pipeline = golf_shader_get_pipeline(shader, "editor_water");
         sg_apply_pipeline(pipeline->sg_pipeline);
@@ -301,6 +399,10 @@ static void _draw_level(void) {
                     golf_shader_uniform_set_mat4(vs_uniform, "proj_view_mat", mat4_transpose(graphics->proj_view_mat));
                     golf_shader_uniform_set_mat4(vs_uniform, "model_mat", mat4_transpose(model_mat));
                     sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &(sg_range) { vs_uniform->data, vs_uniform->size });
+
+                    golf_shader_uniform_t *fs_uniform = golf_shader_get_fs_uniform(shader, "fs_params");
+                    golf_shader_uniform_set_float(fs_uniform, "alpha", 1);
+                    sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &(sg_range) { fs_uniform->data, fs_uniform->size });
 
                     sg_bindings bindings = {
                         .vertex_buffers[0] = model->sg_positions_buf,

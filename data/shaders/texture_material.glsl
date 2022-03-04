@@ -25,6 +25,10 @@ void main() {
 //@begin_frag
 #version 450
 
+layout(binding = 0) uniform fs_params {
+    float alpha;
+};
+
 layout(binding = 0) uniform sampler2D texture_material_tex;
 
 layout(location = 0) in vec3 frag_position;
@@ -36,6 +40,6 @@ layout(location = 0) out vec4 g_frag_color;
 void main() {
     vec3 color = texture(texture_material_tex, frag_texturecoord).xyz; 
     color = color + 0.001 * (frag_normal.xyz + frag_position.xyz);
-    g_frag_color = vec4(color, 1.0);
+    g_frag_color = vec4(color, alpha);
 }
 //@end

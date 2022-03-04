@@ -1,7 +1,7 @@
 {
     "glsl330": {
         "fs": {
-            "source": "#version 330\n\nuniform sampler2D texture_material_tex;\n\nin vec2 frag_texturecoord;\nin vec3 frag_normal;\nin vec3 frag_position;\nlayout(location = 0) out vec4 g_frag_color;\n\nvoid main()\n{\n    vec3 color = texture(texture_material_tex, frag_texturecoord).xyz;\n    color += ((frag_normal + frag_position) * 0.001000000047497451305389404296875);\n    g_frag_color = vec4(color, 1.0);\n}\n\n",
+            "source": "#version 330\n\nuniform vec4 fs_params[1];\nuniform sampler2D texture_material_tex;\n\nin vec2 frag_texturecoord;\nin vec3 frag_normal;\nin vec3 frag_position;\nlayout(location = 0) out vec4 g_frag_color;\n\nvoid main()\n{\n    vec3 color = texture(texture_material_tex, frag_texturecoord).xyz;\n    color += ((frag_normal + frag_position) * 0.001000000047497451305389404296875);\n    g_frag_color = vec4(color, fs_params[0].x);\n}\n\n",
             "inputs": [
                 {
                     "name": "frag_texturecoord",
@@ -16,7 +16,20 @@
                     "location": 0
                 }
             ],
-            "uniforms": [],
+            "uniforms": [
+                {
+                    "name": "fs_params",
+                    "size": 16,
+                    "binding": 0,
+                    "members": [
+                        {
+                            "name": "alpha",
+                            "offset": 0,
+                            "size": 4
+                        }
+                    ]
+                }
+            ],
             "textures": [
                 {
                     "name": "texture_material_tex",
@@ -43,7 +56,7 @@
             "uniforms": [
                 {
                     "name": "texture_material_vs_params",
-                    "size": 144,
+                    "size": 128,
                     "binding": 0,
                     "members": [
                         {
@@ -63,7 +76,7 @@
     },
     "gles300": {
         "fs": {
-            "source": "#version 300 es\nprecision mediump float;\nprecision highp int;\n\nuniform highp sampler2D texture_material_tex;\n\nin highp vec2 frag_texturecoord;\nin highp vec3 frag_normal;\nin highp vec3 frag_position;\nlayout(location = 0) out highp vec4 g_frag_color;\n\nvoid main()\n{\n    highp vec3 color = texture(texture_material_tex, frag_texturecoord).xyz;\n    color += ((frag_normal + frag_position) * 0.001000000047497451305389404296875);\n    g_frag_color = vec4(color, 1.0);\n}\n\n",
+            "source": "#version 300 es\nprecision mediump float;\nprecision highp int;\n\nuniform highp vec4 fs_params[1];\nuniform highp sampler2D texture_material_tex;\n\nin highp vec2 frag_texturecoord;\nin highp vec3 frag_normal;\nin highp vec3 frag_position;\nlayout(location = 0) out highp vec4 g_frag_color;\n\nvoid main()\n{\n    highp vec3 color = texture(texture_material_tex, frag_texturecoord).xyz;\n    color += ((frag_normal + frag_position) * 0.001000000047497451305389404296875);\n    g_frag_color = vec4(color, fs_params[0].x);\n}\n\n",
             "inputs": [
                 {
                     "name": "frag_texturecoord",
@@ -78,7 +91,20 @@
                     "location": 0
                 }
             ],
-            "uniforms": [],
+            "uniforms": [
+                {
+                    "name": "fs_params",
+                    "size": 16,
+                    "binding": 0,
+                    "members": [
+                        {
+                            "name": "alpha",
+                            "offset": 0,
+                            "size": 4
+                        }
+                    ]
+                }
+            ],
             "textures": [
                 {
                     "name": "texture_material_tex",
@@ -105,7 +131,7 @@
             "uniforms": [
                 {
                     "name": "texture_material_vs_params",
-                    "size": 144,
+                    "size": 128,
                     "binding": 0,
                     "members": [
                         {

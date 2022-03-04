@@ -97,6 +97,10 @@ void golf_editor_init(void) {
     }
 
     {
+        editor.entity_settings.draw_camera_zones = false;
+    }
+
+    {
         editor.renderer.gi_on = true;
     }
 
@@ -1170,6 +1174,7 @@ static void _golf_editor_entities_tab(void) {
         switch (entity->type) {
             case BALL_START_ENTITY:
             case BEGIN_ANIMATION_ENTITY:
+            case CAMERA_ZONE_ENTITY:
             case MODEL_ENTITY: 
             case GEO_ENTITY:
             case WATER_ENTITY:
@@ -1398,6 +1403,12 @@ static void _golf_editor_entities_tab(void) {
     if (igButton("Create Begin Animation Entity", (ImVec2){0, 0})) {
         golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 1, 1), QUAT(0, 0, 0, 1));
         golf_entity_t entity = golf_entity_begin_animation("begin_animation", transform);
+        _vec_push_and_fix_actions(&editor.level->entities, entity, NULL);
+    }
+
+    if (igButton("Create Camera Zone Entity", (ImVec2){0, 0})) {
+        golf_transform_t transform = golf_transform(V3(0, 0, 0), V3(1, 0.01f, 1), QUAT(0, 0, 0, 1));
+        golf_entity_t entity = golf_entity_camera_zone("camera_zone", transform);
         _vec_push_and_fix_actions(&editor.level->entities, entity, NULL);
     }
 }
@@ -1909,6 +1920,14 @@ void golf_editor_update(float dt) {
                 igOpenPopup_Str("settings_popup", ImGuiPopupFlags_None);
             }
             if (igBeginPopup("settings_popup", ImGuiWindowFlags_None)) {
+                if (igTreeNode_Str("Entities")) {
+                    igPushItemWidth(75);
+
+                    _golf_editor_undoable_igCheckbox("Draw Camera Zones", &editor.entity_settings.draw_camera_zones, "Modify draw camera zones");
+
+                    igPopItemWidth();
+                    igTreePop();
+                }
                 if (igTreeNode_Str("Select Box")) {
                     igPushItemWidth(75);
 
@@ -2418,6 +2437,10 @@ void golf_editor_update(float dt) {
                 }
                 case BALL_START_ENTITY: {
                     igText("TYPE: Ball Start");
+                    break;
+                }
+                case CAMERA_ZONE_ENTITY: {
+                    igText("TYPE: Camera Zone");
                     break;
                 }
                 case BEGIN_ANIMATION_ENTITY: {

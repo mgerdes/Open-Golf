@@ -1236,6 +1236,36 @@
                 "scale": [1, 1, 1],
                 "rotation": [0, 0, 0, 1]
             }
+        },
+        {
+            "parent_idx": -1,
+            "name": "camera_zone",
+            "type": "camera_zone",
+            "transform": {
+                "position": [-0.50001, 0, -10],
+                "scale": [2.5, 0.01, 7.75],
+                "rotation": [0, -0.7071, 0, -0.70711]
+            }
+        },
+        {
+            "parent_idx": -1,
+            "name": "camera_zone",
+            "type": "camera_zone",
+            "transform": {
+                "position": [14.5, 0, -19],
+                "scale": [2.5, 0.01, 7.75],
+                "rotation": [0, -0.70711, 0, 0.70711]
+            }
+        },
+        {
+            "parent_idx": -1,
+            "name": "camera_zone",
+            "type": "camera_zone",
+            "transform": {
+                "position": [4.25, 0, -20.75],
+                "scale": [7.75, 0.01, 3],
+                "rotation": [0, 3.8725e-13, 0, 1]
+            }
         }
     ]
 }

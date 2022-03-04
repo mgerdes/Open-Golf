@@ -511,6 +511,10 @@ static void _draw_game(void) {
                         golf_shader_uniform_set_mat4(vs_uniform, "model_mat", mat4_transpose(model_mat));
                         sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &(sg_range) { vs_uniform->data, vs_uniform->size });
 
+                        golf_shader_uniform_t *fs_uniform = golf_shader_get_fs_uniform(shader, "fs_params");
+                        golf_shader_uniform_set_float(fs_uniform, "alpha", 1);
+                        sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &(sg_range) { fs_uniform->data, fs_uniform->size });
+
                         sg_bindings bindings = {
                             .vertex_buffers[0] = model->sg_positions_buf,
                             .vertex_buffers[1] = model->sg_texcoords_buf,

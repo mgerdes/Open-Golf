@@ -32,6 +32,8 @@ typedef struct golf_game {
 
     bool debug_inputs;
 
+    vec3 ball_start_pos, hole_pos;
+
     struct {
         vec3 start_pos, pos, vel, draw_pos, rot_vec;
         quat orientation;
@@ -40,6 +42,7 @@ typedef struct golf_game {
     } ball;
 
     struct {
+        bool auto_rotate;
         float angle, start_angle_velocity, angle_velocity;
     } cam;
 

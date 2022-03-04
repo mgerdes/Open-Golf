@@ -79,6 +79,7 @@ void golf_game_init(void) {
     game_cfg = golf_data_get_config("data/config/game.cfg");
 
     game.state = GOLF_GAME_STATE_MAIN_MENU;
+    game.cam.auto_rotate = true;
     game.cam.angle = 0;
     game.cam.angle_velocity = 0;
 
@@ -768,6 +769,22 @@ void golf_game_update(float dt) {
         case GOLF_GAME_STATE_WAITING_FOR_AIM:
         case GOLF_GAME_STATE_AIMING:
         case GOLF_GAME_STATE_WATCHING_BALL: {
+            if (game.cam.auto_rotate) {
+                vec3 camera_zone_dir;
+                if (!golf_level_get_camera_zone_direction(golf->level, game.ball.draw_pos, &camera_zone_dir)) {
+                    camera_zone_dir = vec3_sub(game.hole_pos, game.ball.draw_pos);
+                    camera_zone_dir.y = 0;
+                    camera_zone_dir = vec3_normalize(camera_zone_dir);
+                }
+                float camera_zone_angle = acosf(camera_zone_dir.x);
+                if (camera_zone_dir.z > 0) camera_zone_angle *= -1;
+                camera_zone_angle += MF_PI;
+
+                float delta_angle = camera_zone_angle - game.cam.angle;
+                delta_angle = atan2f(sinf(delta_angle), cosf(delta_angle));
+                game.cam.angle += delta_angle * CFG_NUM(game_cfg, "cam_auto_rotate_speed");
+            }
+
             vec3 cam_delta = vec3_rotate_y(V3(2.6f, 1.5f, 0), game.cam.angle);
             vec3 wanted_pos = vec3_add(game.ball.draw_pos, cam_delta);
             vec3 diff = vec3_sub(wanted_pos, graphics->cam_pos);
@@ -838,6 +855,9 @@ void golf_game_start_level(void) {
 
     game.t = 0;
 
+    game.ball_start_pos = ball_start_pos;
+    game.hole_pos = hole_pos;
+
     game.ball.time_going_slow = 0;
     game.ball.is_moving = false;
     game.ball.is_out_of_bounds = false;
@@ -897,6 +917,8 @@ void golf_game_hit_ball(vec2 aim_delta) {
     else {
         start_speed = dark_red_speed;
     }
+
+    game.cam.auto_rotate = true;
 
     game.ball.vel = vec3_scale(aim_direction, start_speed);
     game.ball.is_moving = true;
