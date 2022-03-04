@@ -162,6 +162,7 @@ typedef struct golf_model_entity {
     char model_path[GOLF_FILE_MAX_PATH];
     golf_model_t *model;
     float uv_scale;
+    bool ignore_physics;
 } golf_model_entity_t;
 typedef vec_t(golf_model_entity_t) vec_golf_model_entity_t;
 
@@ -224,7 +225,7 @@ typedef struct golf_entity {
         golf_camera_zone_entity_t camera_zone;
     };
 } golf_entity_t;
-golf_entity_t golf_entity_model(const char *name, golf_transform_t transform, const char *model_path, float uv_scale, golf_lightmap_section_t lightmap_section, golf_movement_t movement);
+golf_entity_t golf_entity_model(const char *name, golf_transform_t transform, const char *model_path, float uv_scale, golf_lightmap_section_t lightmap_section, golf_movement_t movement, bool ignore_physics);
 golf_entity_t golf_entity_hole(const char *name, golf_transform_t transform);
 golf_entity_t golf_entity_ball_start(const char *name, golf_transform_t transform);
 golf_entity_t golf_entity_geo(const char *name, golf_transform_t transform, golf_movement_t movement, golf_geo_t geo, golf_lightmap_section_t lightmap_section);

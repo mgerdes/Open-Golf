@@ -732,6 +732,7 @@ bool golf_level_save(golf_level_t *level, const char *path) {
                 json_object_set_string(json_entity_obj, "type", "model");
                 json_object_set_string(json_entity_obj, "model", model->model_path);
                 json_object_set_number(json_entity_obj, "uv_scale", model->uv_scale);
+                json_object_set_boolean(json_entity_obj, "ignore_physics", model->ignore_physics);
                 _add_dependency(&data_dependencies, model->model_path);
                 break;
             }
@@ -884,7 +885,7 @@ bool golf_level_get_lightmap_image(golf_level_t *level, const char *lightmap_nam
     return false;
 }
 
-golf_entity_t golf_entity_model(const char *name, golf_transform_t transform, const char *model_path, float uv_scale, golf_lightmap_section_t lightmap_section, golf_movement_t movement) {
+golf_entity_t golf_entity_model(const char *name, golf_transform_t transform, const char *model_path, float uv_scale, golf_lightmap_section_t lightmap_section, golf_movement_t movement, bool ignore_physics) {
     golf_entity_t entity;
     entity.active = true;
     entity.parent_idx = -1;
@@ -896,6 +897,7 @@ golf_entity_t golf_entity_model(const char *name, golf_transform_t transform, co
     entity.model.uv_scale = uv_scale;
     entity.model.lightmap_section = lightmap_section;
     entity.model.movement = movement;
+    entity.model.ignore_physics = ignore_physics;
     return entity;
 }
 

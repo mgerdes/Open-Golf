@@ -296,10 +296,11 @@
             "type": "model",
             "model": "data\/models\/flag_red.obj",
             "uv_scale": 1,
+            "ignore_physics": true,
             "transform": {
                 "position": [7.5, -0.375, -12.75],
                 "scale": [2, 2, 2],
-                "rotation": [0, -0.70711, 0, 0.70711]
+                "rotation": [0, -1, 0, 0]
             },
             "lightmap_section": {
                 "lightmap_name": "main",
@@ -543,6 +544,7 @@
             "type": "model",
             "model": "data\/models\/nature_kit\/platform_grass.obj",
             "uv_scale": 0.2,
+            "ignore_physics": false,
             "transform": {
                 "position": [2.75, -10.5, -12.25],
                 "scale": [120, 120, 120],

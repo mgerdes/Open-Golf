@@ -853,9 +853,12 @@ void golf_game_start_level(void) {
                 case MODEL_ENTITY:
                 case WATER_ENTITY:
                 case GEO_ENTITY: {
-                    golf_movement_t *movement = golf_entity_get_movement(entity);
-                    if (!movement || movement->type == GOLF_MOVEMENT_NONE) {
-                        vec_push(&bvh->node_infos, golf_bvh_node_info(bvh, i, golf->level, entity, game.t));
+                    bool ignore_physics = entity->type == MODEL_ENTITY && entity->model.ignore_physics;
+                    if (!ignore_physics) {
+                        golf_movement_t *movement = golf_entity_get_movement(entity);
+                        if (!movement || movement->type == GOLF_MOVEMENT_NONE) {
+                            vec_push(&bvh->node_infos, golf_bvh_node_info(bvh, i, golf->level, entity, game.t));
+                        }
                     }
                     break;
                 }

@@ -2657,10 +2657,13 @@ static bool _golf_level_load(void *ptr, const char *path, char *data, int data_l
             golf_lightmap_section_t lightmap_section;
             _golf_json_object_get_lightmap_section(obj, "lightmap_section", &lightmap_section);
 
+            int ignore_physics = json_object_get_boolean(obj, "ignore_physics");
+            if (ignore_physics == -1) ignore_physics = 0;
+
             golf_movement_t movement;
             _golf_json_object_get_movement(obj, "movement", &movement);
 
-            entity = golf_entity_model(name, transform, model_path, uv_scale, lightmap_section, movement);
+            entity = golf_entity_model(name, transform, model_path, uv_scale, lightmap_section, movement, (bool)ignore_physics);
             valid_entity = true;
         }
         else if (type && strcmp(type, "ball-start") == 0) {

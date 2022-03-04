@@ -320,6 +320,7 @@
             "type": "model",
             "model": "data\/models\/flag_red.obj",
             "uv_scale": 1,
+            "ignore_physics": true,
             "transform": {
                 "position": [-0.5, -0.375, -15.75],
                 "scale": [2, 2, 2],
@@ -515,6 +516,7 @@
             "type": "model",
             "model": "data\/models\/nature_kit\/platform_grass.obj",
             "uv_scale": 0.2,
+            "ignore_physics": false,
             "transform": {
                 "position": [2.75, -10.5, -12.25],
                 "scale": [120, 120, 120],

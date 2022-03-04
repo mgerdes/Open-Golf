@@ -1258,7 +1258,9 @@ static void _golf_editor_entities_tab(void) {
         golf_movement_t movement;
         movement = golf_movement_none();
 
-        golf_entity_t entity = golf_entity_model("Model", transform, "data/models/cube.obj", uv_scale, lightmap_section, movement);
+        bool ignore_physics = false;
+
+        golf_entity_t entity = golf_entity_model("Model", transform, "data/models/cube.obj", uv_scale, lightmap_section, movement, ignore_physics);
         _vec_push_and_fix_actions(&editor.level->entities, entity, NULL);
         _golf_editor_commit_entity_create_action();
     }
@@ -2473,6 +2475,7 @@ void golf_editor_update(float dt) {
             if (entity->type == MODEL_ENTITY) {
                 _golf_editor_file_picker("Model", GOLF_DATA_MODEL, entity->model.model_path, (void**)&entity->model.model);
                 _golf_editor_undoable_igInputFloat("UV Scale", &entity->model.uv_scale, "Modify model uv scale");
+                _golf_editor_undoable_igCheckbox("Ignore Physics", &entity->model.ignore_physics, "Modify model ignore physics");
             }
 
             if (entity->type == CAMERA_ZONE_ENTITY) {
