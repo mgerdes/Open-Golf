@@ -224,17 +224,17 @@
             "square": "blue_background",
             "anchor": [0.5, 0.5],
             "pos": [0, 0],
-            "size": [400, 500],
+            "size": [400, 550],
             "tile_size": 64,
             "overlay_color": [0, 0, 0, 0]
         },
         {
-            "name": "paused_text",
+            "name": "pause_menu_text",
             "parent": "pause_menu_background",
             "type": "text",
             "font": "data/font/FiraSans-Bold.ttf",
             "anchor": [0.5, 0.5],
-            "pos": [0, -145],
+            "pos": [0, -190],
             "horiz_align": 0,
             "vert_align": 0,
             "font_size": 74,
@@ -242,15 +242,15 @@
             "text": "PAUSED"
         },
         {
-            "name": "resume_button",
+            "name": "pause_menu_resume_button",
             "parent": "pause_menu_background",
             "type": "button",
             "anchor": [0.5, 0.5],
-            "pos": [0, 0],
+            "pos": [0, -60],
             "size": [200, 100],
             "up_entities": [
                 {
-                    "parent": "resume_button",
+                    "parent": "pause_menu_resume_button",
                     "type": "pixel_pack_square",
                     "pixel_pack": "data/textures/pixel_pack.pixel_pack",
                     "square": "blue_button_up",
@@ -261,7 +261,7 @@
                     "overlay_color": [0, 0, 0, 0]
                 },
                 {
-                    "parent": "resume_button",
+                    "parent": "pause_menu_resume_button",
                     "type": "text",
                     "font": "data/font/FiraSans-Bold.ttf",
                     "anchor": [0.5, 0.5],
@@ -275,7 +275,7 @@
             ],
             "down_entities": [
                 {
-                    "parent": "resume_button",
+                    "parent": "pause_menu_resume_button",
                     "type": "pixel_pack_square",
                     "pixel_pack": "data/textures/pixel_pack.pixel_pack",
                     "square": "blue_button_down",
@@ -286,7 +286,7 @@
                     "overlay_color": [0, 0, 0, 0]
                 },
                 {
-                    "parent": "resume_button",
+                    "parent": "pause_menu_resume_button",
                     "type": "text",
                     "font": "data/font/FiraSans-Bold.ttf",
                     "anchor": [0.5, 0.5],
@@ -300,15 +300,15 @@
             ]
         },
         {
-            "name": "exit_button",
+            "name": "pause_menu_retry_button",
             "parent": "pause_menu_background",
             "type": "button",
             "anchor": [0.5, 0.5],
-            "pos": [0, 120],
+            "pos": [0, 50],
             "size": [200, 100],
             "up_entities": [
                 {
-                    "parent": "exit_button",
+                    "parent": "pause_menu_retry_button",
                     "type": "pixel_pack_square",
                     "pixel_pack": "data/textures/pixel_pack.pixel_pack",
                     "square": "blue_button_up",
@@ -319,7 +319,65 @@
                     "overlay_color": [0, 0, 0, 0]
                 },
                 {
-                    "parent": "exit_button",
+                    "parent": "pause_menu_retry_button",
+                    "type": "text",
+                    "font": "data/font/FiraSans-Bold.ttf",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, -2],
+                    "horiz_align": 0,
+                    "vert_align": 0,
+                    "font_size": 38,
+                    "color": [0.2, 0.2, 0.2, 1],
+                    "text": "RETRY"
+                }
+            ],
+            "down_entities": [
+                {
+                    "parent": "pause_menu_retry_button",
+                    "type": "pixel_pack_square",
+                    "pixel_pack": "data/textures/pixel_pack.pixel_pack",
+                    "square": "blue_button_down",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 0],
+                    "size": [200, 100],
+                    "tile_size": 64,
+                    "overlay_color": [0, 0, 0, 0]
+                },
+                {
+                    "parent": "pause_menu_retry_button",
+                    "type": "text",
+                    "font": "data/font/FiraSans-Bold.ttf",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 4],
+                    "horiz_align": 0,
+                    "vert_align": 0,
+                    "font_size": 38,
+                    "color": [0.2, 0.2, 0.2, 1],
+                    "text": "RETRY"
+                }
+            ]
+        },
+        {
+            "name": "pause_menu_exit_button",
+            "parent": "pause_menu_background",
+            "type": "button",
+            "anchor": [0.5, 0.5],
+            "pos": [0, 160],
+            "size": [200, 100],
+            "up_entities": [
+                {
+                    "parent": "pause_menu_exit_button",
+                    "type": "pixel_pack_square",
+                    "pixel_pack": "data/textures/pixel_pack.pixel_pack",
+                    "square": "blue_button_up",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 0],
+                    "size": [200, 100],
+                    "tile_size": 64,
+                    "overlay_color": [0, 0, 0, 0]
+                },
+                {
+                    "parent": "pause_menu_exit_button",
                     "type": "text",
                     "font": "data/font/FiraSans-Bold.ttf",
                     "anchor": [0.5, 0.5],
@@ -333,7 +391,7 @@
             ],
             "down_entities": [
                 {
-                    "parent": "exit_button",
+                    "parent": "pause_menu_exit_button",
                     "type": "pixel_pack_square",
                     "pixel_pack": "data/textures/pixel_pack.pixel_pack",
                     "square": "blue_button_down",
@@ -344,7 +402,7 @@
                     "overlay_color": [0, 0, 0, 0]
                 },
                 {
-                    "parent": "exit_button",
+                    "parent": "pause_menu_exit_button",
                     "type": "text",
                     "font": "data/font/FiraSans-Bold.ttf",
                     "anchor": [0.5, 0.5],
@@ -364,7 +422,7 @@
             "square": "blue_background",
             "anchor": [0.5, 0.5],
             "pos": [0, 0],
-            "size": [400, 500],
+            "size": [400, 550],
             "tile_size": 64,
             "overlay_color": [0, 0, 0, 0]
         },
@@ -374,7 +432,7 @@
             "type": "text",
             "font": "data/font/FiraSans-Bold.ttf",
             "anchor": [0.5, 0.5],
-            "pos": [0, -145],
+            "pos": [0, -190],
             "horiz_align": 0,
             "vert_align": 0,
             "font_size": 74,
@@ -386,7 +444,7 @@
             "parent": "finished_menu_background",
             "type": "button",
             "anchor": [0.5, 0.5],
-            "pos": [0, 0],
+            "pos": [0, -60],
             "size": [200, 100],
             "up_entities": [
                 {
@@ -440,11 +498,69 @@
             ]
         },
         {
+            "name": "finished_menu_retry_button",
+            "parent": "finished_menu_background",
+            "type": "button",
+            "anchor": [0.5, 0.5],
+            "pos": [0, 50],
+            "size": [200, 100],
+            "up_entities": [
+                {
+                    "parent": "finished_menu_retry_button",
+                    "type": "pixel_pack_square",
+                    "pixel_pack": "data/textures/pixel_pack.pixel_pack",
+                    "square": "blue_button_up",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 0],
+                    "size": [200, 100],
+                    "tile_size": 64,
+                    "overlay_color": [0, 0, 0, 0]
+                },
+                {
+                    "parent": "finished_menu_retry_button",
+                    "type": "text",
+                    "font": "data/font/FiraSans-Bold.ttf",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, -2],
+                    "horiz_align": 0,
+                    "vert_align": 0,
+                    "font_size": 38,
+                    "color": [0.2, 0.2, 0.2, 1],
+                    "text": "RETRY"
+                }
+            ],
+            "down_entities": [
+                {
+                    "parent": "finished_menu_retry_button",
+                    "type": "pixel_pack_square",
+                    "pixel_pack": "data/textures/pixel_pack.pixel_pack",
+                    "square": "blue_button_down",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 0],
+                    "size": [200, 100],
+                    "tile_size": 64,
+                    "overlay_color": [0, 0, 0, 0]
+                },
+                {
+                    "parent": "finished_menu_retry_button",
+                    "type": "text",
+                    "font": "data/font/FiraSans-Bold.ttf",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 4],
+                    "horiz_align": 0,
+                    "vert_align": 0,
+                    "font_size": 38,
+                    "color": [0.2, 0.2, 0.2, 1],
+                    "text": "RETRY"
+                }
+            ]
+        },
+        {
             "name": "finished_menu_exit_button",
             "parent": "pause_menu_background",
             "type": "button",
             "anchor": [0.5, 0.5],
-            "pos": [0, 120],
+            "pos": [0, 160],
             "size": [200, 100],
             "up_entities": [
                 {

@@ -882,13 +882,16 @@ static void _golf_ui_in_game_paused(float dt) {
     golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
 
     _golf_ui_pixel_pack_square_name(layout, "pause_menu_background");
-    if (_golf_ui_button_name(layout, "resume_button")) {
+    if (_golf_ui_button_name(layout, "pause_menu_resume_button")) {
         golf_game_resume();
     }
-    if (_golf_ui_button_name(layout, "exit_button")) {
+    if (_golf_ui_button_name(layout, "pause_menu_retry_button")) {
+        golf_game_start_level();
+    }
+    if (_golf_ui_button_name(layout, "pause_menu_exit_button")) {
         golf_goto_main_menu();
     }
-    _golf_ui_text_name(layout, "paused_text");
+    _golf_ui_text_name(layout, "pause_menu_text");
 }
 
 static void _golf_ui_in_game_finished(float dt) {
@@ -899,6 +902,9 @@ static void _golf_ui_in_game_finished(float dt) {
     if (_golf_ui_button_name(layout, "finished_menu_next_button")) {
         golf_start_level(golf->level_num + 1);
     }
+    if (_golf_ui_button_name(layout, "finished_menu_retry_button")) {
+        golf_game_start_level();
+    }
     if (_golf_ui_button_name(layout, "finished_menu_exit_button")) {
         golf_goto_main_menu();
     }
@@ -906,7 +912,7 @@ static void _golf_ui_in_game_finished(float dt) {
 }
 
 static void _golf_ui_in_game(float dt) {
-    if (game->state != GOLF_GAME_STATE_MAIN_MENU && game->state != GOLF_GAME_STATE_PAUSED) {
+    if (game->state == GOLF_GAME_STATE_WAITING_FOR_AIM || game->state == GOLF_GAME_STATE_WATCHING_BALL) {
         golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
         if (_golf_ui_button_name(layout, "pause_button")) {
             golf_game_pause();
