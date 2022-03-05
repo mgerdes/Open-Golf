@@ -838,6 +838,10 @@ void golf_game_start_main_menu(void) {
         }
     }
 
+    game.ball.pos = V3(99999.0f, 99999.0f, 99999.0f);
+    game.ball.draw_pos = game.ball.pos;
+    game.ball.vel = V3(0, 0, 0);
+
     graphics->cam_pos = begin_animation_pos;
     graphics->cam_dir = vec3_normalize(vec3_sub(hole_pos, begin_animation_pos));
 }
