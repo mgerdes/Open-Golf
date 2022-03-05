@@ -906,6 +906,7 @@ void golf_game_start_level(void) {
 
     game.t = 0;
 
+    game.stroke_count = 0;
     game.ball_start_pos = ball_start_pos;
     game.hole_pos = hole_pos;
 
@@ -956,6 +957,7 @@ void golf_game_stop_aiming(void) {
 
 void golf_game_hit_ball(vec2 aim_delta) {
     game.state = GOLF_GAME_STATE_WATCHING_BALL;
+    game.stroke_count++;
 
     vec3 aim_direction = V3(aim_delta.x, 0, aim_delta.y);
     aim_direction = vec3_normalize(vec3_rotate_y(aim_direction, game.cam.angle - 0.5f * MF_PI));

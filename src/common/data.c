@@ -1340,6 +1340,7 @@ static bool _golf_font_import(const char *path, char *data, int data_len) {
     json_array_append_value(atlases_array, _golf_font_atlas_import(data, 48, 512));
     json_array_append_value(atlases_array, _golf_font_atlas_import(data, 56, 512));
     json_array_append_value(atlases_array, _golf_font_atlas_import(data, 64, 512));
+    json_array_append_value(atlases_array, _golf_font_atlas_import(data, 128, 1024));
 
     json_object_set_value(obj, "atlases", atlases_val);
 

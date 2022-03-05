@@ -32,6 +32,7 @@ typedef struct golf_game {
 
     bool debug_inputs;
 
+    int stroke_count;
     vec3 ball_start_pos, hole_pos;
 
     struct {

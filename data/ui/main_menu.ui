@@ -35,8 +35,8 @@
         {
             "name": "play_button",
             "type": "button",
-            "anchor": [0.5, 0.45],
-            "pos": [0, 180],
+            "anchor": [0.5, 0.75],
+            "pos": [0, 0],
             "size": [200, 100],
             "up_entities": [
                 {
@@ -93,11 +93,11 @@
             "name": "main_text",
             "type": "text",
             "font": "data/font/Castle-Rock.ttf",
-            "anchor": [0.5, 0.20],
+            "anchor": [0.5, 0.30],
             "pos": [0, 2],
             "horiz_align": 0,
             "vert_align": 0,
-            "font_size": 128,
+            "font_size": 140,
             "color": [0, 0, 0, 1],
             "text": "OPEN GOLF"
         },
@@ -105,12 +105,12 @@
             "name": "main2_text",
             "type": "text",
             "font": "data/font/Castle-Rock.ttf",
-            "anchor": [0.5, 0.20],
+            "anchor": [0.5, 0.30],
             "pos": [2, 0],
             "horiz_align": 0,
             "vert_align": 0,
-            "font_size": 128,
-            "color": [0.7, 0.9, 0.7, 1],
+            "font_size": 140,
+            "color": [0.8, 1.0, 0.7, 1],
             "text": "OPEN GOLF"
         },
         {
@@ -427,16 +427,29 @@
             "overlay_color": [0, 0, 0, 0]
         },
         {
-            "name": "finished_menu_text",
+            "name": "finished_menu_header_text",
             "parent": "finished_menu_background",
             "type": "text",
             "font": "data/font/FiraSans-Bold.ttf",
             "anchor": [0.5, 0.5],
-            "pos": [0, -190],
+            "pos": [0, -210],
             "horiz_align": 0,
             "vert_align": 0,
             "font_size": 74,
-            "color": [1.0, 1.0, 1.0, 1],
+            "color": [1, 1, 1, 1],
+            "text": "SUCCESS!"
+        },
+        {
+            "name": "finished_menu_sub_text",
+            "parent": "finished_menu_background",
+            "type": "text",
+            "font": "data/font/FiraSans-Bold.ttf",
+            "anchor": [0.5, 0.5],
+            "pos": [0, -145],
+            "horiz_align": 0,
+            "vert_align": 0,
+            "font_size": 30,
+            "color": [1, 1, 1, 1],
             "text": "SUCCESS!"
         },
         {

@@ -908,7 +908,21 @@ static void _golf_ui_in_game_finished(float dt) {
     if (_golf_ui_button_name(layout, "finished_menu_exit_button")) {
         golf_goto_main_menu();
     }
-    _golf_ui_text_name(layout, "finished_menu_text");
+
+    _golf_ui_text_name(layout, "finished_menu_header_text");
+    {
+        golf_ui_layout_entity_t *entity;
+        if (_golf_ui_layout_get_entity_of_type(layout, "finished_menu_sub_text", GOLF_UI_TEXT, &entity)) {
+            entity->text.text.len = 0;
+            if (game->stroke_count == 1) {
+                golf_string_appendf(&entity->text.text, "%d STROKE", game->stroke_count);
+            }
+            else {
+                golf_string_appendf(&entity->text.text, "%d STROKES", game->stroke_count);
+            }
+            _golf_ui_text(layout, *entity);
+        }
+    }
 }
 
 static void _golf_ui_in_game(float dt) {
