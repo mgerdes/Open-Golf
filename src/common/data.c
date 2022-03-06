@@ -23,7 +23,7 @@
 #include "common/string.h"
 #include "common/thread.h"
 
-#if GOLF_PLATFORM_ANDROID | GOLF_PLATFORM_IOS
+#if GOLF_PLATFORM_ANDROID | GOLF_PLATFORM_IOS | GOLF_PLATFORM_EMSCRIPTEN
 // CMake builds this file
 #include "common/data_zip.h"
 #endif
@@ -3205,6 +3205,10 @@ static void _golf_data_thread_load_file(golf_file_t file) {
 static golf_thread_result_t _golf_data_thread_fn(void *udata) {
     GOLF_UNUSED(udata);
 
+#if GOLF_PLATFORM_EMSCRIPTEN
+    stm_setup();
+#endif
+
     vec_golf_file_t files_to_load;
     vec_init(&files_to_load, "data_thread");
     uint64_t last_run_time = stm_now();
@@ -3259,7 +3263,7 @@ void golf_data_init(void) {
     golf_mutex_init(&_assetsys_lock);
     _assetsys = assetsys_create(NULL);
     map_init(&_file_time_map, "data");
-#if GOLF_PLATFORM_IOS | GOLF_PLATFORM_ANDROID
+#if GOLF_PLATFORM_IOS | GOLF_PLATFORM_ANDROID | GOLF_PLATFORM_EMSCRIPTEN
     assetsys_error_t error = assetsys_mount(_assetsys, "data.zip", golf_data_zip, sizeof(golf_data_zip), "/data");
 #else
     assetsys_error_t error = assetsys_mount(_assetsys, "data", NULL, 0, "/data");
@@ -3271,6 +3275,7 @@ void golf_data_init(void) {
     bool push_events = false;
     golf_dir_recurse("data", _golf_data_handle_file, &push_events); 
     qsort(_seen_files.data, _seen_files.length, sizeof(golf_file_t), _file_alpha_cmp);
+
     golf_thread_create(_golf_data_thread_fn, NULL, "_golf_data_thread_fn");
 }
 

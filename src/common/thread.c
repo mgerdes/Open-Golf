@@ -32,7 +32,7 @@ typedef struct tagTHREADNAME_INFO
     } THREADNAME_INFO;
 #pragma pack(pop)
 
-#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID
+#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID || GOLF_PLATFORM_EMSCRIPTEN
 
 #include <stdint.h>
 #include <pthread.h>
@@ -70,7 +70,7 @@ golf_thread_t golf_thread_create(golf_thread_result_t (*proc)(void*), void *user
 
     return (golf_thread_t) handle;
 
-#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID 
+#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID || GOLF_PLATFORM_EMSCRIPTEN
     GOLF_UNUSED(name);
 
     pthread_t thread;
@@ -105,7 +105,7 @@ void golf_mutex_init(golf_mutex_t *mutex) {
 
     InitializeCriticalSectionAndSpinCount( (CRITICAL_SECTION*) mutex, 32 );
 
-#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID
+#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID || GOLF_PLATFORM_EMSCRIPTEN 
 
     // Compile-time size check
     struct x { char thread_mutex_type_too_small : ( sizeof( golf_mutex_t ) < sizeof( pthread_mutex_t ) ? 0 : 1 ); };
@@ -122,7 +122,7 @@ void golf_mutex_deinit(golf_mutex_t *mutex) {
 
     DeleteCriticalSection( (CRITICAL_SECTION*) mutex );
 
-#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID
+#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID || GOLF_PLATFORM_EMSCRIPTEN
 
     pthread_mutex_destroy( (pthread_mutex_t*) mutex );
 
@@ -136,7 +136,7 @@ void golf_mutex_lock(golf_mutex_t *mutex) {
 
     EnterCriticalSection( (CRITICAL_SECTION*) mutex );
 
-#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID
+#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID || GOLF_PLATFORM_EMSCRIPTEN
 
     pthread_mutex_lock( (pthread_mutex_t*) mutex );
 
@@ -150,7 +150,7 @@ void golf_mutex_unlock(golf_mutex_t *mutex) {
 
     LeaveCriticalSection( (CRITICAL_SECTION*) mutex );
 
-#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID
+#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID || GOLF_PLATFORM_EMSCRIPTEN
 
     pthread_mutex_unlock( (pthread_mutex_t*) mutex );
 
@@ -174,7 +174,7 @@ void golf_thread_timer_init(golf_thread_timer_t* timer) {
 
     *(HANDLE*)timer = CreateWaitableTimer( NULL, TRUE, NULL );
 
-#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID
+#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID || GOLF_PLATFORM_EMSCRIPTEN
     GOLF_UNUSED(timer);
 
     // Nothing
@@ -193,7 +193,7 @@ void golf_thread_timer_deinit(golf_thread_timer_t* timer) {
     if( timeGetDevCaps( &tc, sizeof( TIMECAPS ) ) == TIMERR_NOERROR ) 
         timeEndPeriod( tc.wPeriodMin );
 
-#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID
+#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID || GOLF_PLATFORM_EMSCRIPTEN
     GOLF_UNUSED(timer);
 
     // Nothing
@@ -212,7 +212,7 @@ void golf_thread_timer_wait(golf_thread_timer_t* timer, uint64_t nanoseconds) {
     (void) b;
     WaitForSingleObject( *(HANDLE*)timer, INFINITE ); 
 
-#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID
+#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID || GOLF_PLATFORM_EMSCRIPTEN
     GOLF_UNUSED(timer);
 
     struct timespec rem;

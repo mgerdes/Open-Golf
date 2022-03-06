@@ -57,6 +57,9 @@ else()
         set_target_properties(golf PROPERTIES
             MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/build/ios/plist.in"
             RESOURCE "${CMAKE_SOURCE_DIR}/build/ios/LaunchScreen.storyboard")
+    elseif(CMAKE_SYSTEM_NAME STREQUAL Emscripten)
+        set_target_properties( golf PROPERTIES 
+            SUFFIX ".html")
     else()
     endif()
     target_link_libraries(golf PRIVATE ${GOLF_LIBRARIES})

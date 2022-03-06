@@ -10,7 +10,7 @@ typedef void* golf_thread_t;
 typedef int golf_thread_result_t;
 #define GOLF_THREAD_RESULT_SUCCESS 1
 
-#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID 
+#elif GOLF_PLATFORM_LINUX || GOLF_PLATFORM_IOS || GOLF_PLATFORM_ANDROID || GOLF_PLATFORM_EMSCRIPTEN
 
 typedef void* golf_thread_result_t;
 #define GOLF_THREAD_RESULT_SUCCESS ((void*)(uintptr_t)1)
