@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.12)
 project(golf)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON" FORCE)
 
 include_directories(SYSTEM src/3rd_party)
 include_directories(src)
