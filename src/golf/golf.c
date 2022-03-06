@@ -37,6 +37,7 @@ void golf_update(float dt) {
             break;
         }
         case GOLF_STATE_MAIN_MENU: {
+            golf.main_menu.t += dt;
             break;
         }
         case GOLF_STATE_LOADING_LEVEL: {
@@ -44,11 +45,13 @@ void golf_update(float dt) {
             if (golf_data_get_load_state(golf.level_loading_path) == GOLF_DATA_LOADED) {
                 golf.level = golf_data_get_level(golf.level_loading_path);
                 golf.state = GOLF_STATE_IN_GAME;
+                golf.in_game.t = 0;
                 golf_game_start_level();
             }
             break;
         }
         case GOLF_STATE_IN_GAME: {
+            golf.in_game.t += dt;
             break;
         }
     }
@@ -86,5 +89,6 @@ void golf_start_level(int level_num) {
 void golf_goto_main_menu(void) {
     ui->main_menu.is_level_select_open = false;
     golf.state = GOLF_STATE_MAIN_MENU;
+    golf.main_menu.t = 0;
     golf_game_start_main_menu();
 }

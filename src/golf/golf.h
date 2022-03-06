@@ -20,7 +20,7 @@ typedef struct golf {
         } title_screen;
 
         struct {
-            int t;
+            float t;
         } main_menu;
 
         struct {
@@ -28,8 +28,8 @@ typedef struct golf {
         } loading_level;
 
         struct {
-            int t;  
-        } in_level;
+            float t;  
+        } in_game;
     };
 
     int level_num;
