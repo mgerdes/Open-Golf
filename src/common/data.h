@@ -221,6 +221,7 @@ typedef struct golf_static_data {
 typedef struct golf_level golf_level_t;
 
 typedef enum golf_ui_layout_entity_type {
+    GOLF_UI_PIXEL_PACK_ICON,
     GOLF_UI_PIXEL_PACK_SQUARE,
     GOLF_UI_TEXT,
     GOLF_UI_BUTTON,
@@ -238,6 +239,12 @@ typedef struct golf_ui_layout_entity {
     char name[GOLF_MAX_NAME_LEN], parent_name[GOLF_MAX_NAME_LEN];
     vec2 pos, size, anchor;
     union {
+        struct {
+            golf_pixel_pack_t *pixel_pack;
+            char icon_name[GOLF_MAX_NAME_LEN];
+            vec4 overlay_color;
+        } pixel_pack_icon;
+
         struct {
             golf_pixel_pack_t *pixel_pack; 
             char square_name[GOLF_MAX_NAME_LEN];
@@ -275,6 +282,8 @@ typedef struct golf_ui_layout_entity {
         } aim_circle;
 
         struct {
+            bool is_scrolling;
+            float start_scrolling_mouse_offset;
             float down_delta;
             vec2 button_size;
             float button_tile_size;
@@ -289,15 +298,14 @@ typedef struct golf_ui_layout_entity {
             vec4 button_num_text_color;
             vec2 button_num_text_offset;
             vec2 button_down_text_offset;
+            vec4 scroll_bar_background_color;
             float scroll_bar_background_width;
             float scroll_bar_background_padding;
-            char scroll_bar_square_name[GOLF_MAX_NAME_LEN];
-            float scroll_bar_tile_size;
+            vec4 scroll_bar_color, scroll_bar_down_color;
             float scroll_bar_width;
             float scroll_bar_height;
             float scroll_bar_leeway;
             float scroll_bar_leeway_fix_speed;
-            vec4 scroll_bar_down_overlay;
         } level_select_scroll_box;
     };
 } golf_ui_layout_entity_t;

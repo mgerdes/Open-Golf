@@ -1928,7 +1928,16 @@ static bool _golf_ui_layout_load_entity(JSON_Object *entity_obj, golf_ui_layout_
     entity->size = golf_json_object_get_vec2(entity_obj, "size");
     entity->anchor = golf_json_object_get_vec2(entity_obj, "anchor");
 
-    if (strcmp(type, "pixel_pack_square") == 0) {
+    if (strcmp(type, "pixel_pack_icon") == 0) {
+        const char *pixel_pack_path = json_object_get_string(entity_obj, "pixel_pack");
+        const char *icon_name = json_object_get_string(entity_obj, "icon");
+
+        entity->type = GOLF_UI_PIXEL_PACK_ICON;
+        entity->pixel_pack_icon.pixel_pack = golf_data_get_pixel_pack(pixel_pack_path);
+        snprintf(entity->pixel_pack_icon.icon_name, GOLF_MAX_NAME_LEN, "%s", icon_name);
+        entity->pixel_pack_icon.overlay_color = golf_json_object_get_vec4(entity_obj, "overlay_color");
+    }
+    else if (strcmp(type, "pixel_pack_square") == 0) {
         const char *pixel_pack_path = json_object_get_string(entity_obj, "pixel_pack");
         const char *square_name = json_object_get_string(entity_obj, "square");
 
@@ -2023,16 +2032,18 @@ static bool _golf_ui_layout_load_entity(JSON_Object *entity_obj, golf_ui_layout_
         vec4 button_num_text_color = golf_json_object_get_vec4(entity_obj, "button_num_text_color");
         vec2 button_num_text_offset = golf_json_object_get_vec2(entity_obj, "button_num_text_offset");
         vec2 button_down_text_offset = golf_json_object_get_vec2(entity_obj, "button_down_text_offset");
+        vec4 scroll_bar_background_color = golf_json_object_get_vec4(entity_obj, "scroll_bar_background_color");
         float scroll_bar_background_width = (float)json_object_get_number(entity_obj, "scroll_bar_background_width");
         float scroll_bar_background_padding = (float)json_object_get_number(entity_obj, "scroll_bar_background_padding");
-        float scroll_bar_tile_size = (float)json_object_get_number(entity_obj, "scroll_bar_tile_size");
-        const char *scroll_bar_square_name = json_object_get_string(entity_obj, "scroll_bar_square");
+        vec4 scroll_bar_color = golf_json_object_get_vec4(entity_obj, "scroll_bar_color"); 
+        vec4 scroll_bar_down_color = golf_json_object_get_vec4(entity_obj, "scroll_bar_down_color"); 
         float scroll_bar_width = (float)json_object_get_number(entity_obj, "scroll_bar_width");
         float scroll_bar_height = (float)json_object_get_number(entity_obj, "scroll_bar_height");
         float scroll_bar_leeway = (float)json_object_get_number(entity_obj, "scroll_bar_leeway");
         float scroll_bar_leeway_fix_speed = (float)json_object_get_number(entity_obj, "scroll_bar_leeway_fix_speed");
-        vec4 scroll_bar_down_overlay = golf_json_object_get_vec4(entity_obj, "scroll_bar_down_overlay");
 
+        entity->level_select_scroll_box.is_scrolling = false;
+        entity->level_select_scroll_box.start_scrolling_mouse_offset = 0;
         entity->level_select_scroll_box.down_delta = 0;
         entity->level_select_scroll_box.button_size = button_size;
         entity->level_select_scroll_box.button_tile_size = button_tile_size;
@@ -2047,15 +2058,15 @@ static bool _golf_ui_layout_load_entity(JSON_Object *entity_obj, golf_ui_layout_
         entity->level_select_scroll_box.button_down_text_offset = button_down_text_offset;
         snprintf(entity->level_select_scroll_box.button_up_square_name, GOLF_MAX_NAME_LEN, "%s", button_up_square);
         snprintf(entity->level_select_scroll_box.button_down_square_name, GOLF_MAX_NAME_LEN, "%s", button_down_square);
+        entity->level_select_scroll_box.scroll_bar_background_color = scroll_bar_background_color;
         entity->level_select_scroll_box.scroll_bar_background_width = scroll_bar_background_width;
         entity->level_select_scroll_box.scroll_bar_background_padding = scroll_bar_background_padding;
-        entity->level_select_scroll_box.scroll_bar_tile_size = scroll_bar_tile_size;
-        snprintf(entity->level_select_scroll_box.scroll_bar_square_name, GOLF_MAX_NAME_LEN, "%s", scroll_bar_square_name);
+        entity->level_select_scroll_box.scroll_bar_color = scroll_bar_color;
+        entity->level_select_scroll_box.scroll_bar_down_color = scroll_bar_down_color;
         entity->level_select_scroll_box.scroll_bar_width = scroll_bar_width;
         entity->level_select_scroll_box.scroll_bar_height = scroll_bar_height;
         entity->level_select_scroll_box.scroll_bar_leeway = scroll_bar_leeway;
         entity->level_select_scroll_box.scroll_bar_leeway_fix_speed = scroll_bar_leeway_fix_speed;
-        entity->level_select_scroll_box.scroll_bar_down_overlay = scroll_bar_down_overlay;
     }
     else {
         golf_log_warning("Unknown ui entity type %s", type);
@@ -2067,7 +2078,11 @@ static bool _golf_ui_layout_load_entity(JSON_Object *entity_obj, golf_ui_layout_
 
 static void _golf_ui_layout_get_entity_dependency(JSON_Object *entity_obj, vec_golf_file_t *deps) {
     const char *type = json_object_get_string(entity_obj, "type");
-    if (type && strcmp(type, "pixel_pack_square") == 0) {
+    if (type && strcmp(type, "pixel_pack_icon") == 0) {
+        const char *pixel_pack_path = json_object_get_string(entity_obj, "pixel_pack");
+        if (pixel_pack_path) _golf_data_add_dependency(deps, golf_file(pixel_pack_path));
+    }
+    else if (type && strcmp(type, "pixel_pack_square") == 0) {
         const char *pixel_pack_path = json_object_get_string(entity_obj, "pixel_pack");
         if (pixel_pack_path) _golf_data_add_dependency(deps, golf_file(pixel_pack_path));
     }

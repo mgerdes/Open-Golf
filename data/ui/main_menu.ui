@@ -137,36 +137,47 @@
             "overlay_color": [0, 0, 0, 0]
         },
         {
+            "name": "level_select_text",
+            "parent": "level_select_background",
+            "type": "text",
+            "font": "data/font/FiraSans-Bold.ttf",
+            "anchor": [0.5, 0.125],
+            "pos": [0, 0],
+            "horiz_align": 0,
+            "vert_align": 0,
+            "font_size": 74,
+            "color": [1, 1, 1, 1],
+            "text": "LEVEL SELECT"
+        },
+        {
             "parent": "level_select_background",
             "name": "level_select_exit_button",
             "type": "button",
-            "anchor": [0.5, 0.90],
-            "pos": [0, 0],
+            "anchor": [1.0, 0.0],
+            "pos": [-25, 25],
             "size": [60, 60],
             "up_entities": [
                 {
                     "parent": "level_select_exit_button",
-                    "type": "pixel_pack_square",
+                    "type": "pixel_pack_icon",
                     "pixel_pack": "data/textures/pixel_pack.pixel_pack",
-                    "square": "blue_button_up",
+                    "icon": "grey_checkbox",
                     "anchor": [0.5, 0.5],
                     "pos": [0, 0],
                     "size": [60, 60],
-                    "tile_size": 32,
                     "overlay_color": [0, 0, 0, 0]
                 }
             ],
             "down_entities": [
                 {
                     "parent": "level_select_exit_button",
-                    "type": "pixel_pack_square",
+                    "type": "pixel_pack_icon",
                     "pixel_pack": "data/textures/pixel_pack.pixel_pack",
-                    "square": "blue_button_down",
+                    "icon": "grey_checkbox",
                     "anchor": [0.5, 0.5],
                     "pos": [0, 0],
                     "size": [60, 60],
-                    "tile_size": 32,
-                    "overlay_color": [0, 0, 0, 0]
+                    "overlay_color": [0, 0, 0, 0.2]
                 }
             ]
         },
@@ -175,7 +186,7 @@
             "name": "level_select_scroll_box",
             "type": "level_select_scroll_box",
             "anchor": [0.5, 0.5],
-            "pos": [0, -20],
+            "pos": [0, 60],
             "size": [580, 500],
             "button_size": [130, 130],
             "button_tile_size": 64,
@@ -190,12 +201,12 @@
             "button_num_text_color": [1, 1, 1, 1],
             "button_num_text_offset": [0, -24],
             "button_down_text_offset": [0, 6],
+            "scroll_bar_background_color": [0, 0, 0, 1],
             "scroll_bar_background_width": 3,
             "scroll_bar_background_padding": 2,
-            "scroll_bar_square": "blue_border_background",
-            "scroll_bar_down_overlay": [0, 0, 0, 0.1],
-            "scroll_bar_tile_size": 1,
-            "scroll_bar_width": 8,
+            "scroll_bar_color": [0.7, 0.7, 0.7, 1],
+            "scroll_bar_down_color": [0.6, 0.6, 0.6, 1],
+            "scroll_bar_width": 10,
             "scroll_bar_height": 80,
             "scroll_bar_leeway": 60,
             "scroll_bar_leeway_fix_speed": 200
