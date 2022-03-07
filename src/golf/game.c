@@ -6,12 +6,14 @@
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "cimgui/cimgui.h"
 
+#include "common/audio.h"
 #include "common/common.h"
 #include "common/data.h"
 #include "common/debug_console.h"
 #include "common/graphics.h"
 #include "common/inputs.h"
 #include "common/log.h"
+#include "common/storage.h"
 #include "golf/golf.h"
 
 static golf_game_t game;
@@ -118,6 +120,8 @@ void golf_game_init(void) {
     game.ball.is_moving = false;
     game.ball.is_out_of_bounds = false;
     game.ball.is_in_hole = false;
+    game.ball.time_since_impact_sound = 0;
+    game.ball.time_out_of_water = 1;
 
     game.physics.time_behind = 0;
     game.physics.debug_draw_collisions = false;
@@ -276,13 +280,33 @@ static void _golf_game_update_state_watching_ball(float dt) {
         game.celebration.cam_dir0 = graphics->cam_dir;
         game.celebration.cam_pos1 = vec3_add(graphics->cam_pos, vec3_scale(graphics->cam_dir, -1.5f));
         game.celebration.cam_dir1 = vec3_normalize(vec3_sub(game.ball.draw_pos, game.celebration.cam_pos1));
+
+        {
+            char storage_key[256];
+            snprintf(storage_key, 256, "stroke_count_level_%d", golf->level_num);
+
+            float storage_stroke_count;
+            bool is_key_set = golf_storage_get_num(storage_key, &storage_stroke_count); 
+            if (!is_key_set || game.stroke_count < (int)storage_stroke_count) {
+                golf_storage_set_num(storage_key, (float)game.stroke_count);
+            }
+            golf_storage_save();
+        }
+
+        golf_audio_start_sound("ball_in_hole", "data/audio/confirmation_002.ogg", 1, false, true);
     }
     else if (game.ball.is_out_of_bounds) {
         game.ball.pos = game.ball.start_pos;
+        game.ball.draw_pos = game.ball.pos;
         game.ball.is_moving = false;
         game.ball.vel = V3(0, 0, 0);
+        game.ball.rot_vel = 0;
+        game.ball.orientation = QUAT(0, 0, 0, 1);
         game.ball.is_out_of_bounds = 0;
+        game.cam.angle = game.cam.start_angle;
+        game.cam.auto_rotate = false;
         game.state = GOLF_GAME_STATE_WAITING_FOR_AIM;
+        golf_audio_start_sound("ball_out_of_bounds", "data/audio/error_008.ogg", 1, false, true);
     }
     else if (!game.ball.is_moving) {
         game.state = GOLF_GAME_STATE_WAITING_FOR_AIM;
@@ -573,7 +597,15 @@ static void _physics_tick(float dt) {
         }
 
         contact->v1 = bv;
+
+        if (contact->impulse_mag > 1 && contact->cull_dot < -0.15f) {
+            if (game.ball.time_since_impact_sound > 0.1f) {
+                golf_audio_start_sound("ball_impact", "data/audio/footstep_grass_004.ogg", 1, false, true);
+                game.ball.time_since_impact_sound = 0;
+            }
+        }
     }
+    game.ball.time_since_impact_sound += dt;
 
     float gravity = -9.8f;
     bv = vec3_add(bv, V3(0, gravity * dt, 0));
@@ -660,6 +692,7 @@ static void _physics_tick(float dt) {
     }
 
     if (game.ball.is_in_water) {
+        game.ball.time_out_of_water = 0;
         game.ball.time_since_water_ripple += dt;
         if (game.ball.time_since_water_ripple > CFG_NUM(game_cfg, "water_ripple_frequency")) {
             game.ball.time_since_water_ripple = 0;
@@ -678,6 +711,21 @@ static void _physics_tick(float dt) {
                 break;
             }
         }
+    }
+    else {
+        game.ball.time_out_of_water += dt;
+    }
+
+    if (game.ball.pos.y < CFG_NUM(game_cfg, "physics_kill_y")) {
+        game.ball.time_out_of_bounds = game.t;
+        game.ball.is_out_of_bounds = true;
+    }
+
+    if (game.ball.time_out_of_water < 0.1f) {
+        golf_audio_start_sound("ball_in_water", "data/audio/in_water.ogg", 0.1f, true, false);
+    }
+    else {
+        golf_audio_stop_sound("ball_in_water", 0.2f);
     }
 }
 
@@ -992,8 +1040,11 @@ void golf_game_hit_ball(vec2 aim_delta) {
     game.ball.vel = vec3_scale(aim_direction, start_speed);
     game.ball.is_moving = true;
     game.ball.start_pos = game.ball.pos;
+    game.cam.start_angle = game.cam.angle;
 
     game.physics.collision_history.length = 0;
+
+    golf_audio_start_sound("hit_ball", "data/audio/impactPlank_medium_000.ogg", 1, false, true);
 }
 
 void golf_game_pause(void) {

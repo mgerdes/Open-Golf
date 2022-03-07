@@ -314,6 +314,10 @@ typedef struct golf_ui_layout {
     vec_golf_ui_layout_entity_t entities;
 } golf_ui_layout_t;
 
+typedef struct golf_audio {
+    void *stb_vorbis_stream;
+} golf_audio_t;
+
 typedef enum golf_data_type {
     GOLF_DATA_TEXTURE,
     GOLF_DATA_GIF_TEXTURE,
@@ -326,6 +330,7 @@ typedef enum golf_data_type {
     GOLF_DATA_STATIC_DATA,
     GOLF_DATA_SCRIPT,
     GOLF_DATA_UI_LAYOUT,
+    GOLF_DATA_AUDIO,
 } golf_data_type_t;
 
 typedef struct golf_data {
@@ -365,6 +370,7 @@ golf_config_t *golf_data_get_config(const char *path);
 golf_level_t *golf_data_get_level(const char *path);
 golf_script_t *golf_data_get_script(const char *path);
 golf_ui_layout_t *golf_data_get_ui_layout(const char *path);
+golf_audio_t *golf_data_get_audio(const char *path);
 
 #endif
 

@@ -3,12 +3,15 @@
 
 #include <inttypes.h>
 
+#define STB_VORBIS_HEADER_ONLY
+
 #include "fast_obj/fast_obj.h"
 #include "mattiasgustavsson_libs/assetsys.h"
 #include "parson/parson.h"
 #include "stb/stb_image.h"
 #include "stb/stb_image_write.h"
 #include "stb/stb_truetype.h"
+#include "stb/stb_vorbis.h"
 #include "sokol/sokol_app.h"
 #include "sokol/sokol_time.h"
 #include "common/base64.h"
@@ -2197,6 +2200,35 @@ static bool _golf_ui_layout_unload(void *ptr) {
 }
 
 //
+// AUDIO
+//
+
+static bool _golf_audio_load(void *ptr, const char *path, char *data, int data_len, char *meta_data, int meta_data_len) {
+    golf_audio_t *audio = (golf_audio_t*)ptr;
+
+    unsigned char *data_copy = malloc(data_len);
+    memcpy(data_copy, data, data_len);
+
+    int err;
+    stb_vorbis *stream = stb_vorbis_open_memory(data_copy, data_len, &err, NULL);
+    if (!stream) {
+        golf_log_error("stb_vorbis_open_memory returned null");
+    }
+    if (err) {
+        golf_log_error("stb_vorbis_open_memory returned an error: %d", err);
+    }
+
+    stb_vorbis_seek(stream, 0);
+    audio->stb_vorbis_stream = stream;
+
+    return true;
+}
+
+static bool _golf_audio_unload(void *ptr) {
+    return true;
+}
+
+//
 // CONFIG
 //
 
@@ -3064,6 +3096,16 @@ static _data_loader_t _loaders[] = {
         .import_fn = NULL,
         .reload_on = true,
     },
+    {
+        .ext = ".ogg",
+        .data_type = GOLF_DATA_AUDIO,
+        .data_size = sizeof(golf_audio_t),
+        .finalize_fn = NULL,
+        .load_fn = _golf_audio_load,
+        .unload_fn = _golf_audio_unload,
+        .import_fn = NULL,
+        .reload_on = true,
+    },
 };
 
 static _data_loader_t *_get_data_loader(const char *ext) {
@@ -3553,6 +3595,14 @@ golf_ui_layout_t *golf_data_get_ui_layout(const char *path) {
         golf_log_error("Could not find ui_layout %s", path);
     }
     return ui_layout;
+}
+
+golf_audio_t *golf_data_get_audio(const char *path) {
+    golf_audio_t *audio = _golf_data_get_ptr(path, GOLF_DATA_AUDIO);
+    if (!audio) {
+        golf_log_error("Could not find audio %s", path);
+    }
+    return audio;
 }
 
 void golf_data_get_all_matching(golf_data_type_t type, const char *str, vec_golf_file_t *files) {

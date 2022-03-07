@@ -22,6 +22,7 @@ endif()
 
 add_library(common STATIC
     alloc.c
+    audio.c
     base64.c
     bvh.c
     data.c
@@ -36,6 +37,7 @@ add_library(common STATIC
     map.c
     maths.c
     script.c
+    storage.c
     string.c
     thread.c
     vec.c)

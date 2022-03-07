@@ -38,13 +38,14 @@ typedef struct golf_game {
     struct {
         vec3 start_pos, pos, vel, draw_pos, rot_vec;
         quat orientation;
-        float time_since_water_ripple, time_going_slow, time_out_of_bounds, radius, rot_vel;
+        float time_since_water_ripple, time_going_slow, time_out_of_bounds, radius, rot_vel,
+              time_out_of_water, time_since_impact_sound;
         bool is_moving, is_in_hole, is_in_water, is_out_of_bounds;
     } ball;
 
     struct {
         bool auto_rotate;
-        float angle, start_angle_velocity, angle_velocity;
+        float angle, start_angle, start_angle_velocity, angle_velocity;
     } cam;
 
     struct {

@@ -1,5 +1,6 @@
 #include "golf/golf.h"
 
+#include "common/audio.h"
 #include "common/debug_console.h"
 #include "common/graphics.h"
 #include "common/log.h"
@@ -61,6 +62,7 @@ void golf_update(float dt) {
     }
     golf_ui_update(dt);
     golf_debug_console_update(dt);
+    golf_audio_update(dt);
 }
 
 golf_t *golf_get(void) {

@@ -3,12 +3,14 @@
 #include <assert.h>
 #include "parson/parson.h"
 #include "common/alloc.h"
+#include "common/audio.h"
 #include "common/common.h"
 #include "common/data.h"
 #include "common/graphics.h"
 #include "common/inputs.h"
 #include "common/json.h"
 #include "common/log.h"
+#include "common/storage.h"
 #include "golf/game.h"
 #include "golf/golf.h"
 
@@ -519,6 +521,10 @@ static bool _golf_ui_button_name(golf_ui_layout_t *layout, const char *name) {
         }
     }
 
+    if (clicked) {
+        golf_audio_start_sound("button_click", "data/audio/drop_003.ogg", 1, false, true);
+    }
+
     return clicked;
 }
 
@@ -791,6 +797,8 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
 
     for (int row = 0; row < 5; row++) {
         for (int col = 0; col < buttons_per_row; col++) {
+            int button_num = row * buttons_per_row + col;
+
             vec2 button_pos = bg_pos;
             button_pos.x = button_pos.x - 0.5f * bg_size.x + col * button_size.x + 0.5f * button_size.x + (col + 1) * button_padding;
             button_pos.y = button_pos.y - 0.5f * bg_size.y + row * button_size.y + 0.5f * button_size.y + row * button_padding;
@@ -822,7 +830,21 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
             if (button_down) {
                 best_text_pos = vec2_add(best_text_pos, vec2_scale(button_down_text_offset, ui_scale));
             }
-            _golf_ui_draw_text(font, best_text_pos, best_text_size, best_text_color, 0, 0, "Best 2", 1);
+
+            {
+                char storage_key[256];
+                snprintf(storage_key, 256, "stroke_count_level_%d", button_num);
+
+                char text_buf[256];
+                float stroke_count;
+                if (golf_storage_get_num(storage_key, &stroke_count)) {
+                    snprintf(text_buf, 256, "Best %d", (int)stroke_count);
+                }
+                else {
+                    snprintf(text_buf, 256, "Best -");
+                }
+                _golf_ui_draw_text(font, best_text_pos, best_text_size, best_text_color, 0, 0, text_buf, 1);
+            }
 
             float num_text_size = entity->level_select_scroll_box.button_num_text_size * ui_scale;
             vec4 num_text_color = entity->level_select_scroll_box.button_num_text_color;
@@ -831,7 +853,6 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
             if (button_down) {
                 num_text_pos = vec2_add(num_text_pos, vec2_scale(button_down_text_offset, ui_scale));
             }
-            int button_num = row * buttons_per_row + col;
             char num_text[16];
             snprintf(num_text, 16, "%d", button_num + 1);
             _golf_ui_draw_text(font, num_text_pos, num_text_size, num_text_color, 0, 0, num_text, 1);
@@ -874,6 +895,7 @@ static void _golf_ui_main_menu(float dt) {
         }
         int clicked_button_num = _golf_ui_level_select_scroll_box_name(layout, "level_select_scroll_box", dt);
         if (clicked_button_num >= 0 && clicked_button_num < 6) {
+            golf_audio_start_sound("button_click", "data/audio/drop_003.ogg", 1, false, true);
             _golf_ui_start_fade_out(false, true, clicked_button_num, false);
         }
     }
@@ -1035,6 +1057,23 @@ static void _golf_ui_in_game(float dt) {
     if (game->state == GOLF_GAME_STATE_WAITING_FOR_AIM || game->state == GOLF_GAME_STATE_WATCHING_BALL) {
         if (_golf_ui_button_name(layout, "pause_button")) {
             golf_game_pause();
+        }
+    }
+
+    {
+        float blink_time = CFG_NUM(game_cfg, "out_of_bounds_blink_time");
+        float time_since_out_of_bounds = game->t - game->ball.time_out_of_bounds;
+        if (time_since_out_of_bounds < blink_time) {
+            float alpha = 1 - time_since_out_of_bounds / blink_time;
+            golf_texture_t *texture = golf_data_get_texture("data/textures/colors/black.png");
+            vec2 pos = vec2_scale(V2(graphics->viewport_size.x, graphics->viewport_size.y), 0.5f);
+            vec2 size = graphics->viewport_size;
+            float angle = 0;
+            vec2 uv0 = V2(0, 0);
+            vec2 uv1 = V2(1, 1);
+            float is_font = 0;
+            vec4 overlay_color = V4(1, 1, 1, 1);
+            vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_image, pos, size, angle, uv0, uv1, is_font, overlay_color, alpha));
         }
     }
 

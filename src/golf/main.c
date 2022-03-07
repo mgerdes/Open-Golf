@@ -2,17 +2,18 @@
 #include <stdio.h>
 
 #include "sokol/sokol_app.h"
-#include "sokol/sokol_audio.h"
 #include "sokol/sokol_gfx.h"
 #include "sokol/sokol_glue.h"
 #include "sokol/sokol_imgui.h"
 #include "sokol/sokol_time.h"
+#include "common/audio.h"
 #include "common/common.h"
 #include "common/data.h"
 #include "common/debug_console.h"
 #include "common/graphics.h"
 #include "common/inputs.h"
 #include "common/log.h"
+#include "common/storage.h"
 #include "golf/draw.h"
 #include "golf/game.h"
 #include "golf/golf.h"
@@ -27,12 +28,6 @@ static void init(void) {
             });
     simgui_setup(&(simgui_desc_t) {
             .dpi_scale = sapp_dpi_scale() 
-            });
-    saudio_setup(&(saudio_desc){
-            .sample_rate = 44100,
-            .buffer_frames = 1024,
-            .packet_frames = 64,
-            .num_packets = 32, 
             });
 }
 
@@ -49,6 +44,8 @@ static void frame(void) {
         golf_data_init();
         golf_data_load("data/static_data.static_data", false);
 
+        golf_storage_init();
+        golf_audio_init();
         golf_debug_console_init();
         golf_inputs_init();
         golf_graphics_init();
@@ -90,8 +87,8 @@ sapp_desc sokol_main(int argc, char *argv[]) {
             .frame_cb = frame,
             .cleanup_cb = cleanup,
             .event_cb = event,
-            .width = 375,
-            .height = 667,
+            .width = 375/4,
+            .height = 667/4,
             .window_title = "Minigolf",
             .enable_clipboard = true,
             .clipboard_size = 1024,
