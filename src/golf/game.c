@@ -970,6 +970,7 @@ void golf_game_start_level(void) {
     game.ball.is_moving = false;
     game.ball.is_out_of_bounds = false;
     game.ball.is_in_hole = false;
+    game.ball.time_out_of_bounds = -1;
 
     game.cam.auto_rotate = true;
     game.cam.angle = _golf_game_get_camera_zone_angle(ball_start_pos);

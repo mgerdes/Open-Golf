@@ -56,4 +56,4 @@ Makefile
 .vscode
 build/android/OpenGolf/app/src/main/assets/data.zip
 src/common/data_zip.h
-storage.js
+storage.json
