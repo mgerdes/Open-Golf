@@ -36,6 +36,7 @@ static void cleanup(void) {
 }
 
 static void frame(void) {
+    static bool storage_inited = false;
     static bool inited = false;
     static uint64_t last_time = 0;
 
@@ -53,6 +54,11 @@ static void frame(void) {
         golf_init();
         inited = true;
     }
+
+    if (!storage_inited && !golf_storage_finish_init()) {
+        return;
+    }
+    storage_inited = true;
 
     golf_data_update(dt);
 

@@ -5,12 +5,20 @@
 #include <stdio.h>
 
 #if GOLF_PLATFORM_ANDROID
+
 #include <sys/stat.h>
 #include <android/native_activity.h>
+
+#elif GOLF_PLATFORM_EMSCRIPTEN
+
+#include <emscripten.h>
+#include "3rd_party/sokol/sokol_time.h"
+
 #endif
 
 #include "3rd_party/parson/parson.h"
 #include "3rd_party/sokol/sokol_app.h"
+#include "common/log.h"
 #include "common/map.h"
 
 static JSON_Value *_storage_json_val;
@@ -49,6 +57,7 @@ static bool _get_buf_from_file(const char *file, char **buf, int *buf_len) {
 }
 
 static bool _golf_storage_get_buf(char **buf, int *buf_len) {
+
 #if GOLF_PLATFORM_WINDOWS | GOLF_PLATFORM_LINUX
 
     return _get_buf_from_file("storage.json", buf, buf_len);
@@ -79,7 +88,6 @@ static bool _golf_storage_get_buf(char **buf, int *buf_len) {
 
 void golf_storage_init(void) {
 #if GOLF_PLATFORM_ANDROID
-    golf_log_note("Golf storaage init android");
 
     ANativeActivity *native_activity = sapp_android_get_native_activity();
     const char *internal_path = native_activity->internalDataPath;
@@ -104,8 +112,15 @@ void golf_storage_init(void) {
                 });
           );
 
-    // Wait for the sync to be done
-    while (emscripten_run_script_int("Module.syncdone") == 0);
+#endif
+}
+
+bool golf_storage_finish_init(void) {
+#ifdef GOLF_PLATFORM_EMSCRIPTEN
+
+    if (emscripten_run_script_int("Module.syncdone") == 0) {
+        return false;
+    }
 
 #endif
 
@@ -119,6 +134,7 @@ void golf_storage_init(void) {
         _storage_json_val = json_value_init_object();
     }
     _storage_json_obj = json_value_get_object(_storage_json_val);
+    return true;
 }
 
 void golf_storage_set_num(const char *key, float num) {
@@ -163,8 +179,9 @@ void golf_storage_save(void) {
     _save_buf_to_file("/opengolf_persistent_data/storage.json", buf, buf_size - 1);
 
     EM_ASM(
-            FS.syncfs(false, function (err) {
+            FS.syncfs(function (err) {
                 assert(!err);
+                console.log("SAVED");
                 });
           );
 
