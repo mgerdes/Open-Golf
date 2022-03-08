@@ -9,6 +9,10 @@
 #include <sys/stat.h>
 #include <android/native_activity.h>
 
+#elif GOLF_PLATFORM_IOS
+
+#import <UIKit/UIKit.h>
+
 #elif GOLF_PLATFORM_EMSCRIPTEN
 
 #include <emscripten.h>
@@ -73,7 +77,12 @@ static bool _golf_storage_get_buf(char **buf, int *buf_len) {
 
 #elif GOLF_PLATFORM_IOS
 
+    NSString *appSupportDir = [NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES) lastObject];
+    const char *app_support_path = [appSupportDir UTF8String];
+    char storage_path[1024];
+    snprintf(storage_path, 1024, "%s/storage.json", app_support_path);
 
+    return _get_buf_from_file(storage_path, buf, buf_len);
 
 #elif GOLF_PLATFORM_EMSCRIPTEN
 
@@ -96,8 +105,19 @@ void golf_storage_init(void) {
     struct stat sb;
     int res = stat(internal_path, &sb); 
     if (!(0 == res && sb.st_mode & S_IFDIR)) {
-        golf_log_note("Creating internal path directory");
         res = mkdir(internal_path, 0770);
+    }
+
+#elif GOLF_PLATFORM_IOS
+
+    NSString *appSupportDir = [NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES) lastObject];
+
+    // Create the application support directory if it doesn't exist yet
+    if (![[NSFileManager defaultManager] fileExistsAtPath:appSupportDir isDirectory:NULL]) {
+        NSError *error = nil;
+        if (![[NSFileManager defaultManager] createDirectoryAtPath:appSupportDir withIntermediateDirectories:YES attributes:nil error:&error]) {
+            NSLog(@"Error creating application suport directory: %@", error.localizedDescription);
+        }
     }
 
 #elif GOLF_PLATFORM_EMSCRIPTEN
@@ -172,7 +192,12 @@ void golf_storage_save(void) {
 
 #elif GOLF_PLATFORM_IOS
 
+    NSString *appSupportDir = [NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES) lastObject];
+    const char *app_support_path = [appSupportDir UTF8String];
+    char storage_path[1024];
+    snprintf(storage_path, 1024, "%s/storage.json", app_support_path);
 
+    _save_buf_to_file(storage_path, buf, buf_size - 1);
 
 #elif GOLF_PLATFORM_EMSCRIPTEN
 

@@ -47,6 +47,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL Windows)
     target_compile_options(common PRIVATE /W3)
 elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
     target_compile_options(common PRIVATE -Wall -Wextra -Wpedantic)
+elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
+    target_compile_options(common PRIVATE -x objective-c)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL Android OR CMAKE_SYSTEM_NAME STREQUAL iOS OR CMAKE_SYSTEM_NAME STREQUAL Emscripten)
