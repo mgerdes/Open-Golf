@@ -285,6 +285,7 @@ typedef struct golf_ui_layout_entity {
             bool is_scrolling;
             float start_scrolling_mouse_offset;
             float down_delta;
+            float down_delta_velocity;
             vec2 button_size;
             float button_tile_size;
             golf_pixel_pack_t *button_pixel_pack; 

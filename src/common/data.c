@@ -2048,6 +2048,7 @@ static bool _golf_ui_layout_load_entity(JSON_Object *entity_obj, golf_ui_layout_
         entity->level_select_scroll_box.is_scrolling = false;
         entity->level_select_scroll_box.start_scrolling_mouse_offset = 0;
         entity->level_select_scroll_box.down_delta = 0;
+        entity->level_select_scroll_box.down_delta_velocity = 0;
         entity->level_select_scroll_box.button_size = button_size;
         entity->level_select_scroll_box.button_tile_size = button_tile_size;
         entity->level_select_scroll_box.button_pixel_pack = golf_data_get_pixel_pack(button_pixel_pack_path);

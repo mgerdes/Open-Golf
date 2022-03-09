@@ -435,6 +435,13 @@ static void _golf_ui_gif_texture_name(golf_ui_layout_t *layout, const char *name
                 V2(0, 0), V2(1, 1), 0, V4(0, 0, 0, 0), 1));
 }
 
+static bool _golf_ui_pt_in_box(vec2 pt, vec2 pos, vec2 size) {
+    return (pos.x - 0.5f * size.x <= pt.x) && 
+        (pos.x + 0.5f * size.x >= pt.x) &&
+        (pos.y - 0.5f * size.y <= pt.y) &&
+        (pos.y + 0.5f * size.y >= pt.y);
+}
+
 static void _golf_ui_button(vec2 pos, vec2 size, bool *down, bool *clicked) {
     if (ui.fade_out.active) {
         *down = false;
@@ -446,30 +453,18 @@ static void _golf_ui_button(vec2 pos, vec2 size, bool *down, bool *clicked) {
         vec2 tp = inputs->touch_pos;
         vec2 tdp = inputs->touch_down_pos;
 
-        bool touch_in_button = (pos.x - 0.5f * size.x <= tp.x) && 
-            (pos.x + 0.5f * size.x >= tp.x) &&
-            (pos.y - 0.5f * size.y <= tp.y) &&
-            (pos.y + 0.5f * size.y >= tp.y);
-        bool touch_down_in_button = (pos.x - 0.5f * size.x <= tdp.x) && 
-            (pos.x + 0.5f * size.x >= tdp.x) &&
-            (pos.y - 0.5f * size.y <= tdp.y) &&
-            (pos.y + 0.5f * size.y >= tdp.y);
+        bool touch_in_button = _golf_ui_pt_in_box(tp, pos, size);
+        bool touch_down_in_button = _golf_ui_pt_in_box(tdp, pos, size);
 
-        *down = touch_in_button;
+        *down = inputs->touch_down && touch_in_button;
         *clicked = touch_in_button && touch_down_in_button && inputs->touch_ended;
     }
     else {
         vec2 mp = inputs->mouse_pos;
         vec2 mdp = inputs->mouse_down_pos;
 
-        bool mouse_in_button = (pos.x - 0.5f * size.x <= mp.x) && 
-            (pos.x + 0.5f * size.x >= mp.x) &&
-            (pos.y - 0.5f * size.y <= mp.y) &&
-            (pos.y + 0.5f * size.y >= mp.y);
-        bool mouse_down_in_button = (pos.x - 0.5f * size.x <= mdp.x) && 
-            (pos.x + 0.5f * size.x >= mdp.x) &&
-            (pos.y - 0.5f * size.y <= mdp.y) &&
-            (pos.y + 0.5f * size.y >= mdp.y);
+        bool mouse_in_button = _golf_ui_pt_in_box(mp, pos, size);
+        bool mouse_down_in_button = _golf_ui_pt_in_box(mdp, pos, size);
 
         *down = mouse_in_button;
         *clicked = mouse_in_button && mouse_down_in_button && inputs->mouse_clicked[SAPP_MOUSEBUTTON_LEFT];
@@ -683,11 +678,13 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
     float button_padding = (bg_size.x - buttons_per_row * button_size.x) / (buttons_per_row + 1);
     float total_height = 4 * button_size.y + 4 * button_padding;
 
+    bool was_scrolling = entity->level_select_scroll_box.is_scrolling;
     if (inputs->is_touch) {
         float down_delta = entity->level_select_scroll_box.down_delta;
         float leeway = entity->level_select_scroll_box.scroll_bar_leeway * ui_scale;
 
-        if (inputs->touch_down) {
+        bool touch_down_in_bg = _golf_ui_pt_in_box(inputs->touch_down_pos, bg_pos, bg_size);
+        if (touch_down_in_bg && inputs->touch_down) {
             float scale = 1;
             if (down_delta >= 0) {
                 scale = 1 - down_delta / leeway;
@@ -700,10 +697,12 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
                 if (scale < 0.1f) scale = 0.1f;
             }
 
-            down_delta += scale * scale * (inputs->touch_pos.y - inputs->prev_touch_pos.y);
+            entity->level_select_scroll_box.down_delta_velocity = scale * scale * (inputs->touch_pos.y - inputs->prev_touch_pos.y);
 
-            if (down_delta >= leeway) down_delta = leeway;
-            if (down_delta <= (-total_height - leeway)) down_delta = (-total_height - leeway);
+            float movement = inputs->touch_pos.y - inputs->touch_down_pos.y;
+            if (movement > 3) {
+                entity->level_select_scroll_box.is_scrolling = true;
+            }
         }
         else {
             float leeway_fix_speed = entity->level_select_scroll_box.scroll_bar_leeway_fix_speed;
@@ -721,6 +720,18 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
                     down_delta = -total_height;
                 }
             }
+            entity->level_select_scroll_box.down_delta_velocity *= 0.9f;
+            entity->level_select_scroll_box.is_scrolling = false;
+        }
+
+        down_delta += entity->level_select_scroll_box.down_delta_velocity;
+        if (down_delta >= leeway) {
+            down_delta = leeway;
+            entity->level_select_scroll_box.down_delta_velocity = 0;
+        }
+        if (down_delta <= (-total_height - leeway)) {
+            down_delta = (-total_height - leeway);
+            entity->level_select_scroll_box.down_delta_velocity = 0;
         }
 
         entity->level_select_scroll_box.down_delta = down_delta;
@@ -767,18 +778,20 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
         bool button_down, button_clicked;
         _golf_ui_button(sb_pos, sb_size, &button_down, &button_clicked);
 
-        if (!entity->level_select_scroll_box.is_scrolling) {
-            if (button_down && inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
-                entity->level_select_scroll_box.is_scrolling = true;
+        if (!inputs->is_touch) {
+            if (!entity->level_select_scroll_box.is_scrolling) {
+                if (button_down && inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
+                    entity->level_select_scroll_box.is_scrolling = true;
 
-                float mouse_offset = sb_pos.y - inputs->mouse_pos.y;
-                entity->level_select_scroll_box.start_scrolling_mouse_offset = mouse_offset;
+                    float mouse_offset = sb_pos.y - inputs->mouse_pos.y;
+                    entity->level_select_scroll_box.start_scrolling_mouse_offset = mouse_offset;
+                }
             }
-        }
-        else {
-            if (!inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
-                entity->level_select_scroll_box.is_scrolling = false;
-            } 
+            else {
+                if (!inputs->mouse_down[SAPP_MOUSEBUTTON_LEFT]) {
+                    entity->level_select_scroll_box.is_scrolling = false;
+                } 
+            }
         }
 
         vec4 color = entity->level_select_scroll_box.scroll_bar_color;
@@ -856,7 +869,7 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
             char num_text[16];
             snprintf(num_text, 16, "%d", button_num + 1);
             _golf_ui_draw_text(font, num_text_pos, num_text_size, num_text_color, 0, 0, num_text, 1);
-            if (button_clicked) {
+            if (button_clicked && !was_scrolling) {
                 clicked_button_num = button_num;
             }
         }
@@ -894,6 +907,7 @@ static void _golf_ui_main_menu(float dt) {
             ui.main_menu.is_level_select_open = false;
         }
         int clicked_button_num = _golf_ui_level_select_scroll_box_name(layout, "level_select_scroll_box", dt);
+        clicked_button_num = clicked_button_num % 6;
         if (clicked_button_num >= 0 && clicked_button_num < 6) {
             golf_audio_start_sound("button_click", "data/audio/drop_003.ogg", 1, false, true);
             _golf_ui_start_fade_out(false, true, clicked_button_num, false);
