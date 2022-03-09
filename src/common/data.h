@@ -229,6 +229,7 @@ typedef enum golf_ui_layout_entity_type {
     GOLF_UI_GIF_TEXTURE,
     GOLF_UI_AIM_CIRCLE,
     GOLF_UI_LEVEL_SELECT_SCROLL_BOX,
+    GOLF_UI_TUTORIAL,
 } golf_ui_layout_entity_type;
 
 typedef struct golf_ui_layout_entity golf_ui_layout_entity_t;
@@ -299,6 +300,7 @@ typedef struct golf_ui_layout_entity {
             vec4 button_num_text_color;
             vec2 button_num_text_offset;
             vec2 button_down_text_offset;
+            golf_texture_t *button_lock_texture;
             vec4 scroll_bar_background_color;
             float scroll_bar_background_width;
             float scroll_bar_background_padding;
@@ -308,6 +310,30 @@ typedef struct golf_ui_layout_entity {
             float scroll_bar_leeway;
             float scroll_bar_leeway_fix_speed;
         } level_select_scroll_box;
+
+        struct {
+            golf_texture_t *pointer_texture;
+            vec2 pointer_size;
+            vec4 pointer_color;
+            float pointer_t;
+            vec2 pointer_1_p0;
+            vec2 pointer_1_p1;
+            float pointer_1_time;
+            vec2 pointer_2_p0;
+            vec2 pointer_2_p1;
+            float pointer_2_time;
+            golf_font_t *font;
+            float text_size;
+            vec2 text_1_pos;
+            vec2 text_2_pos;
+            golf_string_t text_1;
+            golf_string_t text_2;
+            golf_string_t text_3;
+            golf_string_t text_4;
+            golf_string_t text_5;
+            vec4 text_color;
+            vec4 bg_color;
+        } tutorial;
     };
 } golf_ui_layout_entity_t;
 

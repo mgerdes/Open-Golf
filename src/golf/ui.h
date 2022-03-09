@@ -32,6 +32,7 @@ typedef struct golf_ui {
         vec4 aimer_color;
         bool is_set;
         vec2 viewport_size_when_set;
+        vec2 pos;
         float size;
     } aim_circle;
 
@@ -40,6 +41,10 @@ typedef struct golf_ui {
         bool active, to_main_menu, to_loading_level, to_retry;
         float t;
     } fade_out;
+
+    struct {
+        bool just_saw_tutorial_0;
+    } tutorial;
 
     vec_golf_ui_draw_entity_t draw_entities;
 } golf_ui_t;

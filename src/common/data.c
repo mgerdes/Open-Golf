@@ -2035,6 +2035,7 @@ static bool _golf_ui_layout_load_entity(JSON_Object *entity_obj, golf_ui_layout_
         vec4 button_num_text_color = golf_json_object_get_vec4(entity_obj, "button_num_text_color");
         vec2 button_num_text_offset = golf_json_object_get_vec2(entity_obj, "button_num_text_offset");
         vec2 button_down_text_offset = golf_json_object_get_vec2(entity_obj, "button_down_text_offset");
+        const char *button_lock_texture_path = json_object_get_string(entity_obj, "button_lock_texture");
         vec4 scroll_bar_background_color = golf_json_object_get_vec4(entity_obj, "scroll_bar_background_color");
         float scroll_bar_background_width = (float)json_object_get_number(entity_obj, "scroll_bar_background_width");
         float scroll_bar_background_padding = (float)json_object_get_number(entity_obj, "scroll_bar_background_padding");
@@ -2062,6 +2063,7 @@ static bool _golf_ui_layout_load_entity(JSON_Object *entity_obj, golf_ui_layout_
         entity->level_select_scroll_box.button_down_text_offset = button_down_text_offset;
         snprintf(entity->level_select_scroll_box.button_up_square_name, GOLF_MAX_NAME_LEN, "%s", button_up_square);
         snprintf(entity->level_select_scroll_box.button_down_square_name, GOLF_MAX_NAME_LEN, "%s", button_down_square);
+        entity->level_select_scroll_box.button_lock_texture = golf_data_get_texture(button_lock_texture_path);
         entity->level_select_scroll_box.scroll_bar_background_color = scroll_bar_background_color;
         entity->level_select_scroll_box.scroll_bar_background_width = scroll_bar_background_width;
         entity->level_select_scroll_box.scroll_bar_background_padding = scroll_bar_background_padding;
@@ -2071,6 +2073,52 @@ static bool _golf_ui_layout_load_entity(JSON_Object *entity_obj, golf_ui_layout_
         entity->level_select_scroll_box.scroll_bar_height = scroll_bar_height;
         entity->level_select_scroll_box.scroll_bar_leeway = scroll_bar_leeway;
         entity->level_select_scroll_box.scroll_bar_leeway_fix_speed = scroll_bar_leeway_fix_speed;
+    }
+    else if (strcmp(type, "tutorial") == 0) {
+        entity->type = GOLF_UI_TUTORIAL;
+
+        const char *pointer_texture_path = json_object_get_string(entity_obj, "pointer_texture");
+        vec2 pointer_size = golf_json_object_get_vec2(entity_obj, "pointer_size");
+        vec4 pointer_color = golf_json_object_get_vec4(entity_obj, "pointer_color");
+        vec2 pointer_1_p0 = golf_json_object_get_vec2(entity_obj, "pointer_1_p0");
+        vec2 pointer_1_p1 = golf_json_object_get_vec2(entity_obj, "pointer_1_p1");
+        float pointer_1_time = (float)json_object_get_number(entity_obj, "pointer_1_time");
+        vec2 pointer_2_p0 = golf_json_object_get_vec2(entity_obj, "pointer_2_p0");
+        vec2 pointer_2_p1 = golf_json_object_get_vec2(entity_obj, "pointer_2_p1");
+        float pointer_2_time = (float)json_object_get_number(entity_obj, "pointer_2_time");
+        const char *font_path = json_object_get_string(entity_obj, "font");
+        float text_size = (float)json_object_get_number(entity_obj, "text_size");
+        vec2 text_1_pos = golf_json_object_get_vec2(entity_obj, "text_1_pos");
+        vec2 text_2_pos = golf_json_object_get_vec2(entity_obj, "text_2_pos");
+        const char *text_1 = json_object_get_string(entity_obj, "text_1");
+        const char *text_2 = json_object_get_string(entity_obj, "text_2");
+        const char *text_3 = json_object_get_string(entity_obj, "text_3");
+        const char *text_4 = json_object_get_string(entity_obj, "text_4");
+        const char *text_5 = json_object_get_string(entity_obj, "text_5");
+        vec4 text_color = golf_json_object_get_vec4(entity_obj, "text_color");
+        vec4 bg_color = golf_json_object_get_vec4(entity_obj, "bg_color");
+
+        entity->tutorial.pointer_texture = golf_data_get_texture(pointer_texture_path);
+        entity->tutorial.pointer_size = pointer_size;
+        entity->tutorial.pointer_color = pointer_color;
+        entity->tutorial.pointer_t = 0;
+        entity->tutorial.pointer_1_p0 = pointer_1_p0;
+        entity->tutorial.pointer_1_p1 = pointer_1_p1;
+        entity->tutorial.pointer_1_time = pointer_1_time;
+        entity->tutorial.pointer_2_p0 = pointer_2_p0;
+        entity->tutorial.pointer_2_p1 = pointer_2_p1;
+        entity->tutorial.pointer_2_time = pointer_2_time;
+        entity->tutorial.font = golf_data_get_font(font_path);
+        entity->tutorial.text_1_pos = text_1_pos;
+        entity->tutorial.text_2_pos = text_2_pos;
+        entity->tutorial.text_size = text_size;
+        golf_string_init(&entity->tutorial.text_1, "ui_layout", text_1);
+        golf_string_init(&entity->tutorial.text_2, "ui_layout", text_2);
+        golf_string_init(&entity->tutorial.text_3, "ui_layout", text_3);
+        golf_string_init(&entity->tutorial.text_4, "ui_layout", text_4);
+        golf_string_init(&entity->tutorial.text_5, "ui_layout", text_5);
+        entity->tutorial.text_color = text_color;
+        entity->tutorial.bg_color = bg_color;
     }
     else {
         golf_log_warning("Unknown ui entity type %s", type);
@@ -2122,6 +2170,16 @@ static void _golf_ui_layout_get_entity_dependency(JSON_Object *entity_obj, vec_g
         if (texture_path) _golf_data_add_dependency(deps, golf_file(texture_path));
 
         const char *font_path = json_object_get_string(entity_obj, "button_font");
+        if (font_path) _golf_data_add_dependency(deps, golf_file(font_path));
+
+        const char *button_lock_texture_path = json_object_get_string(entity_obj, "button_lock_texture");
+        if (button_lock_texture_path) _golf_data_add_dependency(deps, golf_file(button_lock_texture_path));
+    }
+    else if (type && strcmp(type, "tutorial") == 0) {
+        const char *pointer_texture_path = json_object_get_string(entity_obj, "pointer_texture");
+        if (pointer_texture_path) _golf_data_add_dependency(deps, golf_file(pointer_texture_path));
+
+        const char *font_path = json_object_get_string(entity_obj, "font");
         if (font_path) _golf_data_add_dependency(deps, golf_file(font_path));
     }
 
@@ -2187,6 +2245,11 @@ static void _golf_ui_layout_unload_entity(golf_ui_layout_entity_t *entity) {
                 _golf_ui_layout_unload_entity(&entity->button.down_entities.data[i]);
             }
             vec_deinit(&entity->button.down_entities);
+            break;
+        case GOLF_UI_TUTORIAL:
+            golf_string_deinit(&entity->tutorial.text_1);
+            golf_string_deinit(&entity->tutorial.text_2);
+            golf_string_deinit(&entity->tutorial.text_3);
             break;
     }
 }

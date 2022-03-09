@@ -26,7 +26,6 @@
 #include "common/map.h"
 
 static JSON_Value *_storage_json_val;
-static JSON_Object *_storage_json_obj;
 JSON_Value * json_parse_string(const char *string);
 
 static void _save_buf_to_file(const char *file, char *buf, int buf_size) {
@@ -148,21 +147,27 @@ bool golf_storage_finish_init(void) {
     char *json_buffer = "";
     if (_golf_storage_get_buf(&json_buffer, &json_buffer_len)) {
         _storage_json_val = json_parse_string(json_buffer);
+        JSON_Object *obj = json_value_get_object(_storage_json_val);
+        if (!obj) {
+            _storage_json_val = json_value_init_object();
+        }
         golf_free(json_buffer);
     }
     else {
         _storage_json_val = json_value_init_object();
     }
-    _storage_json_obj = json_value_get_object(_storage_json_val);
+
     return true;
 }
 
 void golf_storage_set_num(const char *key, float num) {
-    json_object_set_number(_storage_json_obj, key, num);
+    JSON_Object *obj = json_value_get_object(_storage_json_val);
+    json_object_set_number(obj, key, num);
 }
 
 bool golf_storage_get_num(const char *key, float *num) {
-    JSON_Value  *json_val = json_object_get_value(_storage_json_obj, key);
+    JSON_Object *obj = json_value_get_object(_storage_json_val);
+    JSON_Value  *json_val = json_object_get_value(obj, key);
     if (!json_val || json_value_get_type(json_val) != JSONNumber) {
         return false;
     }

@@ -201,6 +201,7 @@
             "button_num_text_color": [1, 1, 1, 1],
             "button_num_text_offset": [0, -24],
             "button_down_text_offset": [0, 6],
+            "button_lock_texture": "data/textures/ui_icons/locked.png",
             "scroll_bar_background_color": [0, 0, 0, 1],
             "scroll_bar_background_width": 3,
             "scroll_bar_background_padding": 2,
@@ -648,6 +649,33 @@
                     "text": "EXIT"
                 }
             ]
+        },
+        {
+            "name": "tutorial",
+            "type": "tutorial",
+            "anchor": [0.5, 0.3],
+            "pos": [0, -100],
+            "size": [720, 170],
+            "pointer_texture": "data/textures/ui_icons/pointer.png",
+            "pointer_size": [100, 100],
+            "pointer_color": [1, 1, 1, 1],
+            "pointer_1_p0": [25, 25],
+            "pointer_1_p1": [25, 325],
+            "pointer_1_time": 1.5,
+            "pointer_2_p0": [-200, 250],
+            "pointer_2_p1": [200, 250],
+            "pointer_2_time": 1.5,
+            "font": "data/font/FiraSans-Bold.ttf",
+            "text_size": 45,
+            "text_1_pos": [0, -30],
+            "text_2_pos": [0, 30],
+            "text_1": "Drag back in the circle",
+            "text_2": "to aim and control the power.",
+            "text_3": "Release to hit the ball.",
+            "text_4": "Drag outside of the circle",
+            "text_5": "to rotate the camera.",
+            "text_color": [1, 1, 1, 1],
+            "bg_color": [0, 0, 0, 0.7]
         }
     ]
 }

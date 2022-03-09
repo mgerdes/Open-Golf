@@ -94,6 +94,7 @@ void golf_ui_init(void) {
     ui.main_menu.is_level_select_open = false;
     ui.aim_circle.viewport_size_when_set = V2(-1, -1);
     ui.aim_circle.size = -1;
+    ui.tutorial.just_saw_tutorial_0 = false;
 
     inputs = golf_inputs_get();
     graphics = golf_graphics_get();
@@ -390,9 +391,9 @@ static void _golf_ui_text_name(golf_ui_layout_t *layout, const char *name, float
     _golf_ui_text(layout, *entity, alpha);
 }
 
-static void _golf_ui_texture_draw(golf_texture_t *texture, vec2 pos, vec2 size, vec4 overlay_color) {
+static void _golf_ui_texture_draw(golf_texture_t *texture, vec2 pos, vec2 size, vec4 overlay_color, float alpha) {
     vec_push(&ui.draw_entities, _golf_ui_draw_entity(texture->sg_image, pos, size, 0,
-                V2(0, 0), V2(1, 1), 0, overlay_color, 1));
+                V2(0, 0), V2(1, 1), 0, overlay_color, alpha));
 }
 
 static void _golf_ui_texture(golf_ui_layout_t *layout, golf_ui_layout_entity_t entity) {
@@ -401,7 +402,7 @@ static void _golf_ui_texture(golf_ui_layout_t *layout, golf_ui_layout_entity_t e
     vec2 size = vec2_scale(entity.size, ui_scale);
     vec4 overlay_color = entity.texture.overlay_color;
     golf_texture_t *texture = entity.texture.texture;
-    _golf_ui_texture_draw(texture, pos, size, overlay_color);
+    _golf_ui_texture_draw(texture, pos, size, overlay_color, 1);
 }
 
 static void _golf_ui_texture_name(golf_ui_layout_t *layout, const char *name) {
@@ -534,6 +535,7 @@ static void _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name,
 
     float ui_scale = _get_ui_scale();
     vec2 pos = golf_graphics_world_to_screen(game->ball.pos);
+    ui.aim_circle.pos = pos;
 
     if (!vec2_equal(graphics->viewport_size, ui.aim_circle.viewport_size_when_set)) {
         ui.aim_circle.viewport_size_when_set = graphics->viewport_size;
@@ -811,6 +813,7 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
     for (int row = 0; row < 5; row++) {
         for (int col = 0; col < buttons_per_row; col++) {
             int button_num = row * buttons_per_row + col;
+            bool locked = button_num > 0;
 
             vec2 button_pos = bg_pos;
             button_pos.x = button_pos.x - 0.5f * bg_size.x + col * button_size.x + 0.5f * button_size.x + (col + 1) * button_padding;
@@ -819,8 +822,8 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
 
             bool button_down, button_clicked;
             _golf_ui_button(button_pos, button_size, &button_down, &button_clicked);
-            button_down = button_down && down_in_bg;
-            button_clicked = button_clicked && clicked_in_bg;
+            button_down = !locked && button_down && down_in_bg;
+            button_clicked = !locked && button_clicked && clicked_in_bg;
 
             golf_pixel_pack_t *pixel_pack = entity->level_select_scroll_box.button_pixel_pack;
             const char *square_name;
@@ -872,6 +875,18 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
             if (button_clicked && !was_scrolling) {
                 clicked_button_num = button_num;
             }
+
+            if (locked) {
+                {
+                    vec4 overlay_color = V4(0, 0, 0, 1);
+                    _golf_ui_texture_draw(texture, button_pos, button_size, overlay_color, 0.4f);
+                }
+                {
+                    golf_texture_t *lock_texture = entity->level_select_scroll_box.button_lock_texture;
+                    vec4 overlay_color = V4(0, 0, 0, 1);
+                    _golf_ui_texture_draw(lock_texture, button_pos, button_size, overlay_color, 0.8f);
+                }
+            }
         }
     }
 
@@ -880,18 +895,94 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
     return clicked_button_num;
 }
 
+static void _golf_ui_tutorial_name(golf_ui_layout_t *layout, const char *name, int step, float dt) {
+    golf_ui_layout_entity_t *entity;
+    if (!_golf_ui_layout_get_entity_of_type(layout, name, GOLF_UI_TUTORIAL, &entity)) {
+        golf_log_warning("Could not find tutorial %s.", name);
+        return;
+    }
+
+    golf_texture_t *black_texture = golf_data_get_texture("data/textures/colors/black.png");
+    golf_texture_t *pointer_texture = entity->tutorial.pointer_texture;
+    golf_font_t *font = entity->tutorial.font;
+
+    float ui_scale = _get_ui_scale();
+    vec2 pos = _golf_ui_layout_get_entity_pos(layout, *entity);
+    vec2 size = vec2_scale(entity->size, ui_scale);
+    float text_size = entity->tutorial.text_size * ui_scale;
+    vec2 text_1_pos = vec2_add(pos, vec2_scale(entity->tutorial.text_1_pos, ui_scale));
+    vec2 text_2_pos = vec2_add(pos, vec2_scale(entity->tutorial.text_2_pos, ui_scale));
+    golf_string_t text_1 = entity->tutorial.text_1;
+    golf_string_t text_2 = entity->tutorial.text_2;
+    golf_string_t text_3 = entity->tutorial.text_3;
+    golf_string_t text_4 = entity->tutorial.text_4;
+    golf_string_t text_5 = entity->tutorial.text_5;
+    vec4 text_color = entity->tutorial.text_color;
+    vec4 bg_color = entity->tutorial.bg_color;
+
+    _golf_ui_texture_draw(black_texture, pos, size, bg_color, bg_color.w);
+
+    if (step == 0) {
+        _golf_ui_draw_text(font, text_1_pos, text_size, text_color, 0, 0, text_1.cstr, 1);
+        _golf_ui_draw_text(font, text_2_pos, text_size, text_color, 0, 0, text_2.cstr, 1);
+
+        {
+            float a = entity->tutorial.pointer_t / entity->tutorial.pointer_1_time;
+            vec2 p0 = entity->tutorial.pointer_1_p0;
+            vec2 p1 = entity->tutorial.pointer_1_p1;
+            vec2 p = vec2_add(p0, vec2_scale(vec2_sub(p1, p0), a));
+
+            vec2 pointer_pos = ui.aim_circle.pos;
+            pointer_pos = vec2_add(pointer_pos, vec2_scale(p, ui_scale));
+            vec2 pointer_size = vec2_scale(entity->tutorial.pointer_size, ui_scale);
+            vec4 pointer_color = entity->tutorial.pointer_color;
+            _golf_ui_texture_draw(pointer_texture, pointer_pos, pointer_size, pointer_color, 1);
+
+            entity->tutorial.pointer_t += dt;
+            if (entity->tutorial.pointer_t > entity->tutorial.pointer_1_time) {
+                entity->tutorial.pointer_t = 0;
+            }
+        }
+    }
+    else if (step == 1) {
+        _golf_ui_draw_text(font, pos, text_size, text_color, 0, 0, text_3.cstr, 1);
+    }
+    else if (step == 2) {
+        _golf_ui_draw_text(font, text_1_pos, text_size, text_color, 0, 0, text_4.cstr, 1);
+        _golf_ui_draw_text(font, text_2_pos, text_size, text_color, 0, 0, text_5.cstr, 1);
+
+        {
+            float a = entity->tutorial.pointer_t / entity->tutorial.pointer_2_time;
+            vec2 p0 = entity->tutorial.pointer_2_p0;
+            vec2 p1 = entity->tutorial.pointer_2_p1;
+            vec2 p = vec2_add(p0, vec2_scale(vec2_sub(p1, p0), a));
+
+            vec2 pointer_pos = ui.aim_circle.pos;
+            pointer_pos = vec2_add(pointer_pos, vec2_scale(p, ui_scale));
+            vec2 pointer_size = vec2_scale(entity->tutorial.pointer_size, ui_scale);
+            vec4 pointer_color = entity->tutorial.pointer_color;
+            _golf_ui_texture_draw(pointer_texture, pointer_pos, pointer_size, pointer_color, 1);
+
+            entity->tutorial.pointer_t += dt;
+            if (entity->tutorial.pointer_t > entity->tutorial.pointer_2_time) {
+                entity->tutorial.pointer_t = 0;
+            }
+        }
+    }
+}
+
 static void _golf_ui_loading_level(float dt) {
-    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
+    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/ui.ui");
     _golf_ui_gif_texture_name(layout, "loading_icon", dt);
 }
 
 static void _golf_ui_title_screen(float dt) {
-    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
+    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/ui.ui");
     _golf_ui_gif_texture_name(layout, "loading_icon", dt);
 }
 
 static void _golf_ui_main_menu(float dt) {
-    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
+    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/ui.ui");
     _golf_ui_text_name(layout, "main_text", 1);
     _golf_ui_text_name(layout, "main2_text", 1);
 
@@ -975,7 +1066,7 @@ static void _golf_ui_camera_controls(float dt) {
 }
 
 static void _golf_ui_in_game_waiting_for_aim(float dt) {
-    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
+    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/ui.ui");
 
     bool start_aiming;
     _golf_ui_aim_circle_name(layout, "aim_circle", false, dt, NULL, &start_aiming);
@@ -989,7 +1080,7 @@ static void _golf_ui_in_game_waiting_for_aim(float dt) {
 }
 
 static void _golf_ui_in_game_aiming(float dt) {
-    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
+    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/ui.ui");
     vec2 aim_delta;
     _golf_ui_aim_circle_name(layout, "aim_circle", true, dt, &aim_delta, NULL);
 
@@ -1018,7 +1109,7 @@ static void _golf_ui_in_game_watching_ball(float dt) {
             
 static void _golf_ui_in_game_paused(float dt) {
     GOLF_UNUSED(dt);
-    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
+    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/ui.ui");
 
     _golf_ui_pixel_pack_square_name(layout, "pause_menu_background");
     if (_golf_ui_button_name(layout, "pause_menu_resume_button")) {
@@ -1035,7 +1126,7 @@ static void _golf_ui_in_game_paused(float dt) {
 
 static void _golf_ui_in_game_finished(float dt) {
     GOLF_UNUSED(dt);
-    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
+    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/ui.ui");
 
     _golf_ui_pixel_pack_square_name(layout, "finished_menu_background");
     if (golf->level_num + 1 < 6) {
@@ -1067,10 +1158,40 @@ static void _golf_ui_in_game_finished(float dt) {
 }
 
 static void _golf_ui_in_game(float dt) {
-    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
+    golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/ui.ui");
     if (game->state == GOLF_GAME_STATE_WAITING_FOR_AIM || game->state == GOLF_GAME_STATE_WATCHING_BALL) {
         if (_golf_ui_button_name(layout, "pause_button")) {
             golf_game_pause();
+        }
+    }
+
+    float temp_val;
+    if (!golf_storage_get_num("seen_tutorial_0", &temp_val)) {
+        if (game->state == GOLF_GAME_STATE_WAITING_FOR_AIM) {
+            _golf_ui_tutorial_name(layout, "tutorial", 0, dt);
+        }
+        else if (game->state == GOLF_GAME_STATE_AIMING) {
+            if (game->aim_line.power > 0) {
+                _golf_ui_tutorial_name(layout, "tutorial", 1, dt);
+            }
+            else {
+                _golf_ui_tutorial_name(layout, "tutorial", 0, dt);
+            }
+        }
+        else if (game->state == GOLF_GAME_STATE_WATCHING_BALL) {
+            ui.tutorial.just_saw_tutorial_0 = true;
+            golf_storage_set_num("seen_tutorial_0", 1);
+            golf_storage_save();
+        }
+    }
+    else if (!golf_storage_get_num("seen_tutorial_1", &temp_val)) {
+        if (game->state == GOLF_GAME_STATE_WAITING_FOR_AIM) {
+            ui.tutorial.just_saw_tutorial_0 = false;
+            _golf_ui_tutorial_name(layout, "tutorial", 2, dt);
+        }
+        else if (!ui.tutorial.just_saw_tutorial_0 && game->state == GOLF_GAME_STATE_WATCHING_BALL) {
+            golf_storage_set_num("seen_tutorial_1", 1);
+            golf_storage_save();
         }
     }
 
@@ -1137,7 +1258,7 @@ void golf_ui_update(float dt) {
     ui.draw_entities.length = 0;
 
     {
-        golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/main_menu.ui");
+        golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/ui.ui");
         golf_ui_layout_entity_t *entity;
         if (_golf_ui_layout_get_entity_of_type(layout, "fps_text", GOLF_UI_TEXT, &entity)) {
             entity->text.text.len = 0;
