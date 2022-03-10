@@ -1759,6 +1759,33 @@ static gs_val_t gs_c_fn_V3(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
     return gs_val_vec3(V3(vals[0].float_val, vals[1].float_val, vals[2].float_val));
 }
 
+static gs_val_t gs_c_fn_vec3_normalize(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
+    gs_val_type signature_arg_types[] = { GS_VAL_VEC3 };
+    int signature_arg_count = sizeof(signature_arg_types) / sizeof(signature_arg_types[0]);;
+    gs_val_t sig = gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
+    if (sig.is_return) return sig;
+
+    return gs_val_vec3(vec3_normalize(vals[0].vec3_val));
+}
+
+static gs_val_t gs_c_fn_vec3_length(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
+    gs_val_type signature_arg_types[] = { GS_VAL_VEC3 };
+    int signature_arg_count = sizeof(signature_arg_types) / sizeof(signature_arg_types[0]);;
+    gs_val_t sig = gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
+    if (sig.is_return) return sig;
+
+    return gs_val_float(vec3_length(vals[0].vec3_val));
+}
+
+static gs_val_t gs_c_fn_vec3_distance(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
+    gs_val_type signature_arg_types[] = { GS_VAL_VEC3, GS_VAL_VEC3 };
+    int signature_arg_count = sizeof(signature_arg_types) / sizeof(signature_arg_types[0]);;
+    gs_val_t sig = gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
+    if (sig.is_return) return sig;
+
+    return gs_val_float(vec3_distance(vals[0].vec3_val, vals[1].vec3_val));
+}
+
 static gs_val_t gs_c_fn_cos(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
     gs_val_type signature_arg_types[] = { GS_VAL_FLOAT };
     int signature_arg_count = sizeof(signature_arg_types) / sizeof(signature_arg_types[0]);;
@@ -1775,6 +1802,24 @@ static gs_val_t gs_c_fn_sin(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
     if (sig.is_return) return sig;
 
     return gs_val_float(sinf(vals[0].float_val));
+}
+
+static gs_val_t gs_c_fn_acos(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
+    gs_val_type signature_arg_types[] = { GS_VAL_FLOAT };
+    int signature_arg_count = sizeof(signature_arg_types) / sizeof(signature_arg_types[0]);;
+    gs_val_t sig = gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
+    if (sig.is_return) return sig;
+
+    return gs_val_float(acosf(vals[0].float_val));
+}
+
+static gs_val_t gs_c_fn_asin(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
+    gs_val_type signature_arg_types[] = { GS_VAL_FLOAT };
+    int signature_arg_count = sizeof(signature_arg_types) / sizeof(signature_arg_types[0]);;
+    gs_val_t sig = gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
+    if (sig.is_return) return sig;
+
+    return gs_val_float(asinf(vals[0].float_val));
 }
 
 static gs_val_t gs_c_fn_sqrt(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
@@ -2722,8 +2767,13 @@ bool golf_script_load(golf_script_t *script, const char *path, const char *data,
     map_set(&global_env->val_map, "print", gs_val_c_fn(gs_c_fn_print));
     map_set(&global_env->val_map, "V2", gs_val_c_fn(gs_c_fn_V2));
     map_set(&global_env->val_map, "V3", gs_val_c_fn(gs_c_fn_V3));
+    map_set(&global_env->val_map, "vec3_distance", gs_val_c_fn(gs_c_fn_vec3_distance));
+    map_set(&global_env->val_map, "vec3_length", gs_val_c_fn(gs_c_fn_vec3_length));
+    map_set(&global_env->val_map, "vec3_normalize", gs_val_c_fn(gs_c_fn_vec3_normalize));
     map_set(&global_env->val_map, "cos", gs_val_c_fn(gs_c_fn_cos));
     map_set(&global_env->val_map, "sin", gs_val_c_fn(gs_c_fn_sin));
+    map_set(&global_env->val_map, "acos", gs_val_c_fn(gs_c_fn_acos));
+    map_set(&global_env->val_map, "asin", gs_val_c_fn(gs_c_fn_asin));
     map_set(&global_env->val_map, "sqrt", gs_val_c_fn(gs_c_fn_sqrt));
     //map_set(&global_env->val_map, "terrain_model_add_point", gs_val_c_fn(gs_c_fn_terrain_model_add_point));
     //map_set(&global_env->val_map, "terrain_model_add_face", gs_val_c_fn(gs_c_fn_terrain_model_add_face));

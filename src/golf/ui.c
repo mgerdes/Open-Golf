@@ -814,6 +814,7 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
         for (int col = 0; col < buttons_per_row; col++) {
             int button_num = row * buttons_per_row + col;
             bool locked = button_num > 0;
+            locked = false;
 
             vec2 button_pos = bg_pos;
             button_pos.x = button_pos.x - 0.5f * bg_size.x + col * button_size.x + 0.5f * button_size.x + (col + 1) * button_padding;
