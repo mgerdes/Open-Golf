@@ -2559,7 +2559,13 @@ static void _golf_json_object_get_geo(JSON_Object *obj, const char *name, golf_g
     JSON_Object *generator_data_obj = json_object_get_object(geo_obj, "generator_data");
     if (generator_data_obj) {
         const char *script_path = json_object_get_string(generator_data_obj, "script");
-        script = golf_data_get_script(script_path);
+        // The game doesn't load the scripts, only the editor so check if it's loaded or not first
+        if (golf_data_get_load_state(script_path) == GOLF_DATA_LOADED) {
+            script = golf_data_get_script(script_path);
+        }
+        else {
+            script = NULL;
+        }
 
         JSON_Array *args_arr = json_object_get_array(generator_data_obj, "args");
         for (int i = 0; i < (int)json_array_get_count(args_arr); i++) {
@@ -2982,6 +2988,10 @@ static bool _golf_script_data_load(void *ptr, const char *path, char *data, int 
     bool r = golf_script_load(script, path, data, data_len);
     if (script->error) {
         golf_log_warning("Error loading script: %s", script->error);
+    }
+    if (script->parser.error) {
+        gs_token_t error_token = script->parser.error_token;
+        golf_log_warning("Line: %d, Col: %d\n", error_token.line, error_token.col);
     }
     return r;
 }

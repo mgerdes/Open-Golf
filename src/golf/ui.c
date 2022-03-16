@@ -96,6 +96,8 @@ void golf_ui_init(void) {
     ui.aim_circle.size = -1;
     ui.tutorial.just_saw_tutorial_0 = false;
 
+    golf_data_load("data/ui/ui.ui", false);
+
     inputs = golf_inputs_get();
     graphics = golf_graphics_get();
     game = golf_game_get();

@@ -1040,32 +1040,7 @@
                         "uv_gen_type": "manual",
                         "water_dir": [0, 0, 0]
                     }
-                ],
-                "generator_data": {
-                    "script": "data\/scripts\/spinner_platform.gs",
-                    "args": [
-                        {
-                            "name": "N",
-                            "type": "float",
-                            "val": 28
-                        },
-                        {
-                            "name": "radius",
-                            "type": "float",
-                            "val": 2.6
-                        },
-                        {
-                            "name": "width",
-                            "type": "float",
-                            "val": 6
-                        },
-                        {
-                            "name": "height",
-                            "type": "float",
-                            "val": 6
-                        }
-                    ]
-                }
+                ]
             },
             "transform": {
                 "position": [12, -0.375, -23.25],
@@ -1204,7 +1179,7 @@
             "name": "environment",
             "type": "group",
             "transform": {
-                "position": [0, 0, 0],
+                "position": [0, 0.125, 0],
                 "scale": [1, 1, 1],
                 "rotation": [0, 0, 0, 1]
             }

@@ -98,6 +98,8 @@ static float _golf_game_get_camera_zone_angle(vec3 pos) {
 void golf_game_init(void) {
     memset(&game, 0, sizeof(game));
 
+    golf_data_load("data/config/game.cfg", false);
+
     golf = golf_get();
     graphics = golf_graphics_get();
     inputs = golf_inputs_get();

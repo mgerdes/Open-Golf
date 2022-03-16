@@ -24,6 +24,22 @@ void golf_graphics_init(void) {
         graphics.viewport_pos = V2(0, 0);
         graphics.viewport_size = V2((float)sapp_width(), (float)sapp_width());
     }
+
+    golf_data_load("data/shaders/diffuse_color_material.glsl", false);
+    golf_data_load("data/shaders/environment_material.glsl", false);
+    golf_data_load("data/shaders/pass_through.glsl", false);
+    golf_data_load("data/shaders/solid_color_material.glsl", false);
+    golf_data_load("data/shaders/texture_material.glsl", false);
+    golf_data_load("data/shaders/render_image.glsl", false);
+    golf_data_load("data/shaders/fxaa.glsl", false);
+    golf_data_load("data/shaders/ui.glsl", false);
+    golf_data_load("data/shaders/aim_line.glsl", false);
+    golf_data_load("data/shaders/ball.glsl", false);
+    golf_data_load("data/shaders/editor_water.glsl", false);
+    golf_data_load("data/shaders/water.glsl", false);
+    golf_data_load("data/shaders/water_around_ball.glsl", false);
+    golf_data_load("data/shaders/water_ripple.glsl", false);
+    golf_data_load("data/shaders/ball_hidden.glsl", false);
 }
 
 void golf_graphics_begin_frame(float dt) {

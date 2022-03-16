@@ -1777,6 +1777,15 @@ static gs_val_t gs_c_fn_vec3_length(gs_eval_t *eval, gs_val_t *vals, int num_val
     return gs_val_float(vec3_length(vals[0].vec3_val));
 }
 
+static gs_val_t gs_c_fn_vec2_bezier4(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
+    gs_val_type signature_arg_types[] = { GS_VAL_VEC2, GS_VAL_VEC2, GS_VAL_VEC2, GS_VAL_VEC2, GS_VAL_FLOAT };
+    int signature_arg_count = sizeof(signature_arg_types) / sizeof(signature_arg_types[0]);
+    gs_val_t sig = gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
+    if (sig.is_return) return sig;
+
+    return gs_val_vec2(vec2_bezier(vals[0].vec2_val, vals[1].vec2_val, vals[2].vec2_val, vals[3].vec2_val, vals[4].float_val));
+}
+
 static gs_val_t gs_c_fn_vec3_distance(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
     gs_val_type signature_arg_types[] = { GS_VAL_VEC3, GS_VAL_VEC3 };
     int signature_arg_count = sizeof(signature_arg_types) / sizeof(signature_arg_types[0]);;
@@ -2767,6 +2776,7 @@ bool golf_script_load(golf_script_t *script, const char *path, const char *data,
     map_set(&global_env->val_map, "print", gs_val_c_fn(gs_c_fn_print));
     map_set(&global_env->val_map, "V2", gs_val_c_fn(gs_c_fn_V2));
     map_set(&global_env->val_map, "V3", gs_val_c_fn(gs_c_fn_V3));
+    map_set(&global_env->val_map, "vec2_bezier4", gs_val_c_fn(gs_c_fn_vec2_bezier4));
     map_set(&global_env->val_map, "vec3_distance", gs_val_c_fn(gs_c_fn_vec3_distance));
     map_set(&global_env->val_map, "vec3_length", gs_val_c_fn(gs_c_fn_vec3_length));
     map_set(&global_env->val_map, "vec3_normalize", gs_val_c_fn(gs_c_fn_vec3_normalize));

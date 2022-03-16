@@ -33,6 +33,18 @@ void golf_editor_init(void) {
 
     golf_data_load("data/config/editor.cfg", false);
     golf_data_load("data/levels/level-1.level", false);
+    golf_data_load("data/config/editor.cfg", false);
+    golf_data_load("data/scripts/ramp.gs", false);
+    golf_data_load("data/scripts/teseting.gs", false);
+    golf_data_load("data/scripts/spinner_platform.gs", false);
+    golf_data_load("data/scripts/bump.gs", false);
+    golf_data_load("data/scripts/curve_down.gs", false);
+    golf_data_load("data/scripts/circle.gs", false);
+    golf_data_load("data/scripts/curve_halfpipe.gs", false);
+    golf_data_load("data/scripts/halfpipe.gs", false);
+    golf_data_load("data/scripts/loop_de_loop.gs", false);
+    golf_data_load("data/scripts/bezier_ramp.gs", false);
+
 
     ImGuiIO *IO = igGetIO();
     IO->ConfigFlags |= ImGuiConfigFlags_DockingEnable;
