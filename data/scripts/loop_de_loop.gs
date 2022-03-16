@@ -1,7 +1,6 @@
-void generate(float N, float width, float height, float length, float wall_height, float texture_length) {
+void generate(float N, float width, float height, float length, float wall_height, float texture_length, float extra_room) {
     list points = [];
 
-    float extra_room = 1.5;
     for (int i = 0; i < N; i = i + 1) {
         float t = i / (N - 1);
         float theta0 = 0 - 0.5 * PI;
