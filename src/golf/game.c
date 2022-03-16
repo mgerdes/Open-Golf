@@ -661,7 +661,7 @@ static void _physics_tick(float dt) {
         game.ball.time_going_slow = 0.0f;
     }
 
-    if (!game.ball.is_moving && vec3_length(bv) > 0.5f) {
+    if (!game.ball.is_moving && vec3_length(bv) > 0.1f) {
         game.ball.is_moving = true;
     }
     if (game.ball.is_moving) {

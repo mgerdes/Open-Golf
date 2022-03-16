@@ -1,4 +1,4 @@
-void generate(float N, float width, float radius, float a, float texture_height, float border_width, float border_ground_y) {
+void generate(float N, float width, float radius, float a, float texture_height, float texture_dx, float border_width, float border_ground_y) {
     list points = [];
 
     for (int i = 0; i < N; i = i + 1) {
@@ -47,10 +47,10 @@ void generate(float N, float width, float radius, float a, float texture_height,
         idx[2] = 4 * i + 5;
         idx[3] = 4 * i + 1;
 
-        uv[0] = V2(0, t0 * texture_height);
-        uv[1] = V2(0, t1 * texture_height);
-        uv[2] = V2(width, t1 * texture_height);
-        uv[3] = V2(width, t0 * texture_height);
+        uv[0] = V2(texture_dx, t0 * texture_height);
+        uv[1] = V2(texture_dx, t1 * texture_height);
+        uv[2] = V2(0.5*width + texture_dx, t1 * texture_height);
+        uv[3] = V2(0.5*width + texture_dx, t0 * texture_height);
 
         terrain_model_add_face("ground", idx, uv);
     }

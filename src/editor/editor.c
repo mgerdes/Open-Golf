@@ -44,7 +44,7 @@ void golf_editor_init(void) {
     golf_data_load("data/scripts/halfpipe.gs", false);
     golf_data_load("data/scripts/loop_de_loop.gs", false);
     golf_data_load("data/scripts/bezier_ramp.gs", false);
-
+    golf_data_load("data/scripts/curve.gs", false);
 
     ImGuiIO *IO = igGetIO();
     IO->ConfigFlags |= ImGuiConfigFlags_DockingEnable;
