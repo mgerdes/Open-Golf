@@ -654,7 +654,7 @@ static void _physics_tick(float dt) {
         vec_push(&game.physics.collision_history, collision);
     }
 
-    if (vec3_length(bv) < 0.5f) {
+    if (vec3_length(bv) < 0.1f) {
         game.ball.time_going_slow += dt;
     }
     else {
