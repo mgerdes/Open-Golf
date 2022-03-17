@@ -41,10 +41,10 @@ void generate(float N, float r0, float r1, float a, float texture_length, float 
         vec3 p2 = points[idx[2]];
         vec3 p3 = points[idx[3]];
 
-        uv[0] = V2(0.5*p0.x, 0.5*p0.z);
-        uv[1] = V2(0.5*p1.x, 0.5*p1.z);
-        uv[2] = V2(0.5*p2.x, 0.5*p2.z);
-        uv[3] = V2(0.5*p3.x, 0.5*p3.z);
+        uv[0] = V2(0.5*p0.x + texture_dx, 0.5*p0.z);
+        uv[1] = V2(0.5*p1.x + texture_dx, 0.5*p1.z);
+        uv[2] = V2(0.5*p2.x + texture_dx, 0.5*p2.z);
+        uv[3] = V2(0.5*p3.x + texture_dx, 0.5*p3.z);
 
         terrain_model_add_face("ground", idx, uv);
     }
