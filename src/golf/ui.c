@@ -1001,8 +1001,8 @@ static void _golf_ui_main_menu(float dt) {
             ui.main_menu.is_level_select_open = false;
         }
         int clicked_button_num = _golf_ui_level_select_scroll_box_name(layout, "level_select_scroll_box", dt);
-        clicked_button_num = clicked_button_num % 13;
-        if (clicked_button_num >= 0 && clicked_button_num < 13) {
+        clicked_button_num = clicked_button_num % 14;
+        if (clicked_button_num >= 0 && clicked_button_num < 14) {
             golf_audio_start_sound("button_click", "data/audio/drop_003.ogg", 1, false, true);
             _golf_ui_start_fade_out(false, true, clicked_button_num, false);
         }

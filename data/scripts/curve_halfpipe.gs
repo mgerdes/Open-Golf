@@ -36,9 +36,9 @@ void generate(float N, float inner_radius, float width, float height, float text
                 float border_x = border_radius * cos(theta0);
                 float border_z = border_radius * sin(theta0);
 
-                vec3 p0 = V3(border_x, 0-3, border_z);
-                vec3 p1 = V3(border_x, y0 + 0.25, border_z);
-                vec3 p2 = V3(x, y0 + 0.25, z);
+                vec3 p0 = V3(border_x, 0-5, border_z);
+                vec3 p1 = V3(border_x, y0 + 0.375, border_z);
+                vec3 p2 = V3(x, y0 + 0.375, z);
 
                 points[points.length] = p0;
                 points[points.length] = p1;
@@ -53,8 +53,8 @@ void generate(float N, float inner_radius, float width, float height, float text
                 float border_x = border_radius * cos(theta0);
                 float border_z = border_radius * sin(theta0);
 
-                vec3 p0 = V3(x, y + 0.25, z);
-                vec3 p1 = V3(border_x, y + 0.25, border_z);
+                vec3 p0 = V3(x, y + 0.375, z);
+                vec3 p1 = V3(border_x, y + 0.375, border_z);
                 vec3 p2 = V3(border_x, 0-3, border_z);
                 points[points.length] = p0;
                 points[points.length] = p1;
@@ -86,10 +86,10 @@ void generate(float N, float inner_radius, float width, float height, float text
         idx[2] = c;
         idx[3] = d;
 
-        uv[0] = V2(tc1x, tc0y);
-        uv[1] = V2(tc1x, tc1y);
-        uv[2] = V2(tc0x, tc1y);
-        uv[3] = V2(tc0x, tc0y);
+        uv[0] = V2(0.5*tc1x, 0.5*tc0y);
+        uv[1] = V2(0.5*tc1x, 0.5*tc1y);
+        uv[2] = V2(0.5*tc0x, 0.5*tc1y);
+        uv[3] = V2(0.5*tc0x, 0.5*tc0y);
 
         terrain_model_add_face("wall-top", idx, uv);
     }
@@ -110,10 +110,10 @@ void generate(float N, float inner_radius, float width, float height, float text
         idx[2] = c;
         idx[3] = d;
 
-        uv[0] = V2(tc0x, tc0y);
-        uv[1] = V2(tc0x, tc1y);
-        uv[2] = V2(tc1x, tc1y);
-        uv[3] = V2(tc1x, tc0y);
+        uv[0] = V2(0.5*tc0x, 0.5*tc0y);
+        uv[1] = V2(0.5*tc0x, 0.5*tc1y);
+        uv[2] = V2(0.5*tc1x, 0.5*tc1y);
+        uv[3] = V2(0.5*tc1x, 0.5*tc0y);
 
         terrain_model_add_face("wall-top", idx, uv);
     }
@@ -134,10 +134,10 @@ void generate(float N, float inner_radius, float width, float height, float text
         idx[2] = c;
         idx[3] = d;
 
-        uv[0] = V2(tc0x, tc0y);
-        uv[1] = V2(tc0x, tc1y);
-        uv[2] = V2(tc1x, tc1y);
-        uv[3] = V2(tc1x, tc0y);
+        uv[0] = V2(0.25*tc0x, 0.5*tc0y);
+        uv[1] = V2(0.25*tc0x, 0.5*tc1y);
+        uv[2] = V2(0.25*tc1x, 0.5*tc1y);
+        uv[3] = V2(0.25*tc1x, 0.5*tc0y);
 
         terrain_model_add_face("wall-side", idx, uv);
     }
@@ -158,10 +158,10 @@ void generate(float N, float inner_radius, float width, float height, float text
         idx[2] = c;
         idx[3] = d;
 
-        uv[0] = V2(tc1x, tc0y);
-        uv[1] = V2(tc1x, tc1y);
-        uv[2] = V2(tc0x, tc1y);
-        uv[3] = V2(tc0x, tc0y);
+        uv[0] = V2(0.25*tc1x, 0.5*tc0y);
+        uv[1] = V2(0.25*tc1x, 0.5*tc1y);
+        uv[2] = V2(0.25*tc0x, 0.5*tc1y);
+        uv[3] = V2(0.25*tc0x, 0.5*tc0y);
 
         terrain_model_add_face("wall-side", idx, uv);
     }
@@ -182,10 +182,10 @@ void generate(float N, float inner_radius, float width, float height, float text
         idx[2] = c;
         idx[3] = d;
 
-        uv[0] = V2(tc1x, tc0y);
-        uv[1] = V2(tc1x, tc1y);
-        uv[2] = V2(tc0x, tc1y);
-        uv[3] = V2(tc0x, tc0y);
+        uv[0] = V2(0.5*tc0x, 0.5*tc0y);
+        uv[1] = V2(0.5*tc0x, 0.5*tc1y);
+        uv[2] = V2(0.5*tc1x, 0.5*tc1y);
+        uv[3] = V2(0.5*tc1x, 0.5*tc0y);
 
         terrain_model_add_face("wall-top", idx, uv);
     }
@@ -212,10 +212,10 @@ void generate(float N, float inner_radius, float width, float height, float text
         idx[2] = c;
         idx[3] = d;
 
-        uv[0] = V2(0, tc0y);
-        uv[1] = V2(0, tc1y);
-        uv[2] = V2(by - cy, tc1y);
-        uv[3] = V2(ay - dy, tc0y);
+        uv[0] = V2(0, 0.5*tc0y);
+        uv[1] = V2(0, 0.5*tc1y);
+        uv[2] = V2(by - cy, 0.5*tc1y);
+        uv[3] = V2(ay - dy, 0.5*tc0y);
 
         terrain_model_add_face("wall-top", idx, uv);
     }
