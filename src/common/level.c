@@ -312,6 +312,16 @@ static void _golf_json_object_set_movement(JSON_Object *obj, const char *name, g
             golf_json_object_set_vec3(movement_obj, "axis", movement->pendulum.axis);
             break;
         }
+        case GOLF_MOVEMENT_RAMP: {
+            json_object_set_string(movement_obj, "type", "ramp");
+            json_object_set_number(movement_obj, "t0", movement->t0);
+            json_object_set_number(movement_obj, "length", movement->length);
+            json_object_set_number(movement_obj, "theta0", movement->ramp.theta0);
+            json_object_set_number(movement_obj, "theta1", movement->ramp.theta1);
+            json_object_set_number(movement_obj, "transition_length", movement->ramp.transition_length);
+            golf_json_object_set_vec3(movement_obj, "axis", movement->ramp.axis);
+            break;
+        }
     }
 
     json_object_set_value(obj, name, movement_val);
@@ -491,6 +501,19 @@ golf_movement_t golf_movement_pendulum(float t0, float length, float theta0, vec
     movement.length = length;
     movement.pendulum.theta0 = theta0;
     movement.pendulum.axis = axis;
+    return movement;
+}
+
+golf_movement_t golf_movement_ramp(float t0, float length, float theta0, float theta1, float transition_length, vec3 axis) {
+    golf_movement_t movement;
+    movement.type = GOLF_MOVEMENT_RAMP;
+    movement.repeats = true;
+    movement.t0 = t0;
+    movement.length = length;
+    movement.ramp.theta0 = theta0;
+    movement.ramp.theta1 = theta1;
+    movement.ramp.transition_length = transition_length;
+    movement.ramp.axis = axis;
     return movement;
 }
 
@@ -855,6 +878,48 @@ golf_transform_t golf_transform_apply_movement(golf_transform_t transform, golf_
             float theta = movement.pendulum.theta0 * cosf(MF_PI * a);
             quat r = quat_create_from_axis_angle(movement.pendulum.axis, theta);
             new_transform.rotation = quat_multiply(r, transform.rotation);
+            break;
+        }
+        case GOLF_MOVEMENT_RAMP: {
+            float theta0 = movement.ramp.theta0;
+            float theta1 = movement.ramp.theta1;
+            float transition_length = movement.ramp.transition_length;
+            vec3 axis = movement.ramp.axis;
+            float theta = 0;
+
+            float s0 = 0;
+            float s1 = transition_length;
+            float s2 = 0.5f * l - transition_length;
+            float s3 = 0.5f * l + transition_length;
+            float s4 = l - transition_length;
+            float s5 = l;
+
+            // stuck at bottom
+            if (t < s1) {
+                theta = theta0;
+            }
+            // going up
+            else if (t < s2) {
+                float a = (t - s1) / (s2 - s1);
+                theta = theta0 + a * (theta1 - theta0);
+            }
+            // stuck at top
+            else if (t < s3) {
+                theta = theta1;
+            }
+            // going down
+            else if (t < s4) {
+                float a = (t - s3) / (s4 - s3);
+                theta = theta1 + a * (theta0 - theta1);
+            }
+            // stuck at bottom
+            else {
+                theta = theta0;
+            }
+
+            quat r = quat_create_from_axis_angle(axis, theta);
+            new_transform.rotation = quat_multiply(r, transform.rotation);
+
             break;
         }
     }

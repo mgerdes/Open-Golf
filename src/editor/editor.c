@@ -45,6 +45,8 @@ void golf_editor_init(void) {
     golf_data_load("data/scripts/loop_de_loop.gs", false);
     golf_data_load("data/scripts/bezier_ramp.gs", false);
     golf_data_load("data/scripts/curve.gs", false);
+    golf_data_load("data/scripts/curve_water.gs", false);
+    golf_data_load("data/scripts/elevated_curve.gs", false);
 
     ImGuiIO *IO = igGetIO();
     IO->ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -865,7 +867,7 @@ static void _golf_editor_edit_lightmap_section(golf_lightmap_section_t *lightmap
 static void _golf_editor_edit_movement(golf_movement_t *movement) {
     if (igTreeNode_Str("Movement")) {
         golf_movement_type_t movement_type_before = movement->type;
-        const char *items[] = { "None", "Linear", "Spinner", "Pendulum" };
+        const char *items[] = { "None", "Linear", "Spinner", "Pendulum", "Ramp" };
         igCombo_Str_arr("Type", (int*)&movement->type, items, sizeof(items) / sizeof(items[0]), 0);
         if (movement_type_before != movement->type) {
             golf_movement_type_t movement_type_after = movement->type;
@@ -887,6 +889,12 @@ static void _golf_editor_edit_movement(golf_movement_t *movement) {
                 case GOLF_MOVEMENT_PENDULUM:
                     movement->pendulum.theta0 = 0;
                     movement->pendulum.axis = V3(1, 0, 0);
+                    break;
+                case GOLF_MOVEMENT_RAMP:
+                    movement->ramp.theta0 = 0;
+                    movement->ramp.theta1 = 0;
+                    movement->ramp.transition_length = 0;
+                    movement->ramp.axis = V3(1, 0, 0);
                     break;
             }
         }
@@ -911,6 +919,15 @@ static void _golf_editor_edit_movement(golf_movement_t *movement) {
                 _golf_editor_undoable_igInputFloat("Length", (float*)&movement->length, "Modify movement length");
                 _golf_editor_undoable_igInputFloat("Theta0", (float*)&movement->pendulum.theta0, "Modify pendulum theta0");
                 _golf_editor_undoable_igInputFloat3("Axis", (float*)&movement->pendulum.axis, "Modify pendulum axis");
+                break;
+            }
+            case GOLF_MOVEMENT_RAMP: {
+                _golf_editor_undoable_igInputFloat("T0", (float*)&movement->t0, "Modify movement t0");
+                _golf_editor_undoable_igInputFloat("Length", (float*)&movement->length, "Modify movement length");
+                _golf_editor_undoable_igInputFloat("Theta0", (float*)&movement->ramp.theta0, "Modify ramp theta0");
+                _golf_editor_undoable_igInputFloat("Theta1", (float*)&movement->ramp.theta1, "Modify ramp theta0");
+                _golf_editor_undoable_igInputFloat("Transition Length", (float*)&movement->ramp.transition_length, "Modify ramp transition length");
+                _golf_editor_undoable_igInputFloat3("Axis", (float*)&movement->ramp.axis, "Modify ramp axis");
                 break;
             }
         }
@@ -975,6 +992,48 @@ static gs_val_t gs_c_fn_terrain_model_add_face(gs_eval_t *eval, gs_val_t *vals, 
     }
 
     vec3 water_dir = V3(0, 0, 0);
+
+    golf_geo_face_t face = golf_geo_face(material_string->cstr, idx, GOLF_GEO_FACE_UV_GEN_MANUAL, uvs, water_dir);
+    golf_editor_edit_mode_geo_add_face(face);
+
+    return gs_val_void();
+}
+
+static gs_val_t gs_c_fn_terrain_model_add_water_face(gs_eval_t *eval, gs_val_t *vals, int num_vals) {
+    gs_val_type signature_arg_types[] = { GS_VAL_STRING, GS_VAL_LIST, GS_VAL_LIST, GS_VAL_VEC3 };
+    int signature_arg_count = sizeof(signature_arg_types) / sizeof(signature_arg_types[0]);
+    gs_val_t sig = gs_c_fn_signature(eval, vals, num_vals, signature_arg_types, signature_arg_count);
+    if (sig.is_return) return sig;
+
+    golf_string_t *material_string = vals[0].string_val;
+    vec_gs_val_t *idx_list = vals[1].list_val;
+    vec_gs_val_t *uvs_list = vals[2].list_val;
+    vec3 water_dir = vals[3].vec3_val;
+
+    if (idx_list->length != uvs_list->length) {
+        return gs_val_error("Need same number of idx and uvs");
+    }
+    
+    vec_int_t idx;
+    vec_init(&idx, "geo");
+
+    vec_vec2_t uvs;
+    vec_init(&uvs, "geo");
+
+    for (int i = 0; i < idx_list->length; i++) {
+        gs_val_t idx_val = gs_eval_cast(eval, idx_list->data[i], GS_VAL_INT);
+        if (idx_val.is_return) {
+            return gs_val_error("Expected an int in idx list");
+        }
+
+        gs_val_t uv_val = gs_eval_cast(eval, uvs_list->data[i], GS_VAL_VEC2);
+        if (uv_val.is_return) {
+            return gs_val_error("Expected a vec2 in uv list");
+        }
+
+        vec_push(&idx, idx_val.int_val);
+        vec_push(&uvs, uv_val.vec2_val);
+    }
 
     golf_geo_face_t face = golf_geo_face(material_string->cstr, idx, GOLF_GEO_FACE_UV_GEN_MANUAL, uvs, water_dir);
     golf_editor_edit_mode_geo_add_face(face);
@@ -1157,6 +1216,7 @@ static void _golf_editor_geo_tab(void) {
 
                         golf_script_set_c_fn(selected_script, "terrain_model_add_point", gs_c_fn_terrain_model_add_point);
                         golf_script_set_c_fn(selected_script, "terrain_model_add_face", gs_c_fn_terrain_model_add_face);
+                        golf_script_set_c_fn(selected_script, "terrain_model_add_water_face", gs_c_fn_terrain_model_add_water_face);
                         gs_val_t val = golf_script_eval_fn(selected_script, "generate", args, num_args);
                         if (val.type == GS_VAL_ERROR) {
                             golf_log_warning("Error running script: %s", val.error_val);

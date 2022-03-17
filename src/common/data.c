@@ -2500,6 +2500,15 @@ static void _golf_json_object_get_movement(JSON_Object *obj, const char *name, g
         vec3 axis = golf_json_object_get_vec3(movement_obj, "axis");
         *movement = golf_movement_pendulum(t0, length, theta0, axis);
     }
+    else if (type && strcmp(type, "ramp") == 0) {
+        float t0 = (float)json_object_get_number(movement_obj, "t0");
+        float length = (float)json_object_get_number(movement_obj, "length");
+        float theta0 = (float)json_object_get_number(movement_obj, "theta0");
+        float theta1 = (float)json_object_get_number(movement_obj, "theta1");
+        float transition_length = (float)json_object_get_number(movement_obj, "transition_length");
+        vec3 axis = golf_json_object_get_vec3(movement_obj, "axis");
+        *movement = golf_movement_ramp(t0, length, theta0, theta1, transition_length, axis);
+    }
     else {
         golf_log_warning("Invalid type for movement");
         *movement = golf_movement_none();
