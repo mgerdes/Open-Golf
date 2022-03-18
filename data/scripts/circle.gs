@@ -94,7 +94,7 @@ void generate(float N, float r) {
 
         l = l + d;
 
-        terrain_model_add_face("circle_wall_side", idx, uv);
+        terrain_model_add_face("wall-side", idx, uv);
     }
 
     l = 0;
@@ -126,7 +126,7 @@ void generate(float N, float r) {
         l0 = l0 + d0;
         l1 = l1 + d1;
 
-        terrain_model_add_face("circle_wall_top", idx, uv);
+        terrain_model_add_face("wall-top", idx, uv);
     }
 
     l = 0;
@@ -153,6 +153,6 @@ void generate(float N, float r) {
 
         l = l + d;
 
-        terrain_model_add_face("circle_wall_side", idx, uv);
+        terrain_model_add_face("wall-side", idx, uv);
     }
 }
