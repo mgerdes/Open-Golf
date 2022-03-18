@@ -70,7 +70,7 @@ golf_t *golf_get(void) {
 }
 
 void golf_start_level(int level_num) {
-    if (level_num >= 15) {
+    if (level_num >= 16) {
         return;
     }
 

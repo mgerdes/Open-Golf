@@ -881,8 +881,8 @@ golf_transform_t golf_transform_apply_movement(golf_transform_t transform, golf_
             break;
         }
         case GOLF_MOVEMENT_RAMP: {
-            float theta0 = movement.ramp.theta0;
-            float theta1 = movement.ramp.theta1;
+            float theta0 = 2.0f * MF_PI * (movement.ramp.theta0 / 360.0f);
+            float theta1 = 2.0f * MF_PI * (movement.ramp.theta1 / 360.0f);
             float transition_length = movement.ramp.transition_length;
             vec3 axis = movement.ramp.axis;
             float theta = 0;
