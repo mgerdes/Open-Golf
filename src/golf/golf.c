@@ -1,6 +1,7 @@
 #include "golf/golf.h"
 
 #include "common/audio.h"
+#include "common/data.h"
 #include "common/debug_console.h"
 #include "common/graphics.h"
 #include "common/log.h"
@@ -8,6 +9,7 @@
 #include "golf/ui.h"
 
 static golf_t golf;
+static golf_config_t *game_cfg;
 static golf_graphics_t *graphics;
 static golf_game_t *game;
 static golf_ui_t *ui;
@@ -25,6 +27,8 @@ void golf_init(void) {
 
     golf_game_init();
     golf_ui_init();
+
+    game_cfg = golf_data_get_config("data/config/game.cfg");
 }
 
 void golf_update(float dt) {
@@ -70,7 +74,8 @@ golf_t *golf_get(void) {
 }
 
 void golf_start_level(int level_num) {
-    if (level_num >= 20) {
+    int num_levels = (int)CFG_NUM(game_cfg, "num_levels");
+    if (level_num >= num_levels) {
         return;
     }
 
@@ -83,7 +88,11 @@ void golf_start_level(int level_num) {
     golf.level = NULL;
     golf_data_unload(golf.level_loading_path);
 
-    snprintf(golf.level_loading_path, GOLF_FILE_MAX_PATH, "data/levels/level-%d.level", level_num + 1);
+    char level_key[256];
+    snprintf(level_key, 256, "level%d", level_num + 1);
+    const char *level_path = CFG_STRING(game_cfg, level_key);
+
+    snprintf(golf.level_loading_path, GOLF_FILE_MAX_PATH, "%s", level_path);
     golf_data_load(golf.level_loading_path, true);
     golf.state = GOLF_STATE_LOADING_LEVEL;
 }

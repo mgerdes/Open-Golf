@@ -812,11 +812,16 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
     _golf_ui_button(bg_pos, bg_size, &down_in_bg, &clicked_in_bg);
     int clicked_button_num = -1;
 
-    for (int row = 0; row < 5; row++) {
+    int num_levels = (int)CFG_NUM(game_cfg, "num_levels");
+    int num_rows = ceilf((float)num_levels / buttons_per_row);
+    bool locked = false;
+
+    for (int row = 0; row < num_rows; row++) {
         for (int col = 0; col < buttons_per_row; col++) {
             int button_num = row * buttons_per_row + col;
-            bool locked = button_num > 0;
-            locked = false;
+            if (button_num >= num_levels) {
+                continue;
+            }
 
             vec2 button_pos = bg_pos;
             button_pos.x = button_pos.x - 0.5f * bg_size.x + col * button_size.x + 0.5f * button_size.x + (col + 1) * button_padding;
@@ -850,6 +855,7 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
                 best_text_pos = vec2_add(best_text_pos, vec2_scale(button_down_text_offset, ui_scale));
             }
 
+            bool next_should_be_locked = false;
             {
                 char storage_key[256];
                 snprintf(storage_key, 256, "stroke_count_level_%d", button_num);
@@ -860,6 +866,7 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
                     snprintf(text_buf, 256, "Best %d", (int)stroke_count);
                 }
                 else {
+                    next_should_be_locked = true;
                     snprintf(text_buf, 256, "Best -");
                 }
                 _golf_ui_draw_text(font, best_text_pos, best_text_size, best_text_color, 0, 0, text_buf, 1);
@@ -875,7 +882,7 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
             char num_text[16];
             snprintf(num_text, 16, "%d", button_num + 1);
             _golf_ui_draw_text(font, num_text_pos, num_text_size, num_text_color, 0, 0, num_text, 1);
-            if (button_clicked && !was_scrolling) {
+            if (button_clicked && !was_scrolling && !locked) {
                 clicked_button_num = button_num;
             }
 
@@ -889,6 +896,10 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
                     vec4 overlay_color = V4(0, 0, 0, 1);
                     _golf_ui_texture_draw(lock_texture, button_pos, button_size, overlay_color, 0.8f);
                 }
+            }
+
+            if (next_should_be_locked) {
+                locked = true;
             }
         }
     }
@@ -1001,8 +1012,7 @@ static void _golf_ui_main_menu(float dt) {
             ui.main_menu.is_level_select_open = false;
         }
         int clicked_button_num = _golf_ui_level_select_scroll_box_name(layout, "level_select_scroll_box", dt);
-        clicked_button_num = clicked_button_num % 20;
-        if (clicked_button_num >= 0 && clicked_button_num < 20) {
+        if (clicked_button_num >= 0) {
             golf_audio_start_sound("button_click", "data/audio/drop_003.ogg", 1, false, true);
             _golf_ui_start_fade_out(false, true, clicked_button_num, false);
         }
@@ -1132,7 +1142,8 @@ static void _golf_ui_in_game_finished(float dt) {
     golf_ui_layout_t *layout = golf_data_get_ui_layout("data/ui/ui.ui");
 
     _golf_ui_pixel_pack_square_name(layout, "finished_menu_background");
-    if (golf->level_num + 1 < 6) {
+    int num_levels = (int)CFG_NUM(game_cfg, "num_levels");
+    if (golf->level_num < num_levels) {
         if (_golf_ui_button_name(layout, "finished_menu_next_button")) {
             _golf_ui_start_fade_out(false, true, golf->level_num + 1, false);
         }
