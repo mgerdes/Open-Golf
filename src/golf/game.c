@@ -172,32 +172,6 @@ static void _golf_game_update_state_main_menu(float dt) {
 static void _golf_game_update_state_waiting_for_aim(float dt) {
     GOLF_UNUSED(dt);
 
-    if (inputs->button_down[SAPP_KEYCODE_W]) {
-        vec3 dir = vec3_normalize(V3(graphics->cam_dir.x, 0, graphics->cam_dir.z));
-        game.ball.pos = vec3_add(game.ball.pos, vec3_scale(dir, 0.1f));
-    }
-    if (inputs->button_down[SAPP_KEYCODE_A]) {
-        vec3 dir = vec3_normalize(V3(graphics->cam_dir.x, 0, graphics->cam_dir.z));
-        dir = vec3_rotate_y(dir, 0.5f * MF_PI);
-        game.ball.pos = vec3_add(game.ball.pos, vec3_scale(dir, 0.1f));
-    }
-    if (inputs->button_down[SAPP_KEYCODE_D]) {
-        vec3 dir = vec3_normalize(V3(graphics->cam_dir.x, 0, graphics->cam_dir.z));
-        dir = vec3_rotate_y(dir, 1.5f * MF_PI);
-        game.ball.pos = vec3_add(game.ball.pos, vec3_scale(dir, 0.1f));
-    }
-    if (inputs->button_down[SAPP_KEYCODE_S]) {
-        vec3 dir = vec3_normalize(V3(graphics->cam_dir.x, 0, graphics->cam_dir.z));
-        dir = vec3_rotate_y(dir, MF_PI);
-        game.ball.pos = vec3_add(game.ball.pos, vec3_scale(dir, 0.1f));
-    }
-    if (inputs->button_down[SAPP_KEYCODE_Q]) {
-        game.ball.pos = vec3_add(game.ball.pos, V3(0, 0.1f, 0));
-    }
-    if (inputs->button_down[SAPP_KEYCODE_E]) {
-        game.ball.pos = vec3_add(game.ball.pos, V3(0, -0.1f, 0));
-    }
-
     if (game.ball.is_moving) {
         game.state = GOLF_GAME_STATE_WATCHING_BALL;
     }
