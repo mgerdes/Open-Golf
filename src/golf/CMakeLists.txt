@@ -26,12 +26,19 @@ if(CMAKE_SYSTEM_NAME STREQUAL Android)
         ui.c)
     target_link_libraries(golf PRIVATE ${GOLF_LIBRARIES})
 else()
+    if(CMAKE_SYSTEM_NAME STREQUAL iOS)
+        set(IOS_ICON "${CMAKE_SOURCE_DIR}/build/ios/icon.jpg")
+    else()
+        set(IOS_ICON "")
+    endif()
+
     add_executable(golf
         draw.c
         game.c
         golf.c
         main.c
-        ui.c)
+        ui.c
+        "${IOS_ICON}")
     if(CMAKE_SYSTEM_NAME STREQUAL Windows)
     elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
         set(GOLF_LIBRARIES 
@@ -56,7 +63,7 @@ else()
             "-framework AvFoundation")
         set_target_properties(golf PROPERTIES
             MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/build/ios/plist.in"
-            RESOURCE "${CMAKE_SOURCE_DIR}/build/ios/LaunchScreen.storyboard")
+            RESOURCE "${CMAKE_SOURCE_DIR}/build/ios/LaunchScreen.storyboard;${CMAKE_SOURCE_DIR}/build/ios/icon.jpg")
     elseif(CMAKE_SYSTEM_NAME STREQUAL Emscripten)
         set_target_properties( golf PROPERTIES 
             SUFFIX ".html")

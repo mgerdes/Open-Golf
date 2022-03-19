@@ -9,7 +9,7 @@
         <key>CFBundleGetInfoString</key>
         <string></string>
         <key>CFBundleIconFile</key>
-        <string></string>
+        <string>icon.jpg</string>
         <key>CFBundleIdentifier</key>
         <string>me.mgerdes.golf</string>
         <key>CFBundleInfoDictionaryVersion</key>
@@ -17,15 +17,17 @@
         <key>CFBundleLongVersionString</key>
         <string></string>
         <key>CFBundleName</key>
-        <string></string>
+        <string>Open Golf</string>
+        <key>CFBundleDisplayName</key>
+        <string>Open Golf</string>
         <key>CFBundlePackageType</key>
         <string>APPL</string>
         <key>CFBundleShortVersionString</key>
-        <string>0.0.0</string>
+        <string>1.0.0</string>
         <key>CFBundleSignature</key>
         <string>????</string>
         <key>CFBundleVersion</key>
-        <string>0.0.0</string>
+        <string>1.0.0</string>
         <key>CSResourcesFileMapped</key>
         <true/>
         <key>NSHumanReadableCopyright</key>
