@@ -590,6 +590,16 @@
                 "scale": [4, 0.01, 4.5],
                 "rotation": [0, 0, 0, 1]
             }
+        },
+        {
+            "parent_idx": -1,
+            "name": "begin_animation",
+            "type": "begin_animation",
+            "transform": {
+                "position": [10.75, 5.5, 0],
+                "scale": [1, 1, 1],
+                "rotation": [0, 0, 0, 1]
+            }
         }
     ]
 }
