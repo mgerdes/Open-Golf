@@ -5,14 +5,15 @@
     <uses-feature android:glEsVersion="0x00030000" />
     <application
         android:label="Open Golf"
-        android:hasCode="false">
+        android:hasCode="false"
+        android:icon="@mipmap/icon"
+        android:roundIcon="@mipmap/icon">
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"
             tools:node="remove" />
 
         <activity android:name="android.app.NativeActivity"
-            android:label="golf"
             android:launchMode="singleTask"
             android:screenOrientation="portrait"
             android:exported="true" >
