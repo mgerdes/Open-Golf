@@ -42,6 +42,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL Emscripten)
     add_link_options("SHELL:-s PTHREAD_POOL_SIZE=2")
     add_link_options("SHELL:-lidbfs.js")
     add_link_options("SHELL:--shell-file ../../build/emscripten/shell.html")
+    add_link_options("SHELL:-s TOTAL_MEMORY=32Mb")
 else()
 endif()
 
