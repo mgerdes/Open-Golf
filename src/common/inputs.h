@@ -14,6 +14,7 @@ typedef struct golf_inputs {
     bool button_clicked[SAPP_MAX_KEYCODES];
     bool mouse_down[SAPP_MAX_MOUSEBUTTONS];
     bool mouse_clicked[SAPP_MAX_MOUSEBUTTONS];
+    vec2 mouse_scroll_delta;
     vec2 mouse_pos, prev_mouse_pos, mouse_delta, mouse_down_pos, mouse_down_delta; 
     vec2 screen_mouse_pos, screen_mouse_down_pos, screen_mouse_down_delta;
     vec3 mouse_ray_orig, mouse_ray_dir;

@@ -683,6 +683,15 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
     float total_height = 4 * button_size.y + 4 * button_padding;
 
     bool was_scrolling = entity->level_select_scroll_box.is_scrolling;
+
+    if (!inputs->is_touch) {
+        float down_delta = entity->level_select_scroll_box.down_delta;
+        down_delta += CFG_NUM(game_cfg, "ui_scroll_scale") * inputs->mouse_scroll_delta.y;
+        if (down_delta >= 0) down_delta = 0;
+        if (down_delta <= -total_height) down_delta = -total_height;
+        entity->level_select_scroll_box.down_delta = down_delta;
+    }
+
     if (inputs->is_touch) {
         float down_delta = entity->level_select_scroll_box.down_delta;
         float leeway = entity->level_select_scroll_box.scroll_bar_leeway * ui_scale;
@@ -1143,7 +1152,7 @@ static void _golf_ui_in_game_finished(float dt) {
 
     _golf_ui_pixel_pack_square_name(layout, "finished_menu_background");
     int num_levels = (int)CFG_NUM(game_cfg, "num_levels");
-    if (golf->level_num < num_levels) {
+    if (golf->level_num + 1 < num_levels) {
         if (_golf_ui_button_name(layout, "finished_menu_next_button")) {
             _golf_ui_start_fade_out(false, true, golf->level_num + 1, false);
         }

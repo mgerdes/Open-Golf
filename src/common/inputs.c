@@ -65,6 +65,7 @@ void golf_inputs_end_frame(void) {
             inputs.mouse_clicked[i] = false;
         }
     }
+    inputs.mouse_scroll_delta = V2(0, 0);
 }
 
 void golf_inputs_handle_event(const sapp_event *event) {
@@ -112,6 +113,9 @@ void golf_inputs_handle_event(const sapp_event *event) {
     else if (event->type == SAPP_EVENTTYPE_MOUSE_UP) {
         inputs.mouse_down[event->mouse_button] = false;
         inputs.mouse_clicked[event->mouse_button] = true;
+    }
+    else if (event->type == SAPP_EVENTTYPE_MOUSE_SCROLL) {
+        inputs.mouse_scroll_delta = V2(event->scroll_x, event->scroll_y);
     }
 
     if (event->type == SAPP_EVENTTYPE_KEY_DOWN) {
