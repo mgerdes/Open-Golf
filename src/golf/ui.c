@@ -601,20 +601,22 @@ static void _golf_ui_aim_circle_name(golf_ui_layout_t *layout, const char *name,
             *aim_delta = delta;
         }
 
-        float min_angle = golf_config_get_num(game_cfg, "aim_rotate_min_angle");
-        float max_angle = golf_config_get_num(game_cfg, "aim_rotate_max_angle");
-        float rotate_speed = golf_config_get_num(game_cfg, "aim_rotate_speed");
-        if (aimer_angle > min_angle) {
-            float a = 1.0f - (max_angle - aimer_angle) / (max_angle - min_angle);
-            if (a > 1) a = 1;
-            game->cam.auto_rotate = false;
-            game->cam.angle -= rotate_speed * a * dt;
-        }
-        if (aimer_angle < -min_angle) {
-            float a = 1.0f + (-max_angle - aimer_angle) / (max_angle - min_angle);
-            if (a > 1) a = 1;
-            game->cam.auto_rotate = false;
-            game->cam.angle += rotate_speed * a * dt;
+        if (game->aim_line.power > 0) {
+            float min_angle = golf_config_get_num(game_cfg, "aim_rotate_min_angle");
+            float max_angle = golf_config_get_num(game_cfg, "aim_rotate_max_angle");
+            float rotate_speed = golf_config_get_num(game_cfg, "aim_rotate_speed");
+            if (aimer_angle > min_angle) {
+                float a = 1.0f - (max_angle - aimer_angle) / (max_angle - min_angle);
+                if (a > 1) a = 1;
+                game->cam.auto_rotate = false;
+                game->cam.angle -= rotate_speed * a * dt;
+            }
+            if (aimer_angle < -min_angle) {
+                float a = 1.0f + (-max_angle - aimer_angle) / (max_angle - min_angle);
+                if (a > 1) a = 1;
+                game->cam.auto_rotate = false;
+                game->cam.angle += rotate_speed * a * dt;
+            }
         }
     }
 
