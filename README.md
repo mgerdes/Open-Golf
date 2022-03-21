@@ -19,11 +19,17 @@ A cross-platform minigolf game written in C.
 ![Image](https://i.imgur.com/tUJyHRk.gif)
 
 ## Building
+### Windows
+- To compile run `build\build-win64.bat`
+
+- To start the game run `out\win64\golf.exe`
+
+- This also creates `out\win64\golf.sln` which can be opened in Visual Studio to compile / run everything
+
 ### Linux
-To compile run:
-`./build/build-linux.sh`
-To start the game run:
-`out/linux/golf`
+- To compile run `./build/build-linux.sh`
+
+- To start the game run `out/linux/golf`
 
 ## 3rd Party Libraries
 - [cembed](https://github.com/rxi/cembed)
@@ -31,6 +37,7 @@ To start the game run:
 - [fast_obj](https://github.com/thisistherk/fast_obj)
 - [glfw](https://github.com/glfw/glfw)
 - [glslcc](https://github.com/septag/glslcc)
+- [imgui](https://github.com/ocornut/imgui)
 - [Kenny Art Assets](https://kenney.nl/assets)
 - [lightmapper](https://github.com/ands/lightmapper)
 - [mattiasgustavsson/libs](https://github.com/mattiasgustavsson/libs)
