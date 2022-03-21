@@ -6,7 +6,7 @@
             "uniforms": [
                 {
                     "name": "solid_color_material_fs_params",
-                    "size": 32,
+                    "size": 16,
                     "binding": 0,
                     "members": [
                         {
@@ -30,7 +30,7 @@
             "uniforms": [
                 {
                     "name": "solid_color_material_vs_params",
-                    "size": 80,
+                    "size": 64,
                     "binding": 0,
                     "members": [
                         {
@@ -50,7 +50,7 @@
             "uniforms": [
                 {
                     "name": "solid_color_material_fs_params",
-                    "size": 32,
+                    "size": 16,
                     "binding": 0,
                     "members": [
                         {
@@ -74,7 +74,7 @@
             "uniforms": [
                 {
                     "name": "solid_color_material_vs_params",
-                    "size": 80,
+                    "size": 64,
                     "binding": 0,
                     "members": [
                         {

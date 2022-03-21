@@ -806,7 +806,7 @@ static int _golf_ui_level_select_scroll_box_name(golf_ui_layout_t *layout, const
     int clicked_button_num = -1;
 
     int num_levels = (int)CFG_NUM(game_cfg, "num_levels");
-    int num_rows = ceilf((float)num_levels / buttons_per_row);
+    int num_rows = (int)ceilf((float)num_levels / buttons_per_row);
     bool locked = false;
 
     for (int row = 0; row < num_rows; row++) {

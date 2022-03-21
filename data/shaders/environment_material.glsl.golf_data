@@ -82,7 +82,7 @@
             "uniforms": [
                 {
                     "name": "environment_material_vs_params",
-                    "size": 144,
+                    "size": 128,
                     "binding": 0,
                     "members": [
                         {
@@ -183,7 +183,7 @@
             "uniforms": [
                 {
                     "name": "environment_material_vs_params",
-                    "size": 144,
+                    "size": 128,
                     "binding": 0,
                     "members": [
                         {

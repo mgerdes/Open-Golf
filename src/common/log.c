@@ -3,7 +3,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "dbgtools/callstack.h"
 #include "common/log.h"
 
 #if GOLF_PLATFORM_ANDROID

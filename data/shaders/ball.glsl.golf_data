@@ -15,7 +15,7 @@
             "uniforms": [
                 {
                     "name": "ball_fs_params",
-                    "size": 32,
+                    "size": 16,
                     "binding": 0,
                     "members": [
                         {
@@ -52,7 +52,7 @@
             "uniforms": [
                 {
                     "name": "ball_vs_params",
-                    "size": 144,
+                    "size": 128,
                     "binding": 0,
                     "members": [
                         {
@@ -86,7 +86,7 @@
             "uniforms": [
                 {
                     "name": "ball_fs_params",
-                    "size": 32,
+                    "size": 16,
                     "binding": 0,
                     "members": [
                         {
@@ -123,7 +123,7 @@
             "uniforms": [
                 {
                     "name": "ball_vs_params",
-                    "size": 144,
+                    "size": 128,
                     "binding": 0,
                     "members": [
                         {

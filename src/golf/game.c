@@ -913,8 +913,6 @@ void golf_game_start_level(void) {
             golf_entity_t *entity = &golf->level->entities.data[i];
 
             switch (entity->type) {
-                case BEGIN_ANIMATION_ENTITY:
-                case CAMERA_ZONE_ENTITY:
                 case MODEL_ENTITY:
                 case WATER_ENTITY:
                 case GEO_ENTITY: {
@@ -927,6 +925,8 @@ void golf_game_start_level(void) {
                     }
                     break;
                 }
+                case BEGIN_ANIMATION_ENTITY:
+                case CAMERA_ZONE_ENTITY:
                 case BALL_START_ENTITY:
                 case HOLE_ENTITY:
                 case GROUP_ENTITY:

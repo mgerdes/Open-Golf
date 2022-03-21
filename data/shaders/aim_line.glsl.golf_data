@@ -69,7 +69,7 @@
             "uniforms": [
                 {
                     "name": "aim_line_vs_params",
-                    "size": 80,
+                    "size": 64,
                     "binding": 0,
                     "members": [
                         {
@@ -152,7 +152,7 @@
             "uniforms": [
                 {
                     "name": "aim_line_vs_params",
-                    "size": 80,
+                    "size": 64,
                     "binding": 0,
                     "members": [
                         {
