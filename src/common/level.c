@@ -887,12 +887,10 @@ golf_transform_t golf_transform_apply_movement(golf_transform_t transform, golf_
             vec3 axis = movement.ramp.axis;
             float theta = 0;
 
-            float s0 = 0;
             float s1 = transition_length;
             float s2 = 0.5f * l - transition_length;
             float s3 = 0.5f * l + transition_length;
             float s4 = l - transition_length;
-            float s5 = l;
 
             // stuck at bottom
             if (t < s1) {

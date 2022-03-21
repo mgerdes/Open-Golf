@@ -438,6 +438,8 @@ static void _draw_game(void) {
                 if (!entity->active) continue;
 
                 switch (entity->type) {
+                    case BEGIN_ANIMATION_ENTITY:
+                    case CAMERA_ZONE_ENTITY:
                     case MODEL_ENTITY:
                     case BALL_START_ENTITY:
                     case GEO_ENTITY:
@@ -493,6 +495,8 @@ static void _draw_game(void) {
                 if (!entity->active) continue;
 
                 switch (entity->type) {
+                    case BEGIN_ANIMATION_ENTITY:
+                    case CAMERA_ZONE_ENTITY:
                     case MODEL_ENTITY:
                     case BALL_START_ENTITY:
                     case GEO_ENTITY:

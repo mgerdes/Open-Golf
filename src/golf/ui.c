@@ -281,16 +281,6 @@ static void _golf_ui_pixel_pack_icon(golf_ui_layout_t *layout, golf_ui_layout_en
     _golf_ui_draw_pixel_pack_icon(pos, size, overlay_color, pixel_pack, icon_name);
 }
 
-static void _golf_ui_pixel_pack_icon_name(golf_ui_layout_t *layout, const char *name) {
-    golf_ui_layout_entity_t *entity;
-    if (!_golf_ui_layout_get_entity_of_type(layout, name, GOLF_UI_PIXEL_PACK_ICON, &entity)) {
-        golf_log_warning("Could not find pixel pack icon entity %s.", name);
-        return;
-    }
-
-    _golf_ui_pixel_pack_icon(layout, *entity);
-}
-
 static void _golf_ui_draw_text(golf_font_t *font, vec2 pos, float font_size, vec4 overlay_color, int horiz_align, int vert_align, const char *text, float alpha) {
     float cur_x = 0;
     float cur_y = 0;
@@ -407,15 +397,6 @@ static void _golf_ui_texture(golf_ui_layout_t *layout, golf_ui_layout_entity_t e
     _golf_ui_texture_draw(texture, pos, size, overlay_color, 1);
 }
 
-static void _golf_ui_texture_name(golf_ui_layout_t *layout, const char *name) {
-    golf_ui_layout_entity_t *entity;
-    if (!_golf_ui_layout_get_entity_of_type(layout, name, GOLF_UI_TEXTURE, &entity)) {
-        golf_log_warning("Could not find texture entity %s.", name);
-        return;
-    }
-    _golf_ui_texture(layout, *entity);
-}
-
 static void _golf_ui_gif_texture_name(golf_ui_layout_t *layout, const char *name, float dt) {
     golf_ui_layout_entity_t *entity;
     if (!_golf_ui_layout_get_entity_of_type(layout, name, GOLF_UI_GIF_TEXTURE, &entity)) {
@@ -499,6 +480,7 @@ static bool _golf_ui_button_name(golf_ui_layout_t *layout, const char *name) {
     for (int i = 0; i < entities.length; i++) {
         golf_ui_layout_entity_t entity = entities.data[i]; 
         switch (entity.type) {
+            case GOLF_UI_TUTORIAL:
             case GOLF_UI_BUTTON:
             case GOLF_UI_GIF_TEXTURE:
             case GOLF_UI_AIM_CIRCLE:
@@ -1238,6 +1220,8 @@ static void _golf_ui_in_game(float dt) {
     }
 
     switch (game->state) {
+        case GOLF_GAME_STATE_CELEBRATION:
+        case GOLF_GAME_STATE_BEGIN_CAMERA_ANIMATION:
         case GOLF_GAME_STATE_MAIN_MENU:
             break;
         case GOLF_GAME_STATE_WAITING_FOR_AIM:

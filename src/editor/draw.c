@@ -74,45 +74,6 @@ static void _golf_renderer_draw_environment_material(golf_model_t *model, int st
     sg_draw(start, count, 1);
 }
 
-static void _golf_renderer_draw_with_material(golf_model_t *model, int start, int count, mat4 model_mat, golf_material_t material) {
-    switch (material.type) {
-        case GOLF_MATERIAL_TEXTURE: {
-            golf_shader_t *shader = golf_data_get_shader("data/shaders/texture_material.glsl");
-            golf_shader_pipeline_t *pipeline = golf_shader_get_pipeline(shader, "texture_material");
-            sg_apply_pipeline(pipeline->sg_pipeline);
-
-            golf_shader_uniform_t *vs_uniforms = golf_shader_get_vs_uniform(shader, "texture_material_vs_params");
-            golf_shader_uniform_set_mat4(vs_uniforms, "proj_view_mat", mat4_transpose(graphics->proj_view_mat));
-            golf_shader_uniform_set_mat4(vs_uniforms, "model_mat", mat4_transpose(model_mat));
-            sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &(sg_range) { vs_uniforms->data, vs_uniforms->size });
-
-            golf_shader_uniform_t *fs_uniform = golf_shader_get_fs_uniform(shader, "fs_params");
-            golf_shader_uniform_set_float(fs_uniform, "alpha", 1);
-            sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &(sg_range) { fs_uniform->data, fs_uniform->size });
-
-            sg_bindings bindings = {
-                .vertex_buffers[0] = model->sg_positions_buf,
-                .vertex_buffers[1] = model->sg_texcoords_buf,
-                .vertex_buffers[2] = model->sg_normals_buf,
-                .fs_images[0] = material.texture->sg_image,
-            };
-            sg_apply_bindings(&bindings);
-
-            sg_draw(start, count, 1);
-            break;
-        }
-        case GOLF_MATERIAL_COLOR: {
-            break;
-        }
-        case GOLF_MATERIAL_DIFFUSE_COLOR: {
-            break;
-        }
-        case GOLF_MATERIAL_ENVIRONMENT: {
-            break;
-        }
-    }
-}
-
 static void _golf_renderer_draw_solid_color_material(golf_model_t *model, int start, int count, mat4 model_mat, golf_material_t material) {
     golf_shader_t *shader = golf_data_get_shader("data/shaders/solid_color_material.glsl");
     golf_shader_pipeline_t *pipeline = golf_shader_get_pipeline(shader, "solid_color_material");
@@ -378,6 +339,9 @@ static void _draw_level(void) {
             if (!entity->active) continue;
 
             switch (entity->type) {
+                case WATER_ENTITY:
+                case BEGIN_ANIMATION_ENTITY:
+                case CAMERA_ZONE_ENTITY:
                 case MODEL_ENTITY:
                 case BALL_START_ENTITY:
                 case GEO_ENTITY:
@@ -415,6 +379,9 @@ static void _draw_level(void) {
             if (!entity->active) continue;
 
             switch (entity->type) {
+                case WATER_ENTITY:
+                case BEGIN_ANIMATION_ENTITY:
+                case CAMERA_ZONE_ENTITY:
                 case MODEL_ENTITY:
                 case BALL_START_ENTITY:
                 case GEO_ENTITY:

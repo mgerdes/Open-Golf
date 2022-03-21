@@ -391,8 +391,8 @@ static bool _golf_shader_import(const char *path, char *data, int data_len) {
     }
 
     json_value_free(val);
-    return true;
 #endif
+    return true;
 }
 
 static bool _golf_shader_finalize(void *ptr) {
@@ -2226,6 +2226,7 @@ static bool _golf_ui_layout_load(void *ptr, const char *path, char *data, int da
 
 static void _golf_ui_layout_unload_entity(golf_ui_layout_entity_t *entity) {
     switch (entity->type) {
+        case GOLF_UI_PIXEL_PACK_ICON:
         case GOLF_UI_PIXEL_PACK_SQUARE:
         case GOLF_UI_GIF_TEXTURE:
         case GOLF_UI_AIM_CIRCLE:
@@ -2268,6 +2269,10 @@ static bool _golf_ui_layout_unload(void *ptr) {
 //
 
 static bool _golf_audio_load(void *ptr, const char *path, char *data, int data_len, char *meta_data, int meta_data_len) {
+    GOLF_UNUSED(path);
+    GOLF_UNUSED(meta_data);
+    GOLF_UNUSED(meta_data_len);
+
     golf_audio_t *audio = (golf_audio_t*)ptr;
 
     unsigned char *data_copy = malloc(data_len);
@@ -2289,6 +2294,7 @@ static bool _golf_audio_load(void *ptr, const char *path, char *data, int data_l
 }
 
 static bool _golf_audio_unload(void *ptr) {
+    GOLF_UNUSED(ptr);
     return true;
 }
 
@@ -3404,7 +3410,7 @@ void golf_data_init(void) {
     _assetsys = assetsys_create(NULL);
     map_init(&_file_time_map, "data");
 #if GOLF_PLATFORM_IOS | GOLF_PLATFORM_ANDROID | GOLF_PLATFORM_EMSCRIPTEN
-    assetsys_error_t error = assetsys_mount(_assetsys, "data.zip", golf_data_zip, sizeof(golf_data_zip), "/data");
+    assetsys_error_t error = assetsys_mount(_assetsys, "data.zip", (const char*)golf_data_zip, sizeof(golf_data_zip), "/data");
 #else
     assetsys_error_t error = assetsys_mount(_assetsys, "data", NULL, 0, "/data");
 #endif

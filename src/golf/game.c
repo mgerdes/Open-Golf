@@ -355,6 +355,8 @@ static void _physics_tick(float dt) {
             golf_entity_t *entity = &golf->level->entities.data[i];
 
             switch (entity->type) {
+                case BEGIN_ANIMATION_ENTITY:
+                case CAMERA_ZONE_ENTITY:
                 case MODEL_ENTITY:
                 case WATER_ENTITY:
                 case GEO_ENTITY: {
@@ -725,6 +727,8 @@ void golf_game_update(float dt) {
         case GOLF_GAME_STATE_WATCHING_BALL:
             _golf_game_update_state_watching_ball(dt);
             break;
+        case GOLF_GAME_STATE_BEGIN_CAMERA_ANIMATION:
+        case GOLF_GAME_STATE_CELEBRATION:
         case GOLF_GAME_STATE_FINISHED:
         case GOLF_GAME_STATE_PAUSED:
             break;
@@ -847,6 +851,7 @@ void golf_game_start_main_menu(void) {
     for (int i = 0; i < level->entities.length; i++) {
         golf_entity_t *entity = &level->entities.data[i];
         switch (entity->type) {
+            case CAMERA_ZONE_ENTITY:
             case MODEL_ENTITY:
             case GEO_ENTITY:
             case GROUP_ENTITY:
@@ -881,6 +886,7 @@ void golf_game_start_level(void) {
     for (int i = 0; i < level->entities.length; i++) {
         golf_entity_t *entity = &level->entities.data[i];
         switch (entity->type) {
+            case CAMERA_ZONE_ENTITY:
             case MODEL_ENTITY:
             case GEO_ENTITY:
             case GROUP_ENTITY:
@@ -907,6 +913,8 @@ void golf_game_start_level(void) {
             golf_entity_t *entity = &golf->level->entities.data[i];
 
             switch (entity->type) {
+                case BEGIN_ANIMATION_ENTITY:
+                case CAMERA_ZONE_ENTITY:
                 case MODEL_ENTITY:
                 case WATER_ENTITY:
                 case GEO_ENTITY: {
