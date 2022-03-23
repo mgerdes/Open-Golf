@@ -4,7 +4,7 @@ A cross-platform minigolf game written in C.
 ## Platforms
 - HTML: https://mgerdes.github.io/minigolf.html (Works best in Chrome)
 - iOS: https://apps.apple.com/us/app/open-golf/id1615224465
-- Android
+- Android: https://play.google.com/store/apps/details?id=me.mgerdes.open_golf
 - Windows
 - Linux
 
