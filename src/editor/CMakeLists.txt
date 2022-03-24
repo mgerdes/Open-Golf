@@ -12,8 +12,7 @@ set(EDITOR_LIBRARIES
     stb
     xatlas)
 
-if(CMAKE_SYSTEM_NAME STREQUAL Windows)
-elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
+if(CMAKE_SYSTEM_NAME STREQUAL Linux)
     set(EDITOR_LIBRARIES 
         ${EDITOR_LIBRARIES}
         -lX11
@@ -24,7 +23,6 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
         -lpthread
         -lm
         -lasound)
-else()
 endif()
 add_executable(editor
     draw.c

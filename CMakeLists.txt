@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.12)
 
 project(golf)
 
+message(${CMAKE_SYSTEM_NAME})
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 include_directories(SYSTEM src/3rd_party)
@@ -12,7 +14,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL Windows)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR})
     add_compile_definitions(SOKOL_GLCORE33)
     add_compile_definitions(GOLF_PLATFORM_WINDOWS)
-elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
+elseif(CMAKE_SYSTEM_NAME STREQUAL Linux OR CMAKE_SYSTEM_NAME STREQUAL Darwin)
     add_compile_definitions(SOKOL_GLCORE33)
     add_compile_definitions(GOLF_PLATFORM_LINUX)
 elseif(CMAKE_SYSTEM_NAME STREQUAL Android)
@@ -43,7 +45,6 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL Emscripten)
     add_link_options("SHELL:-lidbfs.js")
     add_link_options("SHELL:--shell-file ../../build/emscripten/shell.html")
     add_link_options("SHELL:-s TOTAL_MEMORY=32Mb")
-else()
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)

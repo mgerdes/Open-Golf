@@ -39,8 +39,7 @@ else()
         main.c
         ui.c
         "${IOS_ICON}")
-    if(CMAKE_SYSTEM_NAME STREQUAL Windows)
-    elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
+    if(CMAKE_SYSTEM_NAME STREQUAL Linux)
         set(GOLF_LIBRARIES 
             ${GOLF_LIBRARIES}
             -lX11
@@ -51,6 +50,13 @@ else()
             -lpthread
             -lm
             -lasound)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
+        set(GOLF_LIBRARIES 
+            ${GOLF_LIBRARIES}
+            "-framework AudioToolbox"
+            "-framework Cocoa"
+            "-framework QuartzCore"
+            "-framework OpenGL")
     elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
         set(GOLF_LIBRARIES
             -lc++
