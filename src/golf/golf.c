@@ -51,7 +51,7 @@ void golf_update(float dt) {
                 golf.level = golf_data_get_level(golf.level_loading_path);
                 golf.state = GOLF_STATE_IN_GAME;
                 golf.in_game.t = 0;
-                golf_game_start_level();
+                golf_game_start_level(false);
             }
             break;
         }

@@ -1308,7 +1308,7 @@ void golf_ui_update(float dt) {
                 golf_start_level(ui.fade_out.level);
             }
             else if (ui.fade_out.to_retry) {
-                golf_game_start_level();
+                golf_game_start_level(true);
                 golf->in_game.t = 0;
             }
         }

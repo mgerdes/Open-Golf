@@ -875,7 +875,7 @@ void golf_game_start_main_menu(void) {
     graphics->cam_dir = vec3_normalize(vec3_sub(hole_pos, begin_animation_pos));
 }
 
-void golf_game_start_level(void) {
+void golf_game_start_level(bool retry) {
     game.state = GOLF_GAME_STATE_BEGIN_CAMERA_ANIMATION;
 
     vec3 ball_start_pos = V3(0, 0, 0);
@@ -966,8 +966,9 @@ void golf_game_start_level(void) {
     game.aim_line.aim_delta = V2(0, 0);
     game.aim_line.offset = V2(0, 0);
     game.aim_line.num_points = 0;
-
-    game.begin_camera_animation.t = 0;
+    if (retry == false){
+        game.begin_camera_animation.t = 0;
+    }
     game.begin_camera_animation.cam_pos0 = begin_animation_pos;
     game.begin_camera_animation.cam_dir0 = vec3_normalize(vec3_sub(hole_pos, game.begin_camera_animation.cam_pos0));
 
