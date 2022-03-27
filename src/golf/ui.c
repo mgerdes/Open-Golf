@@ -1253,7 +1253,10 @@ static void _golf_ui_in_game(float dt) {
             }
             entity->text.text.len = 0;
             golf_string_appendf(&entity->text.text, "LEVEL %d", golf->level_num + 1);
-            _golf_ui_text(layout, *entity, alpha);
+            
+            if (ui.fade_out.to_retry == false) {
+                _golf_ui_text(layout, *entity, alpha);
+            }
         }
     }
 
