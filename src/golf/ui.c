@@ -1121,9 +1121,9 @@ static void _golf_ui_in_game_paused(float dt) {
     if (_golf_ui_button_name(layout, "pause_menu_resume_button")) {
         golf_game_resume();
     }
-    if (_golf_ui_button_name(layout, "pause_menu_retry_button")) {
-        _golf_ui_start_fade_out(false, false, 0, true);
-    }
+    //if (_golf_ui_button_name(layout, "pause_menu_retry_button")) {
+    //    _golf_ui_start_fade_out(false, false, 0, true);
+    //}
     if (_golf_ui_button_name(layout, "pause_menu_exit_button")) {
         _golf_ui_start_fade_out(true, false, 0, false);
     }
@@ -1170,6 +1170,9 @@ static void _golf_ui_in_game(float dt) {
         if (_golf_ui_button_name(layout, "pause_button")) {
             golf_game_pause();
         }
+		if (_golf_ui_button_name(layout, "retry_button")) {
+		    golf_game_start_level(true);
+		}
     }
 
     float temp_val;
