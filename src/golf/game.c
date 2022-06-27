@@ -486,7 +486,7 @@ static void _physics_tick(float dt) {
             processed_vertices[num_processed_vertices++] = contact->triangle_c;
         }
 
-        // Remove uncessary point contacts
+        // Remove unnecessary point contacts
         for (int i = 0; i < num_contacts; i++) {
             golf_ball_contact_t *contact = &contacts[i];
             if (contact->is_ignored ||

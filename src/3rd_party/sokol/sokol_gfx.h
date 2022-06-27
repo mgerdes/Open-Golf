@@ -334,7 +334,7 @@
             a convenience function to get a sg_context_desc struct filled out
             with context information provided by sokol_app.h
 
-    See the documention block of the sg_desc struct below for more information.
+    See the documentation block of the sg_desc struct below for more information.
 
     BACKEND-SPECIFIC TOPICS:
     ========================
