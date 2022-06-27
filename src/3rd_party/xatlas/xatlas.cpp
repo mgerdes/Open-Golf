@@ -5163,7 +5163,7 @@ struct Atlas
 					// Merge if chart2 has two faces (probably a quad), and chart1 bounds at least 2 of its edges.
 					if (chart2->faces.size() == 2 && m_sharedBoundaryEdgeCountNoSeams[cc] >= 2)
 						goto merge;
-					// Merge if chart2 is wholely inside chart1, ignoring seams.
+					// Merge if chart2 is wholly inside chart1, ignoring seams.
 					if (m_sharedBoundaryLengthsNoSeams[cc] > 0.0f && equal(m_sharedBoundaryLengthsNoSeams[cc], chart2->boundaryLength, kEpsilon))
 						goto merge;
 					if (m_sharedBoundaryLengths[cc] > 0.2f * max(0.0f, chart->boundaryLength - externalBoundaryLength) || 
