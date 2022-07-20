@@ -502,7 +502,9 @@ static bool _golf_ui_button_name(golf_ui_layout_t *layout, const char *name) {
     }
 
     if (clicked) {
-        golf_audio_start_sound("button_click", "data/audio/drop_003.ogg", 1, false, true);
+		if (!game_muted) {
+			golf_audio_start_sound("button_click", "data/audio/drop_003.ogg", 1, false, true);
+		}
     }
 
     return clicked;
@@ -1006,7 +1008,9 @@ static void _golf_ui_main_menu(float dt) {
         }
         int clicked_button_num = _golf_ui_level_select_scroll_box_name(layout, "level_select_scroll_box", dt);
         if (clicked_button_num >= 0) {
-            golf_audio_start_sound("button_click", "data/audio/drop_003.ogg", 1, false, true);
+		    if (!game_muted) {
+				golf_audio_start_sound("button_click", "data/audio/drop_003.ogg", 1, false, true);
+			}
             _golf_ui_start_fade_out(false, true, clicked_button_num, false);
         }
     }
@@ -1169,6 +1173,15 @@ static void _golf_ui_in_game(float dt) {
     if (game->state == GOLF_GAME_STATE_WAITING_FOR_AIM || game->state == GOLF_GAME_STATE_WATCHING_BALL) {
         if (_golf_ui_button_name(layout, "pause_button")) {
             golf_game_pause();
+        }
+        if (game_muted) {
+            if (_golf_ui_button_name(layout, "unmute_button")) {
+                game_muted = false;
+            }
+        } else {
+            if (_golf_ui_button_name(layout, "mute_button")) {
+                game_muted = true;
+            }
         }
     }
 

@@ -92,4 +92,6 @@ void golf_game_hit_ball(vec2 aim_delta);
 void golf_game_pause(void);
 void golf_game_resume(void);
 
+extern bool game_muted;
+
 #endif

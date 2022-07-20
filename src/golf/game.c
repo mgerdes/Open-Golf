@@ -22,6 +22,8 @@ static golf_graphics_t *graphics;
 static golf_inputs_t *inputs;
 static golf_config_t *game_cfg;
 
+bool game_muted = false;
+
 golf_game_t *golf_game_get(void) {
     return &game;
 }
@@ -268,8 +270,9 @@ static void _golf_game_update_state_watching_ball(float dt) {
             }
             golf_storage_save();
         }
-
-        golf_audio_start_sound("ball_in_hole", "data/audio/confirmation_002.ogg", 1, false, true);
+		if (!game_muted) {
+			golf_audio_start_sound("ball_in_hole", "data/audio/confirmation_002.ogg", 1, false, true);
+		}
     }
     else if (game.ball.is_out_of_bounds) {
         game.ball.pos = game.ball.start_pos;
@@ -282,7 +285,9 @@ static void _golf_game_update_state_watching_ball(float dt) {
         game.cam.angle = game.cam.start_angle;
         game.cam.auto_rotate = false;
         game.state = GOLF_GAME_STATE_WAITING_FOR_AIM;
-        golf_audio_start_sound("ball_out_of_bounds", "data/audio/error_008.ogg", 1, false, true);
+		if (!game_muted) {
+			golf_audio_start_sound("ball_out_of_bounds", "data/audio/error_008.ogg", 1, false, true);
+		}
     }
     else if (!game.ball.is_moving) {
         game.state = GOLF_GAME_STATE_WAITING_FOR_AIM;
@@ -578,7 +583,9 @@ static void _physics_tick(float dt) {
 
         if (contact->impulse_mag > 1 && contact->cull_dot < -0.15f) {
             if (game.ball.time_since_impact_sound > 0.1f) {
-                golf_audio_start_sound("ball_impact", "data/audio/footstep_grass_004.ogg", 1, false, true);
+				if (!game_muted) {
+					golf_audio_start_sound("ball_impact", "data/audio/footstep_grass_004.ogg", 1, false, true);
+				}
                 game.ball.time_since_impact_sound = 0;
             }
         }
@@ -700,7 +707,9 @@ static void _physics_tick(float dt) {
     }
 
     if (game.ball.time_out_of_water < 0.1f) {
-        golf_audio_start_sound("ball_in_water", "data/audio/in_water.ogg", 0.1f, true, false);
+		if (!game_muted) {
+			golf_audio_start_sound("ball_in_water", "data/audio/in_water.ogg", 0.1f, true, false);
+		}
     }
     else {
         golf_audio_stop_sound("ball_in_water", 0.2f);
@@ -1028,8 +1037,9 @@ void golf_game_hit_ball(vec2 aim_delta) {
     game.cam.start_angle = game.cam.angle;
 
     game.physics.collision_history.length = 0;
-
-    golf_audio_start_sound("hit_ball", "data/audio/impactPlank_medium_000.ogg", 1, false, true);
+    if (!game_muted) {
+		golf_audio_start_sound("hit_ball", "data/audio/impactPlank_medium_000.ogg", 1, false, true);
+	}
 }
 
 void golf_game_pause(void) {

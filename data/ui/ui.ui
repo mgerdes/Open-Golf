@@ -211,6 +211,64 @@
             "scroll_bar_height": 80,
             "scroll_bar_leeway": 60,
             "scroll_bar_leeway_fix_speed": 200
+		},
+		{
+            "name": "mute_button",
+            "type": "button",
+            "anchor": [1, 0],
+            "pos": [-180, 75],
+            "size": [100, 100],
+            "up_entities": [
+                {
+                    "parent": "mute_button",
+                    "type": "texture",
+                    "texture": "data/textures/ui_icons/audioOn.png",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 0],
+                    "size": [100, 100],
+                    "overlay_color": [0, 0, 0, 1]
+                }
+            ],
+            "down_entities": [
+                {
+                    "parent": "mute_button",
+                    "type": "texture",
+                    "texture": "data/textures/ui_icons/audioOn.png",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 0],
+                    "size": [100, 100],
+                    "overlay_color": [0.3, 0.3, 0.3, 1]
+                }
+            ]
+        },
+        {
+            "name": "unmute_button",
+            "type": "button",
+            "anchor": [1, 0],
+            "pos": [-180, 75],
+            "size": [100, 100],
+            "up_entities": [
+                {
+                    "parent": "unmute_button",
+                    "type": "texture",
+                    "texture": "data/textures/ui_icons/audioOff.png",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 0],
+                    "size": [100, 100],
+                    "overlay_color": [0, 0, 0, 1]
+                }
+            ],
+            "down_entities": [
+                {
+                    "parent": "unmute_button",
+                    "type": "texture",
+                    "texture": "data/textures/ui_icons/audioOff.png",
+                    "anchor": [0.5, 0.5],
+                    "pos": [0, 0],
+                    "size": [100, 100],
+                    "overlay_color": [0.3, 0.3, 0.3, 1]
+                }
+            ]
         },
         {
             "name": "pause_button",
