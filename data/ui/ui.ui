@@ -36,13 +36,25 @@
             "name": "level_num_text",
             "type": "text",
             "font": "data/font/FiraSans-Bold.ttf",
-            "anchor": [0.5, 0.5],
+            "anchor": [0.5, 0.425],
             "pos": [0, 0],
             "horiz_align": 0,
             "vert_align": 0,
             "font_size": 100,
             "color": [1.0, 1.0, 1.0, 1],
             "text": "LEVEL 1"
+        },
+        {
+            "name": "level_best_text",
+            "type": "text",
+            "font": "data/font/FiraSans-Bold.ttf",
+            "anchor": [0.5, 0.575],
+            "pos": [0, 0],
+            "horiz_align": 0,
+            "vert_align": 0,
+            "font_size": 100,
+            "color": [1.0, 1.0, 1.0, 1],
+            "text": "Best: -"
         },
         {
             "name": "play_button",

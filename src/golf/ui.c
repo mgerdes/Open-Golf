@@ -1255,6 +1255,26 @@ static void _golf_ui_in_game(float dt) {
             golf_string_appendf(&entity->text.text, "LEVEL %d", golf->level_num + 1);
             _golf_ui_text(layout, *entity, alpha);
         }
+
+        if (_golf_ui_layout_get_entity_of_type(layout, "level_best_text", GOLF_UI_TEXT, &entity)) {
+            float alpha = 1;
+            if (golf->in_game.t > time_to_show_level_num) {
+                alpha = 1 - (golf->in_game.t - time_to_show_level_num) / fade_in_length;
+            }
+            entity->text.text.len = 0;
+
+            char storage_key[256];
+            snprintf(storage_key, 256, "stroke_count_level_%d", golf->level_num);
+
+            float storage_stroke_count;
+            bool is_key_set = golf_storage_get_num(storage_key, &storage_stroke_count); 
+            if (!is_key_set) {
+                golf_string_appendf(&entity->text.text, "Best: -");
+            } else {
+                golf_string_appendf(&entity->text.text, "Best: %d", (int)storage_stroke_count);
+            }
+            _golf_ui_text(layout, *entity, alpha);
+        }
     }
 
     if (golf->in_game.t < fade_in_length) {
