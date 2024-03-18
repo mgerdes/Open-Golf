@@ -36,6 +36,11 @@ A cross-platform minigolf game written in C.
 
 - To start the game run `out/osx/golf`
 
+## FreeBSD 
+- To compile run `./build/build-freebsd.sh`
+
+- To start the game run `out/freebsd/golf`
+
 ## 3rd Party Libraries
 - [cembed](https://github.com/rxi/cembed)
 - [cimgui](https://github.com/cimgui/cimgui)
