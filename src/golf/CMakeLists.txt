@@ -39,7 +39,7 @@ else()
         main.c
         ui.c
         "${IOS_ICON}")
-    if(CMAKE_SYSTEM_NAME STREQUAL Linux)
+    if(CMAKE_SYSTEM_NAME STREQUAL Linux OR CMAKE_SYSTEM_NAME STREQUAL FreeBSD)
         set(GOLF_LIBRARIES 
             ${GOLF_LIBRARIES}
             -lX11
